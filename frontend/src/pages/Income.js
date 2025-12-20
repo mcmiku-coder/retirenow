@@ -86,6 +86,33 @@ const Income = () => {
     }));
   };
 
+  const resetToDefaults = async () => {
+    const userData = await getUserData(user.email, password);
+    if (userData) {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const birthDate = new Date(userData.birthDate);
+      const retirementDate = new Date(birthDate);
+      retirementDate.setFullYear(retirementDate.getFullYear() + 65);
+      retirementDate.setMonth(retirementDate.getMonth() + 1);
+      const retirementDateStr = retirementDate.toISOString().split('T')[0];
+      
+      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+      const deathDate = new Date(birthDate);
+      deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+      const deathDateStr = deathDate.toISOString().split('T')[0];
+      
+      setRows([
+        { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
+        { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
+        { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
+        { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+      ]);
+      setNextId(5);
+      toast.success('Reset to default values');
+    }
+  };
+
   const addRow = () => {
     setRows([...rows, {
       id: nextId,
