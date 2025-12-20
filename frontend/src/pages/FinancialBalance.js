@@ -232,12 +232,12 @@ const FinancialBalance = () => {
               <Card data-testid="death-balance-status-card" className={yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'border-green-500' : 'border-red-500'}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    Balance at Date of Death
+                    {t('financialBalance.balanceAtDeath')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className={`text-4xl font-bold ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="death-balance-status">
-                    {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'POSITIVE' : 'NEGATIVE'}
+                    {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? t('financialBalance.positive') : t('financialBalance.negative')}
                   </p>
                 </CardContent>
               </Card>
@@ -245,7 +245,7 @@ const FinancialBalance = () => {
               <Card data-testid="death-balance-value-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    Balance Value at Date of Death
+                    {t('financialBalance.balanceValue')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
