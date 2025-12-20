@@ -103,7 +103,7 @@ const RetirementOverview = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold" data-testid="retirement-date">
-                  {retirementData.retirement_legal_date}
+                  {new Date(retirementData.retirement_legal_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                 </p>
               </CardContent>
             </Card>
@@ -132,7 +132,7 @@ const RetirementOverview = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold" data-testid="death-date">
-                  {retirementData.theoretical_death_date}
+                  {new Date(retirementData.theoretical_death_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                 </p>
               </CardContent>
             </Card>
