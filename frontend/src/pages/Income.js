@@ -42,22 +42,27 @@ const Income = () => {
           if (userData) {
             const today = new Date().toISOString().split('T')[0];
             
-            // Calculate retirement date and death date
+            // Calculate retirement date
             const birthDate = new Date(userData.birthDate);
             const retirementDate = new Date(birthDate);
             retirementDate.setFullYear(retirementDate.getFullYear() + 65);
             retirementDate.setMonth(retirementDate.getMonth() + 1);
             const retirementDateStr = retirementDate.toISOString().split('T')[0];
             
-            // Get accurate life expectancy to calculate death date
-            const birthYear = birthDate.getFullYear();
-            const currentAge = new Date().getFullYear() - birthYear;
-            // More accurate life expectancy based on current age and gender
-            const baseLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-            const yearsToAdd = baseLifeExpectancy;
-            const deathDate = new Date(birthDate);
-            deathDate.setFullYear(deathDate.getFullYear() + yearsToAdd);
-            const deathDateStr = deathDate.toISOString().split('T')[0];
+            // Use accurate death date from API if available, otherwise estimate
+            let deathDateStr;
+            if (userData.theoreticalDeathDate) {
+              // Parse the API date format (e.g., "Jan 2052") to ISO date
+              const deathDateParsed = new Date(userData.theoreticalDeathDate);
+              deathDateStr = deathDateParsed.toISOString().split('T')[0];
+            } else {
+              // Fallback: estimate based on current age + typical remaining years
+              const currentAge = new Date().getFullYear() - birthDate.getFullYear();
+              const yearsRemaining = userData.gender === 'male' ? (80 - currentAge) : (85 - currentAge);
+              const deathDate = new Date();
+              deathDate.setFullYear(deathDate.getFullYear() + yearsRemaining);
+              deathDateStr = deathDate.toISOString().split('T')[0];
+            }
             
             setRows([
               { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
