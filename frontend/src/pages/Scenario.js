@@ -290,7 +290,7 @@ const Scenario = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-5 w-5 text-gray-400" />
                 My Wished Retirement Date
               </CardTitle>
             </CardHeader>
