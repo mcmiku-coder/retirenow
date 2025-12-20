@@ -344,7 +344,7 @@ const ScenarioResult = () => {
                                         Annual Balance: CHF {row.annualBalance.toLocaleString()}
                                       </div>
                                       <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                        Cumulative Balance: CHF {row.cumulativeBalance.toLocaleString()}
+                                        Cumulative Balance: CHF {Math.round(row.cumulativeBalance).toLocaleString()}
                                       </div>
                                     </div>
                                     
