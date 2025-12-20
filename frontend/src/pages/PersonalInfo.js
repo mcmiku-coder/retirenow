@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,6 +14,7 @@ import { NavigationButtons } from '../components/NavigationButtons';
 const PersonalInfo = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
+  const { t } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
   const [residence, setResidence] = useState('');
@@ -44,7 +46,7 @@ const PersonalInfo = () => {
     e.preventDefault();
     
     if (!birthDate || !gender || !residence) {
-      toast.error('Please fill all fields');
+      toast.error(t('common.error'));
       return;
     }
 
@@ -57,10 +59,10 @@ const PersonalInfo = () => {
       };
       
       await saveUserData(user.email, password, userData);
-      toast.success('Information saved securely');
+      toast.success(t('personalInfo.saveSuccess'));
       navigate('/retirement-overview');
     } catch (error) {
-      toast.error('Failed to save data');
+      toast.error(t('personalInfo.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -71,9 +73,9 @@ const PersonalInfo = () => {
       <div className="max-w-2xl w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Personal Information</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('personalInfo.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Let's start by gathering some basic information about you. All data is encrypted and stored securely on your device only.
+              {t('personalInfo.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/" showHome={false} />
@@ -81,7 +83,7 @@ const PersonalInfo = () => {
 
         <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
           <div>
-            <Label htmlFor="birthDate">Birth Date</Label>
+            <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
             <div className="relative">
               <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -97,27 +99,27 @@ const PersonalInfo = () => {
           </div>
 
           <div>
-            <Label htmlFor="gender">Gender</Label>
+            <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
             <Select value={gender} onValueChange={setGender} required>
               <SelectTrigger data-testid="gender-select">
-                <SelectValue placeholder="Select your gender" />
+                <SelectValue placeholder={t('personalInfo.gender')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="male" data-testid="gender-male">Male</SelectItem>
-                <SelectItem value="female" data-testid="gender-female">Female</SelectItem>
+                <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
+                <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor="residence">Country of Residence</Label>
+            <Label htmlFor="residence">{t('personalInfo.country')}</Label>
             <Select value={residence} onValueChange={setResidence} required>
               <SelectTrigger data-testid="residence-select">
-                <SelectValue placeholder="Select your country" />
+                <SelectValue placeholder={t('personalInfo.country')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Switzerland" data-testid="residence-switzerland">Switzerland</SelectItem>
-                <SelectItem value="France" data-testid="residence-france">France</SelectItem>
+                <SelectItem value="Switzerland" data-testid="residence-switzerland">{t('personalInfo.switzerland')}</SelectItem>
+                <SelectItem value="France" data-testid="residence-france">{t('personalInfo.france')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -128,7 +130,7 @@ const PersonalInfo = () => {
             className="w-full"
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Next - Retirement Overview'}
+            {loading ? t('personalInfo.saving') : t('personalInfo.continue')}
           </Button>
         </form>
       </div>
