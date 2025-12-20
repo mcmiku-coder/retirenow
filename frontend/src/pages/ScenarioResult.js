@@ -24,29 +24,40 @@ const ScenarioResult = () => {
 
     const determineResult = async () => {
       try {
-        const userData = await getUserData(user.email, password);
-        const incomeData = await getIncomeData(user.email, password) || [];
-        const costData = await getCostData(user.email, password) || [];
-
-        if (!userData) {
-          navigate('/personal-info');
-          return;
-        }
-
-        const currentYear = new Date().getFullYear();
-        const birthDate = new Date(userData.birthDate);
-        const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-        const deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
-
         // Check if we have simulation data from Scenario page
-        if (location.state && location.state.finalBalance !== undefined) {
-          // Calculate year-by-year for display
+        if (location.state && location.state.yearlyBreakdown) {
+          // Use the breakdown data directly from simulation
+          setYearlyBreakdown(location.state.yearlyBreakdown);
+          setResult({
+            canQuit: location.state.finalBalance >= 0,
+            balance: location.state.finalBalance,
+            wishedRetirementDate: location.state.wishedRetirementDate,
+            fromSimulation: true
+          });
+        } else {
+          // Fallback: calculate from original data if accessed directly
+          const userData = await getUserData(user.email, password);
+          const incomeData = await getIncomeData(user.email, password) || [];
+          const costData = await getCostData(user.email, password) || [];
+
+          if (!userData) {
+            navigate('/personal-info');
+            return;
+          }
+
+          const currentYear = new Date().getFullYear();
+          const birthDate = new Date(userData.birthDate);
+          const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+          const deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
+
           const breakdown = [];
-          let cumulativeBalance = parseFloat(location.state.liquidAssets || 0) + parseFloat(location.state.nonLiquidAssets || 0);
+          let cumulativeBalance = 0;
 
           for (let year = currentYear; year <= deathYear; year++) {
             let yearIncome = 0;
             let yearCosts = 0;
+            const incomeBreakdown = {};
+            const costBreakdown = {};
 
             incomeData.filter(row => row.amount).forEach(row => {
               const startYear = new Date(row.startDate).getFullYear();
@@ -54,13 +65,16 @@ const ScenarioResult = () => {
               
               if (year >= startYear && year <= endYear) {
                 const amount = parseFloat(row.amount) || 0;
+                let yearlyAmount = 0;
                 if (row.frequency === 'Monthly') {
-                  yearIncome += amount * 12;
+                  yearlyAmount = amount * 12;
                 } else if (row.frequency === 'Yearly') {
-                  yearIncome += amount;
+                  yearlyAmount = amount;
                 } else if (row.frequency === 'One-time' && year === startYear) {
-                  yearIncome += amount;
+                  yearlyAmount = amount;
                 }
+                yearIncome += yearlyAmount;
+                incomeBreakdown[row.name] = yearlyAmount;
               }
             });
 
@@ -70,13 +84,17 @@ const ScenarioResult = () => {
               
               if (year >= startYear && year <= endYear) {
                 const amount = parseFloat(row.amount) || 0;
+                let yearlyAmount = 0;
                 if (row.frequency === 'Monthly') {
-                  yearCosts += amount * 12;
+                  yearlyAmount = amount * 12;
                 } else if (row.frequency === 'Yearly') {
-                  yearCosts += amount;
+                  yearlyAmount = amount;
                 } else if (row.frequency === 'One-time' && year === startYear) {
-                  yearCosts += amount;
+                  yearlyAmount = amount;
                 }
+                yearCosts += yearlyAmount;
+                const category = row.category || row.name || 'Other';
+                costBreakdown[category] = (costBreakdown[category] || 0) + yearlyAmount;
               }
             });
 
@@ -88,50 +106,17 @@ const ScenarioResult = () => {
               income: yearIncome,
               costs: yearCosts,
               annualBalance,
-              cumulativeBalance
+              cumulativeBalance,
+              incomeBreakdown,
+              costBreakdown
             });
           }
 
           setYearlyBreakdown(breakdown);
-          setResult({
-            canQuit: location.state.finalBalance >= 0,
-            balance: location.state.finalBalance,
-            wishedRetirementDate: location.state.wishedRetirementDate,
-            fromSimulation: true
-          });
-        } else {
-          // Fallback to simple calculation if accessed directly
-          const totalIncome = incomeData
-            .filter(row => row.amount)
-            .reduce((sum, row) => {
-              const amount = parseFloat(row.amount) || 0;
-              if (row.frequency === 'Monthly') {
-                return sum + (amount * 12);
-              } else if (row.frequency === 'Yearly') {
-                return sum + amount;
-              } else {
-                return sum + amount;
-              }
-            }, 0);
-
-          const totalCosts = costData
-            .filter(row => row.amount)
-            .reduce((sum, row) => {
-              const amount = parseFloat(row.amount) || 0;
-              if (row.frequency === 'Monthly') {
-                return sum + (amount * 12);
-              } else if (row.frequency === 'Yearly') {
-                return sum + amount;
-              } else {
-                return sum + amount;
-              }
-            }, 0);
-
-          const yearlyBalance = totalIncome - totalCosts;
           
           setResult({
-            canQuit: yearlyBalance >= 0,
-            balance: yearlyBalance,
+            canQuit: cumulativeBalance >= 0,
+            balance: cumulativeBalance,
             fromSimulation: false
           });
         }
