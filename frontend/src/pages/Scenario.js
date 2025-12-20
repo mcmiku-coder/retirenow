@@ -424,20 +424,20 @@ const Scenario = () => {
           {/* Incomes Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Income Sources</CardTitle>
-              <p className="text-sm text-muted-foreground">All dates are editable to adjust your scenario</p>
+              <CardTitle>{t('scenario.incomeSources')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('scenario.allDatesEditable')}</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">Name</th>
-                      <th className="text-right p-3 font-semibold">Original Value</th>
-                      <th className="text-right p-3 font-semibold">Adjusted Value</th>
-                      <th className="text-left p-3 font-semibold">Frequency</th>
-                      <th className="text-left p-3 font-semibold">Start Date</th>
-                      <th className="text-left p-3 font-semibold">End Date</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
                     </tr>
                   </thead>
                   <tbody>
