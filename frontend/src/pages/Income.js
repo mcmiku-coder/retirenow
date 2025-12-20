@@ -6,8 +6,9 @@ import { Input } from '../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { saveIncomeData, getIncomeData } from '../utils/database';
+import { saveIncomeData, getIncomeData, getUserData } from '../utils/database';
 import { Trash2, Plus } from 'lucide-react';
+import { NavigationButtons } from '../components/NavigationButtons';
 
 const Income = () => {
   const navigate = useNavigate();
