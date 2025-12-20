@@ -161,7 +161,7 @@ const ScenarioResult = () => {
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Your Retirement Verdict</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Based on your financial data and retirement timeline, here's our assessment:
+              Based on your financial data and retirement timeline, here is our assessment:
             </p>
           </div>
           <NavigationButtons backPath="/scenario" />
