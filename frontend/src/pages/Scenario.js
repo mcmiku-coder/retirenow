@@ -676,6 +676,36 @@ const Scenario = () => {
             </CardContent>
           </Card>
 
+          {/* Transmission/Inheritance Section */}
+          <Card className="border-amber-500/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-amber-400" />
+                Transmission / Inheritance
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="max-w-md">
+                <Label htmlFor="transmission">Amount to Transmit (CHF)</Label>
+                <Input
+                  data-testid="transmission-input"
+                  id="transmission"
+                  type="number"
+                  value={transmissionAmount}
+                  onChange={(e) => setTransmissionAmount(e.target.value)}
+                  placeholder="0"
+                  className="mt-1"
+                />
+                <p className="text-xs text-amber-400/80 mt-2">
+                  ⚠️ If your balance after transmission goes negative, you cannot quit!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Button
             data-testid="can-i-quit-btn"
             onClick={runSimulation}
