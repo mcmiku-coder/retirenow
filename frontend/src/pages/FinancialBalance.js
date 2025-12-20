@@ -129,6 +129,32 @@ const FinancialBalance = () => {
           incomeCount: incomeData.filter(r => r.amount).length,
           costCount: costData.filter(r => r.amount).length
         });
+
+        // Calculate income by category
+        const incomeByCat = {};
+        incomeData.filter(row => row.amount).forEach(row => {
+          const amount = parseFloat(row.amount) || 0;
+          const yearlyAmount = row.frequency === 'Monthly' ? amount * 12 : amount;
+          const category = row.name || 'Other';
+          incomeByCat[category] = (incomeByCat[category] || 0) + yearlyAmount;
+        });
+        
+        setIncomeCategoryData(
+          Object.entries(incomeByCat).map(([name, value]) => ({ name, value }))
+        );
+
+        // Calculate costs by category
+        const costsByCat = {};
+        costData.filter(row => row.amount).forEach(row => {
+          const amount = parseFloat(row.amount) || 0;
+          const yearlyAmount = row.frequency === 'Monthly' ? amount * 12 : amount;
+          const category = row.category || 'Other';
+          costsByCat[category] = (costsByCat[category] || 0) + yearlyAmount;
+        });
+        
+        setCostCategoryData(
+          Object.entries(costsByCat).map(([name, value]) => ({ name, value }))
+        );
       } catch (error) {
         toast.error('Failed to calculate balance');
         console.error(error);
