@@ -125,16 +125,21 @@ const ScenarioResult = () => {
                 {result.canQuit ? 'YES YOU CAN! QUIT!' : 'NO YOU CANNOT QUIT YET!'}
               </h2>
               <p className="text-xl text-muted-foreground mb-2">
-                Your annual balance: 
+                {result.fromSimulation ? 'Projected balance at end of life:' : 'Your annual balance:'}
                 <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">
                   {result.balance >= 0 ? '+' : ''}
-                  ${result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
               </p>
+              {result.wishedRetirementDate && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Based on retirement date: {new Date(result.wishedRetirementDate).toLocaleDateString()}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground mt-6">
                 {result.canQuit 
-                  ? 'Your income exceeds your expenses! You have the financial foundation to consider retirement.'
-                  : 'Your expenses exceed your income. Consider adjusting your financial plan before making the leap.'}
+                  ? 'Your projected balance is positive! You have the financial foundation to consider retirement.'
+                  : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date before making the leap.'}
               </p>
             </div>
           </Card>
