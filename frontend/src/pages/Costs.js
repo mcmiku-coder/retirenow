@@ -48,12 +48,8 @@ const Costs = () => {
           if (userData) {
             const today = new Date().toISOString().split('T')[0];
             
-            // Calculate death date
-            const birthDate = new Date(userData.birthDate);
-            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-            const deathDate = new Date(birthDate);
-            deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
-            const deathDateStr = deathDate.toISOString().split('T')[0];
+            // Use the theoretical death date from API
+            const deathDateStr = userData.theoreticalDeathDate || today;
             
             setRows([
               { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
