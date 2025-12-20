@@ -428,8 +428,8 @@ const Scenario = () => {
                           </td>
                           <td className="p-3">{income.frequency}</td>
                           <td className="p-3">
-                            {income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a' ? (
-                              startDate
+                            {(income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a') ? (
+                              <span className="text-muted-foreground">{startDate}</span>
                             ) : (
                               <Input
                                 type="date"
