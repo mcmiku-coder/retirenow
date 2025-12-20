@@ -106,6 +106,7 @@ const Scenario = () => {
       
       let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
       const yearlyData = [];
+      const today = new Date().toISOString().split('T')[0];
 
       // Calculate year by year with detailed breakdown
       for (let year = currentYear; year <= deathYear; year++) {
@@ -119,56 +120,56 @@ const Scenario = () => {
         
         incomes.forEach(income => {
           const amount = parseFloat(income.adjustedAmount) || 0;
-          let shouldInclude = false;
+          let startDate, endDate;
           
-          // Salary: current date to wished retirement date
-          if (income.name === 'Salary' && year < wishedRetirementYear) {
-            shouldInclude = true;
-          }
-          // LPP: wished retirement date to death
-          else if (income.name === 'LPP' && year >= wishedRetirementYear) {
-            shouldInclude = true;
-          }
-          // AVS: legal retirement date to death
-          else if (income.name === 'AVS' && year >= retirementLegalYear) {
-            shouldInclude = true;
-          }
-          // 3a: starts at wished retirement date
-          else if (income.name === '3a' && year === wishedRetirementYear) {
-            shouldInclude = true;
-          }
-
-          if (shouldInclude) {
-            let yearlyAmount = 0;
-            if (income.frequency === 'Monthly') {
-              yearlyAmount = amount * 12;
-            } else if (income.frequency === 'Yearly') {
-              yearlyAmount = amount;
-            } else {
-              yearlyAmount = amount;
+          // Determine dates based on income type
+          if (income.name === 'Salary') {
+            startDate = today;
+            endDate = wishedRetirementDate;
+          } else if (income.name === 'LPP') {
+            startDate = wishedRetirementDate;
+            endDate = deathDate;
+          } else if (income.name === 'AVS') {
+            startDate = retirementLegalDate;
+            endDate = deathDate;
+          } else if (income.name === '3a') {
+            // 3a is one-time at retirement
+            if (year === wishedRetirementYear) {
+              yearData.income += amount;
+              yearData.incomeBreakdown[income.name] = amount;
             }
-            
+            return; // Skip further processing for 3a
+          } else {
+            // Custom income - use stored dates
+            startDate = income.startDate;
+            endDate = income.endDate;
+          }
+          
+          const yearlyAmount = calculateYearlyAmount(
+            amount,
+            income.frequency,
+            startDate,
+            endDate,
+            year
+          );
+          
+          if (yearlyAmount > 0) {
             yearData.income += yearlyAmount;
             yearData.incomeBreakdown[income.name] = yearlyAmount;
           }
         });
 
         costs.forEach(cost => {
-          const startYear = new Date(cost.startDate).getFullYear();
-          const endYear = cost.endDate ? new Date(cost.endDate).getFullYear() : year;
+          const amount = parseFloat(cost.adjustedAmount) || 0;
+          const yearlyAmount = calculateYearlyAmount(
+            amount,
+            cost.frequency,
+            cost.startDate,
+            cost.endDate,
+            year
+          );
           
-          if (year >= startYear && year <= endYear) {
-            const amount = parseFloat(cost.adjustedAmount) || 0;
-            let yearlyAmount = 0;
-            
-            if (cost.frequency === 'Monthly') {
-              yearlyAmount = amount * 12;
-            } else if (cost.frequency === 'Yearly') {
-              yearlyAmount = amount;
-            } else if (cost.frequency === 'One-time' && year === startYear) {
-              yearlyAmount = amount;
-            }
-            
+          if (yearlyAmount > 0) {
             yearData.costs += yearlyAmount;
             const category = cost.category || cost.name || 'Other';
             yearData.costBreakdown[category] = (yearData.costBreakdown[category] || 0) + yearlyAmount;
