@@ -69,11 +69,14 @@ const PersonalInfo = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="personal-info-page">
       <div className="max-w-2xl w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Personal Information</h1>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            Let's start by gathering some basic information about you. All data is encrypted and stored securely on your device only.
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Personal Information</h1>
+            <p className="text-muted-foreground" data-testid="page-subtitle">
+              Let's start by gathering some basic information about you. All data is encrypted and stored securely on your device only.
+            </p>
+          </div>
+          <NavigationButtons backPath="/" showHome={false} />
         </div>
 
         <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
