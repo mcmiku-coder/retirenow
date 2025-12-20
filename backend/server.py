@@ -150,40 +150,68 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
         # Calculate current age
         today = datetime.now()
         current_age = today.year - birth_year
+        if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+            current_age -= 1
         
-        # Get life expectancy data
+        # Get life expectancy data for current gender
         gender = request.gender.lower()
         if gender not in life_expectancy_data:
             raise HTTPException(status_code=400, detail="Invalid gender")
         
         gender_data = life_expectancy_data[gender]
         
-        # Find closest birth year in data
-        available_years = sorted(gender_data.keys())
-        closest_year = min(available_years, key=lambda y: abs(y - birth_year))
+        # Use 2025 data (or the closest future year available)
+        current_year = today.year
+        available_years = sorted([y for y in gender_data.keys() if y >= current_year])
         
-        # Find closest age in data
-        age_data = gender_data[closest_year]
+        if not available_years:
+            # Fallback to most recent year if no future data
+            available_years = sorted(gender_data.keys())
+        
+        reference_year = available_years[0] if available_years else 2025
+        age_data = gender_data.get(reference_year, gender_data[sorted(gender_data.keys())[-1]])
+        
+        # Get available ages in the data
         available_ages = sorted(age_data.keys())
-        closest_age = min(available_ages, key=lambda a: abs(a - current_age))
         
-        # Get years left to live
-        years_left = age_data[closest_age]
+        # Interpolate years remaining based on current age
+        if current_age <= available_ages[0]:
+            # Younger than minimum age in data
+            years_remaining = age_data[available_ages[0]]
+        elif current_age >= available_ages[-1]:
+            # Older than maximum age in data
+            years_remaining = age_data[available_ages[-1]]
+        else:
+            # Interpolate between two closest ages
+            lower_age = max([a for a in available_ages if a <= current_age])
+            upper_age = min([a for a in available_ages if a > current_age])
+            
+            lower_years = age_data[lower_age]
+            upper_years = age_data[upper_age]
+            
+            # Linear interpolation
+            age_fraction = (current_age - lower_age) / (upper_age - lower_age)
+            years_remaining = lower_years + (upper_years - lower_years) * age_fraction
+        
+        # Calculate total life expectancy: current age + years remaining
+        total_life_expectancy = current_age + years_remaining
         
         # Calculate retirement legal date (birth date + 65 years + 1 month)
         retirement_date = birth_date.replace(year=birth_date.year + 65)
         retirement_date = retirement_date + timedelta(days=30)  # Add 1 month
         
-        # Calculate theoretical death date
-        death_date = today + timedelta(days=int(years_left * 365.25))
+        # Calculate theoretical death date (today + years remaining)
+        death_date = today + timedelta(days=int(years_remaining * 365.25))
+        
+        print(f"Life expectancy calculation: age={current_age}, years_remaining={years_remaining:.1f}, total={total_life_expectancy:.1f}")
         
         return LifeExpectancyResponse(
-            life_expectancy_years=years_left,
+            life_expectancy_years=years_remaining,
             retirement_legal_date=retirement_date.strftime("%b %Y"),
             theoretical_death_date=death_date.strftime("%b %Y")
         )
     except Exception as e:
-        logger.error(f"Error calculating life expectancy: {str(e)}")
+        print(f"Error calculating life expectancy: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the router in the main app
