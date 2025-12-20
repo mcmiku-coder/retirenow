@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -14,6 +15,7 @@ import { Calendar, Minus, Trash2, Split, Gift } from 'lucide-react';
 const Scenario = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
+  const { t } = useLanguage();
   const [wishedRetirementDate, setWishedRetirementDate] = useState('');
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
