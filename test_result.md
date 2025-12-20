@@ -116,6 +116,9 @@ backend:
       - working: true
         agent: "main"
         comment: "API returns correct life expectancy based on CSV data"
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive testing completed - API working correctly. Returns life expectancy years (43.0), retirement date (2045-07-15), and theoretical death date (2068-12-19) for test data (birth: 1980-06-15, male). Authentication and data validation working properly."
 
   - task: "User Authentication API"
     implemented: true
@@ -128,6 +131,21 @@ backend:
       - working: true
         agent: "main"
         comment: "JWT authentication working correctly"
+      - working: true
+        agent: "testing"
+        comment: "Authentication flow fully tested - registration, login, and JWT token validation all working. Endpoints are at /api/auth/register and /api/auth/login (not /api/register and /api/login as initially requested). Security properly implemented with token expiration and invalid token rejection."
+
+  - task: "Health Check API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Added missing health check endpoint at /api/health - returns status OK. Endpoint was missing from initial implementation but has been added and tested successfully."
 
 frontend:
   - task: "Scenario Simulator - Editable Income Dates"
