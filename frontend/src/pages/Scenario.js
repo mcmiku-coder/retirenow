@@ -537,6 +537,7 @@ const Scenario = () => {
           <Card>
             <CardHeader>
               <CardTitle>Costs</CardTitle>
+              <p className="text-sm text-muted-foreground">Split costs are grouped together. End date changes auto-sync with linked start dates.</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -553,62 +554,89 @@ const Scenario = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {costs.map((cost, index) => (
-                      <tr key={cost.id} className="border-b">
-                        <td className="p-3 font-medium">{cost.name}</td>
-                        <td className="text-right p-3 text-muted-foreground">
-                          CHF {parseFloat(cost.amount).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3">
-                          <Input
-                            data-testid={`cost-adjusted-${index}`}
-                            type="number"
-                            value={cost.adjustedAmount}
-                            onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
-                            className="max-w-[150px] ml-auto"
-                          />
-                        </td>
-                        <td className="p-3">{cost.frequency}</td>
-                        <td className="p-3">
-                          <Input
-                            type="date"
-                            value={cost.startDate || ''}
-                            onChange={(e) => updateCostDate(cost.id, 'startDate', e.target.value)}
-                            className="max-w-[150px]"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <Input
-                            type="date"
-                            value={cost.endDate || ''}
-                            onChange={(e) => updateCostDate(cost.id, 'endDate', e.target.value)}
-                            className="max-w-[150px]"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              onClick={() => splitCost(cost.id)}
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              title="Split this cost into two periods"
-                            >
-                              <Split className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => deleteCost(cost.id)}
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              title="Delete this cost line"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {costs.map((cost, index) => {
+                      // Check if this cost is part of a split group
+                      const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
+                      const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
+                      
+                      // Visual grouping - lighter background for grouped costs, slightly indented for children
+                      const groupStyles = isInGroup 
+                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50' 
+                        : '';
+                      const childStyles = isChildCost 
+                        ? 'bg-muted/10' 
+                        : '';
+                      
+                      return (
+                        <tr 
+                          key={cost.id} 
+                          className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}
+                        >
+                          <td className="p-3 font-medium">
+                            <div className="flex items-center gap-2">
+                              {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
+                              {cost.name}
+                              {isInGroup && !isChildCost && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">split</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {parseFloat(cost.amount).toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              data-testid={`cost-adjusted-${index}`}
+                              type="number"
+                              value={cost.adjustedAmount}
+                              onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
+                              className="max-w-[150px] ml-auto"
+                            />
+                          </td>
+                          <td className="p-3">{cost.frequency}</td>
+                          <td className="p-3">
+                            <Input
+                              data-testid={`cost-start-date-${index}`}
+                              type="date"
+                              value={cost.startDate || ''}
+                              onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              data-testid={`cost-end-date-${index}`}
+                              type="date"
+                              value={cost.endDate || ''}
+                              onChange={(e) => updateCostDateWithSync(cost.id, 'endDate', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => splitCost(cost.id)}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Split this cost into two periods"
+                              >
+                                <Split className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteCost(cost.id)}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                title="Delete this cost line"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
