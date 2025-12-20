@@ -418,18 +418,18 @@ const FinancialBalance = () => {
             {/* Year-by-Year Breakdown Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Year-by-Year Financial Breakdown</CardTitle>
+                <CardTitle>{t('financialBalance.yearlyBreakdown')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-muted/50 sticky top-0">
                       <tr>
-                        <th className="text-left p-3 font-semibold">Year</th>
-                        <th className="text-right p-3 font-semibold">Income</th>
-                        <th className="text-right p-3 font-semibold">Costs</th>
-                        <th className="text-right p-3 font-semibold">Annual Balance</th>
-                        <th className="text-right p-3 font-semibold">Cumulative Balance</th>
+                        <th className="text-left p-3 font-semibold">{t('financialBalance.year')}</th>
+                        <th className="text-right p-3 font-semibold">{t('financialBalance.income')}</th>
+                        <th className="text-right p-3 font-semibold">{t('financialBalance.costs')}</th>
+                        <th className="text-right p-3 font-semibold">{t('financialBalance.annualBalance')}</th>
+                        <th className="text-right p-3 font-semibold">{t('financialBalance.cumulativeBalance')}</th>
                       </tr>
                     </thead>
                     <tbody>
