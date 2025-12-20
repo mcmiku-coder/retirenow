@@ -349,7 +349,7 @@ const Scenario = () => {
       });
 
     } catch (error) {
-      toast.error('Simulation failed');
+      toast.error(t('common.error'));
       console.error(error);
     }
   };
@@ -359,7 +359,7 @@ const Scenario = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading scenario data...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -370,9 +370,9 @@ const Scenario = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Retirement Scenario Simulator</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('scenario.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Adjust your retirement date and values to see if you can quit early!
+              {t('scenario.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/financial-balance" />
@@ -384,7 +384,7 @@ const Scenario = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-gray-400" />
-                My Wished Retirement Date
+                {t('scenario.wishedRetirement')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -403,7 +403,7 @@ const Scenario = () => {
                   size="sm"
                 >
                   <Minus className="h-4 w-4 mr-1" />
-                  1 Month
+                  1 {t('scenario.month')}
                 </Button>
                 <Button
                   data-testid="minus-1-year-btn"
@@ -412,11 +412,11 @@ const Scenario = () => {
                   size="sm"
                 >
                   <Minus className="h-4 w-4 mr-1" />
-                  1 Year
+                  1 {t('scenario.year')}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                Legal retirement date: {new Date(retirementLegalDate).toLocaleDateString()}
+                {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
               </p>
             </CardContent>
           </Card>
