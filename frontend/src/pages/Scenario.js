@@ -324,6 +324,8 @@ const Scenario = () => {
                           />
                         </td>
                         <td className="p-3">{cost.frequency}</td>
+                        <td className="p-3">{cost.startDate ? new Date(cost.startDate).toLocaleDateString() : '-'}</td>
+                        <td className="p-3">{cost.endDate ? new Date(cost.endDate).toLocaleDateString() : '-'}</td>
                       </tr>
                     ))}
                   </tbody>
