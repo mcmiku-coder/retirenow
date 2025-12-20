@@ -538,21 +538,21 @@ const Scenario = () => {
           {/* Costs Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Costs</CardTitle>
-              <p className="text-sm text-muted-foreground">Split costs are grouped together. End date changes auto-sync with linked start dates.</p>
+              <CardTitle>{t('scenario.costs')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('scenario.costsDescription')}</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">Name</th>
-                      <th className="text-right p-3 font-semibold">Original Value</th>
-                      <th className="text-right p-3 font-semibold">Adjusted Value</th>
-                      <th className="text-left p-3 font-semibold">Frequency</th>
-                      <th className="text-left p-3 font-semibold">Start Date</th>
-                      <th className="text-left p-3 font-semibold">End Date</th>
-                      <th className="text-center p-3 font-semibold w-[120px]">Actions</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
