@@ -508,7 +508,7 @@ const Scenario = () => {
                           </td>
                           <td className="p-3">
                             {income.name === '3a' ? (
-                              <span className="text-muted-foreground">One-time</span>
+                              <span className="text-muted-foreground">{t('scenario.oneTime')}</span>
                             ) : isStandardIncome ? (
                               <Input
                                 data-testid={`income-end-date-${index}`}
