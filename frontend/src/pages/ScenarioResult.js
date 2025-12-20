@@ -9,6 +9,7 @@ import { NavigationButtons } from '../components/NavigationButtons';
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, password, logout } = useAuth();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,42 +22,53 @@ const ScenarioResult = () => {
 
     const determineResult = async () => {
       try {
-        const incomeData = await getIncomeData(user.email, password) || [];
-        const costData = await getCostData(user.email, password) || [];
+        // Check if we have simulation data from Scenario page
+        if (location.state && location.state.finalBalance !== undefined) {
+          setResult({
+            canQuit: location.state.finalBalance >= 0,
+            balance: location.state.finalBalance,
+            wishedRetirementDate: location.state.wishedRetirementDate,
+            fromSimulation: true
+          });
+        } else {
+          // Fallback to simple calculation if accessed directly
+          const incomeData = await getIncomeData(user.email, password) || [];
+          const costData = await getCostData(user.email, password) || [];
 
-        // Calculate yearly balance
-        const totalIncome = incomeData
-          .filter(row => row.amount)
-          .reduce((sum, row) => {
-            const amount = parseFloat(row.amount) || 0;
-            if (row.frequency === 'Monthly') {
-              return sum + (amount * 12);
-            } else if (row.frequency === 'Yearly') {
-              return sum + amount;
-            } else {
-              return sum + amount;
-            }
-          }, 0);
+          const totalIncome = incomeData
+            .filter(row => row.amount)
+            .reduce((sum, row) => {
+              const amount = parseFloat(row.amount) || 0;
+              if (row.frequency === 'Monthly') {
+                return sum + (amount * 12);
+              } else if (row.frequency === 'Yearly') {
+                return sum + amount;
+              } else {
+                return sum + amount;
+              }
+            }, 0);
 
-        const totalCosts = costData
-          .filter(row => row.amount)
-          .reduce((sum, row) => {
-            const amount = parseFloat(row.amount) || 0;
-            if (row.frequency === 'Monthly') {
-              return sum + (amount * 12);
-            } else if (row.frequency === 'Yearly') {
-              return sum + amount;
-            } else {
-              return sum + amount;
-            }
-          }, 0);
+          const totalCosts = costData
+            .filter(row => row.amount)
+            .reduce((sum, row) => {
+              const amount = parseFloat(row.amount) || 0;
+              if (row.frequency === 'Monthly') {
+                return sum + (amount * 12);
+              } else if (row.frequency === 'Yearly') {
+                return sum + amount;
+              } else {
+                return sum + amount;
+              }
+            }, 0);
 
-        const yearlyBalance = totalIncome - totalCosts;
-        
-        setResult({
-          canQuit: yearlyBalance >= 0,
-          balance: yearlyBalance
-        });
+          const yearlyBalance = totalIncome - totalCosts;
+          
+          setResult({
+            canQuit: yearlyBalance >= 0,
+            balance: yearlyBalance,
+            fromSimulation: false
+          });
+        }
       } catch (error) {
         toast.error('Failed to determine result');
         console.error(error);
@@ -66,7 +78,7 @@ const ScenarioResult = () => {
     };
 
     determineResult();
-  }, [user, password, navigate]);
+  }, [user, password, navigate, location]);
 
   const handleReset = () => {
     logout();
