@@ -152,11 +152,14 @@ const Costs = () => {
   return (
     <div className="min-h-screen py-12 px-4" data-testid="costs-page">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Cost Overview</h1>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            Add all your expected expenses. You can leave rows empty if they don't apply to you.
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Cost Overview</h1>
+            <p className="text-muted-foreground" data-testid="page-subtitle">
+              Add all your expected expenses. You can leave rows empty if they don't apply to you.
+            </p>
+          </div>
+          <NavigationButtons backPath="/income" />
         </div>
 
         <form onSubmit={handleSubmit}>
