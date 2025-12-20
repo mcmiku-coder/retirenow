@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ const API = `${BACKEND_URL}/api`;
 const RetirementOverview = () => {
   const navigate = useNavigate();
   const { user, password, token } = useAuth();
+  const { t, language } = useLanguage();
   const [retirementData, setRetirementData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,7 +60,7 @@ const RetirementOverview = () => {
         };
         await saveUserData(user.email, password, updatedUserData);
       } catch (error) {
-        toast.error('Failed to calculate retirement data');
+        toast.error(t('common.error'));
         console.error(error);
       } finally {
         setLoading(false);
@@ -66,14 +68,20 @@ const RetirementOverview = () => {
     };
 
     loadRetirementData();
-  }, [user, password, token, navigate]);
+  }, [user, password, token, navigate, t]);
+
+  // Format date based on language
+  const formatDate = (dateString) => {
+    const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+    return new Date(dateString).toLocaleDateString(locale, { year: 'numeric', month: 'short' });
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Calculating your retirement outlook...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -84,9 +92,9 @@ const RetirementOverview = () => {
       <div className="max-w-4xl w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Retirement Overview</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('retirementOverview.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Based on your personal information and statistical data, here's what your retirement timeline looks like.
+              {t('retirementOverview.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/personal-info" />
@@ -98,13 +106,14 @@ const RetirementOverview = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Calendar className="h-5 w-5" />
-                  Your Retirement Legal Date
+                  {t('retirementOverview.legalRetirement')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold" data-testid="retirement-date">
-                  {new Date(retirementData.retirement_legal_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                  {formatDate(retirementData.retirement_legal_date)}
                 </p>
+                <p className="text-sm text-muted-foreground mt-1">{t('retirementOverview.legalRetirementDesc')}</p>
               </CardContent>
             </Card>
 
@@ -112,14 +121,14 @@ const RetirementOverview = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Heart className="h-5 w-5" />
-                  Life Expectancy
+                  {t('retirementOverview.lifeExpectancy')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold" data-testid="life-expectancy">
-                  {Math.round(retirementData.life_expectancy_years)} years
+                  {Math.round(retirementData.life_expectancy_years)} {t('retirementOverview.years')}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">from today</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('retirementOverview.lifeExpectancyDesc')}</p>
               </CardContent>
             </Card>
 
@@ -127,13 +136,14 @@ const RetirementOverview = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <TrendingUp className="h-5 w-5" />
-                  Theoretical End Date
+                  {t('retirementOverview.theoreticalDeath')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold" data-testid="death-date">
-                  {new Date(retirementData.theoretical_death_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                  {formatDate(retirementData.theoretical_death_date)}
                 </p>
+                <p className="text-sm text-muted-foreground mt-1">{t('retirementOverview.theoreticalDeathDesc')}</p>
               </CardContent>
             </Card>
           </div>
@@ -144,7 +154,7 @@ const RetirementOverview = () => {
           onClick={() => navigate('/income')}
           className="w-full"
         >
-          Next - Income
+          {t('retirementOverview.continue')}
         </Button>
       </div>
     </div>
