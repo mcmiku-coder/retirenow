@@ -120,8 +120,52 @@ const Scenario = () => {
     ));
   };
 
+  // Update date overrides for standard income sources (Salary, AVS, LPP, 3a)
+  const updateIncomeDateOverride = (incomeName, field, value) => {
+    setIncomeDateOverrides(prev => ({
+      ...prev,
+      [incomeName]: {
+        ...prev[incomeName],
+        [field]: value
+      }
+    }));
+  };
+
+  // Get effective date for income (override or calculated)
+  const getEffectiveIncomeDate = (income, field) => {
+    const override = incomeDateOverrides[income.name]?.[field];
+    if (override) return override;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (income.name === 'Salary') {
+      return field === 'startDate' ? today : wishedRetirementDate;
+    } else if (income.name === 'LPP') {
+      return field === 'startDate' ? wishedRetirementDate : deathDate;
+    } else if (income.name === 'AVS') {
+      return field === 'startDate' ? retirementLegalDate : deathDate;
+    } else if (income.name === '3a') {
+      return field === 'startDate' ? wishedRetirementDate : null;
+    }
+    return income[field];
+  };
+
   const deleteCost = (id) => {
-    setCosts(costs.filter(cost => cost.id !== id));
+    // Find the cost to delete
+    const costToDelete = costs.find(c => c.id === id);
+    
+    // If it has children (split items), also delete them or unlink them
+    const updatedCosts = costs.filter(cost => {
+      if (cost.id === id) return false;
+      // If this cost was linked to the deleted one, unlink it
+      if (cost.parentId === id) {
+        cost.parentId = null;
+        cost.groupId = null;
+      }
+      return true;
+    });
+    
+    setCosts(updatedCosts);
     toast.success('Cost line deleted');
   };
 
@@ -130,20 +174,49 @@ const Scenario = () => {
     if (costIndex === -1) return;
     
     const originalCost = costs[costIndex];
+    const newId = Date.now();
+    const groupId = originalCost.groupId || originalCost.id; // Use existing groupId or create new
+    
+    // Update original cost to have groupId
+    const updatedOriginal = {
+      ...originalCost,
+      groupId: groupId
+    };
     
     // Create new cost with the same values but starting where the original ends
     const newCost = {
       ...originalCost,
-      id: Date.now(), // Generate unique ID
+      id: newId,
+      parentId: originalCost.id, // Link to parent for auto-update
+      groupId: groupId, // Same group for visual grouping
       startDate: originalCost.endDate // New line starts where original ends
     };
     
     // Insert the new cost right after the original
     const updatedCosts = [...costs];
+    updatedCosts[costIndex] = updatedOriginal;
     updatedCosts.splice(costIndex + 1, 0, newCost);
     setCosts(updatedCosts);
     
     toast.success('Cost line split - adjust dates as needed');
+  };
+
+  // Update cost date with auto-sync for linked costs
+  const updateCostDateWithSync = (id, field, value) => {
+    setCosts(prevCosts => {
+      return prevCosts.map(cost => {
+        if (cost.id === id) {
+          // Update the target cost
+          return { ...cost, [field]: value };
+        }
+        // If this is a child cost and we're updating the parent's endDate
+        if (field === 'endDate' && cost.parentId === id) {
+          // Auto-update the child's startDate to match parent's endDate
+          return { ...cost, startDate: value };
+        }
+        return cost;
+      });
+    });
   };
 
   const runSimulation = () => {
