@@ -27,7 +27,7 @@ const Income = () => {
       return;
     }
 
-    // Load existing data
+    // Load existing data or pre-fill with retirement dates
     const loadData = async () => {
       try {
         const data = await getIncomeData(user.email, password);
@@ -35,6 +35,34 @@ const Income = () => {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
+        } else {
+          // Pre-fill dates based on retirement data
+          const userData = await getUserData(user.email, password);
+          if (userData) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Calculate retirement date and death date
+            const birthDate = new Date(userData.birthDate);
+            const retirementDate = new Date(birthDate);
+            retirementDate.setFullYear(retirementDate.getFullYear() + 65);
+            retirementDate.setMonth(retirementDate.getMonth() + 1);
+            const retirementDateStr = retirementDate.toISOString().split('T')[0];
+            
+            // Get life expectancy to calculate death date
+            const currentAge = new Date().getFullYear() - birthDate.getFullYear();
+            // Approximate life expectancy (will be more accurate from API, but this is for pre-fill)
+            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+            const deathDate = new Date(birthDate);
+            deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+            const deathDateStr = deathDate.toISOString().split('T')[0];
+            
+            setRows([
+              { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
+              { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
+              { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
+              { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+            ]);
+          }
         }
       } catch (error) {
         console.error('Error loading income data:', error);
