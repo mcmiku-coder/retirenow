@@ -423,6 +423,7 @@ const Scenario = () => {
           <Card>
             <CardHeader>
               <CardTitle>Income Sources</CardTitle>
+              <p className="text-sm text-muted-foreground">All dates are editable to adjust your scenario</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -439,33 +440,38 @@ const Scenario = () => {
                   </thead>
                   <tbody>
                     {incomes.map((income, index) => {
-                      // Calculate start and end dates based on income type
-                      let startDate = '';
-                      let endDate = '';
-                      const today = new Date().toLocaleDateString();
-                      const wishedRetirement = new Date(wishedRetirementDate).toLocaleDateString();
-                      const legalRetirement = new Date(retirementLegalDate).toLocaleDateString();
-                      const death = new Date(deathDate).toLocaleDateString();
+                      // Get effective dates (override or default)
+                      const today = new Date().toISOString().split('T')[0];
+                      const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
+                      
+                      // Calculate default dates for standard income types
+                      let defaultStartDate = '';
+                      let defaultEndDate = '';
                       
                       if (income.name === 'Salary') {
-                        startDate = today;
-                        endDate = wishedRetirement;
+                        defaultStartDate = today;
+                        defaultEndDate = wishedRetirementDate;
                       } else if (income.name === 'LPP') {
-                        startDate = wishedRetirement;
-                        endDate = death;
+                        defaultStartDate = wishedRetirementDate;
+                        defaultEndDate = deathDate;
                       } else if (income.name === 'AVS') {
-                        startDate = legalRetirement;
-                        endDate = death;
+                        defaultStartDate = retirementLegalDate;
+                        defaultEndDate = deathDate;
                       } else if (income.name === '3a') {
-                        startDate = wishedRetirement;
-                        endDate = '-';
-                      } else {
-                        startDate = income.startDate ? new Date(income.startDate).toLocaleDateString() : '-';
-                        endDate = income.endDate ? new Date(income.endDate).toLocaleDateString() : '-';
+                        defaultStartDate = wishedRetirementDate;
+                        defaultEndDate = '';
                       }
                       
+                      // Get current values (override or default)
+                      const currentStartDate = isStandardIncome 
+                        ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
+                        : income.startDate;
+                      const currentEndDate = isStandardIncome 
+                        ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
+                        : income.endDate;
+                      
                       return (
-                        <tr key={income.id} className="border-b">
+                        <tr key={income.id} className="border-b hover:bg-muted/30">
                           <td className="p-3 font-medium">{income.name}</td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {parseFloat(income.amount).toLocaleString()}
@@ -481,8 +487,14 @@ const Scenario = () => {
                           </td>
                           <td className="p-3">{income.frequency}</td>
                           <td className="p-3">
-                            {(income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a') ? (
-                              <span className="text-muted-foreground">{startDate}</span>
+                            {isStandardIncome ? (
+                              <Input
+                                data-testid={`income-start-date-${index}`}
+                                type="date"
+                                value={currentStartDate || ''}
+                                onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
+                                className="max-w-[150px]"
+                              />
                             ) : (
                               <Input
                                 type="date"
@@ -493,8 +505,16 @@ const Scenario = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            {(income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a') ? (
-                              <span className="text-muted-foreground">{endDate}</span>
+                            {income.name === '3a' ? (
+                              <span className="text-muted-foreground">One-time</span>
+                            ) : isStandardIncome ? (
+                              <Input
+                                data-testid={`income-end-date-${index}`}
+                                type="date"
+                                value={currentEndDate || ''}
+                                onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
+                                className="max-w-[150px]"
+                              />
                             ) : (
                               <Input
                                 type="date"
