@@ -47,10 +47,17 @@ const Scenario = () => {
         retirementDate.setMonth(retirementDate.getMonth() + 1);
         const retirementDateStr = retirementDate.toISOString().split('T')[0];
         
-        const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-        const deathDate = new Date(birthDate);
-        deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
-        const deathDateStr = deathDate.toISOString().split('T')[0];
+        // Use the theoretical death date from API
+        let deathDateStr;
+        if (userData.theoreticalDeathDate) {
+          deathDateStr = userData.theoreticalDeathDate;
+        } else {
+          // Fallback to approximation if not available
+          const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+          const deathDate = new Date(birthDate);
+          deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+          deathDateStr = deathDate.toISOString().split('T')[0];
+        }
 
         setRetirementLegalDate(retirementDateStr);
         setWishedRetirementDate(retirementDateStr);
