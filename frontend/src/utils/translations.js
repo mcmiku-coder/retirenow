@@ -1,0 +1,492 @@
+// Translations for English and French
+export const translations = {
+  en: {
+    // Landing Page
+    landing: {
+      title: "quit?",
+      subtitle: "Discover if you can financially afford early retirement",
+      description: "A comprehensive retirement planning tool that analyzes your income, costs, and savings to determine if you can quit your job and retire early.",
+      createAccount: "Create Account",
+      login: "Login",
+      securityWarning: "Important: Your password is the only key to your data. We cannot recover it if lost.",
+      features: {
+        title: "What we analyze",
+        income: "Income Sources",
+        incomeDesc: "Salary, AVS, LPP, 3a and custom income",
+        costs: "Life Costs",
+        costsDesc: "Housing, health, transport, leisure and more",
+        simulation: "Scenario Simulation",
+        simulationDesc: "Adjust retirement date and see projections"
+      }
+    },
+
+    // Auth Modal
+    auth: {
+      createAccount: "Create Account",
+      login: "Login",
+      email: "Email",
+      emailPlaceholder: "your@email.com",
+      password: "Password",
+      passwordPlaceholder: "Enter your password",
+      confirmPassword: "Confirm Password",
+      confirmPasswordPlaceholder: "Confirm your password",
+      createBtn: "Create Account",
+      loginBtn: "Login",
+      switchToLogin: "Already have an account? Login",
+      switchToRegister: "Need an account? Register",
+      passwordMismatch: "Passwords do not match",
+      registrationSuccess: "Account created successfully!",
+      loginSuccess: "Login successful!",
+      registrationFailed: "Registration failed",
+      loginFailed: "Login failed"
+    },
+
+    // Personal Info Page
+    personalInfo: {
+      title: "Personal Information",
+      subtitle: "Tell us about yourself to calculate your retirement timeline",
+      birthDate: "Date of Birth",
+      gender: "Gender",
+      male: "Male",
+      female: "Female",
+      country: "Country",
+      switzerland: "Switzerland",
+      france: "France",
+      continue: "Continue",
+      saving: "Saving...",
+      saveSuccess: "Personal information saved",
+      saveFailed: "Failed to save personal information"
+    },
+
+    // Retirement Overview Page
+    retirementOverview: {
+      title: "Retirement Overview",
+      subtitle: "Your retirement timeline based on official regulations",
+      legalRetirement: "Legal Retirement Date",
+      legalRetirementDesc: "Based on your birth date + 65 years + 1 month",
+      lifeExpectancy: "Life Expectancy",
+      lifeExpectancyDesc: "Based on statistical data for your gender",
+      theoreticalDeath: "Theoretical End Date",
+      theoreticalDeathDesc: "Used for financial projections",
+      years: "years",
+      continue: "Continue to Income"
+    },
+
+    // Income Page
+    income: {
+      title: "Income Overview",
+      subtitle: "Enter your income sources and their details",
+      name: "Name",
+      amount: "Amount (CHF)",
+      frequency: "Frequency",
+      startDate: "Start Date",
+      endDate: "End Date",
+      actions: "Actions",
+      addIncome: "Add Income Source",
+      reset: "Reset to Defaults",
+      continue: "Continue to Costs",
+      monthly: "Monthly",
+      yearly: "Yearly",
+      oneTime: "One-time",
+      saveSuccess: "Income data saved",
+      saveFailed: "Failed to save income data",
+      resetSuccess: "Income reset to defaults",
+      incomeDeleted: "Income source deleted",
+      // Default income names
+      salary: "Salary",
+      avs: "AVS",
+      lpp: "LPP",
+      threeA: "3a"
+    },
+
+    // Costs Page
+    costs: {
+      title: "Cost Overview",
+      subtitle: "Enter your monthly and yearly expenses",
+      name: "Name",
+      category: "Category",
+      amount: "Amount (CHF)",
+      frequency: "Frequency",
+      startDate: "Start Date",
+      endDate: "End Date",
+      actions: "Actions",
+      addCost: "Add Cost",
+      reset: "Reset to Defaults",
+      continue: "Continue to Financial Balance",
+      saveSuccess: "Cost data saved",
+      saveFailed: "Failed to save cost data",
+      resetSuccess: "Costs reset to defaults",
+      costDeleted: "Cost item deleted",
+      selectCategory: "Select category",
+      // Categories
+      categories: {
+        housing: "Housing",
+        health: "Health",
+        elementary: "Elementary",
+        transport: "Transport",
+        leisure: "Leisure",
+        other: "Other"
+      },
+      // Default cost names
+      rent: "Rent/Mortgage",
+      utilities: "Utilities",
+      healthInsurance: "Health Insurance",
+      food: "Food & Groceries",
+      transportation: "Transportation",
+      entertainment: "Entertainment",
+      clothing: "Clothing",
+      phone: "Phone & Internet",
+      miscellaneous: "Miscellaneous"
+    },
+
+    // Financial Balance Page
+    financialBalance: {
+      title: "Financial Balance Overview",
+      subtitle: "Your projected financial situation over time",
+      balanceAtDeath: "Balance at Death",
+      positive: "POSITIVE",
+      negative: "NEGATIVE",
+      balanceValue: "Balance Value at Death",
+      projectionGraph: "Financial Projection Over Time",
+      yearlyBreakdown: "Year-by-Year Financial Breakdown",
+      incomeByCategory: "Income by Category",
+      costsByCategory: "Costs by Category",
+      year: "Year",
+      income: "Income",
+      costs: "Costs",
+      annualBalance: "Annual Balance",
+      cumulativeBalance: "Cumulative Balance",
+      continue: "Continue to Scenario Simulator"
+    },
+
+    // Scenario Page
+    scenario: {
+      title: "Retirement Scenario Simulator",
+      subtitle: "Adjust your retirement date and values to see if you can quit early!",
+      wishedRetirement: "My Wished Retirement Date",
+      legalRetirementDate: "Legal retirement date",
+      month: "Month",
+      year: "Year",
+      incomeSources: "Income Sources",
+      allDatesEditable: "All dates are editable to adjust your scenario",
+      name: "Name",
+      originalValue: "Original Value",
+      adjustedValue: "Adjusted Value",
+      frequency: "Frequency",
+      startDate: "Start Date",
+      endDate: "End Date",
+      oneTime: "One-time",
+      costs: "Costs",
+      costsDescription: "Split costs are grouped together. End date changes auto-sync with linked start dates.",
+      actions: "Actions",
+      split: "split",
+      savings: "Savings",
+      liquidAssets: "Liquid Assets (CHF)",
+      nonLiquidAssets: "Non-Liquid Assets (CHF)",
+      transmission: "Transmission / Inheritance",
+      transmissionDesc: "Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.",
+      amountToTransmit: "Amount to Transmit (CHF)",
+      transmissionWarning: "If your balance after transmission goes negative, you cannot quit!",
+      runSimulation: "Can I Quit? - Run Simulation",
+      splitSuccess: "Cost line split - adjust dates as needed",
+      costDeleted: "Cost line deleted"
+    },
+
+    // Result Page
+    result: {
+      title: "Your Retirement Verdict",
+      subtitle: "Based on your financial data and retirement timeline, here is our assessment:",
+      yesCanQuit: "YES YOU CAN! QUIT!",
+      noCannotQuit: "NO YOU CANNOT QUIT YET!",
+      projectedBalance: "Projected balance at end of life:",
+      annualBalance: "Your annual balance:",
+      transmissionPlanned: "Transmission/Inheritance Planned",
+      balanceBeforeTransmission: "Balance before transmission",
+      amountToTransmit: "Amount to transmit",
+      basedOnRetirement: "Based on retirement date",
+      positiveMessage: "Your projected balance is positive! You have the financial foundation to consider retirement.",
+      negativeMessage: "Your projected balance is negative. Consider adjusting your financial plan or retirement date before making the leap.",
+      projectionGraph: "Financial Projection Over Time",
+      yearlyBreakdown: "Year-by-Year Financial Breakdown",
+      year: "Year",
+      income: "Income",
+      costs: "Costs",
+      annualBalance: "Annual Balance",
+      cumulativeBalance: "Cumulative Balance",
+      reviewData: "Review My Data",
+      startOver: "Start Over"
+    },
+
+    // Navigation
+    nav: {
+      back: "Back",
+      home: "Home",
+      logout: "Logout"
+    },
+
+    // Common
+    common: {
+      loading: "Loading...",
+      error: "Error",
+      success: "Success",
+      save: "Save",
+      cancel: "Cancel",
+      delete: "Delete",
+      edit: "Edit",
+      chf: "CHF"
+    },
+
+    // Language selector
+    language: {
+      select: "Language",
+      english: "English",
+      french: "Français"
+    }
+  },
+
+  fr: {
+    // Landing Page
+    landing: {
+      title: "quit?",
+      subtitle: "Découvrez si vous pouvez vous permettre financièrement une retraite anticipée",
+      description: "Un outil complet de planification de retraite qui analyse vos revenus, dépenses et épargne pour déterminer si vous pouvez quitter votre emploi et prendre une retraite anticipée.",
+      createAccount: "Créer un compte",
+      login: "Connexion",
+      securityWarning: "Important : Votre mot de passe est la seule clé de vos données. Nous ne pouvons pas le récupérer en cas de perte.",
+      features: {
+        title: "Ce que nous analysons",
+        income: "Sources de revenus",
+        incomeDesc: "Salaire, AVS, LPP, 3a et revenus personnalisés",
+        costs: "Coûts de la vie",
+        costsDesc: "Logement, santé, transport, loisirs et plus",
+        simulation: "Simulation de scénarios",
+        simulationDesc: "Ajustez la date de retraite et voyez les projections"
+      }
+    },
+
+    // Auth Modal
+    auth: {
+      createAccount: "Créer un compte",
+      login: "Connexion",
+      email: "Email",
+      emailPlaceholder: "votre@email.com",
+      password: "Mot de passe",
+      passwordPlaceholder: "Entrez votre mot de passe",
+      confirmPassword: "Confirmer le mot de passe",
+      confirmPasswordPlaceholder: "Confirmez votre mot de passe",
+      createBtn: "Créer le compte",
+      loginBtn: "Se connecter",
+      switchToLogin: "Déjà un compte ? Connectez-vous",
+      switchToRegister: "Besoin d'un compte ? Inscrivez-vous",
+      passwordMismatch: "Les mots de passe ne correspondent pas",
+      registrationSuccess: "Compte créé avec succès !",
+      loginSuccess: "Connexion réussie !",
+      registrationFailed: "Échec de l'inscription",
+      loginFailed: "Échec de la connexion"
+    },
+
+    // Personal Info Page
+    personalInfo: {
+      title: "Informations personnelles",
+      subtitle: "Parlez-nous de vous pour calculer votre calendrier de retraite",
+      birthDate: "Date de naissance",
+      gender: "Genre",
+      male: "Homme",
+      female: "Femme",
+      country: "Pays",
+      switzerland: "Suisse",
+      france: "France",
+      continue: "Continuer",
+      saving: "Enregistrement...",
+      saveSuccess: "Informations personnelles enregistrées",
+      saveFailed: "Échec de l'enregistrement des informations personnelles"
+    },
+
+    // Retirement Overview Page
+    retirementOverview: {
+      title: "Aperçu de la retraite",
+      subtitle: "Votre calendrier de retraite basé sur les réglementations officielles",
+      legalRetirement: "Date de retraite légale",
+      legalRetirementDesc: "Basée sur votre date de naissance + 65 ans + 1 mois",
+      lifeExpectancy: "Espérance de vie",
+      lifeExpectancyDesc: "Basée sur les données statistiques pour votre genre",
+      theoreticalDeath: "Date de fin théorique",
+      theoreticalDeathDesc: "Utilisée pour les projections financières",
+      years: "ans",
+      continue: "Continuer vers les revenus"
+    },
+
+    // Income Page
+    income: {
+      title: "Aperçu des revenus",
+      subtitle: "Entrez vos sources de revenus et leurs détails",
+      name: "Nom",
+      amount: "Montant (CHF)",
+      frequency: "Fréquence",
+      startDate: "Date de début",
+      endDate: "Date de fin",
+      actions: "Actions",
+      addIncome: "Ajouter une source de revenu",
+      reset: "Réinitialiser",
+      continue: "Continuer vers les dépenses",
+      monthly: "Mensuel",
+      yearly: "Annuel",
+      oneTime: "Unique",
+      saveSuccess: "Données de revenus enregistrées",
+      saveFailed: "Échec de l'enregistrement des revenus",
+      resetSuccess: "Revenus réinitialisés",
+      incomeDeleted: "Source de revenu supprimée",
+      // Default income names
+      salary: "Salaire",
+      avs: "AVS",
+      lpp: "LPP",
+      threeA: "3a"
+    },
+
+    // Costs Page
+    costs: {
+      title: "Aperçu des dépenses",
+      subtitle: "Entrez vos dépenses mensuelles et annuelles",
+      name: "Nom",
+      category: "Catégorie",
+      amount: "Montant (CHF)",
+      frequency: "Fréquence",
+      startDate: "Date de début",
+      endDate: "Date de fin",
+      actions: "Actions",
+      addCost: "Ajouter une dépense",
+      reset: "Réinitialiser",
+      continue: "Continuer vers le bilan financier",
+      saveSuccess: "Données de dépenses enregistrées",
+      saveFailed: "Échec de l'enregistrement des dépenses",
+      resetSuccess: "Dépenses réinitialisées",
+      costDeleted: "Dépense supprimée",
+      selectCategory: "Sélectionner une catégorie",
+      // Categories
+      categories: {
+        housing: "Logement",
+        health: "Santé",
+        elementary: "Élémentaire",
+        transport: "Transport",
+        leisure: "Loisirs",
+        other: "Autre"
+      },
+      // Default cost names
+      rent: "Loyer/Hypothèque",
+      utilities: "Services publics",
+      healthInsurance: "Assurance maladie",
+      food: "Alimentation",
+      transportation: "Transport",
+      entertainment: "Divertissement",
+      clothing: "Vêtements",
+      phone: "Téléphone & Internet",
+      miscellaneous: "Divers"
+    },
+
+    // Financial Balance Page
+    financialBalance: {
+      title: "Aperçu du bilan financier",
+      subtitle: "Votre situation financière projetée dans le temps",
+      balanceAtDeath: "Solde au décès",
+      positive: "POSITIF",
+      negative: "NÉGATIF",
+      balanceValue: "Valeur du solde au décès",
+      projectionGraph: "Projection financière dans le temps",
+      yearlyBreakdown: "Détail financier année par année",
+      incomeByCategory: "Revenus par catégorie",
+      costsByCategory: "Dépenses par catégorie",
+      year: "Année",
+      income: "Revenus",
+      costs: "Dépenses",
+      annualBalance: "Solde annuel",
+      cumulativeBalance: "Solde cumulé",
+      continue: "Continuer vers le simulateur de scénarios"
+    },
+
+    // Scenario Page
+    scenario: {
+      title: "Simulateur de scénarios de retraite",
+      subtitle: "Ajustez votre date de retraite et vos valeurs pour voir si vous pouvez partir !",
+      wishedRetirement: "Ma date de retraite souhaitée",
+      legalRetirementDate: "Date de retraite légale",
+      month: "Mois",
+      year: "Année",
+      incomeSources: "Sources de revenus",
+      allDatesEditable: "Toutes les dates sont modifiables pour ajuster votre scénario",
+      name: "Nom",
+      originalValue: "Valeur originale",
+      adjustedValue: "Valeur ajustée",
+      frequency: "Fréquence",
+      startDate: "Date de début",
+      endDate: "Date de fin",
+      oneTime: "Unique",
+      costs: "Dépenses",
+      costsDescription: "Les dépenses divisées sont regroupées. Les changements de date de fin se synchronisent automatiquement avec les dates de début liées.",
+      actions: "Actions",
+      split: "divisé",
+      savings: "Épargne",
+      liquidAssets: "Actifs liquides (CHF)",
+      nonLiquidAssets: "Actifs non liquides (CHF)",
+      transmission: "Transmission / Héritage",
+      transmissionDesc: "Montant que vous souhaitez léguer à vos héritiers en fin de vie. Ce montant sera déduit de votre solde final.",
+      amountToTransmit: "Montant à transmettre (CHF)",
+      transmissionWarning: "Si votre solde après transmission devient négatif, vous ne pouvez pas partir !",
+      runSimulation: "Puis-je partir ? - Lancer la simulation",
+      splitSuccess: "Ligne de dépense divisée - ajustez les dates si nécessaire",
+      costDeleted: "Ligne de dépense supprimée"
+    },
+
+    // Result Page
+    result: {
+      title: "Votre verdict de retraite",
+      subtitle: "Basé sur vos données financières et votre calendrier de retraite, voici notre évaluation :",
+      yesCanQuit: "OUI VOUS POUVEZ ! PARTEZ !",
+      noCannotQuit: "NON VOUS NE POUVEZ PAS ENCORE PARTIR !",
+      projectedBalance: "Solde projeté en fin de vie :",
+      annualBalance: "Votre solde annuel :",
+      transmissionPlanned: "Transmission/Héritage prévu",
+      balanceBeforeTransmission: "Solde avant transmission",
+      amountToTransmit: "Montant à transmettre",
+      basedOnRetirement: "Basé sur la date de retraite",
+      positiveMessage: "Votre solde projeté est positif ! Vous avez les bases financières pour envisager la retraite.",
+      negativeMessage: "Votre solde projeté est négatif. Envisagez d'ajuster votre plan financier ou votre date de retraite avant de faire le grand saut.",
+      projectionGraph: "Projection financière dans le temps",
+      yearlyBreakdown: "Détail financier année par année",
+      year: "Année",
+      income: "Revenus",
+      costs: "Dépenses",
+      annualBalance: "Solde annuel",
+      cumulativeBalance: "Solde cumulé",
+      reviewData: "Revoir mes données",
+      startOver: "Recommencer"
+    },
+
+    // Navigation
+    nav: {
+      back: "Retour",
+      home: "Accueil",
+      logout: "Déconnexion"
+    },
+
+    // Common
+    common: {
+      loading: "Chargement...",
+      error: "Erreur",
+      success: "Succès",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      delete: "Supprimer",
+      edit: "Modifier",
+      chf: "CHF"
+    },
+
+    // Language selector
+    language: {
+      select: "Langue",
+      english: "English",
+      french: "Français"
+    }
+  }
+};
+
+export default translations;
