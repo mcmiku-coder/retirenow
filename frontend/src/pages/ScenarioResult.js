@@ -177,38 +177,150 @@ const ScenarioResult = () => {
         </div>
 
         {result && (
-          <Card className="mb-8 overflow-hidden">
-            <div className="aspect-square max-w-2xl mx-auto">
-              <img
-                src={result.canQuit ? '/yes_quit.png' : '/no_quit.png'}
-                alt={result.canQuit ? 'Yes you can quit!' : 'No you cannot quit yet!'}
-                className="w-full h-full object-cover"
-                data-testid="result-image"
-              />
-            </div>
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-4" data-testid="result-message">
-                {result.canQuit ? 'YES YOU CAN! QUIT!' : 'NO YOU CANNOT QUIT YET!'}
-              </h2>
-              <p className="text-xl text-muted-foreground mb-2">
-                {result.fromSimulation ? 'Projected balance at end of life:' : 'Your annual balance:'}
-                <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">
-                  {result.balance >= 0 ? '+' : ''}
-                  CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </span>
-              </p>
-              {result.wishedRetirementDate && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Based on retirement date: {new Date(result.wishedRetirementDate).toLocaleDateString()}
+          <div className="space-y-6">
+            <Card className="mb-8 overflow-hidden">
+              <div className="max-w-md mx-auto p-4">
+                <img
+                  src={result.canQuit ? '/yes_quit.png' : '/no_quit.png'}
+                  alt={result.canQuit ? 'Yes you can quit!' : 'No you cannot quit yet!'}
+                  className="w-full h-auto object-cover rounded-lg"
+                  data-testid="result-image"
+                />
+              </div>
+              <div className="p-8 text-center">
+                <h2 className="text-3xl font-bold mb-4" data-testid="result-message">
+                  {result.canQuit ? 'YES YOU CAN! QUIT!' : 'NO YOU CANNOT QUIT YET!'}
+                </h2>
+                <p className="text-xl text-muted-foreground mb-2">
+                  {result.fromSimulation ? 'Projected balance at end of life:' : 'Your annual balance:'}
+                  <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">
+                    {result.balance >= 0 ? '+' : ''}
+                    CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
                 </p>
-              )}
-              <p className="text-sm text-muted-foreground mt-6">
-                {result.canQuit 
-                  ? 'Your projected balance is positive! You have the financial foundation to consider retirement.'
-                  : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date before making the leap.'}
-              </p>
-            </div>
-          </Card>
+                {result.wishedRetirementDate && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Based on retirement date: {new Date(result.wishedRetirementDate).toLocaleDateString()}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mt-6">
+                  {result.canQuit 
+                    ? 'Your projected balance is positive! You have the financial foundation to consider retirement.'
+                    : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date before making the leap.'}
+                </p>
+              </div>
+            </Card>
+
+            {yearlyBreakdown.length > 0 && (
+              <>
+                {/* Financial Projection Graph */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Financial Projection Over Time</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <AreaChart data={yearlyBreakdown}>
+                        <defs>
+                          <linearGradient id="colorCumulativeResult" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          dataKey="year" 
+                          stroke="#9ca3af"
+                          tick={{ fill: '#9ca3af' }}
+                        />
+                        <YAxis 
+                          stroke="#9ca3af"
+                          tick={{ fill: '#9ca3af' }}
+                          tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                          labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}
+                          formatter={(value, name, props) => {
+                            if (name === 'Cumulative Balance') {
+                              return [
+                                <div key="cumulative" className="space-y-1">
+                                  <div>Cumulative Balance: CHF {value.toLocaleString()}</div>
+                                  <div className="text-green-400">Income: CHF {props.payload.income.toLocaleString()}</div>
+                                  <div className="text-red-400">Costs: CHF {props.payload.costs.toLocaleString()}</div>
+                                  <div className="text-blue-400">Annual Balance: CHF {props.payload.annualBalance.toLocaleString()}</div>
+                                </div>,
+                                ''
+                              ];
+                            }
+                            return [`CHF ${value.toLocaleString()}`, name];
+                          }}
+                        />
+                        <Legend />
+                        <Area 
+                          type="monotone" 
+                          dataKey="cumulativeBalance" 
+                          stroke="#10b981" 
+                          fillOpacity={1} 
+                          fill="url(#colorCumulativeResult)"
+                          name="Cumulative Balance"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="annualBalance" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          name="Annual Balance"
+                          dot={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Year-by-Year Breakdown Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Year-by-Year Financial Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr>
+                            <th className="text-left p-3 font-semibold">Year</th>
+                            <th className="text-right p-3 font-semibold">Income</th>
+                            <th className="text-right p-3 font-semibold">Costs</th>
+                            <th className="text-right p-3 font-semibold">Annual Balance</th>
+                            <th className="text-right p-3 font-semibold">Cumulative Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {yearlyBreakdown.map((row, index) => (
+                            <tr key={row.year} className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''}`}>
+                              <td className="p-3 font-medium">{row.year}</td>
+                              <td className="text-right p-3 text-green-500">
+                                CHF {row.income.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </td>
+                              <td className="text-right p-3 text-red-500">
+                                CHF {row.costs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </td>
+                              <td className={`text-right p-3 font-semibold ${row.annualBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {row.annualBalance >= 0 ? '+' : ''}CHF {row.annualBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </td>
+                              <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
         )}
 
         <div className="flex gap-4">
