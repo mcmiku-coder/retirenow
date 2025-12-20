@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { NavigationButtons } from '../components/NavigationButtons';
-import { Calendar, Minus } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split } from 'lucide-react';
 
 const Scenario = () => {
   const navigate = useNavigate();
