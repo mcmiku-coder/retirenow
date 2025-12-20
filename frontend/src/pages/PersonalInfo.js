@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
 import { Calendar } from 'lucide-react';
+import { NavigationButtons } from '../components/NavigationButtons';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
