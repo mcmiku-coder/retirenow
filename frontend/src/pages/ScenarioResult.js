@@ -187,8 +187,21 @@ const ScenarioResult = () => {
                     CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 </p>
+                {result.transmissionAmount > 0 && (
+                  <div className="mt-4 p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                    <p className="text-amber-400 text-sm font-medium">
+                      Transmission/Inheritance Planned
+                    </p>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      Balance before transmission: CHF {result.balanceBeforeTransmission?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                    <p className="text-amber-400 text-sm">
+                      Amount to transmit: CHF {result.transmissionAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                )}
                 {result.wishedRetirementDate && (
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-sm text-muted-foreground mt-4">
                     Based on retirement date: {new Date(result.wishedRetirementDate).toLocaleDateString()}
                   </p>
                 )}
