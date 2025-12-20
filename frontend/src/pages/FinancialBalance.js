@@ -385,7 +385,7 @@ const FinancialBalance = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Costs by Category</CardTitle>
+                  <CardTitle>{t('financialBalance.costsByCategory')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
