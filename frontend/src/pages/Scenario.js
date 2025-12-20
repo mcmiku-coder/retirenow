@@ -103,75 +103,107 @@ const Scenario = () => {
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
       const deathYear = new Date(deathDate).getFullYear();
       
-      let cumulativeBalance = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
+      let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
+      const yearlyData = [];
 
-      // Calculate year by year
+      // Calculate year by year with detailed breakdown
       for (let year = currentYear; year <= deathYear; year++) {
-        let yearIncome = 0;
+        const yearData = {
+          year,
+          income: 0,
+          costs: 0,
+          incomeBreakdown: {},
+          costBreakdown: {}
+        };
         
         incomes.forEach(income => {
           const amount = parseFloat(income.adjustedAmount) || 0;
+          let shouldInclude = false;
           
           // Salary: current date to wished retirement date
           if (income.name === 'Salary' && year < wishedRetirementYear) {
-            if (income.frequency === 'Monthly') {
-              yearIncome += amount * 12;
-            } else if (income.frequency === 'Yearly') {
-              yearIncome += amount;
-            }
+            shouldInclude = true;
           }
-          
           // LPP: wished retirement date to death
           else if (income.name === 'LPP' && year >= wishedRetirementYear) {
-            if (income.frequency === 'Monthly') {
-              yearIncome += amount * 12;
-            } else if (income.frequency === 'Yearly') {
-              yearIncome += amount;
-            }
+            shouldInclude = true;
           }
-          
           // AVS: legal retirement date to death
           else if (income.name === 'AVS' && year >= retirementLegalYear) {
-            if (income.frequency === 'Monthly') {
-              yearIncome += amount * 12;
-            } else if (income.frequency === 'Yearly') {
-              yearIncome += amount;
-            }
+            shouldInclude = true;
           }
-          
           // 3a: starts at wished retirement date
           else if (income.name === '3a' && year === wishedRetirementYear) {
-            yearIncome += amount;
+            shouldInclude = true;
+          }
+
+          if (shouldInclude) {
+            let yearlyAmount = 0;
+            if (income.frequency === 'Monthly') {
+              yearlyAmount = amount * 12;
+            } else if (income.frequency === 'Yearly') {
+              yearlyAmount = amount;
+            } else {
+              yearlyAmount = amount;
+            }
+            
+            yearData.income += yearlyAmount;
+            yearData.incomeBreakdown[income.name] = yearlyAmount;
           }
         });
 
-        let yearCosts = 0;
         costs.forEach(cost => {
           const startYear = new Date(cost.startDate).getFullYear();
           const endYear = cost.endDate ? new Date(cost.endDate).getFullYear() : year;
           
           if (year >= startYear && year <= endYear) {
             const amount = parseFloat(cost.adjustedAmount) || 0;
+            let yearlyAmount = 0;
+            
             if (cost.frequency === 'Monthly') {
-              yearCosts += amount * 12;
+              yearlyAmount = amount * 12;
             } else if (cost.frequency === 'Yearly') {
-              yearCosts += amount;
+              yearlyAmount = amount;
             } else if (cost.frequency === 'One-time' && year === startYear) {
-              yearCosts += amount;
+              yearlyAmount = amount;
             }
+            
+            yearData.costs += yearlyAmount;
+            const category = cost.category || cost.name || 'Other';
+            yearData.costBreakdown[category] = (yearData.costBreakdown[category] || 0) + yearlyAmount;
           }
         });
 
-        cumulativeBalance += (yearIncome - yearCosts);
+        yearlyData.push(yearData);
       }
 
-      // Navigate to result with simulation data
+      // Calculate cumulative with initial savings
+      let cumulativeBalance = initialSavings;
+      const breakdown = yearlyData.map(year => {
+        const annualBalance = year.income - year.costs;
+        cumulativeBalance += annualBalance;
+        
+        return {
+          year: year.year,
+          income: year.income,
+          costs: year.costs,
+          annualBalance,
+          cumulativeBalance,
+          incomeBreakdown: year.incomeBreakdown,
+          costBreakdown: year.costBreakdown
+        };
+      });
+
+      // Navigate to result with full simulation data
       navigate('/result', {
         state: {
           finalBalance: cumulativeBalance,
           wishedRetirementDate,
           liquidAssets,
-          nonLiquidAssets
+          nonLiquidAssets,
+          yearlyBreakdown: breakdown,
+          adjustedIncomes: incomes,
+          adjustedCosts: costs
         }
       });
 
