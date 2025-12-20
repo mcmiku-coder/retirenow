@@ -10,11 +10,14 @@ const Scenario = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="scenario-page">
       <div className="max-w-4xl w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Scenario Analysis</h1>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            We've analyzed your financial situation against your retirement timeline. Let's see if you're ready to quit!
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Scenario Analysis</h1>
+            <p className="text-muted-foreground" data-testid="page-subtitle">
+              We've analyzed your financial situation against your retirement timeline. Let's see if you're ready to quit!
+            </p>
+          </div>
+          <NavigationButtons backPath="/financial-balance" />
         </div>
 
         <Card className="mb-8">
