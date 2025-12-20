@@ -129,7 +129,7 @@ const ScenarioResult = () => {
           });
         }
       } catch (error) {
-        toast.error('Failed to determine result');
+        toast.error(t('common.error'));
         console.error(error);
       } finally {
         setLoading(false);
@@ -137,12 +137,12 @@ const ScenarioResult = () => {
     };
 
     determineResult();
-  }, [user, password, navigate, location]);
+  }, [user, password, navigate, location, t]);
 
   const handleReset = () => {
     logout();
     navigate('/');
-    toast.success('Session cleared');
+    toast.success(t('common.success'));
   };
 
   if (loading) {
@@ -150,7 +150,7 @@ const ScenarioResult = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Determining your retirement readiness...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -161,9 +161,9 @@ const ScenarioResult = () => {
       <div className="max-w-4xl w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Your Retirement Verdict</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('result.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Based on your financial data and retirement timeline, here is our assessment:
+              {t('result.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/scenario" />
