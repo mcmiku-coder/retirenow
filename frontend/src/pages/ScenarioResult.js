@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
@@ -13,6 +14,7 @@ const ScenarioResult = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, password, logout } = useAuth();
+  const { t, language } = useLanguage();
   const [result, setResult] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
