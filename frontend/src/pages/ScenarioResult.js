@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { getIncomeData, getCostData } from '../utils/database';
 import { toast } from 'sonner';
+import { NavigationButtons } from '../components/NavigationButtons';
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
