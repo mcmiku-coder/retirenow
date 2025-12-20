@@ -15,6 +15,7 @@ const ScenarioResult = () => {
   const { user, password, logout } = useAuth();
   const [result, setResult] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
+  const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
