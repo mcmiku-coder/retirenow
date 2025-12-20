@@ -13,6 +13,7 @@ const ScenarioResult = () => {
   const location = useLocation();
   const { user, password, logout } = useAuth();
   const [result, setResult] = useState(null);
+  const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
