@@ -62,38 +62,32 @@ const ScenarioResult = () => {
             const costBreakdown = {};
 
             incomeData.filter(row => row.amount).forEach(row => {
-              const startYear = new Date(row.startDate).getFullYear();
-              const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
+              const amount = parseFloat(row.amount) || 0;
+              const yearlyAmount = calculateYearlyAmount(
+                amount,
+                row.frequency,
+                row.startDate,
+                row.endDate,
+                year
+              );
               
-              if (year >= startYear && year <= endYear) {
-                const amount = parseFloat(row.amount) || 0;
-                let yearlyAmount = 0;
-                if (row.frequency === 'Monthly') {
-                  yearlyAmount = amount * 12;
-                } else if (row.frequency === 'Yearly') {
-                  yearlyAmount = amount;
-                } else if (row.frequency === 'One-time' && year === startYear) {
-                  yearlyAmount = amount;
-                }
+              if (yearlyAmount > 0) {
                 yearIncome += yearlyAmount;
                 incomeBreakdown[row.name] = yearlyAmount;
               }
             });
 
             costData.filter(row => row.amount).forEach(row => {
-              const startYear = new Date(row.startDate).getFullYear();
-              const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
+              const amount = parseFloat(row.amount) || 0;
+              const yearlyAmount = calculateYearlyAmount(
+                amount,
+                row.frequency,
+                row.startDate,
+                row.endDate,
+                year
+              );
               
-              if (year >= startYear && year <= endYear) {
-                const amount = parseFloat(row.amount) || 0;
-                let yearlyAmount = 0;
-                if (row.frequency === 'Monthly') {
-                  yearlyAmount = amount * 12;
-                } else if (row.frequency === 'Yearly') {
-                  yearlyAmount = amount;
-                } else if (row.frequency === 'One-time' && year === startYear) {
-                  yearlyAmount = amount;
-                }
+              if (yearlyAmount > 0) {
                 yearCosts += yearlyAmount;
                 const category = row.category || row.name || 'Other';
                 costBreakdown[category] = (costBreakdown[category] || 0) + yearlyAmount;
