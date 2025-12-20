@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { NavigationButtons } from '../components/NavigationButtons';
-import { Calendar, Minus, Trash2, Split } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split, Gift } from 'lucide-react';
 
 const Scenario = () => {
   const navigate = useNavigate();
@@ -23,6 +23,9 @@ const Scenario = () => {
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Track date overrides for standard income sources
+  const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
 
   useEffect(() => {
     if (!user || !password) {
