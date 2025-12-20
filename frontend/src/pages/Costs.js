@@ -32,7 +32,7 @@ const Costs = () => {
       return;
     }
 
-    // Load existing data
+    // Load existing data or pre-fill with dates
     const loadData = async () => {
       try {
         const data = await getCostData(user.email, password);
@@ -40,6 +40,31 @@ const Costs = () => {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
+        } else {
+          // Pre-fill dates with current date and death date
+          const userData = await getUserData(user.email, password);
+          if (userData) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Calculate death date
+            const birthDate = new Date(userData.birthDate);
+            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+            const deathDate = new Date(birthDate);
+            deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+            const deathDateStr = deathDate.toISOString().split('T')[0];
+            
+            setRows([
+              { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 3, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 4, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 5, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 6, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 7, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 8, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
+            ]);
+          }
         }
       } catch (error) {
         console.error('Error loading cost data:', error);
