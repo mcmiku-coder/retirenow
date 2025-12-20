@@ -222,7 +222,7 @@ const ScenarioResult = () => {
                 {/* Financial Projection Graph */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Financial Projection Over Time</CardTitle>
+                    <CardTitle>{t('result.projectionGraph')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={400}>
