@@ -1,30 +1,98 @@
 /**
- * Calculate the portion of a year between two dates
- * Returns a value between 0 and 1 representing the fraction of the year
+ * Calculate the number of days in a specific month
  */
-export function calculateYearFraction(startDate, endDate, targetYear) {
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/**
+ * Calculate the actual amount for a given year using month-based logic
+ */
+export function calculateYearlyAmount(amount, frequency, startDate, endDate, targetYear) {
   const yearStart = new Date(targetYear, 0, 1);
-  const yearEnd = new Date(targetYear, 11, 31, 23, 59, 59);
+  const yearEnd = new Date(targetYear, 11, 31);
   
   const actualStart = new Date(startDate);
-  const actualEnd = endDate ? new Date(endDate) : yearEnd;
+  const actualEnd = endDate ? new Date(endDate) : new Date(2100, 11, 31); // Far future if no end
   
   // If the period doesn't overlap with target year, return 0
   if (actualEnd < yearStart || actualStart > yearEnd) {
     return 0;
   }
   
-  // Find the overlap period
+  // Find the overlap period within the target year
   const overlapStart = actualStart > yearStart ? actualStart : yearStart;
   const overlapEnd = actualEnd < yearEnd ? actualEnd : yearEnd;
   
-  // Calculate days in overlap
-  const overlapDays = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+  if (frequency === 'One-time') {
+    // One-time payment only in the start year
+    const startYear = actualStart.getFullYear();
+    return targetYear === startYear ? amount : 0;
+  }
   
-  // Calculate total days in year (accounting for leap years)
-  const daysInYear = isLeapYear(targetYear) ? 366 : 365;
+  if (frequency === 'Monthly') {
+    // Month-based calculation
+    let totalAmount = 0;
+    
+    // Start with the first month
+    const startMonth = overlapStart.getMonth();
+    const startDay = overlapStart.getDate();
+    const endMonth = overlapEnd.getMonth();
+    const endDay = overlapEnd.getDate();
+    
+    // If within same month
+    if (overlapStart.getFullYear() === overlapEnd.getFullYear() && startMonth === endMonth) {
+      const daysInMonth = getDaysInMonth(targetYear, startMonth);
+      const activeDays = endDay - startDay + 1;
+      return (activeDays / daysInMonth) * amount;
+    }
+    
+    // First partial month (if not starting on day 1)
+    if (startDay > 1) {
+      const daysInStartMonth = getDaysInMonth(overlapStart.getFullYear(), startMonth);
+      const daysActive = daysInStartMonth - startDay + 1;
+      totalAmount += (daysActive / daysInStartMonth) * amount;
+    } else {
+      // Full first month
+      totalAmount += amount;
+    }
+    
+    // Full months in between
+    let currentDate = new Date(overlapStart);
+    currentDate.setDate(1);
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    
+    while (currentDate < overlapEnd) {
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      // Check if this is the last month
+      const nextMonth = new Date(currentDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      if (nextMonth > overlapEnd) {
+        // Partial last month
+        const daysInLastMonth = getDaysInMonth(currentYear, currentMonth);
+        totalAmount += (endDay / daysInLastMonth) * amount;
+        break;
+      } else {
+        // Full month
+        totalAmount += amount;
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+    
+    return totalAmount;
+  }
   
-  return overlapDays / daysInYear;
+  if (frequency === 'Yearly') {
+    // Yearly amount pro-rated by days in year
+    const overlapDays = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+    const daysInYear = isLeapYear(targetYear) ? 366 : 365;
+    return (overlapDays / daysInYear) * amount;
+  }
+  
+  return 0;
 }
 
 /**
@@ -34,29 +102,24 @@ function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
 
-/**
- * Calculate the actual amount for a given year considering start and end dates
- */
-export function calculateYearlyAmount(amount, frequency, startDate, endDate, targetYear) {
-  const yearFraction = calculateYearFraction(startDate, endDate, targetYear);
+// Remove old functions
+export function calculateYearFraction(startDate, endDate, targetYear) {
+  // Deprecated - kept for backwards compatibility
+  const yearStart = new Date(targetYear, 0, 1);
+  const yearEnd = new Date(targetYear, 11, 31, 23, 59, 59);
   
-  if (yearFraction === 0) {
+  const actualStart = new Date(startDate);
+  const actualEnd = endDate ? new Date(endDate) : yearEnd;
+  
+  if (actualEnd < yearStart || actualStart > yearEnd) {
     return 0;
   }
   
-  let yearlyAmount = 0;
+  const overlapStart = actualStart > yearStart ? actualStart : yearStart;
+  const overlapEnd = actualEnd < yearEnd ? actualEnd : yearEnd;
   
-  if (frequency === 'Monthly') {
-    // Monthly amount * 12 months * fraction of year
-    yearlyAmount = amount * 12 * yearFraction;
-  } else if (frequency === 'Yearly') {
-    // Yearly amount * fraction of year
-    yearlyAmount = amount * yearFraction;
-  } else if (frequency === 'One-time') {
-    // One-time payment only in the start year
-    const startYear = new Date(startDate).getFullYear();
-    yearlyAmount = targetYear === startYear ? amount : 0;
-  }
+  const overlapDays = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1;
+  const daysInYear = isLeapYear(targetYear) ? 366 : 365;
   
-  return yearlyAmount;
+  return overlapDays / daysInYear;
 }
