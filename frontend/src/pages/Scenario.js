@@ -21,6 +21,7 @@ const Scenario = () => {
   const [costs, setCosts] = useState([]);
   const [liquidAssets, setLiquidAssets] = useState('');
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
+  const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
