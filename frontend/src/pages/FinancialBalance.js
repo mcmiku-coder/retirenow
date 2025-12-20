@@ -13,7 +13,11 @@ const FinancialBalance = () => {
   const { user, password } = useAuth();
   const [balance, setBalance] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
+  const [incomeCategoryData, setIncomeCategoryData] = useState([]);
+  const [costCategoryData, setCostCategoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
   useEffect(() => {
     if (!user || !password) {
