@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from './components/ui/sonner';
 import Landing from './pages/Landing';
 import PersonalInfo from './pages/PersonalInfo';
@@ -71,14 +72,16 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <div className="App dark min-h-screen bg-background text-foreground">
-          <AppRoutes />
-          <Toaster position="top-center" />
-        </div>
-      </BrowserRouter>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <div className="App dark min-h-screen bg-background text-foreground">
+            <AppRoutes />
+            <Toaster position="top-center" />
+          </div>
+        </BrowserRouter>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 
