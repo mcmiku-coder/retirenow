@@ -214,8 +214,8 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
         
         return LifeExpectancyResponse(
             life_expectancy_years=years_remaining,
-            retirement_legal_date=retirement_date.strftime("%b %Y"),
-            theoretical_death_date=death_date.strftime("%b %Y")
+            retirement_legal_date=retirement_date.strftime("%Y-%m-%d"),  # ISO format for consistency
+            theoretical_death_date=death_date.strftime("%Y-%m-%d")  # ISO format for consistency
         )
     except Exception as e:
         logger.error(f"Error calculating life expectancy: {str(e)}")
