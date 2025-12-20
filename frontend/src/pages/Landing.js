@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { validatePassword } from '../utils/encryption';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, Globe } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -15,6 +16,7 @@ const API = `${BACKEND_URL}/api`;
 const Landing = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { language, switchLanguage, t } = useLanguage();
   const [showRegister, setShowRegister] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
@@ -34,10 +36,10 @@ const Landing = () => {
     try {
       const response = await axios.post(`${API}/auth/register`, { email, password });
       login(response.data.email, response.data.token, password);
-      toast.success('Account created successfully!');
+      toast.success(t('auth.registrationSuccess'));
       navigate('/personal-info');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed');
+      toast.error(error.response?.data?.detail || t('auth.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -49,10 +51,10 @@ const Landing = () => {
     try {
       const response = await axios.post(`${API}/auth/login`, { email, password });
       login(response.data.email, response.data.token, password);
-      toast.success('Welcome back!');
+      toast.success(t('auth.loginSuccess'));
       navigate('/personal-info');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Login failed');
+      toast.error(error.response?.data?.detail || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -60,13 +62,32 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="landing-page">
+      {/* Language Selector - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="flex items-center gap-2 bg-card border rounded-lg p-2">
+          <Globe className="h-4 w-4 text-muted-foreground" />
+          <select
+            data-testid="language-selector"
+            value={language}
+            onChange={(e) => switchLanguage(e.target.value)}
+            className="bg-transparent border-none text-sm font-medium cursor-pointer focus:outline-none"
+          >
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+        </div>
+      </div>
+
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
           <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold mb-6" data-testid="app-title">
-            quit?
+            {t('landing.title')}
           </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8" data-testid="tagline">
-            this app will help you see if you can go to work tomorrow and tell your boss: <span className="font-semibold">hasta luego patron!</span>
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4" data-testid="tagline">
+            {t('landing.subtitle')}
+          </p>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+            {t('landing.description')}
           </p>
         </div>
 
@@ -84,7 +105,7 @@ const Landing = () => {
                 size="lg"
                 className="min-w-[200px]"
               >
-                Create Account
+                {t('landing.createAccount')}
               </Button>
               <Button
                 data-testid="login-btn"
@@ -98,7 +119,7 @@ const Landing = () => {
                 size="lg"
                 className="min-w-[200px]"
               >
-                Login
+                {t('landing.login')}
               </Button>
             </>
           )}
@@ -107,21 +128,21 @@ const Landing = () => {
         {(showRegister || showLogin) && (
           <div className="max-w-md mx-auto bg-card border rounded-lg p-8">
             <h2 className="text-2xl font-semibold mb-6" data-testid="auth-form-title">
-              {showRegister ? 'Create Account' : 'Login'}
+              {showRegister ? t('auth.createAccount') : t('auth.login')}
             </h2>
             
             {showRegister && (
               <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-md">
-                <p className="text-sm text-yellow-200 font-semibold mb-2">Important Security Notice:</p>
+                <p className="text-sm text-yellow-200 font-semibold mb-2">⚠️ {t('landing.securityWarning').split(':')[0]}:</p>
                 <p className="text-sm text-yellow-100">
-                  Your password is your ONLY key to your data. If you lose it, your financial data cannot be recovered by anyone, including administrators.
+                  {t('landing.securityWarning').split(':').slice(1).join(':')}
                 </p>
               </div>
             )}
 
             <form onSubmit={showRegister ? handleRegister : handleLogin} className="space-y-4">
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -130,14 +151,14 @@ const Landing = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your.email@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     required
                     className="pl-10"
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -146,7 +167,7 @@ const Landing = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={showRegister ? "Min 12 chars, mixed case, number" : "Enter your password"}
+                    placeholder={t('auth.passwordPlaceholder')}
                     required
                     className="pl-10"
                   />
@@ -159,7 +180,7 @@ const Landing = () => {
                   className="flex-1"
                   disabled={loading}
                 >
-                  {loading ? 'Processing...' : (showRegister ? 'Register' : 'Login')}
+                  {loading ? t('common.loading') : (showRegister ? t('auth.createBtn') : t('auth.loginBtn'))}
                 </Button>
                 <Button
                   data-testid="cancel-btn"
@@ -172,7 +193,7 @@ const Landing = () => {
                     setPassword('');
                   }}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>
