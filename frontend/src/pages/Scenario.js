@@ -438,6 +438,7 @@ const Scenario = () => {
                       <th className="text-left p-3 font-semibold">Frequency</th>
                       <th className="text-left p-3 font-semibold">Start Date</th>
                       <th className="text-left p-3 font-semibold">End Date</th>
+                      <th className="text-left p-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
