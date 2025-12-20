@@ -33,6 +33,8 @@ const ScenarioResult = () => {
           setResult({
             canQuit: location.state.finalBalance >= 0,
             balance: location.state.finalBalance,
+            balanceBeforeTransmission: location.state.balanceBeforeTransmission,
+            transmissionAmount: location.state.transmissionAmount || 0,
             wishedRetirementDate: location.state.wishedRetirementDate,
             fromSimulation: true
           });
