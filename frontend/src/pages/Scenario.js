@@ -389,8 +389,30 @@ const Scenario = () => {
                             />
                           </td>
                           <td className="p-3">{income.frequency}</td>
-                          <td className="p-3">{startDate}</td>
-                          <td className="p-3">{endDate}</td>
+                          <td className="p-3">
+                            {income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a' ? (
+                              startDate
+                            ) : (
+                              <Input
+                                type="date"
+                                value={income.startDate || ''}
+                                onChange={(e) => updateIncomeDate(income.id, 'startDate', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {income.name === 'Salary' || income.name === 'LPP' || income.name === 'AVS' || income.name === '3a' ? (
+                              endDate
+                            ) : (
+                              <Input
+                                type="date"
+                                value={income.endDate || ''}
+                                onChange={(e) => updateIncomeDate(income.id, 'endDate', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
