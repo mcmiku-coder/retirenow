@@ -113,6 +113,11 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Routes
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "OK", "message": "Backend is running"}
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserRegister):
     # Check if user exists
