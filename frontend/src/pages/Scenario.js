@@ -579,7 +579,7 @@ const Scenario = () => {
                               {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
                               {cost.name}
                               {isInGroup && !isChildCost && (
-                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">split</span>
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
                               )}
                             </div>
                           </td>
