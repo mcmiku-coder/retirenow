@@ -265,24 +265,53 @@ const Scenario = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {incomes.map((income, index) => (
-                      <tr key={income.id} className="border-b">
-                        <td className="p-3 font-medium">{income.name}</td>
-                        <td className="text-right p-3 text-muted-foreground">
-                          CHF {parseFloat(income.amount).toLocaleString()}
-                        </td>
-                        <td className="text-right p-3">
-                          <Input
-                            data-testid={`income-adjusted-${index}`}
-                            type="number"
-                            value={income.adjustedAmount}
-                            onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
-                            className="max-w-[150px] ml-auto"
-                          />
-                        </td>
-                        <td className="p-3">{income.frequency}</td>
-                      </tr>
-                    ))}
+                    {incomes.map((income, index) => {
+                      // Calculate start and end dates based on income type
+                      let startDate = '';
+                      let endDate = '';
+                      const today = new Date().toLocaleDateString();
+                      const wishedRetirement = new Date(wishedRetirementDate).toLocaleDateString();
+                      const legalRetirement = new Date(retirementLegalDate).toLocaleDateString();
+                      const death = new Date(deathDate).toLocaleDateString();
+                      
+                      if (income.name === 'Salary') {
+                        startDate = today;
+                        endDate = wishedRetirement;
+                      } else if (income.name === 'LPP') {
+                        startDate = wishedRetirement;
+                        endDate = death;
+                      } else if (income.name === 'AVS') {
+                        startDate = legalRetirement;
+                        endDate = death;
+                      } else if (income.name === '3a') {
+                        startDate = wishedRetirement;
+                        endDate = '-';
+                      } else {
+                        startDate = income.startDate ? new Date(income.startDate).toLocaleDateString() : '-';
+                        endDate = income.endDate ? new Date(income.endDate).toLocaleDateString() : '-';
+                      }
+                      
+                      return (
+                        <tr key={income.id} className="border-b">
+                          <td className="p-3 font-medium">{income.name}</td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {parseFloat(income.amount).toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              data-testid={`income-adjusted-${index}`}
+                              type="number"
+                              value={income.adjustedAmount}
+                              onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
+                              className="max-w-[150px] ml-auto"
+                            />
+                          </td>
+                          <td className="p-3">{income.frequency}</td>
+                          <td className="p-3">{startDate}</td>
+                          <td className="p-3">{endDate}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
