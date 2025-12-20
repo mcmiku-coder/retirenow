@@ -257,14 +257,28 @@ const Costs = () => {
                       </RadioGroup>
                     </td>
                     <td className="p-2">
-                      <Input
-                        data-testid={`cost-category-${index}`}
-                        value={row.category}
-                        onChange={(e) => updateRow(row.id, 'category', e.target.value)}
-                        disabled={row.categoryLocked}
-                        placeholder="Category"
-                        className="min-w-[120px]"
-                      />
+                      {row.categoryLocked ? (
+                        <Input
+                          data-testid={`cost-category-${index}`}
+                          value={row.category}
+                          disabled={true}
+                          className="min-w-[120px]"
+                        />
+                      ) : (
+                        <Select value={row.category} onValueChange={(value) => updateRow(row.id, 'category', value)}>
+                          <SelectTrigger data-testid={`cost-category-${index}`} className="min-w-[120px]">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Housing">Housing</SelectItem>
+                            <SelectItem value="Leisure">Leisure</SelectItem>
+                            <SelectItem value="Health">Health</SelectItem>
+                            <SelectItem value="Transport">Transport</SelectItem>
+                            <SelectItem value="Elementary">Elementary</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </td>
                     <td className="p-2">
                       <Input
