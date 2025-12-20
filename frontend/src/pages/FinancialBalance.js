@@ -265,8 +265,21 @@ const FinancialBalance = () => {
                     />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                      labelStyle={{ color: '#f3f4f6' }}
-                      formatter={(value) => [`CHF ${value.toLocaleString()}`, '']}
+                      labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}
+                      formatter={(value, name, props) => {
+                        if (name === 'Cumulative Balance') {
+                          return [
+                            <div key="cumulative" className="space-y-1">
+                              <div>Cumulative Balance: CHF {value.toLocaleString()}</div>
+                              <div className="text-green-400">Income: CHF {props.payload.income.toLocaleString()}</div>
+                              <div className="text-red-400">Costs: CHF {props.payload.costs.toLocaleString()}</div>
+                              <div className="text-blue-400">Annual Balance: CHF {props.payload.annualBalance.toLocaleString()}</div>
+                            </div>,
+                            ''
+                          ];
+                        }
+                        return [`CHF ${value.toLocaleString()}`, name];
+                      }}
                     />
                     <Legend />
                     <Area 
@@ -289,6 +302,71 @@ const FinancialBalance = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+
+            {/* Category Breakdown Donut Charts */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Income by Category</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={incomeCategoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
+                      >
+                        {incomeCategoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                        formatter={(value) => `CHF ${value.toLocaleString()}`}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Costs by Category</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={costCategoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
+                      >
+                        {costCategoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                        formatter={(value) => `CHF ${value.toLocaleString()}`}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Year-by-Year Breakdown Table */}
             <Card>
