@@ -43,37 +43,48 @@ const FinancialBalance = () => {
         for (let year = currentYear; year <= deathYear; year++) {
           // Calculate income for this year
           let yearIncome = 0;
+          const incomeBreakdown = {};
+          
           incomeData.filter(row => row.amount).forEach(row => {
             const startYear = new Date(row.startDate).getFullYear();
             const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
             
             if (year >= startYear && year <= endYear) {
               const amount = parseFloat(row.amount) || 0;
+              let yearlyAmount = 0;
               if (row.frequency === 'Monthly') {
-                yearIncome += amount * 12;
+                yearlyAmount = amount * 12;
               } else if (row.frequency === 'Yearly') {
-                yearIncome += amount;
+                yearlyAmount = amount;
               } else if (row.frequency === 'One-time' && year === startYear) {
-                yearIncome += amount;
+                yearlyAmount = amount;
               }
+              yearIncome += yearlyAmount;
+              incomeBreakdown[row.name] = yearlyAmount;
             }
           });
 
           // Calculate costs for this year
           let yearCosts = 0;
+          const costBreakdown = {};
+          
           costData.filter(row => row.amount).forEach(row => {
             const startYear = new Date(row.startDate).getFullYear();
             const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
             
             if (year >= startYear && year <= endYear) {
               const amount = parseFloat(row.amount) || 0;
+              let yearlyAmount = 0;
               if (row.frequency === 'Monthly') {
-                yearCosts += amount * 12;
+                yearlyAmount = amount * 12;
               } else if (row.frequency === 'Yearly') {
-                yearCosts += amount;
+                yearlyAmount = amount;
               } else if (row.frequency === 'One-time' && year === startYear) {
-                yearCosts += amount;
+                yearlyAmount = amount;
               }
+              yearCosts += yearlyAmount;
+              const category = row.category || row.name || 'Other';
+              costBreakdown[category] = (costBreakdown[category] || 0) + yearlyAmount;
             }
           });
 
@@ -85,7 +96,9 @@ const FinancialBalance = () => {
             income: yearIncome,
             costs: yearCosts,
             annualBalance,
-            cumulativeBalance
+            cumulativeBalance,
+            incomeBreakdown,
+            costBreakdown
           });
         }
 
