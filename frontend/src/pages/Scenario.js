@@ -437,7 +437,7 @@ const Scenario = () => {
                       <th className="text-left p-3 font-semibold">Frequency</th>
                       <th className="text-left p-3 font-semibold">Start Date</th>
                       <th className="text-left p-3 font-semibold">End Date</th>
-                      <th className="text-left p-3 font-semibold">Actions</th>
+                      <th className="text-center p-3 font-semibold w-[120px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -474,13 +474,13 @@ const Scenario = () => {
                           />
                         </td>
                         <td className="p-3">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 justify-center">
                             <Button
                               onClick={() => splitCost(cost.id)}
                               variant="outline"
                               size="sm"
                               className="h-8 w-8 p-0"
-                              title="Split cost line"
+                              title="Split this cost into two periods"
                             >
                               <Split className="h-4 w-4" />
                             </Button>
@@ -488,8 +488,8 @@ const Scenario = () => {
                               onClick={() => deleteCost(cost.id)}
                               variant="outline"
                               size="sm"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              title="Delete cost line"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete this cost line"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
