@@ -49,20 +49,8 @@ const Income = () => {
             retirementDate.setMonth(retirementDate.getMonth() + 1);
             const retirementDateStr = retirementDate.toISOString().split('T')[0];
             
-            // Use accurate death date from API if available, otherwise estimate
-            let deathDateStr;
-            if (userData.theoreticalDeathDate) {
-              // Parse the API date format (e.g., "Jan 2052") to ISO date
-              const deathDateParsed = new Date(userData.theoreticalDeathDate);
-              deathDateStr = deathDateParsed.toISOString().split('T')[0];
-            } else {
-              // Fallback: estimate based on current age + typical remaining years
-              const currentAge = new Date().getFullYear() - birthDate.getFullYear();
-              const yearsRemaining = userData.gender === 'male' ? (80 - currentAge) : (85 - currentAge);
-              const deathDate = new Date();
-              deathDate.setFullYear(deathDate.getFullYear() + yearsRemaining);
-              deathDateStr = deathDate.toISOString().split('T')[0];
-            }
+            // Use the theoretical death date from API (already in ISO format)
+            const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
             
             setRows([
               { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
