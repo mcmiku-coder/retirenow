@@ -92,16 +92,8 @@ const Income = () => {
       retirementDate.setMonth(retirementDate.getMonth() + 1);
       const retirementDateStr = retirementDate.toISOString().split('T')[0];
       
-      // Calculate accurate life expectancy using API data
-      // For pre-fill, use simple approximation: age at retirement + typical retirement years
-      const currentAge = new Date().getFullYear() - birthDate.getFullYear();
-      const ageAtRetirement = 65;
-      const typicalRetirementYears = userData.gender === 'male' ? 15 : 20; // Conservative estimate
-      const estimatedDeathAge = ageAtRetirement + typicalRetirementYears;
-      
-      const deathDate = new Date(birthDate);
-      deathDate.setFullYear(deathDate.getFullYear() + estimatedDeathAge);
-      const deathDateStr = deathDate.toISOString().split('T')[0];
+      // Use the theoretical death date from API
+      const deathDateStr = userData.theoreticalDeathDate || retirementDateStr;
       
       setRows([
         { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
