@@ -303,6 +303,16 @@ const Income = () => {
               <Plus className="h-4 w-4 mr-2" />
               Add Income Source
             </Button>
+            
+            <Button
+              data-testid="reset-btn"
+              type="button"
+              variant="outline"
+              onClick={resetToDefaults}
+              className="mt-4 ml-4"
+            >
+              Reset to Defaults
+            </Button>
           </div>
 
           <Button
