@@ -287,7 +287,7 @@ const FinancialBalance = () => {
                                   Annual Balance: CHF {data.annualBalance.toLocaleString()}
                                 </div>
                                 <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                  Cumulative Balance: CHF {data.cumulativeBalance.toLocaleString()}
+                                  Cumulative Balance: CHF {Math.round(data.cumulativeBalance).toLocaleString()}
                                 </div>
                               </div>
                               
