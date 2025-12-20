@@ -648,12 +648,12 @@ const Scenario = () => {
           {/* Savings Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Savings</CardTitle>
+              <CardTitle>{t('scenario.savings')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="liquid-assets">Liquid Assets (CHF)</Label>
+                  <Label htmlFor="liquid-assets">{t('scenario.liquidAssets')}</Label>
                   <Input
                     data-testid="liquid-assets-input"
                     id="liquid-assets"
@@ -664,7 +664,7 @@ const Scenario = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="non-liquid-assets">Non-Liquid Assets (CHF)</Label>
+                  <Label htmlFor="non-liquid-assets">{t('scenario.nonLiquidAssets')}</Label>
                   <Input
                     data-testid="non-liquid-assets-input"
                     id="non-liquid-assets"
@@ -683,15 +683,15 @@ const Scenario = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Gift className="h-5 w-5 text-amber-400" />
-                Transmission / Inheritance
+                {t('scenario.transmission')}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.
+                {t('scenario.transmissionDesc')}
               </p>
             </CardHeader>
             <CardContent>
               <div className="max-w-md">
-                <Label htmlFor="transmission">Amount to Transmit (CHF)</Label>
+                <Label htmlFor="transmission">{t('scenario.amountToTransmit')}</Label>
                 <Input
                   data-testid="transmission-input"
                   id="transmission"
@@ -702,7 +702,7 @@ const Scenario = () => {
                   className="mt-1"
                 />
                 <p className="text-xs text-amber-400/80 mt-2">
-                  ⚠️ If your balance after transmission goes negative, you cannot quit!
+                  ⚠️ {t('scenario.transmissionWarning')}
                 </p>
               </div>
             </CardContent>
@@ -714,7 +714,7 @@ const Scenario = () => {
             className="w-full"
             size="lg"
           >
-            Can I Quit? - Run Simulation
+            {t('scenario.runSimulation')}
           </Button>
         </div>
       </div>
