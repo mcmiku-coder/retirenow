@@ -175,7 +175,7 @@ const FinancialBalance = () => {
           Object.entries(costsByCat).map(([name, value]) => ({ name, value }))
         );
       } catch (error) {
-        toast.error('Failed to calculate balance');
+        toast.error(t('common.error'));
         console.error(error);
       } finally {
         setLoading(false);
@@ -183,14 +183,14 @@ const FinancialBalance = () => {
     };
 
     calculateBalance();
-  }, [user, password, navigate]);
+  }, [user, password, navigate, t]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Calculating your financial balance...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -201,9 +201,9 @@ const FinancialBalance = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Financial Balance Overview</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('financialBalance.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Here's a comprehensive analysis of your financial situation over your lifetime.
+              {t('financialBalance.subtitle')}
             </p>
           </div>
           <div className="flex gap-2">
