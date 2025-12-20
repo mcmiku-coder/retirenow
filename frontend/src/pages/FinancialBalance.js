@@ -424,7 +424,12 @@ const FinancialBalance = () => {
                     </thead>
                     <tbody>
                       {yearlyBreakdown.map((row, index) => (
-                        <tr key={row.year} className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''}`}>
+                        <tr 
+                          key={row.year} 
+                          className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''} hover:bg-muted/30 cursor-pointer relative`}
+                          onMouseEnter={() => setHoveredRow(index)}
+                          onMouseLeave={() => setHoveredRow(null)}
+                        >
                           <td className="p-3 font-medium">{row.year}</td>
                           <td className="text-right p-3 text-green-500">
                             CHF {row.income.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -438,6 +443,53 @@ const FinancialBalance = () => {
                           <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                           </td>
+                          
+                          {/* Hover Tooltip */}
+                          {hoveredRow === index && (
+                            <td className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50">
+                              <div style={{ 
+                                backgroundColor: '#1f2937', 
+                                border: '1px solid #374151', 
+                                borderRadius: '8px', 
+                                padding: '12px',
+                                minWidth: '300px',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                              }}>
+                                <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {row.year}</div>
+                                
+                                <div style={{ marginBottom: '8px' }}>
+                                  <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
+                                    Annual Balance: CHF {row.annualBalance.toLocaleString()}
+                                  </div>
+                                  <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                    Cumulative Balance: CHF {row.cumulativeBalance.toLocaleString()}
+                                  </div>
+                                </div>
+                                
+                                <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
+                                  <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
+                                    Income: CHF {row.income.toLocaleString()}
+                                  </div>
+                                  {row.incomeBreakdown && Object.entries(row.incomeBreakdown).map(([name, value]) => (
+                                    <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                      • {name}: CHF {value.toLocaleString()}
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
+                                  <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
+                                    Costs: CHF {row.costs.toLocaleString()}
+                                  </div>
+                                  {row.costBreakdown && Object.entries(row.costBreakdown).map(([name, value]) => (
+                                    <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                      • {name}: CHF {value.toLocaleString()}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
