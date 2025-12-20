@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { getIncomeData, getCostData } from '../utils/database';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { getIncomeData, getCostData, getUserData } from '../utils/database';
 import { toast } from 'sonner';
 import { NavigationButtons } from '../components/NavigationButtons';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
