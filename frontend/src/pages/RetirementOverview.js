@@ -47,6 +47,15 @@ const RetirementOverview = () => {
         );
 
         setRetirementData(response.data);
+        
+        // Save the calculated dates back to user data for use in other pages
+        const updatedUserData = {
+          ...userData,
+          retirementLegalDate: response.data.retirement_legal_date,
+          theoreticalDeathDate: response.data.theoretical_death_date,
+          lifeExpectancyYears: response.data.life_expectancy_years
+        };
+        await saveUserData(user.email, password, updatedUserData);
       } catch (error) {
         toast.error('Failed to calculate retirement data');
         console.error(error);
