@@ -177,70 +177,36 @@ const FinancialBalance = () => {
           </div>
         </div>
 
-        {balance && (
+        {balance && yearlyBreakdown.length > 0 && (
           <div className="space-y-6 mb-8">
             <div className="grid md:grid-cols-2 gap-6">
-              <Card data-testid="income-card">
+              <Card data-testid="death-balance-status-card" className={yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'border-green-500' : 'border-red-500'}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5 text-green-500" />
-                    Total Annual Income
+                    Balance at Date of Death
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold" data-testid="total-income">
-                    ${balance.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {balance.incomeCount} income sources
+                  <p className={`text-4xl font-bold ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="death-balance-status">
+                    {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'POSITIVE' : 'NEGATIVE'}
                   </p>
                 </CardContent>
               </Card>
 
-              <Card data-testid="costs-card">
+              <Card data-testid="death-balance-value-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingDown className="h-5 w-5 text-red-500" />
-                    Total Annual Costs
+                    Balance Value at Date of Death
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold" data-testid="total-costs">
-                    ${balance.totalCosts.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {balance.costCount} expense items
+                  <p className={`text-3xl font-bold ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="death-balance-value">
+                    {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? '+' : ''}
+                    CHF {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </p>
                 </CardContent>
               </Card>
             </div>
-
-            <Card className={balance.yearlyBalance >= 0 ? 'border-green-500' : 'border-red-500'} data-testid="balance-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <DollarSign className="h-6 w-6" />
-                  Current Net Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Yearly Balance</p>
-                    <p className={`text-3xl font-bold ${balance.yearlyBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="yearly-balance">
-                      {balance.yearlyBalance >= 0 ? '+' : ''}
-                      ${balance.yearlyBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Monthly Balance</p>
-                    <p className={`text-3xl font-bold ${balance.monthlyBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="monthly-balance">
-                      {balance.monthlyBalance >= 0 ? '+' : ''}
-                      ${balance.monthlyBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Financial Projection Graph */}
             <Card>
