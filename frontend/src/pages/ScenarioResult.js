@@ -49,8 +49,16 @@ const ScenarioResult = () => {
 
           const currentYear = new Date().getFullYear();
           const birthDate = new Date(userData.birthDate);
-          const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-          const deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
+          
+          // Use the theoretical death date from API
+          let deathYear;
+          if (userData.theoreticalDeathDate) {
+            deathYear = new Date(userData.theoreticalDeathDate).getFullYear();
+          } else {
+            // Fallback to approximation if not available
+            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+            deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
+          }
 
           const breakdown = [];
           let cumulativeBalance = 0;
