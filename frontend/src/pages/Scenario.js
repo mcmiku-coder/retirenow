@@ -227,6 +227,7 @@ const Scenario = () => {
       const deathYear = new Date(deathDate).getFullYear();
       
       let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
+      const transmission = parseFloat(transmissionAmount || 0);
       const yearlyData = [];
       const today = new Date().toISOString().split('T')[0];
 
@@ -244,19 +245,21 @@ const Scenario = () => {
           const amount = parseFloat(income.adjustedAmount) || 0;
           let startDate, endDate;
           
-          // Determine dates based on income type
+          // Use date overrides if available, otherwise use calculated defaults
           if (income.name === 'Salary') {
-            startDate = today;
-            endDate = wishedRetirementDate;
+            startDate = incomeDateOverrides['Salary']?.startDate || today;
+            endDate = incomeDateOverrides['Salary']?.endDate || wishedRetirementDate;
           } else if (income.name === 'LPP') {
-            startDate = wishedRetirementDate;
-            endDate = deathDate;
+            startDate = incomeDateOverrides['LPP']?.startDate || wishedRetirementDate;
+            endDate = incomeDateOverrides['LPP']?.endDate || deathDate;
           } else if (income.name === 'AVS') {
-            startDate = retirementLegalDate;
-            endDate = deathDate;
+            startDate = incomeDateOverrides['AVS']?.startDate || retirementLegalDate;
+            endDate = incomeDateOverrides['AVS']?.endDate || deathDate;
           } else if (income.name === '3a') {
-            // 3a is one-time at retirement
-            if (year === wishedRetirementYear) {
+            // 3a is one-time at retirement - use override date or wished retirement
+            const threADate = incomeDateOverrides['3a']?.startDate || wishedRetirementDate;
+            const threAYear = new Date(threADate).getFullYear();
+            if (year === threAYear) {
               yearData.income += amount;
               yearData.incomeBreakdown[income.name] = amount;
             }
@@ -303,31 +306,43 @@ const Scenario = () => {
 
       // Calculate cumulative with initial savings
       let cumulativeBalance = initialSavings;
-      const breakdown = yearlyData.map(year => {
+      const breakdown = yearlyData.map((year, index) => {
         const annualBalance = year.income - year.costs;
         cumulativeBalance += annualBalance;
+        
+        // Apply transmission deduction in the final year (death year)
+        const isLastYear = index === yearlyData.length - 1;
+        const transmissionDeduction = isLastYear ? transmission : 0;
+        const cumulativeAfterTransmission = cumulativeBalance - transmissionDeduction;
         
         return {
           year: year.year,
           income: year.income,
           costs: year.costs,
           annualBalance,
-          cumulativeBalance,
+          cumulativeBalance: isLastYear ? cumulativeAfterTransmission : cumulativeBalance,
           incomeBreakdown: year.incomeBreakdown,
-          costBreakdown: year.costBreakdown
+          costBreakdown: year.costBreakdown,
+          transmissionDeduction: isLastYear ? transmissionDeduction : 0
         };
       });
+
+      // Final balance after transmission
+      const finalBalanceAfterTransmission = cumulativeBalance - transmission;
 
       // Navigate to result with full simulation data
       navigate('/result', {
         state: {
-          finalBalance: cumulativeBalance,
+          finalBalance: finalBalanceAfterTransmission,
+          balanceBeforeTransmission: cumulativeBalance,
+          transmissionAmount: transmission,
           wishedRetirementDate,
           liquidAssets,
           nonLiquidAssets,
           yearlyBreakdown: breakdown,
           adjustedIncomes: incomes,
-          adjustedCosts: costs
+          adjustedCosts: costs,
+          incomeDateOverrides
         }
       });
 
