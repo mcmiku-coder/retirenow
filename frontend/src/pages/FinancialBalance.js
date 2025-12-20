@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 const FinancialBalance = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
+  const { t, language } = useLanguage();
   const [balance, setBalance] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
   const [incomeCategoryData, setIncomeCategoryData] = useState([]);
