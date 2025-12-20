@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -14,6 +15,7 @@ import { NavigationButtons } from '../components/NavigationButtons';
 const Costs = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
+  const { t } = useLanguage();
   const [rows, setRows] = useState([
     { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: '', endDate: '', locked: true, categoryLocked: true },
     { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: '', endDate: '', locked: true, categoryLocked: true },
@@ -103,7 +105,7 @@ const Costs = () => {
         { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
       ]);
       setNextId(10);
-      toast.success('Reset to default values');
+      toast.success(t('costs.resetSuccess'));
     }
   };
 
@@ -130,6 +132,7 @@ const Costs = () => {
 
   const deleteRow = (id) => {
     setRows(rows.filter(row => row.id !== id));
+    toast.success(t('costs.costDeleted'));
   };
 
   const validateRows = () => {
@@ -139,15 +142,15 @@ const Costs = () => {
       
       if (hasAnyData) {
         if (!row.amount) {
-          toast.error(`Amount is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.amount')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
         if (!row.startDate) {
-          toast.error(`Start date is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.startDate')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
         if (row.frequency !== 'One-time' && !row.endDate) {
-          toast.error(`End date is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.endDate')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
       }
@@ -165,13 +168,19 @@ const Costs = () => {
     setLoading(true);
     try {
       await saveCostData(user.email, password, rows);
-      toast.success('Cost data saved securely');
+      toast.success(t('costs.saveSuccess'));
       navigate('/financial-balance');
     } catch (error) {
-      toast.error('Failed to save data');
+      toast.error(t('costs.saveFailed'));
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get translated category
+  const getCategoryLabel = (category) => {
+    const key = category.toLowerCase();
+    return t(`costs.categories.${key}`) || category;
   };
 
   return (
@@ -179,9 +188,9 @@ const Costs = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Cost Overview</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('costs.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Add all your expected expenses. You can leave rows empty if they don't apply to you.
+              {t('costs.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/income" />
@@ -192,13 +201,13 @@ const Costs = () => {
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2 font-semibold">Name</th>
-                  <th className="text-left p-2 font-semibold">Amount</th>
-                  <th className="text-left p-2 font-semibold">Frequency</th>
-                  <th className="text-left p-2 font-semibold">Category</th>
-                  <th className="text-left p-2 font-semibold">Start Date</th>
-                  <th className="text-left p-2 font-semibold">End Date</th>
-                  <th className="text-left p-2 font-semibold w-12"></th>
+                  <th className="text-left p-2 font-semibold">{t('costs.name')}</th>
+                  <th className="text-left p-2 font-semibold">{t('costs.amount')}</th>
+                  <th className="text-left p-2 font-semibold">{t('costs.frequency')}</th>
+                  <th className="text-left p-2 font-semibold">{t('costs.category')}</th>
+                  <th className="text-left p-2 font-semibold">{t('costs.startDate')}</th>
+                  <th className="text-left p-2 font-semibold">{t('costs.endDate')}</th>
+                  <th className="text-left p-2 font-semibold w-12">{t('costs.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,15 +240,15 @@ const Costs = () => {
                       >
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="Yearly" id={`yearly-${row.id}`} data-testid={`cost-freq-yearly-${index}`} />
-                          <Label htmlFor={`yearly-${row.id}`} className="text-sm">Yearly</Label>
+                          <Label htmlFor={`yearly-${row.id}`} className="text-sm">{t('income.yearly')}</Label>
                         </div>
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="Monthly" id={`monthly-${row.id}`} data-testid={`cost-freq-monthly-${index}`} />
-                          <Label htmlFor={`monthly-${row.id}`} className="text-sm">Monthly</Label>
+                          <Label htmlFor={`monthly-${row.id}`} className="text-sm">{t('income.monthly')}</Label>
                         </div>
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="One-time" id={`onetime-${row.id}`} data-testid={`cost-freq-onetime-${index}`} />
-                          <Label htmlFor={`onetime-${row.id}`} className="text-sm">One-time</Label>
+                          <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
                         </div>
                       </RadioGroup>
                     </td>
@@ -247,22 +256,22 @@ const Costs = () => {
                       {row.categoryLocked ? (
                         <Input
                           data-testid={`cost-category-${index}`}
-                          value={row.category}
+                          value={getCategoryLabel(row.category)}
                           disabled={true}
                           className="min-w-[120px]"
                         />
                       ) : (
                         <Select value={row.category} onValueChange={(value) => updateRow(row.id, 'category', value)}>
                           <SelectTrigger data-testid={`cost-category-${index}`} className="min-w-[120px]">
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder={t('costs.selectCategory')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Housing">Housing</SelectItem>
-                            <SelectItem value="Leisure">Leisure</SelectItem>
-                            <SelectItem value="Health">Health</SelectItem>
-                            <SelectItem value="Transport">Transport</SelectItem>
-                            <SelectItem value="Elementary">Elementary</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Housing">{t('costs.categories.housing')}</SelectItem>
+                            <SelectItem value="Leisure">{t('costs.categories.leisure')}</SelectItem>
+                            <SelectItem value="Health">{t('costs.categories.health')}</SelectItem>
+                            <SelectItem value="Transport">{t('costs.categories.transport')}</SelectItem>
+                            <SelectItem value="Elementary">{t('costs.categories.elementary')}</SelectItem>
+                            <SelectItem value="Other">{t('costs.categories.other')}</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
@@ -310,7 +319,7 @@ const Costs = () => {
               className="mt-4"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Cost Item
+              {t('costs.addCost')}
             </Button>
             
             <Button
@@ -320,7 +329,7 @@ const Costs = () => {
               onClick={resetToDefaults}
               className="mt-4 ml-4"
             >
-              Reset to Defaults
+              {t('costs.reset')}
             </Button>
           </div>
 
@@ -330,7 +339,7 @@ const Costs = () => {
             className="w-full"
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Next - Financial Balance'}
+            {loading ? t('common.loading') : t('costs.continue')}
           </Button>
         </form>
       </div>
