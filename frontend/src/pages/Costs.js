@@ -88,19 +88,56 @@ const Costs = () => {
     }));
   };
 
-  const addRow = () => {
-    setRows([...rows, {
-      id: nextId,
-      name: '',
-      amount: '',
-      frequency: 'Monthly',
-      category: '',
-      startDate: '',
-      endDate: '',
-      locked: false,
-      categoryLocked: false
-    }]);
-    setNextId(nextId + 1);
+  const resetToDefaults = async () => {
+    const userData = await getUserData(user.email, password);
+    if (userData) {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const birthDate = new Date(userData.birthDate);
+      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+      const deathDate = new Date(birthDate);
+      deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+      const deathDateStr = deathDate.toISOString().split('T')[0];
+      
+      setRows([
+        { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 3, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 4, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 5, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 6, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 7, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 8, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
+      ]);
+      setNextId(10);
+      toast.success('Reset to default values');
+    }
+  };
+
+  const addRow = async () => {
+    const userData = await getUserData(user.email, password);
+    if (userData) {
+      const today = new Date().toISOString().split('T')[0];
+      const birthDate = new Date(userData.birthDate);
+      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+      const deathDate = new Date(birthDate);
+      deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+      const deathDateStr = deathDate.toISOString().split('T')[0];
+      
+      setRows([...rows, {
+        id: nextId,
+        name: '',
+        amount: '',
+        frequency: 'Monthly',
+        category: '',
+        startDate: today,
+        endDate: deathDateStr,
+        locked: false,
+        categoryLocked: false
+      }]);
+      setNextId(nextId + 1);
+    }
   };
 
   const deleteRow = (id) => {
