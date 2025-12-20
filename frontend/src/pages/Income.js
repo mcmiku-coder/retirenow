@@ -49,12 +49,14 @@ const Income = () => {
             retirementDate.setMonth(retirementDate.getMonth() + 1);
             const retirementDateStr = retirementDate.toISOString().split('T')[0];
             
-            // Get life expectancy to calculate death date
-            const currentAge = new Date().getFullYear() - birthDate.getFullYear();
-            // Approximate life expectancy (will be more accurate from API, but this is for pre-fill)
-            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+            // Get accurate life expectancy to calculate death date
+            const birthYear = birthDate.getFullYear();
+            const currentAge = new Date().getFullYear() - birthYear;
+            // More accurate life expectancy based on current age and gender
+            const baseLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+            const yearsToAdd = baseLifeExpectancy;
             const deathDate = new Date(birthDate);
-            deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+            deathDate.setFullYear(deathDate.getFullYear() + yearsToAdd);
             const deathDateStr = deathDate.toISOString().split('T')[0];
             
             setRows([
