@@ -182,10 +182,10 @@ const ScenarioResult = () => {
               </div>
               <div className="p-8 text-center">
                 <h2 className="text-3xl font-bold mb-4" data-testid="result-message">
-                  {result.canQuit ? 'YES YOU CAN! QUIT!' : 'NO YOU CANNOT QUIT YET!'}
+                  {result.canQuit ? t('result.yesCanQuit') : t('result.noCannotQuit')}
                 </h2>
                 <p className="text-xl text-muted-foreground mb-2">
-                  {result.fromSimulation ? 'Projected balance at end of life:' : 'Your annual balance:'}
+                  {result.fromSimulation ? t('result.projectedBalance') : t('result.annualBalance')}
                   <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">
                     {result.balance >= 0 ? '+' : ''}
                     CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -194,25 +194,25 @@ const ScenarioResult = () => {
                 {result.transmissionAmount > 0 && (
                   <div className="mt-4 p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
                     <p className="text-amber-400 text-sm font-medium">
-                      Transmission/Inheritance Planned
+                      {t('result.transmissionPlanned')}
                     </p>
                     <p className="text-muted-foreground text-sm mt-1">
-                      Balance before transmission: CHF {result.balanceBeforeTransmission?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {t('result.balanceBeforeTransmission')}: CHF {result.balanceBeforeTransmission?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                     <p className="text-amber-400 text-sm">
-                      Amount to transmit: CHF {result.transmissionAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {t('result.amountToTransmit')}: CHF {result.transmissionAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                   </div>
                 )}
                 {result.wishedRetirementDate && (
                   <p className="text-sm text-muted-foreground mt-4">
-                    Based on retirement date: {new Date(result.wishedRetirementDate).toLocaleDateString()}
+                    {t('result.basedOnRetirement')}: {new Date(result.wishedRetirementDate).toLocaleDateString()}
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground mt-6">
                   {result.canQuit 
-                    ? 'Your projected balance is positive! You have the financial foundation to consider retirement.'
-                    : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date before making the leap.'}
+                    ? t('result.positiveMessage')
+                    : t('result.negativeMessage')}
                 </p>
               </div>
             </Card>
