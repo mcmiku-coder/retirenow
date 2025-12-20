@@ -416,14 +416,14 @@ const ScenarioResult = () => {
             variant="outline"
             className="flex-1"
           >
-            Review My Data
+            {t('result.reviewData')}
           </Button>
           <Button
             data-testid="start-over-btn"
             onClick={handleReset}
             className="flex-1"
           >
-            Start Over
+            {t('result.startOver')}
           </Button>
         </div>
       </div>
