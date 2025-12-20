@@ -104,6 +104,45 @@ const Scenario = () => {
     ));
   };
 
+  const updateCostDate = (id, field, value) => {
+    setCosts(costs.map(cost => 
+      cost.id === id ? { ...cost, [field]: value } : cost
+    ));
+  };
+
+  const updateIncomeDate = (id, field, value) => {
+    setIncomes(incomes.map(income => 
+      income.id === id ? { ...income, [field]: value } : income
+    ));
+  };
+
+  const deleteCost = (id) => {
+    setCosts(costs.filter(cost => cost.id !== id));
+  };
+
+  const splitCost = (id) => {
+    const costIndex = costs.findIndex(cost => cost.id === id);
+    if (costIndex === -1) return;
+    
+    const originalCost = costs[costIndex];
+    const newCost = {
+      ...originalCost,
+      id: Date.now(), // Simple ID generation
+      startDate: originalCost.endDate
+    };
+    
+    // Update the original cost's end date to be the start date of the new cost
+    const updatedCosts = [...costs];
+    updatedCosts[costIndex] = {
+      ...originalCost,
+      endDate: originalCost.endDate
+    };
+    
+    // Insert the new cost right after the original
+    updatedCosts.splice(costIndex + 1, 0, newCost);
+    setCosts(updatedCosts);
+  };
+
   const runSimulation = () => {
     try {
       const currentYear = new Date().getFullYear();
