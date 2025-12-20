@@ -210,7 +210,7 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
         # Calculate theoretical death date (today + years remaining)
         death_date = today + timedelta(days=int(years_remaining * 365.25))
         
-        print(f"Life expectancy calculation: age={current_age}, years_remaining={years_remaining:.1f}, total={total_life_expectancy:.1f}")
+        logger.info(f"Life expectancy calculation: age={current_age}, years_remaining={years_remaining:.1f}, total={total_life_expectancy:.1f}")
         
         return LifeExpectancyResponse(
             life_expectancy_years=years_remaining,
@@ -218,7 +218,7 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
             theoretical_death_date=death_date.strftime("%b %Y")
         )
     except Exception as e:
-        print(f"Error calculating life expectancy: {str(e)}")
+        logger.error(f"Error calculating life expectancy: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the router in the main app
