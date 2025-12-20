@@ -264,21 +264,49 @@ const FinancialBalance = () => {
                       tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)}k`}
                     />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                      labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}
-                      formatter={(value, name, props) => {
-                        if (name === 'Cumulative Balance') {
-                          return [
-                            <div key="cumulative" className="space-y-1">
-                              <div>Cumulative Balance: CHF {value.toLocaleString()}</div>
-                              <div className="text-green-400">Income: CHF {props.payload.income.toLocaleString()}</div>
-                              <div className="text-red-400">Costs: CHF {props.payload.costs.toLocaleString()}</div>
-                              <div className="text-blue-400">Annual Balance: CHF {props.payload.annualBalance.toLocaleString()}</div>
-                            </div>,
-                            ''
-                          ];
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}
+                      labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length > 0) {
+                          const data = payload[0].payload;
+                          return (
+                            <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}>
+                              <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {data.year}</div>
+                              
+                              <div style={{ marginBottom: '8px' }}>
+                                <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
+                                  Annual Balance: CHF {data.annualBalance.toLocaleString()}
+                                </div>
+                                <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                  Cumulative Balance: CHF {data.cumulativeBalance.toLocaleString()}
+                                </div>
+                              </div>
+                              
+                              <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
+                                <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
+                                  Income: CHF {data.income.toLocaleString()}
+                                </div>
+                                {data.incomeBreakdown && Object.entries(data.incomeBreakdown).map(([name, value]) => (
+                                  <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                    • {name}: CHF {value.toLocaleString()}
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
+                                <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
+                                  Costs: CHF {data.costs.toLocaleString()}
+                                </div>
+                                {data.costBreakdown && Object.entries(data.costBreakdown).map(([name, value]) => (
+                                  <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                    • {name}: CHF {value.toLocaleString()}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
                         }
-                        return [`CHF ${value.toLocaleString()}`, name];
+                        return null;
                       }}
                     />
                     <Legend />
