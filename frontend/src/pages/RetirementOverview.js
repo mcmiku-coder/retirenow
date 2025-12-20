@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import { getUserData } from '../utils/database';
+import { saveUserData } from '../utils/database';
 import axios from 'axios';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
 import { NavigationButtons } from '../components/NavigationButtons';
