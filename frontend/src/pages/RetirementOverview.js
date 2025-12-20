@@ -72,11 +72,14 @@ const RetirementOverview = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="retirement-overview-page">
       <div className="max-w-4xl w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Retirement Overview</h1>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            Based on your personal information and statistical data, here's what your retirement timeline looks like.
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Retirement Overview</h1>
+            <p className="text-muted-foreground" data-testid="page-subtitle">
+              Based on your personal information and statistical data, here's what your retirement timeline looks like.
+            </p>
+          </div>
+          <NavigationButtons backPath="/personal-info" />
         </div>
 
         {retirementData && (
