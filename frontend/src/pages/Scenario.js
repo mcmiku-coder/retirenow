@@ -458,8 +458,44 @@ const Scenario = () => {
                           />
                         </td>
                         <td className="p-3">{cost.frequency}</td>
-                        <td className="p-3">{cost.startDate ? new Date(cost.startDate).toLocaleDateString() : '-'}</td>
-                        <td className="p-3">{cost.endDate ? new Date(cost.endDate).toLocaleDateString() : '-'}</td>
+                        <td className="p-3">
+                          <Input
+                            type="date"
+                            value={cost.startDate || ''}
+                            onChange={(e) => updateCostDate(cost.id, 'startDate', e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <Input
+                            type="date"
+                            value={cost.endDate || ''}
+                            onChange={(e) => updateCostDate(cost.id, 'endDate', e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => splitCost(cost.id)}
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Split cost line"
+                            >
+                              <Split className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => deleteCost(cost.id)}
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                              title="Delete cost line"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
