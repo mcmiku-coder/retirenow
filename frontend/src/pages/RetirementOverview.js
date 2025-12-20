@@ -52,8 +52,8 @@ const RetirementOverview = () => {
         // Save the calculated dates back to user data for use in other pages
         const updatedUserData = {
           ...userData,
-          retirementLegalDate: response.data.retirement_legal_date,
-          theoreticalDeathDate: response.data.theoretical_death_date,
+          retirementLegalDate: response.data.retirement_legal_date, // ISO format
+          theoreticalDeathDate: response.data.theoretical_death_date, // ISO format
           lifeExpectancyYears: response.data.life_expectancy_years
         };
         await saveUserData(user.email, password, updatedUserData);
