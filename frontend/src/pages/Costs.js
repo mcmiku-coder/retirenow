@@ -89,12 +89,7 @@ const Costs = () => {
     const userData = await getUserData(user.email, password);
     if (userData) {
       const today = new Date().toISOString().split('T')[0];
-      
-      const birthDate = new Date(userData.birthDate);
-      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-      const deathDate = new Date(birthDate);
-      deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
-      const deathDateStr = deathDate.toISOString().split('T')[0];
+      const deathDateStr = userData.theoreticalDeathDate || today;
       
       setRows([
         { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
@@ -116,11 +111,7 @@ const Costs = () => {
     const userData = await getUserData(user.email, password);
     if (userData) {
       const today = new Date().toISOString().split('T')[0];
-      const birthDate = new Date(userData.birthDate);
-      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-      const deathDate = new Date(birthDate);
-      deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
-      const deathDateStr = deathDate.toISOString().split('T')[0];
+      const deathDateStr = userData.theoreticalDeathDate || today;
       
       setRows([...rows, {
         id: nextId,
