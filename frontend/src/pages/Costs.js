@@ -244,17 +244,15 @@ const Costs = () => {
                       />
                     </td>
                     <td className="p-2">
-                      {!row.locked && (
-                        <Button
-                          data-testid={`cost-delete-${index}`}
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteRow(row.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        data-testid={`cost-delete-${index}`}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteRow(row.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
