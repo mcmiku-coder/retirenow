@@ -354,7 +354,7 @@ const FinancialBalance = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Income by Category</CardTitle>
+                  <CardTitle>{t('financialBalance.incomeByCategory')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
