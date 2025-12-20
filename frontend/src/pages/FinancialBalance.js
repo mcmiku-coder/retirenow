@@ -515,7 +515,7 @@ const FinancialBalance = () => {
           onClick={() => navigate('/scenario')}
           className="w-full"
         >
-          Next - Scenario Page
+          {t('financialBalance.continue')}
         </Button>
       </div>
     </div>
