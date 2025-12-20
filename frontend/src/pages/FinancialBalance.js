@@ -12,6 +12,7 @@ const FinancialBalance = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
   const [balance, setBalance] = useState(null);
+  const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,12 +27,71 @@ const FinancialBalance = () => {
         const costData = await getCostData(user.email, password) || [];
         const userData = await getUserData(user.email, password);
 
-        // Simple calculation: sum all income and costs
+        const currentYear = new Date().getFullYear();
+        const birthDate = new Date(userData.birthDate);
+        const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+        const deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
+
+        // Calculate year-by-year breakdown
+        const breakdown = [];
+        let cumulativeBalance = 0;
+
+        for (let year = currentYear; year <= deathYear; year++) {
+          // Calculate income for this year
+          let yearIncome = 0;
+          incomeData.filter(row => row.amount).forEach(row => {
+            const startYear = new Date(row.startDate).getFullYear();
+            const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
+            
+            if (year >= startYear && year <= endYear) {
+              const amount = parseFloat(row.amount) || 0;
+              if (row.frequency === 'Monthly') {
+                yearIncome += amount * 12;
+              } else if (row.frequency === 'Yearly') {
+                yearIncome += amount;
+              } else if (row.frequency === 'One-time' && year === startYear) {
+                yearIncome += amount;
+              }
+            }
+          });
+
+          // Calculate costs for this year
+          let yearCosts = 0;
+          costData.filter(row => row.amount).forEach(row => {
+            const startYear = new Date(row.startDate).getFullYear();
+            const endYear = row.endDate ? new Date(row.endDate).getFullYear() : year;
+            
+            if (year >= startYear && year <= endYear) {
+              const amount = parseFloat(row.amount) || 0;
+              if (row.frequency === 'Monthly') {
+                yearCosts += amount * 12;
+              } else if (row.frequency === 'Yearly') {
+                yearCosts += amount;
+              } else if (row.frequency === 'One-time' && year === startYear) {
+                yearCosts += amount;
+              }
+            }
+          });
+
+          const annualBalance = yearIncome - yearCosts;
+          cumulativeBalance += annualBalance;
+
+          breakdown.push({
+            year,
+            income: yearIncome,
+            costs: yearCosts,
+            annualBalance,
+            cumulativeBalance
+          });
+        }
+
+        setYearlyBreakdown(breakdown);
+
+        // Calculate total summary
         const totalIncome = incomeData
           .filter(row => row.amount)
           .reduce((sum, row) => {
             const amount = parseFloat(row.amount) || 0;
-            // Convert to yearly
             if (row.frequency === 'Monthly') {
               return sum + (amount * 12);
             } else if (row.frequency === 'Yearly') {
@@ -45,7 +105,6 @@ const FinancialBalance = () => {
           .filter(row => row.amount)
           .reduce((sum, row) => {
             const amount = parseFloat(row.amount) || 0;
-            // Convert to yearly
             if (row.frequency === 'Monthly') {
               return sum + (amount * 12);
             } else if (row.frequency === 'Yearly') {
