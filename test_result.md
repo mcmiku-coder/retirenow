@@ -101,3 +101,86 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "quit?" Retirement Planning App - Completing remaining features including Transmission/Inheritance, Split button visual grouping, and editable dates for all income sources.
+
+backend:
+  - task: "Life Expectancy API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "API returns correct life expectancy based on CSV data"
+
+  - task: "User Authentication API"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "JWT authentication working correctly"
+
+frontend:
+  - task: "Scenario Simulator - Editable Income Dates"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Scenario.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented editable dates for Salary, AVS, LPP, 3a income sources with date override state management"
+
+  - task: "Scenario Simulator - Split Cost Visual Grouping"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Scenario.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented visual grouping with lighter background, blue border, split badge, and auto-sync of dates when parent end date changes"
+
+  - task: "Scenario Simulator - Transmission/Inheritance Feature"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Scenario.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added transmission input box, deducts from final balance at death, shows on result page with before/after amounts"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Scenario Simulator - Editable Income Dates"
+    - "Scenario Simulator - Split Cost Visual Grouping"
+    - "Scenario Simulator - Transmission/Inheritance Feature"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Implemented all 3 remaining features for the Scenario Simulator page. Please test the backend API endpoints for authentication and life expectancy to verify they still work correctly."
