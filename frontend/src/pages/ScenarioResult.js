@@ -88,11 +88,14 @@ const ScenarioResult = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="scenario-result-page">
       <div className="max-w-4xl w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Your Retirement Verdict</h1>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            Based on your financial data and retirement timeline, here's our assessment:
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Your Retirement Verdict</h1>
+            <p className="text-muted-foreground" data-testid="page-subtitle">
+              Based on your financial data and retirement timeline, here's our assessment:
+            </p>
+          </div>
+          <NavigationButtons backPath="/scenario" />
         </div>
 
         {result && (
