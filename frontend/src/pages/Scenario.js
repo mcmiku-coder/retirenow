@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
+import { calculateYearlyAmount } from '../utils/calculations';
 import { NavigationButtons } from '../components/NavigationButtons';
 import { Calendar, Minus } from 'lucide-react';
 
