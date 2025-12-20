@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -13,6 +14,7 @@ import { NavigationButtons } from '../components/NavigationButtons';
 const Income = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
+  const { t } = useLanguage();
   const [rows, setRows] = useState([
     { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
     { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
@@ -102,7 +104,7 @@ const Income = () => {
         { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: retirementDateStr, endDate: '', locked: true }
       ]);
       setNextId(5);
-      toast.success('Reset to default values');
+      toast.success(t('income.resetSuccess'));
     }
   };
 
@@ -122,6 +124,7 @@ const Income = () => {
 
   const deleteRow = (id) => {
     setRows(rows.filter(row => row.id !== id));
+    toast.success(t('income.incomeDeleted'));
   };
 
   const validateRows = () => {
@@ -131,15 +134,15 @@ const Income = () => {
       
       if (hasAnyData) {
         if (!row.amount) {
-          toast.error(`Amount is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('income.amount')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
         if (!row.startDate) {
-          toast.error(`Start date is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('income.startDate')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
         if (row.frequency !== 'One-time' && !row.endDate) {
-          toast.error(`End date is required for ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('income.endDate')} - ${row.name || 'row ' + row.id}`);
           return false;
         }
       }
@@ -156,18 +159,23 @@ const Income = () => {
 
     setLoading(true);
     try {
-      // Filter out completely empty rows
-      const validRows = rows.filter(row => {
-        return row.amount || row.startDate || row.endDate || (row.category && !row.locked);
-      });
-      
       await saveIncomeData(user.email, password, rows);
-      toast.success('Income data saved securely');
+      toast.success(t('income.saveSuccess'));
       navigate('/costs');
     } catch (error) {
-      toast.error('Failed to save data');
+      toast.error(t('income.saveFailed'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Get translated frequency label
+  const getFrequencyLabel = (freq) => {
+    switch(freq) {
+      case 'Monthly': return t('income.monthly');
+      case 'Yearly': return t('income.yearly');
+      case 'One-time': return t('income.oneTime');
+      default: return freq;
     }
   };
 
@@ -176,9 +184,9 @@ const Income = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">Income Overview</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('income.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              Add all your expected income sources. You can leave rows empty if they don't apply to you.
+              {t('income.subtitle')}
             </p>
           </div>
           <NavigationButtons backPath="/retirement-overview" />
@@ -189,13 +197,12 @@ const Income = () => {
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2 font-semibold">Name</th>
-                  <th className="text-left p-2 font-semibold">Amount</th>
-                  <th className="text-left p-2 font-semibold">Frequency</th>
-                  <th className="text-left p-2 font-semibold">Category</th>
-                  <th className="text-left p-2 font-semibold">Start Date</th>
-                  <th className="text-left p-2 font-semibold">End Date</th>
-                  <th className="text-left p-2 font-semibold w-12"></th>
+                  <th className="text-left p-2 font-semibold">{t('income.name')}</th>
+                  <th className="text-left p-2 font-semibold">{t('income.amount')}</th>
+                  <th className="text-left p-2 font-semibold">{t('income.frequency')}</th>
+                  <th className="text-left p-2 font-semibold">{t('income.startDate')}</th>
+                  <th className="text-left p-2 font-semibold">{t('income.endDate')}</th>
+                  <th className="text-left p-2 font-semibold w-12">{t('income.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -228,26 +235,17 @@ const Income = () => {
                       >
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="Yearly" id={`yearly-${row.id}`} data-testid={`income-freq-yearly-${index}`} />
-                          <Label htmlFor={`yearly-${row.id}`} className="text-sm">Yearly</Label>
+                          <Label htmlFor={`yearly-${row.id}`} className="text-sm">{t('income.yearly')}</Label>
                         </div>
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="Monthly" id={`monthly-${row.id}`} data-testid={`income-freq-monthly-${index}`} />
-                          <Label htmlFor={`monthly-${row.id}`} className="text-sm">Monthly</Label>
+                          <Label htmlFor={`monthly-${row.id}`} className="text-sm">{t('income.monthly')}</Label>
                         </div>
                         <div className="flex items-center gap-1">
                           <RadioGroupItem value="One-time" id={`onetime-${row.id}`} data-testid={`income-freq-onetime-${index}`} />
-                          <Label htmlFor={`onetime-${row.id}`} className="text-sm">One-time</Label>
+                          <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
                         </div>
                       </RadioGroup>
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        data-testid={`income-category-${index}`}
-                        value={row.category}
-                        onChange={(e) => updateRow(row.id, 'category', e.target.value)}
-                        placeholder="Category"
-                        className="min-w-[120px]"
-                      />
                     </td>
                     <td className="p-2">
                       <Input
@@ -294,7 +292,7 @@ const Income = () => {
               className="mt-4"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Income Source
+              {t('income.addIncome')}
             </Button>
             
             <Button
@@ -304,7 +302,7 @@ const Income = () => {
               onClick={resetToDefaults}
               className="mt-4 ml-4"
             >
-              Reset to Defaults
+              {t('income.reset')}
             </Button>
           </div>
 
@@ -314,7 +312,7 @@ const Income = () => {
             className="w-full"
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Next - Costs'}
+            {loading ? t('common.loading') : t('income.continue')}
           </Button>
         </form>
       </div>
