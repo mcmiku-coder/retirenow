@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { getIncomeData, getCostData, getUserData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import { NavigationButtons } from '../components/NavigationButtons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
@@ -19,6 +21,29 @@ const ScenarioResult = () => {
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [scenarioData, setScenarioData] = useState(null);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (!user || !password) {
+      navigate('/');
+      return;
+    }
+
+    const loadAdditionalData = async () => {
+      const uData = await getUserData(user.email, password);
+      const sData = await getScenarioData(user.email, password);
+      setUserData(uData);
+      setScenarioData(sData);
+    };
+    loadAdditionalData();
+  }, [user, password, navigate]);
 
   useEffect(() => {
     if (!user || !password) {
@@ -140,9 +165,192 @@ const ScenarioResult = () => {
   }, [user, password, navigate, location, t]);
 
   const handleReset = () => {
-    logout();
-    navigate('/');
-    toast.success(t('common.success'));
+    // Navigate to personal info to start over (keep user logged in)
+    navigate('/personal-info');
+  };
+
+  // PDF Generation Function
+  const generatePDF = async () => {
+    setGeneratingPdf(true);
+    toast.info(t('pdf.generating'));
+    
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPos = 20;
+      
+      // Title
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.title'), pageWidth / 2, yPos, { align: 'center' });
+      yPos += 15;
+      
+      // Date
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 15;
+      
+      // Personal Information Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.personalInfo'), 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      if (userData) {
+        doc.text(`${t('personalInfo.birthDate')}: ${userData.birthDate || 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('personalInfo.gender')}: ${userData.gender === 'male' ? t('personalInfo.male') : t('personalInfo.female')}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('personalInfo.country')}: ${userData.residence || 'N/A'}`, 14, yPos);
+        yPos += 12;
+      }
+      
+      // Retirement Overview Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.retirementOverview'), 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      if (userData) {
+        doc.text(`${t('retirementOverview.legalRetirement')}: ${userData.retirementLegalDate || 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('retirementOverview.lifeExpectancy')}: ${userData.lifeExpectancyYears ? Math.round(userData.lifeExpectancyYears) + ' ' + t('retirementOverview.years') : 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('retirementOverview.theoreticalDeath')}: ${userData.theoreticalDeathDate || 'N/A'}`, 14, yPos);
+        yPos += 12;
+      }
+      
+      // Scenario Simulator Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.scenarioSimulator'), 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      if (scenarioData) {
+        doc.text(`${t('scenario.wishedRetirement')}: ${scenarioData.wishedRetirementDate || 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('scenario.liquidAssets')}: CHF ${parseFloat(scenarioData.liquidAssets || 0).toLocaleString()}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('scenario.nonLiquidAssets')}: CHF ${parseFloat(scenarioData.nonLiquidAssets || 0).toLocaleString()}`, 14, yPos);
+        yPos += 6;
+        doc.text(`${t('scenario.transmission')}: CHF ${parseFloat(scenarioData.transmissionAmount || 0).toLocaleString()}`, 14, yPos);
+        yPos += 6;
+        
+        // Future inflows
+        if (scenarioData.futureInflows && scenarioData.futureInflows.length > 0) {
+          doc.text('Future Inflows:', 14, yPos);
+          yPos += 5;
+          scenarioData.futureInflows.forEach(inflow => {
+            if (inflow.amount && inflow.date) {
+              doc.text(`  • ${inflow.type}: CHF ${parseFloat(inflow.amount).toLocaleString()} (${inflow.date})`, 14, yPos);
+              yPos += 5;
+            }
+          });
+        }
+        yPos += 8;
+      }
+      
+      // Verdict Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.verdict'), 14, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(12);
+      if (result) {
+        const verdictText = result.canQuit ? t('result.yesCanQuit') : t('result.noCannotQuit');
+        doc.setTextColor(result.canQuit ? 0 : 255, result.canQuit ? 128 : 0, 0);
+        doc.text(verdictText, 14, yPos);
+        yPos += 8;
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(`${t('result.projectedBalance')} CHF ${result.balance?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, 14, yPos);
+        yPos += 6;
+        
+        if (result.transmissionAmount > 0) {
+          doc.text(`${t('result.amountToTransmit')}: CHF ${result.transmissionAmount.toLocaleString()}`, 14, yPos);
+          yPos += 6;
+        }
+      }
+      
+      // Add new page for Year-by-Year table in landscape
+      doc.addPage('a4', 'landscape');
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t('pdf.yearByYearAnnex'), 14, 20);
+      
+      // Prepare table data with income and cost categories
+      const allIncomeCategories = new Set();
+      const allCostCategories = new Set();
+      
+      yearlyBreakdown.forEach(year => {
+        Object.keys(year.incomeBreakdown || {}).forEach(cat => allIncomeCategories.add(cat));
+        Object.keys(year.costBreakdown || {}).forEach(cat => allCostCategories.add(cat));
+      });
+      
+      const incomeColumns = Array.from(allIncomeCategories);
+      const costColumns = Array.from(allCostCategories);
+      
+      // Build table headers
+      const headers = [
+        t('result.year'),
+        ...incomeColumns.map(c => c.substring(0, 10)),
+        'Total Income',
+        ...costColumns.map(c => c.substring(0, 10)),
+        'Total Costs',
+        t('result.annualBalance'),
+        t('result.cumulativeBalance')
+      ];
+      
+      // Build table rows
+      const tableData = yearlyBreakdown.map(year => {
+        const row = [
+          year.year,
+          ...incomeColumns.map(cat => Math.round(year.incomeBreakdown?.[cat] || 0).toLocaleString()),
+          Math.round(year.income).toLocaleString(),
+          ...costColumns.map(cat => Math.round(year.costBreakdown?.[cat] || 0).toLocaleString()),
+          Math.round(year.costs).toLocaleString(),
+          Math.round(year.annualBalance).toLocaleString(),
+          Math.round(year.cumulativeBalance).toLocaleString()
+        ];
+        return row;
+      });
+      
+      // Add table using autoTable
+      doc.autoTable({
+        head: [headers],
+        body: tableData,
+        startY: 30,
+        styles: { fontSize: 7, cellPadding: 1 },
+        headStyles: { fillColor: [66, 66, 66], fontSize: 6 },
+        columnStyles: {
+          0: { cellWidth: 12 }
+        },
+        didDrawPage: function(data) {
+          // Footer
+          doc.setFontSize(8);
+          doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 20, doc.internal.pageSize.getHeight() - 10);
+        }
+      });
+      
+      // Save PDF
+      doc.save(`retirement-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success(language === 'fr' ? 'Rapport PDF généré avec succès!' : 'PDF Report generated successfully!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error(language === 'fr' ? 'Erreur lors de la génération du PDF' : 'Error generating PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   if (loading) {
@@ -172,7 +380,7 @@ const ScenarioResult = () => {
         {result && (
           <div className="space-y-6">
             <Card className="mb-8 overflow-hidden">
-              <div className="max-w-md mx-auto p-4">
+              <div className="max-w-[200px] mx-auto p-4">
                 <img
                   src={result.canQuit ? '/yes_quit.png' : '/no_quit.png'}
                   alt={result.canQuit ? 'Yes you can quit!' : 'No you cannot quit yet!'}
@@ -181,9 +389,9 @@ const ScenarioResult = () => {
                 />
               </div>
               <div className="p-8 text-center">
-                <h2 className="text-3xl font-bold mb-4" data-testid="result-message">
+                <p className={`text-xl mb-4 ${result.canQuit ? 'text-green-500 font-bold text-3xl' : 'text-muted-foreground'}`} data-testid="result-message">
                   {result.canQuit ? t('result.yesCanQuit') : t('result.noCannotQuit')}
-                </h2>
+                </p>
                 <p className="text-xl text-muted-foreground mb-2">
                   {result.fromSimulation ? t('result.projectedBalance') : t('result.annualBalance')}
                   <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">

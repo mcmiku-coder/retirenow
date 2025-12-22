@@ -5,10 +5,11 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { validatePassword } from '../utils/encryption';
-import { Lock, Mail, Globe } from 'lucide-react';
+import { Lock, Mail, Globe, Info } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -35,7 +36,9 @@ const Landing = () => {
     setLoading(true);
     try {
       const response = await axios.post(`${API}/auth/register`, { email, password });
-      login(response.data.email, response.data.token, password);
+      // Use local email variable as fallback in case response.data.email is undefined
+      const userEmail = response.data.email || email;
+      login(userEmail, response.data.token, password);
       toast.success(t('auth.registrationSuccess'));
       navigate('/personal-info');
     } catch (error) {
@@ -50,7 +53,9 @@ const Landing = () => {
     setLoading(true);
     try {
       const response = await axios.post(`${API}/auth/login`, { email, password });
-      login(response.data.email, response.data.token, password);
+      // Use local email variable as fallback in case response.data.email is undefined
+      const userEmail = response.data.email || email;
+      login(userEmail, response.data.token, password);
       toast.success(t('auth.loginSuccess'));
       navigate('/personal-info');
     } catch (error) {
@@ -89,6 +94,30 @@ const Landing = () => {
           <p className="text-sm text-muted-foreground max-w-xl mx-auto">
             {t('landing.description')}
           </p>
+        </div>
+
+        {/* Data Privacy Info */}
+        <div className="flex justify-center mb-6">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-primary flex items-center gap-1 cursor-pointer hover:underline">
+                  <Info className="h-4 w-4" />
+                  {t('dataPrivacy.title')}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm p-4 bg-card border">
+                <p className="text-sm font-semibold mb-2 text-black dark:text-white">{t('dataPrivacy.popupTitle')}</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• {t('dataPrivacy.line1')}</li>
+                  <li>• {t('dataPrivacy.line2')}</li>
+                  <li>• {t('dataPrivacy.line3')}</li>
+                  <li>• {t('dataPrivacy.line4')}</li>
+                  <li>• {t('dataPrivacy.line5')}</li>
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">

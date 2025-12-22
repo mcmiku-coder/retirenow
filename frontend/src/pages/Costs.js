@@ -18,16 +18,17 @@ const Costs = () => {
   const { t } = useLanguage();
   const [rows, setRows] = useState([
     { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 3, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 4, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 5, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 6, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 7, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 8, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true }
+    { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
+    { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true }
   ]);
-  const [nextId, setNextId] = useState(10);
+  const [nextId, setNextId] = useState(11);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,14 +56,15 @@ const Costs = () => {
             
             setRows([
               { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 3, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 4, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 5, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 6, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 7, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 8, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
+              { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+              { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
             ]);
           }
         }
@@ -95,16 +97,17 @@ const Costs = () => {
       
       setRows([
         { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 2, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 3, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 4, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 5, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 6, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 7, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 8, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 9, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
+        { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+        { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
       ]);
-      setNextId(10);
+      setNextId(11);
       toast.success(t('costs.resetSuccess'));
     }
   };

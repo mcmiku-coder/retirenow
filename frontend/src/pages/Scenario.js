@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { getIncomeData, getCostData, getUserData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { NavigationButtons } from '../components/NavigationButtons';
-import { Calendar, Minus, Trash2, Split, Gift } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
 
 const Scenario = () => {
   const navigate = useNavigate();
@@ -28,6 +28,9 @@ const Scenario = () => {
   
   // Track date overrides for standard income sources
   const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
+  
+  // Possible future inflows (inheritance, other)
+  const [futureInflows, setFutureInflows] = useState([]);
 
   useEffect(() => {
     if (!user || !password) {
@@ -40,6 +43,7 @@ const Scenario = () => {
         const userData = await getUserData(user.email, password);
         const incomeData = await getIncomeData(user.email, password) || [];
         const costData = await getCostData(user.email, password) || [];
+        const scenarioData = await getScenarioData(user.email, password);
 
         if (!userData) {
           navigate('/personal-info');
@@ -66,8 +70,16 @@ const Scenario = () => {
         }
 
         setRetirementLegalDate(retirementDateStr);
-        setWishedRetirementDate(retirementDateStr);
+        setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
         setDeathDate(deathDateStr);
+
+        // Load saved scenario data if available
+        if (scenarioData) {
+          setLiquidAssets(scenarioData.liquidAssets || '');
+          setNonLiquidAssets(scenarioData.nonLiquidAssets || '');
+          setTransmissionAmount(scenarioData.transmissionAmount || '');
+          setFutureInflows(scenarioData.futureInflows || []);
+        }
 
         // Set incomes with adjusted values
         setIncomes(incomeData.filter(i => i.amount).map(i => ({
@@ -91,6 +103,29 @@ const Scenario = () => {
 
     loadData();
   }, [user, password, navigate]);
+
+  // Auto-save scenario data when values change
+  useEffect(() => {
+    if (loading || !user?.email || !password) return;
+    
+    const saveData = async () => {
+      try {
+        await saveScenarioData(user.email, password, {
+          liquidAssets,
+          nonLiquidAssets,
+          transmissionAmount,
+          futureInflows,
+          wishedRetirementDate
+        });
+      } catch (error) {
+        console.error('Failed to auto-save scenario data:', error);
+      }
+    };
+    
+    // Debounce the save
+    const timeoutId = setTimeout(saveData, 500);
+    return () => clearTimeout(timeoutId);
+  }, [liquidAssets, nonLiquidAssets, transmissionAmount, futureInflows, wishedRetirementDate, user, password, loading]);
 
   const adjustDate = (months) => {
     const currentDate = new Date(wishedRetirementDate);
@@ -168,7 +203,27 @@ const Scenario = () => {
     });
     
     setCosts(updatedCosts);
-    toast.success('Cost line deleted');
+    toast.success(t('scenario.costDeleted'));
+  };
+
+  // Future inflows management
+  const addFutureInflow = () => {
+    setFutureInflows([...futureInflows, {
+      id: Date.now(),
+      type: 'Inheritance',
+      amount: '',
+      date: ''
+    }]);
+  };
+
+  const updateFutureInflow = (id, field, value) => {
+    setFutureInflows(futureInflows.map(inflow => 
+      inflow.id === id ? { ...inflow, [field]: value } : inflow
+    ));
+  };
+
+  const deleteFutureInflow = (id) => {
+    setFutureInflows(futureInflows.filter(inflow => inflow.id !== id));
   };
 
   const splitCost = (id) => {
@@ -303,6 +358,19 @@ const Scenario = () => {
           }
         });
 
+        // Add future inflows for this year
+        futureInflows.forEach(inflow => {
+          const inflowAmount = parseFloat(inflow.amount) || 0;
+          if (inflowAmount > 0 && inflow.date) {
+            const inflowYear = new Date(inflow.date).getFullYear();
+            if (inflowYear === year) {
+              yearData.income += inflowAmount;
+              const inflowLabel = inflow.type || 'Other Inflow';
+              yearData.incomeBreakdown[inflowLabel] = (yearData.incomeBreakdown[inflowLabel] || 0) + inflowAmount;
+            }
+          }
+        });
+
         yearlyData.push(yearData);
       }
 
@@ -380,10 +448,10 @@ const Scenario = () => {
 
         <div className="space-y-6">
           {/* Wished Retirement Date Selector */}
-          <Card>
+          <Card className="border-blue-400/30">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-400" />
+              <CardTitle className="flex items-center gap-2 text-blue-400">
+                <Calendar className="h-5 w-5" />
                 {t('scenario.wishedRetirement')}
               </CardTitle>
             </CardHeader>
@@ -402,8 +470,7 @@ const Scenario = () => {
                   variant="outline"
                   size="sm"
                 >
-                  <Minus className="h-4 w-4 mr-1" />
-                  1 {t('scenario.month')}
+                  Remove 1 {t('scenario.month')}
                 </Button>
                 <Button
                   data-testid="minus-1-year-btn"
@@ -411,8 +478,7 @@ const Scenario = () => {
                   variant="outline"
                   size="sm"
                 >
-                  <Minus className="h-4 w-4 mr-1" />
-                  1 {t('scenario.year')}
+                  Remove 1 {t('scenario.year')}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
@@ -675,6 +741,90 @@ const Scenario = () => {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Possible Future Inflows Section */}
+          <Card className="border-green-500/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-400" />
+                Possible Future Inflows
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Add expected future inflows like inheritance or other one-time income. These will be added to your balance on the specified date.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {futureInflows.length > 0 && (
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-semibold">Inflow Type</th>
+                        <th className="text-right p-3 font-semibold">Amount (CHF)</th>
+                        <th className="text-left p-3 font-semibold">Date</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {futureInflows.map((inflow, index) => (
+                        <tr key={inflow.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3">
+                            <select
+                              data-testid={`inflow-type-${index}`}
+                              value={inflow.type}
+                              onChange={(e) => updateFutureInflow(inflow.id, 'type', e.target.value)}
+                              className="w-full bg-background border rounded-md p-2"
+                            >
+                              <option value="Inheritance">Inheritance</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              data-testid={`inflow-amount-${index}`}
+                              type="number"
+                              value={inflow.amount}
+                              onChange={(e) => updateFutureInflow(inflow.id, 'amount', e.target.value)}
+                              placeholder="0"
+                              className="max-w-[150px] ml-auto"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              data-testid={`inflow-date-${index}`}
+                              type="date"
+                              value={inflow.date}
+                              onChange={(e) => updateFutureInflow(inflow.id, 'date', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3 text-center">
+                            <Button
+                              onClick={() => deleteFutureInflow(inflow.id)}
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <Button
+                onClick={addFutureInflow}
+                variant="outline"
+                size="sm"
+                className="text-green-500 border-green-500/50 hover:bg-green-500/10"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Future Inflow
+              </Button>
             </CardContent>
           </Card>
 

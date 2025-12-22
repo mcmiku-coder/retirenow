@@ -5,70 +5,78 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
-import { getUserData } from '../utils/database';
-import { saveUserData } from '../utils/database';
-import axios from 'axios';
+import { getUserData, saveUserData } from '../utils/database';
+import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
 import { NavigationButtons } from '../components/NavigationButtons';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const RetirementOverview = () => {
   const navigate = useNavigate();
-  const { user, password, token } = useAuth();
+  const { user, password } = useAuth();
   const { t, language } = useLanguage();
   const [retirementData, setRetirementData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Get email safely
+  const userEmail = user?.email;
 
   useEffect(() => {
-    if (!user || !password) {
+    // Check for valid session
+    if (!user || !userEmail) {
+      console.warn('No user or email, redirecting to login');
+      navigate('/');
+      return;
+    }
+    
+    if (!password) {
+      console.warn('No password available, redirecting to login');
       navigate('/');
       return;
     }
 
     const loadRetirementData = async () => {
       try {
-        const userData = await getUserData(user.email, password);
+        console.log('Loading user data for:', userEmail);
+        const userData = await getUserData(userEmail, password);
+        
         if (!userData || !userData.birthDate) {
+          console.warn('No user data or birth date found, redirecting to personal-info');
           navigate('/personal-info');
           return;
         }
 
-        // Call API to calculate life expectancy
-        const response = await axios.post(
-          `${API}/life-expectancy`,
-          {
-            birth_date: userData.birthDate,
-            gender: userData.gender
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        console.log('User data loaded:', { birthDate: userData.birthDate, gender: userData.gender });
 
-        setRetirementData(response.data);
+        // Calculate life expectancy locally using embedded Swiss statistics
+        console.log('Calculating life expectancy locally...');
+        const retirementResult = calculateLifeExpectancy(userData.birthDate, userData.gender);
+        console.log('Life expectancy calculation result:', retirementResult);
+        
+        setRetirementData(retirementResult);
         
         // Save the calculated dates back to user data for use in other pages
         const updatedUserData = {
           ...userData,
-          retirementLegalDate: response.data.retirement_legal_date, // ISO format
-          theoreticalDeathDate: response.data.theoretical_death_date, // ISO format
-          lifeExpectancyYears: response.data.life_expectancy_years
+          retirementLegalDate: retirementResult.retirement_legal_date,
+          theoreticalDeathDate: retirementResult.theoretical_death_date,
+          lifeExpectancyYears: retirementResult.life_expectancy_years
         };
-        await saveUserData(user.email, password, updatedUserData);
+        await saveUserData(userEmail, password, updatedUserData);
+        console.log('Updated user data saved');
       } catch (error) {
+        console.error('Error in loadRetirementData:', error);
+        setError(error.message || 'Failed to load data');
         toast.error(t('common.error'));
-        console.error(error);
       } finally {
         setLoading(false);
       }
     };
 
     loadRetirementData();
-  }, [user, password, token, navigate, t]);
+  }, [user, userEmail, password, navigate, t]);
 
   // Format date based on language
   const formatDate = (dateString) => {
@@ -82,6 +90,30 @@ const RetirementOverview = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !retirementData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold text-red-500 mb-4">Unable to Load Data</h2>
+          <p className="text-muted-foreground mb-4">
+            Could not connect to the server to calculate your retirement data.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Error: {error}
+          </p>
+          <div className="space-y-2">
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Try Again
+            </Button>
+            <Button onClick={() => navigate('/personal-info')} variant="outline" className="w-full">
+              Go Back
+            </Button>
+          </div>
         </div>
       </div>
     );

@@ -93,7 +93,7 @@ export const translations = {
       resetSuccess: "Income reset to defaults",
       incomeDeleted: "Income source deleted",
       // Default income names
-      salary: "Salary",
+      salary: "Net Salary",
       avs: "AVS",
       lpp: "LPP",
       threeA: "3a"
@@ -183,7 +183,7 @@ export const translations = {
       savings: "Savings",
       liquidAssets: "Liquid Assets (CHF)",
       nonLiquidAssets: "Non-Liquid Assets (CHF)",
-      transmission: "Transmission / Inheritance",
+      transmission: "Transmission",
       transmissionDesc: "Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.",
       amountToTransmit: "Amount to Transmit (CHF)",
       transmissionWarning: "If your balance after transmission goes negative, you cannot quit!",
@@ -241,6 +241,43 @@ export const translations = {
       select: "Language",
       english: "English",
       french: "Français"
+    },
+
+    // Data Privacy
+    dataPrivacy: {
+      title: "Information about the use of your data",
+      popupTitle: "Data Privacy & Security",
+      line1: "All your data is encrypted locally in your browser using AES-256 encryption",
+      line2: "Your password is the only key - we cannot access or recover your data",
+      line3: "No personal financial data is sent to our servers",
+      line4: "Only your email is stored for authentication purposes",
+      line5: "You can delete all your data at any time by clearing browser storage"
+    },
+
+    // Cost names
+    costNames: {
+      rentMortgage: "Rent/Mortgage",
+      taxes: "Taxes",
+      healthInsurance: "Health Insurance",
+      food: "Food",
+      clothing: "Clothing",
+      privateTransport: "Private Transportation",
+      publicTransport: "Public Transportation",
+      tvInternetPhone: "TV/Internet/Phone",
+      restaurants: "Restaurants",
+      vacation: "Vacation"
+    },
+
+    // PDF Report
+    pdf: {
+      generating: "PDF is generating...",
+      generateReport: "Generate PDF Report",
+      title: "Retirement Simulation Report",
+      personalInfo: "Personal Information",
+      retirementOverview: "Retirement Overview",
+      scenarioSimulator: "Scenario Simulator",
+      verdict: "Verdict",
+      yearByYearAnnex: "Year-by-Year Financial Details"
     }
   },
 
@@ -337,7 +374,7 @@ export const translations = {
       resetSuccess: "Revenus réinitialisés",
       incomeDeleted: "Source de revenu supprimée",
       // Default income names
-      salary: "Salaire",
+      salary: "Salaire Net",
       avs: "AVS",
       lpp: "LPP",
       threeA: "3a"
@@ -427,7 +464,7 @@ export const translations = {
       savings: "Épargne",
       liquidAssets: "Actifs liquides (CHF)",
       nonLiquidAssets: "Actifs non liquides (CHF)",
-      transmission: "Transmission / Héritage",
+      transmission: "Transmission",
       transmissionDesc: "Montant que vous souhaitez léguer à vos héritiers en fin de vie. Ce montant sera déduit de votre solde final.",
       amountToTransmit: "Montant à transmettre (CHF)",
       transmissionWarning: "Si votre solde après transmission devient négatif, vous ne pouvez pas partir !",
@@ -485,6 +522,43 @@ export const translations = {
       select: "Langue",
       english: "English",
       french: "Français"
+    },
+
+    // Data Privacy
+    dataPrivacy: {
+      title: "Informations sur l'utilisation de vos données",
+      popupTitle: "Confidentialité et Sécurité des Données",
+      line1: "Toutes vos données sont chiffrées localement dans votre navigateur avec un chiffrement AES-256",
+      line2: "Votre mot de passe est la seule clé - nous ne pouvons pas accéder ou récupérer vos données",
+      line3: "Aucune donnée financière personnelle n'est envoyée à nos serveurs",
+      line4: "Seul votre email est stocké à des fins d'authentification",
+      line5: "Vous pouvez supprimer toutes vos données à tout moment en effaçant le stockage du navigateur"
+    },
+
+    // Cost names
+    costNames: {
+      rentMortgage: "Loyer/Hypothèque",
+      taxes: "Impôts",
+      healthInsurance: "Assurance Maladie",
+      food: "Alimentation",
+      clothing: "Vêtements",
+      privateTransport: "Transport Privé",
+      publicTransport: "Transport Public",
+      tvInternetPhone: "TV/Internet/Téléphone",
+      restaurants: "Restaurants",
+      vacation: "Vacances"
+    },
+
+    // PDF Report
+    pdf: {
+      generating: "Génération du PDF en cours...",
+      generateReport: "Générer le rapport PDF",
+      title: "Rapport de Simulation de Retraite",
+      personalInfo: "Informations Personnelles",
+      retirementOverview: "Aperçu de la Retraite",
+      scenarioSimulator: "Simulateur de Scénarios",
+      verdict: "Verdict",
+      yearByYearAnnex: "Détails Financiers Année par Année"
     }
   }
 };

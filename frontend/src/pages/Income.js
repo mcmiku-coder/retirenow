@@ -19,7 +19,7 @@ const Income = () => {
     { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
     { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
     { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
-    { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: '', endDate: '', locked: true }
+    { id: 4, name: '3a', amount: '', frequency: 'One-time', category: '', startDate: '', endDate: '', locked: true }
   ]);
   const [nextId, setNextId] = useState(5);
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ const Income = () => {
               { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
               { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
               { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-              { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+              { id: 4, name: '3a', amount: '', frequency: 'One-time', category: '', startDate: retirementDateStr, endDate: '', locked: true }
             ]);
           }
         }
@@ -101,7 +101,7 @@ const Income = () => {
         { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
         { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
         { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-        { id: 4, name: '3a', amount: '', frequency: 'Yearly', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+        { id: 4, name: '3a', amount: '', frequency: 'One-time', category: '', startDate: retirementDateStr, endDate: '', locked: true }
       ]);
       setNextId(5);
       toast.success(t('income.resetSuccess'));

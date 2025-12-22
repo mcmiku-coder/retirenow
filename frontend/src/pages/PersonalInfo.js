@@ -6,9 +6,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
-import { Calendar } from 'lucide-react';
+import { Calendar, Info } from 'lucide-react';
 import { NavigationButtons } from '../components/NavigationButtons';
 
 const PersonalInfo = () => {
@@ -19,34 +20,70 @@ const PersonalInfo = () => {
   const [gender, setGender] = useState('');
   const [residence, setResidence] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Get email safely
+  const userEmail = user?.email;
 
   useEffect(() => {
-    if (!user || !password) {
+    // Redirect to login if no user or no password (password is lost on page refresh)
+    if (!user || !userEmail) {
+      console.warn('No user or email available, redirecting to login');
+      navigate('/');
+      return;
+    }
+    
+    // If user exists but password is null (page was refreshed), redirect to login
+    if (!password) {
+      console.warn('Password not available - session may have been refreshed. Redirecting to login.');
       navigate('/');
       return;
     }
 
     // Load existing data if any
     const loadData = async () => {
+      setDataLoading(true);
       try {
-        const data = await getUserData(user.email, password);
-        if (data) {
-          setBirthDate(data.birthDate || '');
-          setGender(data.gender || '');
-          setResidence(data.residence || '');
+        // Only try to load if we have valid email and password
+        if (userEmail && password) {
+          const data = await getUserData(userEmail, password);
+          if (data) {
+            setBirthDate(data.birthDate || '');
+            setGender(data.gender || '');
+            setResidence(data.residence || '');
+          }
+          // If data is null, that's fine - it's a new user with empty form
         }
       } catch (error) {
+        // Log but don't block - new users won't have data yet
         console.error('Error loading data:', error);
+      } finally {
+        setDataLoading(false);
       }
     };
     loadData();
-  }, [user, password, navigate]);
+  }, [user, userEmail, password, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!birthDate || !gender || !residence) {
       toast.error(t('common.error'));
+      return;
+    }
+    
+    // Double-check email and password are available before trying to save
+    if (!userEmail) {
+      console.error('No email available for save');
+      toast.error('Session expired. Please log in again.');
+      navigate('/');
+      return;
+    }
+    
+    if (!password) {
+      console.error('No password available for save');
+      toast.error('Session expired. Please log in again.');
+      navigate('/');
       return;
     }
 
@@ -58,15 +95,29 @@ const PersonalInfo = () => {
         residence
       };
       
-      await saveUserData(user.email, password, userData);
+      console.log('Saving user data for:', userEmail);
+      await saveUserData(userEmail, password, userData);
       toast.success(t('personalInfo.saveSuccess'));
       navigate('/retirement-overview');
     } catch (error) {
+      console.error('Save error:', error);
       toast.error(t('personalInfo.saveFailed'));
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading spinner while data is being loaded
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="personal-info-page">
@@ -77,6 +128,26 @@ const PersonalInfo = () => {
             <p className="text-muted-foreground" data-testid="page-subtitle">
               {t('personalInfo.subtitle')}
             </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-primary flex items-center gap-1 mt-2 cursor-pointer hover:underline">
+                    <Info className="h-4 w-4" />
+                    {t('dataPrivacy.title')}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-sm p-4 bg-card border">
+                  <p className="text-sm font-semibold mb-2 text-black dark:text-white">{t('dataPrivacy.popupTitle')}</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• {t('dataPrivacy.line1')}</li>
+                    <li>• {t('dataPrivacy.line2')}</li>
+                    <li>• {t('dataPrivacy.line3')}</li>
+                    <li>• {t('dataPrivacy.line4')}</li>
+                    <li>• {t('dataPrivacy.line5')}</li>
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <NavigationButtons backPath="/" showHome={false} />
         </div>

@@ -4,12 +4,12 @@ import { translations } from '../utils/translations';
 const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
-  // Initialize from localStorage or default to English
+  // Initialize from localStorage or default to French
   const [language, setLanguage] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('app_language') || 'en';
+      return localStorage.getItem('app_language') || 'fr';
     }
-    return 'en';
+    return 'fr';
   });
 
   // Save language preference to localStorage
