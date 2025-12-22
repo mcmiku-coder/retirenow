@@ -646,6 +646,117 @@ const Costs = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Question 6: Public Transportation */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question6')}</p>
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="publicTransport" 
+                        checked={helpAnswers.publicTransport === 'never'}
+                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'never'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question6_never')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="publicTransport" 
+                        checked={helpAnswers.publicTransport === 'sometimes'}
+                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'sometimes'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question6_sometimes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="publicTransport" 
+                        checked={helpAnswers.publicTransport === 'always'}
+                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'always'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question6_always')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 7: Clothing Shopping */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question7')}</p>
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="clothingShopping" 
+                        checked={helpAnswers.clothingShopping === 'veryOften'}
+                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'veryOften'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question7_veryOften')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="clothingShopping" 
+                        checked={helpAnswers.clothingShopping === 'reasonably'}
+                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'reasonably'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question7_reasonably')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="clothingShopping" 
+                        checked={helpAnswers.clothingShopping === 'rarely'}
+                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'rarely'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question7_rarely')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 8: TV/Internet/Phone costs */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question8')}</p>
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="tvInternetCosts" 
+                        checked={helpAnswers.tvInternetCosts === 'high'}
+                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'high'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question8_high')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="tvInternetCosts" 
+                        checked={helpAnswers.tvInternetCosts === 'moderate'}
+                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'moderate'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question8_moderate')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="tvInternetCosts" 
+                        checked={helpAnswers.tvInternetCosts === 'low'}
+                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'low'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question8_low')}
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -664,7 +775,10 @@ const Costs = () => {
                       highVacation: null,
                       goesOutOften: null,
                       qualityFood: null,
-                      privateInsurance: null
+                      privateInsurance: null,
+                      publicTransport: null,
+                      clothingShopping: null,
+                      tvInternetCosts: null
                     });
                   }}
                   className="flex-1"
