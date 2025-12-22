@@ -505,9 +505,20 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
       
-      // Save PDF
+      // Save PDF - use blob method for better browser compatibility
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
-      doc.save(fileName);
+      
+      // Generate blob and trigger download
+      const pdfBlob = doc.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
       toast.success(language === 'fr' ? 'Rapport PDF généré avec succès!' : 'PDF Report generated successfully!');
     } catch (error) {
       console.error('PDF generation error:', error);
