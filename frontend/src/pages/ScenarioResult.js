@@ -298,7 +298,7 @@ const ScenarioResult = () => {
           (language === 'fr' ? 'Unique' : 'One-time')
         ]);
         
-        doc.autoTable({
+        autoTable(doc, {
           head: [incomeHeaders],
           body: incomeRows,
           startY: yPos,
@@ -336,7 +336,7 @@ const ScenarioResult = () => {
           (language === 'fr' ? 'Unique' : 'One-time')
         ]);
         
-        doc.autoTable({
+        autoTable(doc, {
           head: [costHeaders],
           body: costRows,
           startY: yPos,
