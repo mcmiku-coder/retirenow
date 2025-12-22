@@ -42,7 +42,10 @@ const Costs = () => {
     highVacation: null,
     goesOutOften: null,
     qualityFood: null,
-    privateInsurance: null
+    privateInsurance: null,
+    publicTransport: null, // 'never', 'sometimes', 'always'
+    clothingShopping: null, // 'veryOften', 'reasonably', 'rarely'
+    tvInternetCosts: null // 'high', 'moderate', 'low'
   });
 
   // Get translated cost name
