@@ -185,8 +185,18 @@ const ScenarioResult = () => {
       const margin = 14;
       let yPos = 20;
       
-      // Helper function for formatting currency
-      const formatCurrency = (val) => `CHF ${Math.round(val || 0).toLocaleString()}`;
+      // Helper function for formatting currency - avoid toLocaleString to prevent special chars
+      const formatCurrency = (val) => {
+        const num = Math.round(val || 0);
+        const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+        return `CHF ${formatted}`;
+      };
+      
+      // Helper function for formatting numbers without currency
+      const formatNumber = (val) => {
+        const num = Math.round(val || 0);
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+      };
       
       // Helper function to check page break
       const checkPageBreak = (needed = 30) => {
