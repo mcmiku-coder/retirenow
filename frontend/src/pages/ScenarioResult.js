@@ -617,14 +617,17 @@ const ScenarioResult = () => {
           </div>
         )}
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-8">
           <Button
-            data-testid="review-btn"
-            onClick={() => navigate('/financial-balance')}
+            data-testid="generate-pdf-btn"
+            onClick={generatePDF}
             variant="outline"
             className="flex-1"
+            disabled={generatingPdf}
           >
-            {t('result.reviewData')}
+            {generatingPdf 
+              ? (language === 'fr' ? 'Génération en cours...' : 'Generating...') 
+              : (language === 'fr' ? 'Générer le rapport PDF' : 'Generate PDF Report')}
           </Button>
           <Button
             data-testid="start-over-btn"
