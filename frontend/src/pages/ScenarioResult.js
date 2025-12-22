@@ -455,27 +455,27 @@ const ScenarioResult = () => {
       const incomeColumns = Array.from(allIncomeCategories);
       const costColumns = Array.from(allCostCategories);
       
-      // Build table headers with categories
+      // Build table headers with categories - Year first
       const headers = [
+        language === 'fr' ? 'Année' : 'Year',
         ...incomeColumns.map(c => (language === 'fr' ? 'Rev. ' : 'Inc. ') + c.substring(0, 8)),
         ...costColumns.map(c => (language === 'fr' ? 'Dép. ' : 'Cost ') + c.substring(0, 8)),
-        language === 'fr' ? 'Année' : 'Year',
         language === 'fr' ? 'Solde cumulé' : 'Running Balance'
       ];
       
-      // Build table rows
+      // Build table rows - Year first
       const tableData = yearlyBreakdown.map(year => {
         const row = [
+          year.year,
           ...incomeColumns.map(cat => {
             const val = year.incomeBreakdown?.[cat];
-            return val ? Math.round(val).toLocaleString() : '-';
+            return val ? formatNumber(val) : '-';
           }),
           ...costColumns.map(cat => {
             const val = year.costBreakdown?.[cat];
-            return val ? Math.round(val).toLocaleString() : '-';
+            return val ? formatNumber(val) : '-';
           }),
-          year.year,
-          Math.round(year.cumulativeBalance).toLocaleString()
+          formatNumber(year.cumulativeBalance)
         ];
         return row;
       });
