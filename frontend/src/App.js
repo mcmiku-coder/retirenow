@@ -32,6 +32,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/information" element={<Information />} />
       <Route path="/personal-info" element={
         <ProtectedRoute>
           <PersonalInfo />
