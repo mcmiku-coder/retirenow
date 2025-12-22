@@ -291,7 +291,7 @@ const ScenarioResult = () => {
           language === 'fr' ? 'Fréquence' : 'Frequency'
         ];
         const incomeRows = adjustedIncomes.map(inc => [
-          inc.name,
+          inc.name || '-',
           formatCurrency(inc.adjustedAmount || inc.amount),
           inc.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
           inc.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
@@ -308,7 +308,17 @@ const ScenarioResult = () => {
           bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
           alternateRowStyles: { fillColor: [248, 249, 250] }
         });
-        yPos = doc.lastAutoTable.finalY + 12;
+        if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
+          yPos = doc.lastAutoTable.finalY + 12;
+        } else {
+          yPos += 50;
+        }
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        doc.text(language === 'fr' ? 'Aucune donnée de revenus' : 'No income data available', margin, yPos);
+        yPos += 15;
       }
       
       // Costs Table
@@ -328,7 +338,7 @@ const ScenarioResult = () => {
           language === 'fr' ? 'Fréquence' : 'Frequency'
         ];
         const costRows = adjustedCosts.map(cost => [
-          cost.name,
+          cost.name || '-',
           cost.category || '-',
           formatCurrency(cost.adjustedAmount || cost.amount),
           cost.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
@@ -346,7 +356,17 @@ const ScenarioResult = () => {
           bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
           alternateRowStyles: { fillColor: [248, 249, 250] }
         });
-        yPos = doc.lastAutoTable.finalY + 12;
+        if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
+          yPos = doc.lastAutoTable.finalY + 12;
+        } else {
+          yPos += 50;
+        }
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        doc.text(language === 'fr' ? 'Aucune donnée de dépenses' : 'No cost data available', margin, yPos);
+        yPos += 15;
       }
       
       // ============================
