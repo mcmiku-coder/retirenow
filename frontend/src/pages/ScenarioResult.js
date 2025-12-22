@@ -818,6 +818,38 @@ const ScenarioResult = () => {
             {t('result.startOver')}
           </Button>
         </div>
+
+        {/* PDF Preview and Download Section */}
+        {pdfDataUrl && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{language === 'fr' ? 'Votre rapport PDF' : 'Your PDF Report'}</span>
+                <a 
+                  href={pdfDataUrl} 
+                  download={language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`}
+                  className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+                >
+                  {language === 'fr' ? '⬇️ Télécharger le PDF' : '⬇️ Download PDF'}
+                </a>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <iframe 
+                src={pdfDataUrl} 
+                width="100%" 
+                height="600px" 
+                title="PDF Preview"
+                className="border rounded-lg"
+              />
+              <p className="text-sm text-muted-foreground mt-4">
+                {language === 'fr' 
+                  ? 'Si le PDF ne s\'affiche pas, cliquez sur le bouton "Télécharger le PDF" ci-dessus.' 
+                  : 'If the PDF does not display, click the "Download PDF" button above.'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
