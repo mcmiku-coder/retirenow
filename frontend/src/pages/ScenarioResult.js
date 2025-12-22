@@ -466,37 +466,44 @@ const ScenarioResult = () => {
         return row;
       });
       
-      // Add table using autoTable
-      doc.autoTable({
-        head: [headers],
-        body: tableData,
-        startY: 30,
-        margin: { left: margin, right: margin },
-        theme: 'grid',
-        styles: { fontSize: 7, cellPadding: 2 },
-        headStyles: { fillColor: [220, 53, 69], textColor: 255, fontSize: 6, fontStyle: 'bold' },
-        bodyStyles: { textColor: [33, 33, 33] },
-        alternateRowStyles: { fillColor: [248, 249, 250] },
-        columnStyles: {
-          [headers.length - 2]: { cellWidth: 12, fontStyle: 'bold' }, // Year column
-          [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column
-        },
-        didParseCell: function(data) {
-          // Color negative running balance red
-          if (data.section === 'body' && data.column.index === headers.length - 1) {
-            const cellText = String(data.cell.raw);
-            if (cellText.startsWith('-')) {
-              data.cell.styles.textColor = [220, 53, 69];
+      // Add table using autoTable (only if we have data)
+      if (tableData.length > 0 && headers.length > 0) {
+        autoTable(doc, {
+          head: [headers],
+          body: tableData,
+          startY: 30,
+          margin: { left: margin, right: margin },
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 2 },
+          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontSize: 6, fontStyle: 'bold' },
+          bodyStyles: { textColor: [33, 33, 33] },
+          alternateRowStyles: { fillColor: [248, 249, 250] },
+          columnStyles: {
+            [headers.length - 2]: { cellWidth: 12, fontStyle: 'bold' }, // Year column
+            [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column
+          },
+          didParseCell: function(data) {
+            // Color negative running balance red
+            if (data.section === 'body' && data.column.index === headers.length - 1) {
+              const cellText = String(data.cell.raw);
+              if (cellText.startsWith('-')) {
+                data.cell.styles.textColor = [220, 53, 69];
+              }
             }
+          },
+          didDrawPage: function(data) {
+            // Footer with page number
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Page ${doc.internal.getNumberOfPages()}`, landscapeWidth - 20, doc.internal.pageSize.getHeight() - 10);
           }
-        },
-        didDrawPage: function(data) {
-          // Footer with page number
-          doc.setFontSize(8);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Page ${doc.internal.getNumberOfPages()}`, landscapeWidth - 20, doc.internal.pageSize.getHeight() - 10);
-        }
-      });
+        });
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
+      }
       
       // Save PDF
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
