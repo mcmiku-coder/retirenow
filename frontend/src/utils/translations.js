@@ -6,7 +6,7 @@ export const translations = {
       title: "quit?",
       subtitle: "Discover if you can financially afford early retirement",
       description: "A comprehensive retirement planning tool that analyzes your income, costs, and savings to determine if you can quit your job and retire early.",
-      learnMore: "Want to learn more about the solution before creating an account?",
+      learnMore: "Learn more about the solution before creating your account",
       createAccount: "Create Account",
       login: "Login",
       securityWarning: "Important: Your password is the only key to your data. We cannot recover it if lost.",
