@@ -101,33 +101,56 @@ const Landing = () => {
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4" data-testid="tagline">
             {t('landing.subtitle')}
           </p>
-          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-            {t('landing.description')}
-          </p>
+          <Link 
+            to="/information" 
+            className="text-primary hover:underline text-sm inline-flex items-center gap-1"
+          >
+            {t('landing.learnMore')}
+          </Link>
         </div>
 
-        {/* Data Privacy Info */}
+        {/* Data Privacy Info - Clickable Dialog */}
         <div className="flex justify-center mb-6">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="text-primary flex items-center gap-1 cursor-pointer hover:underline">
-                  <Info className="h-4 w-4" />
-                  {t('dataPrivacy.title')}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-sm p-4 bg-card border">
-                <p className="text-sm font-semibold mb-2 text-black dark:text-white">{t('dataPrivacy.popupTitle')}</p>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• {t('dataPrivacy.line1')}</li>
-                  <li>• {t('dataPrivacy.line2')}</li>
-                  <li>• {t('dataPrivacy.line3')}</li>
-                  <li>• {t('dataPrivacy.line4')}</li>
-                  <li>• {t('dataPrivacy.line5')}</li>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="text-primary flex items-center gap-1 cursor-pointer hover:underline">
+                <Info className="h-4 w-4" />
+                {t('dataPrivacy.title')}
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5 text-primary" />
+                  {t('dataPrivacy.popupTitle')}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 mt-4">
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-1">•</span>
+                    {t('dataPrivacy.line1')}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-1">•</span>
+                    {t('dataPrivacy.line2')}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-1">•</span>
+                    {t('dataPrivacy.line3')}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-1">•</span>
+                    {t('dataPrivacy.line4')}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-1">•</span>
+                    {t('dataPrivacy.line5')}
+                  </li>
                 </ul>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
