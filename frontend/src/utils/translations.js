@@ -358,6 +358,7 @@ export const translations = {
       title: "quit?",
       subtitle: "Découvrez si vous pouvez vous permettre financièrement une retraite anticipée",
       description: "Un outil complet de planification de retraite qui analyse vos revenus, dépenses et épargne pour déterminer si vous pouvez quitter votre emploi et prendre une retraite anticipée.",
+      learnMore: "Vous voulez en savoir plus sur la solution avant de créer un compte ?",
       createAccount: "Créer un compte",
       login: "Connexion",
       securityWarning: "Important : Votre mot de passe est la seule clé de vos données. Nous ne pouvons pas le récupérer en cas de perte.",
@@ -370,6 +371,31 @@ export const translations = {
         simulation: "Simulation de scénarios",
         simulationDesc: "Ajustez la date de retraite et voyez les projections"
       }
+    },
+
+    // Information Page
+    infoPage: {
+      title: "Comment fonctionne quit?",
+      subtitle: "Un guide complet pour votre planification de retraite",
+      backToHome: "Retour à l'accueil",
+      step1Title: "1. Informations personnelles",
+      step1Desc: "Commencez par entrer votre date de naissance, votre genre et votre pays de résidence. Ces informations sont utilisées pour calculer votre âge légal de retraite et votre espérance de vie selon les statistiques officielles suisses.",
+      step2Title: "2. Aperçu de la retraite",
+      step2Desc: "Visualisez votre date de retraite légale (65 ans + 1 mois), votre espérance de vie et votre date de fin théorique. Tous les calculs sont effectués localement dans votre navigateur - aucune donnée n'est envoyée à nos serveurs.",
+      step3Title: "3. Sources de revenus",
+      step3Desc: "Entrez toutes vos sources de revenus : Salaire Net, AVS (assurance sociale suisse), LPP (prévoyance professionnelle), 3a (prévoyance privée) et tout revenu personnalisé. Spécifiez les montants, fréquences et périodes pour chaque source.",
+      step4Title: "4. Coûts de la vie",
+      step4Desc: "Listez vos dépenses mensuelles et annuelles par catégories : Logement, Impôts, Assurance Maladie, Alimentation, Transport, Loisirs, et plus. Utilisez notre fonction 'Aide pour remplir ce tableau' pour estimer rapidement les coûts typiques selon votre style de vie.",
+      step5Title: "5. Bilan financier",
+      step5Desc: "Visualisez votre projection financière dans le temps avec des graphiques interactifs. Consultez les détails année par année des revenus vs dépenses et comprenez si votre trajectoire actuelle mène à un solde positif ou négatif.",
+      step6Title: "6. Simulateur de scénarios",
+      step6Desc: "Le cœur de quit? - Ajustez votre date de retraite souhaitée, modifiez les projections de revenus et de coûts, ajoutez épargne et entrées futures (héritage, etc.), et définissez un montant de transmission pour vos héritiers.",
+      step7Title: "7. Votre verdict",
+      step7Desc: "Obtenez votre verdict personnalisé : Pouvez-vous partir ? Visualisez votre solde final projeté, téléchargez un rapport PDF complet et prenez des décisions éclairées sur votre calendrier de retraite.",
+      securityTitle: "Sécurité Zero-Knowledge",
+      securityDesc: "Vos données financières ne quittent jamais votre appareil. Tous les calculs sont effectués localement, et vos données sont chiffrées avec un chiffrement AES-256 utilisant votre mot de passe comme seule clé. Nous ne pouvons pas accéder ou récupérer vos données - votre confidentialité est garantie.",
+      ctaTitle: "Prêt à planifier votre retraite ?",
+      ctaButton: "Créer votre compte gratuit"
     },
 
     // Auth Modal
