@@ -511,7 +511,7 @@ const Scenario = () => {
                   variant="outline"
                   size="sm"
                 >
-                  Remove 1 {t('scenario.month')}
+                  {t('scenario.removeMonth')}
                 </Button>
                 <Button
                   data-testid="minus-1-year-btn"
@@ -519,7 +519,7 @@ const Scenario = () => {
                   variant="outline"
                   size="sm"
                 >
-                  Remove 1 {t('scenario.year')}
+                  {t('scenario.removeYear')}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
