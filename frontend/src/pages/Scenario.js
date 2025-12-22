@@ -35,6 +35,20 @@ const COST_KEYS = {
   'Vacation': 'vacation'
 };
 
+// Frequency translation helper
+const getTranslatedFrequency = (frequency, t) => {
+  switch (frequency) {
+    case 'Monthly':
+      return t('scenario.frequencyMonthly');
+    case 'Yearly':
+      return t('scenario.frequencyYearly');
+    case 'One-time':
+      return t('scenario.frequencyOneTime');
+    default:
+      return frequency;
+  }
+};
+
 const Scenario = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
