@@ -103,7 +103,7 @@ const Landing = () => {
           </p>
           <Link 
             to="/information" 
-            className="text-primary hover:underline text-sm inline-flex items-center gap-1"
+            className="text-green-500 hover:text-green-400 hover:underline text-sm inline-flex items-center gap-1"
           >
             {t('landing.learnMore')}
           </Link>
@@ -113,7 +113,7 @@ const Landing = () => {
         <div className="flex justify-center mb-6">
           <Dialog>
             <DialogTrigger asChild>
-              <button className="text-primary flex items-center gap-1 cursor-pointer hover:underline">
+              <button className="text-primary flex items-center gap-1 cursor-pointer hover:underline text-sm">
                 <Info className="h-4 w-4" />
                 {t('dataPrivacy.title')}
               </button>
