@@ -65,7 +65,7 @@ const Costs = () => {
     
     return [
       { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-      { id: 2, name: 'Taxes', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 2, name: 'Taxes', amount: '', frequency: 'Monthly', category: 'Taxes', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
       { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
       { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
       { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
