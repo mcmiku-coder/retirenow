@@ -23,6 +23,7 @@ const ScenarioResult = () => {
   const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfDataUrl, setPdfDataUrl] = useState(null);
   const [userData, setUserData] = useState(null);
   const [scenarioData, setScenarioData] = useState(null);
 
