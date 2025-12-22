@@ -448,7 +448,8 @@ export const translations = {
         elementary: "Élémentaire",
         transport: "Transport",
         leisure: "Loisirs",
-        other: "Autre"
+        other: "Autre",
+        taxes: "Impôts"
       },
       // Default cost names (in French)
       costNames: {
