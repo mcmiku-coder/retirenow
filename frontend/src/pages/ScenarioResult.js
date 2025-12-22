@@ -506,17 +506,12 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
       
-      // Generate PDF as data URI (bypasses popup blockers)
+      // Save PDF using file-saver library (most reliable cross-browser method)
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Convert to base64 data URI
-      const pdfDataUri = doc.output('datauristring');
-      
-      // Create download link and click it
-      const link = document.createElement('a');
-      link.href = pdfDataUri;
-      link.download = fileName;
-      link.click();
+      // Generate blob and use file-saver
+      const pdfBlob = doc.output('blob');
+      saveAs(pdfBlob, fileName);
       
       toast.success(language === 'fr' 
         ? 'PDF téléchargé! Vérifiez votre dossier Téléchargements.' 
