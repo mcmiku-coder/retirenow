@@ -9,8 +9,8 @@ import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import { NavigationButtons } from '../components/NavigationButtons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
