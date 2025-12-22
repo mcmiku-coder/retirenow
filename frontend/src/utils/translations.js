@@ -219,7 +219,7 @@ export const translations = {
       savings: "Savings",
       liquidAssets: "Liquid Assets (CHF)",
       nonLiquidAssets: "Non-Liquid Assets (CHF)",
-      transmission: "Transmission / Inheritance",
+      transmission: "Transmission",
       transmissionDesc: "Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.",
       amountToTransmit: "Amount to Transmit (CHF)",
       transmissionWarning: "If your balance after transmission goes negative, you cannot quit!",
