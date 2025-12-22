@@ -247,6 +247,52 @@ const Costs = () => {
         );
       }
 
+      // Handle public transportation question
+      if (helpAnswers.publicTransport !== null) {
+        if (helpAnswers.publicTransport === 'never') {
+          // Remove public transportation line
+          updatedRows = updatedRows.filter(row => row.name !== 'Public transportation');
+        } else if (helpAnswers.publicTransport === 'sometimes') {
+          updatedRows = updatedRows.map(row => 
+            row.name === 'Public transportation' ? { ...row, amount: '100' } : row
+          );
+        } else if (helpAnswers.publicTransport === 'always') {
+          updatedRows = updatedRows.map(row => 
+            row.name === 'Public transportation' ? { ...row, amount: '300' } : row
+          );
+        }
+      }
+
+      // Handle clothing shopping question
+      if (helpAnswers.clothingShopping !== null) {
+        let clothingAmount = '300';
+        if (helpAnswers.clothingShopping === 'veryOften') {
+          clothingAmount = '500';
+        } else if (helpAnswers.clothingShopping === 'reasonably') {
+          clothingAmount = '300';
+        } else if (helpAnswers.clothingShopping === 'rarely') {
+          clothingAmount = '100';
+        }
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Clothing' ? { ...row, amount: clothingAmount } : row
+        );
+      }
+
+      // Handle TV/Internet/Phone costs question
+      if (helpAnswers.tvInternetCosts !== null) {
+        let tvAmount = '200';
+        if (helpAnswers.tvInternetCosts === 'high') {
+          tvAmount = '400';
+        } else if (helpAnswers.tvInternetCosts === 'moderate') {
+          tvAmount = '200';
+        } else if (helpAnswers.tvInternetCosts === 'low') {
+          tvAmount = '80';
+        }
+        updatedRows = updatedRows.map(row => 
+          row.name === 'TV/Internet/Phone' ? { ...row, amount: tvAmount } : row
+        );
+      }
+
       // Set taxes based on salary
       if (roundedTax > 0) {
         updatedRows = updatedRows.map(row => 
@@ -263,7 +309,10 @@ const Costs = () => {
       highVacation: null,
       goesOutOften: null,
       qualityFood: null,
-      privateInsurance: null
+      privateInsurance: null,
+      publicTransport: null,
+      clothingShopping: null,
+      tvInternetCosts: null
     });
     
     toast.success(language === 'fr' ? 'Valeurs appliquées!' : 'Values applied!');
