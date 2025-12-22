@@ -716,7 +716,7 @@ const Scenario = () => {
                               className="max-w-[150px] ml-auto"
                             />
                           </td>
-                          <td className="p-3">{cost.frequency}</td>
+                          <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
                           <td className="p-3">
                             <Input
                               data-testid={`cost-start-date-${index}`}
