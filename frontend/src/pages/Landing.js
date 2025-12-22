@@ -85,9 +85,13 @@ const Landing = () => {
 
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold mb-6" data-testid="app-title">
-            {t('landing.title')}
-          </h1>
+          <div className="flex justify-center mb-6" data-testid="app-title">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_retire-compass/artifacts/ltntsblz_quit.png" 
+              alt="Can I quit?" 
+              className="max-w-md w-full h-auto rounded-lg shadow-lg"
+            />
+          </div>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4" data-testid="tagline">
             {t('landing.subtitle')}
           </p>
