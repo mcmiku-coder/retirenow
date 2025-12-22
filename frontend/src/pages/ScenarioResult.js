@@ -298,7 +298,7 @@ const ScenarioResult = () => {
           (language === 'fr' ? 'Unique' : 'One-time')
         ]);
         
-        autoTable(doc, {
+        const incomeTable = autoTable(doc, {
           head: [incomeHeaders],
           body: incomeRows,
           startY: yPos,
@@ -308,7 +308,7 @@ const ScenarioResult = () => {
           bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
           alternateRowStyles: { fillColor: [248, 249, 250] }
         });
-        yPos = doc.lastAutoTable.finalY + 12;
+        yPos = incomeTable.finalY + 12;
       }
       
       // Costs Table
