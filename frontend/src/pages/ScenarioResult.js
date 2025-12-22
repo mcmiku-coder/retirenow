@@ -169,126 +169,247 @@ const ScenarioResult = () => {
     navigate('/personal-info');
   };
 
-  // PDF Generation Function
+  // PDF Generation Function - Light/Clear Mode
   const generatePDF = async () => {
     setGeneratingPdf(true);
-    toast.info(t('pdf.generating'));
+    toast.info(language === 'fr' ? 'Génération du PDF...' : 'Generating PDF...');
     
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
       let yPos = 20;
       
+      // Helper function for formatting currency
+      const formatCurrency = (val) => `CHF ${Math.round(val || 0).toLocaleString()}`;
+      
+      // Helper function to check page break
+      const checkPageBreak = (needed = 30) => {
+        if (yPos + needed > pageHeight - 20) {
+          doc.addPage();
+          yPos = 20;
+        }
+      };
+      
+      // ============================
+      // PAGE 1: Title & Personal Info
+      // ============================
+      
       // Title
-      doc.setFontSize(22);
+      doc.setFontSize(28);
+      doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.title'), pageWidth / 2, yPos, { align: 'center' });
-      yPos += 15;
+      doc.text('quit?', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
       
-      // Date
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 15;
-      
-      // Personal Information Section
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.personalInfo'), 14, yPos);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont('helvetica', 'normal');
+      doc.text(language === 'fr' ? 'Rapport de planification de retraite' : 'Retirement Planning Report', pageWidth / 2, yPos, { align: 'center' });
       yPos += 8;
       
       doc.setFontSize(10);
+      doc.text(`${language === 'fr' ? 'Généré le' : 'Generated on'}: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 18;
+      
+      // Personal Information Section
+      doc.setFontSize(16);
+      doc.setTextColor(220, 53, 69);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'fr' ? 'Informations personnelles' : 'Personal Information', margin, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
       if (userData) {
-        doc.text(`${t('personalInfo.birthDate')}: ${userData.birthDate || 'N/A'}`, 14, yPos);
+        doc.text(`${language === 'fr' ? 'Date de naissance' : 'Birth Date'}: ${userData.birthDate || 'N/A'}`, margin, yPos);
         yPos += 6;
-        doc.text(`${t('personalInfo.gender')}: ${userData.gender === 'male' ? t('personalInfo.male') : t('personalInfo.female')}`, 14, yPos);
+        doc.text(`${language === 'fr' ? 'Genre' : 'Gender'}: ${userData.gender === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female')}`, margin, yPos);
         yPos += 6;
-        doc.text(`${t('personalInfo.country')}: ${userData.residence || 'N/A'}`, 14, yPos);
-        yPos += 12;
+        doc.text(`${language === 'fr' ? 'Pays' : 'Country'}: ${userData.residence || 'N/A'}`, margin, yPos);
+        yPos += 14;
       }
       
       // Retirement Overview Section
-      doc.setFontSize(14);
+      doc.setFontSize(16);
+      doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.retirementOverview'), 14, yPos);
-      yPos += 8;
+      doc.text(language === 'fr' ? 'Aperçu de la retraite' : 'Retirement Overview', margin, yPos);
+      yPos += 10;
       
-      doc.setFontSize(10);
+      doc.setFontSize(11);
+      doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
       if (userData) {
-        doc.text(`${t('retirementOverview.legalRetirement')}: ${userData.retirementLegalDate || 'N/A'}`, 14, yPos);
+        doc.text(`${language === 'fr' ? 'Date de retraite légale' : 'Legal Retirement Date'}: ${userData.retirementLegalDate || 'N/A'}`, margin, yPos);
         yPos += 6;
-        doc.text(`${t('retirementOverview.lifeExpectancy')}: ${userData.lifeExpectancyYears ? Math.round(userData.lifeExpectancyYears) + ' ' + t('retirementOverview.years') : 'N/A'}`, 14, yPos);
+        doc.text(`${language === 'fr' ? 'Espérance de vie' : 'Life Expectancy'}: ${userData.lifeExpectancyYears ? Math.round(userData.lifeExpectancyYears) + (language === 'fr' ? ' ans' : ' years') : 'N/A'}`, margin, yPos);
         yPos += 6;
-        doc.text(`${t('retirementOverview.theoreticalDeath')}: ${userData.theoreticalDeathDate || 'N/A'}`, 14, yPos);
+        doc.text(`${language === 'fr' ? 'Date de fin théorique' : 'Theoretical End Date'}: ${userData.theoreticalDeathDate || 'N/A'}`, margin, yPos);
+        yPos += 14;
+      }
+      
+      // Scenario Parameters Section
+      doc.setFontSize(16);
+      doc.setTextColor(220, 53, 69);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'fr' ? 'Paramètres du scénario' : 'Scenario Parameters', margin, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(33, 33, 33);
+      doc.setFont('helvetica', 'normal');
+      const wishedDate = scenarioData?.wishedRetirementDate || result?.wishedRetirementDate;
+      const liquidAssets = scenarioData?.liquidAssets || location.state?.liquidAssets || 0;
+      const nonLiquidAssets = scenarioData?.nonLiquidAssets || location.state?.nonLiquidAssets || 0;
+      const transmissionAmt = scenarioData?.transmissionAmount || result?.transmissionAmount || 0;
+      
+      doc.text(`${language === 'fr' ? 'Date de retraite souhaitée' : 'Wished Retirement Date'}: ${wishedDate || 'N/A'}`, margin, yPos);
+      yPos += 6;
+      doc.text(`${language === 'fr' ? 'Actifs liquides' : 'Liquid Assets'}: ${formatCurrency(liquidAssets)}`, margin, yPos);
+      yPos += 6;
+      doc.text(`${language === 'fr' ? 'Actifs non liquides' : 'Non-Liquid Assets'}: ${formatCurrency(nonLiquidAssets)}`, margin, yPos);
+      yPos += 6;
+      doc.text(`${language === 'fr' ? 'Transmission/Héritage' : 'Transmission/Inheritance'}: ${formatCurrency(transmissionAmt)}`, margin, yPos);
+      yPos += 14;
+      
+      // Income Sources Table
+      checkPageBreak(50);
+      doc.setFontSize(14);
+      doc.setTextColor(220, 53, 69);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'fr' ? 'Sources de revenus' : 'Income Sources', margin, yPos);
+      yPos += 8;
+      
+      const adjustedIncomes = location.state?.adjustedIncomes || [];
+      if (adjustedIncomes.length > 0) {
+        const incomeHeaders = [
+          language === 'fr' ? 'Nom' : 'Name',
+          language === 'fr' ? 'Montant' : 'Amount',
+          language === 'fr' ? 'Fréquence' : 'Frequency'
+        ];
+        const incomeRows = adjustedIncomes.map(inc => [
+          inc.name,
+          formatCurrency(inc.adjustedAmount || inc.amount),
+          inc.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
+          inc.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
+          (language === 'fr' ? 'Unique' : 'One-time')
+        ]);
+        
+        doc.autoTable({
+          head: [incomeHeaders],
+          body: incomeRows,
+          startY: yPos,
+          margin: { left: margin, right: margin },
+          theme: 'grid',
+          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
+        });
+        yPos = doc.lastAutoTable.finalY + 12;
+      }
+      
+      // Costs Table
+      checkPageBreak(50);
+      doc.setFontSize(14);
+      doc.setTextColor(220, 53, 69);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'fr' ? 'Dépenses' : 'Costs', margin, yPos);
+      yPos += 8;
+      
+      const adjustedCosts = location.state?.adjustedCosts || [];
+      if (adjustedCosts.length > 0) {
+        const costHeaders = [
+          language === 'fr' ? 'Nom' : 'Name',
+          language === 'fr' ? 'Catégorie' : 'Category',
+          language === 'fr' ? 'Montant' : 'Amount',
+          language === 'fr' ? 'Fréquence' : 'Frequency'
+        ];
+        const costRows = adjustedCosts.map(cost => [
+          cost.name,
+          cost.category || '-',
+          formatCurrency(cost.adjustedAmount || cost.amount),
+          cost.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
+          cost.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
+          (language === 'fr' ? 'Unique' : 'One-time')
+        ]);
+        
+        doc.autoTable({
+          head: [costHeaders],
+          body: costRows,
+          startY: yPos,
+          margin: { left: margin, right: margin },
+          theme: 'grid',
+          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
+        });
+        yPos = doc.lastAutoTable.finalY + 12;
+      }
+      
+      // ============================
+      // VERDICT PAGE
+      // ============================
+      doc.addPage();
+      yPos = 25;
+      
+      doc.setFontSize(18);
+      doc.setTextColor(220, 53, 69);
+      doc.setFont('helvetica', 'bold');
+      doc.text(language === 'fr' ? 'Verdict' : 'Verdict', margin, yPos);
+      yPos += 15;
+      
+      // Verdict box
+      const canQuit = result?.canQuit;
+      doc.setFillColor(canQuit ? 40 : 220, canQuit ? 167 : 53, canQuit ? 69 : 69);
+      doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 25, 3, 3, 'F');
+      
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      const verdictText = canQuit 
+        ? (language === 'fr' ? 'OUI VOUS POUVEZ ! PARTEZ !' : 'YES YOU CAN! QUIT!')
+        : (language === 'fr' ? 'NON VOUS NE POUVEZ PAS ENCORE PARTIR !' : 'NO YOU CANNOT QUIT YET!');
+      doc.text(verdictText, pageWidth / 2, yPos + 10, { align: 'center' });
+      
+      doc.setFontSize(12);
+      doc.text(`${language === 'fr' ? 'Solde final' : 'Final Balance'}: ${formatCurrency(result?.balance)}`, pageWidth / 2, yPos + 18, { align: 'center' });
+      yPos += 40;
+      
+      // Transmission info
+      if (result?.transmissionAmount > 0) {
+        doc.setFontSize(11);
+        doc.setTextColor(100, 100, 100);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${language === 'fr' ? 'Solde avant transmission' : 'Balance before transmission'}: ${formatCurrency(result.balanceBeforeTransmission)}`, margin, yPos);
+        yPos += 6;
+        doc.text(`${language === 'fr' ? 'Montant à transmettre' : 'Amount to transmit'}: ${formatCurrency(result.transmissionAmount)}`, margin, yPos);
         yPos += 12;
       }
       
-      // Scenario Simulator Section
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.scenarioSimulator'), 14, yPos);
-      yPos += 8;
-      
-      doc.setFontSize(10);
+      doc.setFontSize(11);
+      doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
-      if (scenarioData) {
-        doc.text(`${t('scenario.wishedRetirement')}: ${scenarioData.wishedRetirementDate || 'N/A'}`, 14, yPos);
-        yPos += 6;
-        doc.text(`${t('scenario.liquidAssets')}: CHF ${parseFloat(scenarioData.liquidAssets || 0).toLocaleString()}`, 14, yPos);
-        yPos += 6;
-        doc.text(`${t('scenario.nonLiquidAssets')}: CHF ${parseFloat(scenarioData.nonLiquidAssets || 0).toLocaleString()}`, 14, yPos);
-        yPos += 6;
-        doc.text(`${t('scenario.transmission')}: CHF ${parseFloat(scenarioData.transmissionAmount || 0).toLocaleString()}`, 14, yPos);
-        yPos += 6;
-        
-        // Future inflows
-        if (scenarioData.futureInflows && scenarioData.futureInflows.length > 0) {
-          doc.text('Future Inflows:', 14, yPos);
-          yPos += 5;
-          scenarioData.futureInflows.forEach(inflow => {
-            if (inflow.amount && inflow.date) {
-              doc.text(`  • ${inflow.type}: CHF ${parseFloat(inflow.amount).toLocaleString()} (${inflow.date})`, 14, yPos);
-              yPos += 5;
-            }
-          });
-        }
-        yPos += 8;
-      }
+      const message = canQuit
+        ? (language === 'fr' ? 'Votre solde projeté est positif ! Vous avez les bases financières pour envisager la retraite.' : 'Your projected balance is positive! You have the financial foundation to consider retirement.')
+        : (language === 'fr' ? 'Votre solde projeté est négatif. Envisagez d\'ajuster votre plan financier ou votre date de retraite.' : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date.');
+      const splitMessage = doc.splitTextToSize(message, pageWidth - 2 * margin);
+      doc.text(splitMessage, margin, yPos);
       
-      // Verdict Section
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.verdict'), 14, yPos);
-      yPos += 8;
-      
-      doc.setFontSize(12);
-      if (result) {
-        const verdictText = result.canQuit ? t('result.yesCanQuit') : t('result.noCannotQuit');
-        doc.setTextColor(result.canQuit ? 0 : 255, result.canQuit ? 128 : 0, 0);
-        doc.text(verdictText, 14, yPos);
-        yPos += 8;
-        
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.text(`${t('result.projectedBalance')} CHF ${result.balance?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, 14, yPos);
-        yPos += 6;
-        
-        if (result.transmissionAmount > 0) {
-          doc.text(`${t('result.amountToTransmit')}: CHF ${result.transmissionAmount.toLocaleString()}`, 14, yPos);
-          yPos += 6;
-        }
-      }
-      
-      // Add new page for Year-by-Year table in landscape
+      // ============================
+      // ANNEX PAGE: Landscape Year-by-Year Table
+      // ============================
       doc.addPage('a4', 'landscape');
+      const landscapeWidth = doc.internal.pageSize.getWidth();
       
-      doc.setFontSize(14);
+      doc.setFontSize(16);
+      doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
-      doc.text(t('pdf.yearByYearAnnex'), 14, 20);
+      doc.text(language === 'fr' ? 'Annexe: Projection financière détaillée' : 'Annex: Detailed Financial Projection', margin, 20);
       
-      // Prepare table data with income and cost categories
+      // Collect all unique income and cost categories
       const allIncomeCategories = new Set();
       const allCostCategories = new Set();
       
@@ -300,26 +421,26 @@ const ScenarioResult = () => {
       const incomeColumns = Array.from(allIncomeCategories);
       const costColumns = Array.from(allCostCategories);
       
-      // Build table headers
+      // Build table headers with categories
       const headers = [
-        t('result.year'),
-        ...incomeColumns.map(c => c.substring(0, 10)),
-        'Total Income',
-        ...costColumns.map(c => c.substring(0, 10)),
-        'Total Costs',
-        t('result.annualBalance'),
-        t('result.cumulativeBalance')
+        ...incomeColumns.map(c => (language === 'fr' ? 'Rev. ' : 'Inc. ') + c.substring(0, 8)),
+        ...costColumns.map(c => (language === 'fr' ? 'Dép. ' : 'Cost ') + c.substring(0, 8)),
+        language === 'fr' ? 'Année' : 'Year',
+        language === 'fr' ? 'Solde cumulé' : 'Running Balance'
       ];
       
       // Build table rows
       const tableData = yearlyBreakdown.map(year => {
         const row = [
+          ...incomeColumns.map(cat => {
+            const val = year.incomeBreakdown?.[cat];
+            return val ? Math.round(val).toLocaleString() : '-';
+          }),
+          ...costColumns.map(cat => {
+            const val = year.costBreakdown?.[cat];
+            return val ? Math.round(val).toLocaleString() : '-';
+          }),
           year.year,
-          ...incomeColumns.map(cat => Math.round(year.incomeBreakdown?.[cat] || 0).toLocaleString()),
-          Math.round(year.income).toLocaleString(),
-          ...costColumns.map(cat => Math.round(year.costBreakdown?.[cat] || 0).toLocaleString()),
-          Math.round(year.costs).toLocaleString(),
-          Math.round(year.annualBalance).toLocaleString(),
           Math.round(year.cumulativeBalance).toLocaleString()
         ];
         return row;
@@ -330,20 +451,36 @@ const ScenarioResult = () => {
         head: [headers],
         body: tableData,
         startY: 30,
-        styles: { fontSize: 7, cellPadding: 1 },
-        headStyles: { fillColor: [66, 66, 66], fontSize: 6 },
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [220, 53, 69], textColor: 255, fontSize: 6, fontStyle: 'bold' },
+        bodyStyles: { textColor: [33, 33, 33] },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
         columnStyles: {
-          0: { cellWidth: 12 }
+          [headers.length - 2]: { cellWidth: 12, fontStyle: 'bold' }, // Year column
+          [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column
+        },
+        didParseCell: function(data) {
+          // Color negative running balance red
+          if (data.section === 'body' && data.column.index === headers.length - 1) {
+            const cellText = String(data.cell.raw);
+            if (cellText.startsWith('-')) {
+              data.cell.styles.textColor = [220, 53, 69];
+            }
+          }
         },
         didDrawPage: function(data) {
-          // Footer
+          // Footer with page number
           doc.setFontSize(8);
-          doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 20, doc.internal.pageSize.getHeight() - 10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Page ${doc.internal.getNumberOfPages()}`, landscapeWidth - 20, doc.internal.pageSize.getHeight() - 10);
         }
       });
       
       // Save PDF
-      doc.save(`retirement-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
       toast.success(language === 'fr' ? 'Rapport PDF généré avec succès!' : 'PDF Report generated successfully!');
     } catch (error) {
       console.error('PDF generation error:', error);
