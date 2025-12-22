@@ -23,7 +23,7 @@ export const translations = {
 
     // Information Page
     infoPage: {
-      title: "How quit? Works",
+      title: "Can I quit? How does it work?",
       subtitle: "A complete guide to your retirement planning journey",
       backToHome: "Back to Home",
       step1Title: "1. Personal Information",
