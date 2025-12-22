@@ -375,7 +375,7 @@ export const translations = {
 
     // Information Page
     infoPage: {
-      title: "Comment fonctionne quit?",
+      title: "Can I quit? Comment ça marche?",
       subtitle: "Un guide complet pour votre planification de retraite",
       backToHome: "Retour à l'accueil",
       step1Title: "1. Informations personnelles",
