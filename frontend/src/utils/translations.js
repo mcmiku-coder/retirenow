@@ -358,7 +358,7 @@ export const translations = {
       title: "quit?",
       subtitle: "Découvrez si vous pouvez vous permettre financièrement une retraite anticipée",
       description: "Un outil complet de planification de retraite qui analyse vos revenus, dépenses et épargne pour déterminer si vous pouvez quitter votre emploi et prendre une retraite anticipée.",
-      learnMore: "Learn more about the solution before creating your account",
+      learnMore: "En savoir plus sur la solution avant de créer un compte",
       createAccount: "Créer un compte",
       login: "Connexion",
       securityWarning: "Important : Votre mot de passe est la seule clé de vos données. Nous ne pouvons pas le récupérer en cas de perte.",
