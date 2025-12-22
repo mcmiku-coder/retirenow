@@ -6,6 +6,7 @@ export const translations = {
       title: "quit?",
       subtitle: "Discover if you can financially afford early retirement",
       description: "A comprehensive retirement planning tool that analyzes your income, costs, and savings to determine if you can quit your job and retire early.",
+      learnMore: "Want to learn more about the solution before creating an account?",
       createAccount: "Create Account",
       login: "Login",
       securityWarning: "Important: Your password is the only key to your data. We cannot recover it if lost.",
@@ -18,6 +19,31 @@ export const translations = {
         simulation: "Scenario Simulation",
         simulationDesc: "Adjust retirement date and see projections"
       }
+    },
+
+    // Information Page
+    infoPage: {
+      title: "How quit? Works",
+      subtitle: "A complete guide to your retirement planning journey",
+      backToHome: "Back to Home",
+      step1Title: "1. Personal Information",
+      step1Desc: "Start by entering your birth date, gender, and country of residence. This information is used to calculate your legal retirement age and life expectancy based on official Swiss statistics.",
+      step2Title: "2. Retirement Overview",
+      step2Desc: "See your legal retirement date (65 years + 1 month), your life expectancy, and your theoretical end date. All calculations are performed locally in your browser - no data is sent to our servers.",
+      step3Title: "3. Income Sources",
+      step3Desc: "Enter all your income sources: Net Salary, AVS (Swiss social security), LPP (occupational pension), 3a (private pension), and any custom income. Specify amounts, frequencies, and date ranges for each source.",
+      step4Title: "4. Life Costs",
+      step4Desc: "List your monthly and yearly expenses across categories: Housing, Taxes, Health Insurance, Food, Transport, Leisure, and more. Use our 'Help me fill this table' feature to quickly estimate typical costs based on your lifestyle.",
+      step5Title: "5. Financial Balance",
+      step5Desc: "View your projected financial balance over time with interactive charts. See year-by-year breakdowns of income vs. costs, and understand if your current trajectory leads to a positive or negative balance.",
+      step6Title: "6. Scenario Simulator",
+      step6Desc: "The heart of quit? - Adjust your wished retirement date, modify income and cost projections, add savings and future inflows (inheritance, etc.), and set a transmission amount for your heirs.",
+      step7Title: "7. Your Verdict",
+      step7Desc: "Get your personalized verdict: Can you quit? See your final projected balance, download a comprehensive PDF report, and make informed decisions about your retirement timeline.",
+      securityTitle: "Zero-Knowledge Security",
+      securityDesc: "Your financial data never leaves your device. All calculations happen locally, and your data is encrypted with AES-256 encryption using your password as the only key. We cannot access or recover your data - your privacy is guaranteed.",
+      ctaTitle: "Ready to plan your retirement?",
+      ctaButton: "Create Your Free Account"
     },
 
     // Auth Modal
