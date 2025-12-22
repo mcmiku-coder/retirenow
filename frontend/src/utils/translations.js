@@ -545,7 +545,7 @@ export const translations = {
       savings: "Épargne",
       liquidAssets: "Actifs liquides (CHF)",
       nonLiquidAssets: "Actifs non liquides (CHF)",
-      transmission: "Transmission / Héritage",
+      transmission: "Transmission",
       transmissionDesc: "Montant que vous souhaitez léguer à vos héritiers en fin de vie. Ce montant sera déduit de votre solde final.",
       amountToTransmit: "Montant à transmettre (CHF)",
       transmissionWarning: "Si votre solde après transmission devient négatif, vous ne pouvez pas partir !",
