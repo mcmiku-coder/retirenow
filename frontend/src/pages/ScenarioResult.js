@@ -505,39 +505,21 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
       
-      // Save PDF - try multiple methods for browser compatibility
+      // Generate PDF as data URI (bypasses popup blockers)
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Method 1: Open in new tab (most reliable - user can save from there)
-      const pdfBlob = doc.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      // Convert to base64 data URI
+      const pdfDataUri = doc.output('datauristring');
       
-      // Open PDF in new tab
-      const newWindow = window.open(pdfUrl, '_blank');
+      // Create download link and click it
+      const link = document.createElement('a');
+      link.href = pdfDataUri;
+      link.download = fileName;
+      link.click();
       
-      if (newWindow) {
-        // PDF opened in new tab successfully
-        toast.success(language === 'fr' 
-          ? 'PDF ouvert dans un nouvel onglet. Utilisez Ctrl+S pour sauvegarder.' 
-          : 'PDF opened in new tab. Use Ctrl+S to save.');
-      } else {
-        // Popup blocked - try direct download as fallback
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = fileName;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(pdfUrl);
-        }, 100);
-        
-        toast.success(language === 'fr' 
-          ? 'Téléchargement du PDF lancé. Vérifiez votre dossier Téléchargements.' 
-          : 'PDF download started. Check your Downloads folder.');
-      }
+      toast.success(language === 'fr' 
+        ? 'PDF téléchargé! Vérifiez votre dossier Téléchargements.' 
+        : 'PDF downloaded! Check your Downloads folder.');
       
     } catch (error) {
       console.error('PDF generation error:', error);
