@@ -493,8 +493,8 @@ const ScenarioResult = () => {
           bodyStyles: { textColor: [33, 33, 33] },
           alternateRowStyles: { fillColor: [248, 249, 250] },
           columnStyles: {
-            [headers.length - 2]: { cellWidth: 12, fontStyle: 'bold' }, // Year column
-            [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column
+            0: { cellWidth: 12, fontStyle: 'bold' }, // Year column (now first)
+            [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column (last)
           },
           didParseCell: function(data) {
             // Color negative running balance red
