@@ -507,16 +507,24 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
       
-      // Save PDF using file-saver library (most reliable cross-browser method)
+      // Generate PDF and store as data URL for display
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Generate blob and use file-saver
-      const pdfBlob = doc.output('blob');
-      saveAs(pdfBlob, fileName);
+      // Get data URL to display in iframe
+      const dataUrl = doc.output('dataurlstring');
+      setPdfDataUrl(dataUrl);
+      
+      // Also try to trigger download with file-saver
+      try {
+        const pdfBlob = doc.output('blob');
+        saveAs(pdfBlob, fileName);
+      } catch (downloadErr) {
+        console.log('Direct download failed, PDF is displayed below');
+      }
       
       toast.success(language === 'fr' 
-        ? 'PDF téléchargé! Vérifiez votre dossier Téléchargements.' 
-        : 'PDF downloaded! Check your Downloads folder.');
+        ? 'PDF généré! Voir ci-dessous ou téléchargez-le.' 
+        : 'PDF generated! View below or download it.');
       
     } catch (error) {
       console.error('PDF generation error:', error);
