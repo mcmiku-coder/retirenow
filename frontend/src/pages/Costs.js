@@ -8,28 +8,71 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { saveCostData, getCostData, getUserData } from '../utils/database';
-import { Trash2, Plus } from 'lucide-react';
+import { saveCostData, getCostData, getUserData, getIncomeData } from '../utils/database';
+import { Trash2, Plus, HelpCircle } from 'lucide-react';
 import { NavigationButtons } from '../components/NavigationButtons';
+
+// Cost name keys for translation
+const COST_KEYS = {
+  'Rent/Mortgage': 'rentMortgage',
+  'Taxes': 'taxes',
+  'Health insurance': 'healthInsurance',
+  'Food': 'food',
+  'Clothing': 'clothing',
+  'Private transportation': 'privateTransport',
+  'Public transportation': 'publicTransport',
+  'TV/Internet/Phone': 'tvInternetPhone',
+  'Restaurants': 'restaurants',
+  'Vacation': 'vacation'
+};
 
 const Costs = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
-  const { t } = useLanguage();
-  const [rows, setRows] = useState([
-    { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true },
-    { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: '', endDate: '', locked: true, categoryLocked: true }
-  ]);
+  const { t, language } = useLanguage();
+  const [rows, setRows] = useState([]);
   const [nextId, setNextId] = useState(11);
   const [loading, setLoading] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [salaryAmount, setSalaryAmount] = useState(0);
+  
+  // Help modal answers
+  const [helpAnswers, setHelpAnswers] = useState({
+    hasCar: null,
+    highVacation: null,
+    goesOutOften: null,
+    qualityFood: null,
+    privateInsurance: null
+  });
+
+  // Get translated cost name
+  const getCostName = (englishName) => {
+    const key = COST_KEYS[englishName];
+    if (key) {
+      return t(`costs.costNames.${key}`);
+    }
+    return englishName;
+  };
+
+  // Initialize default rows with English keys (for data storage) but display translated
+  const getDefaultRows = async () => {
+    const userData = await getUserData(user.email, password);
+    const today = new Date().toISOString().split('T')[0];
+    const deathDateStr = userData?.theoreticalDeathDate || today;
+    
+    return [
+      { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 2, name: 'Taxes', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
+      { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
+    ];
+  };
 
   useEffect(() => {
     if (!user || !password) {
@@ -37,36 +80,25 @@ const Costs = () => {
       return;
     }
 
-    // Load existing data or pre-fill with dates
     const loadData = async () => {
       try {
+        // Load salary amount for tax calculation
+        const incomeData = await getIncomeData(user.email, password);
+        if (incomeData && incomeData.length > 0) {
+          const salaryRow = incomeData.find(r => r.name === 'Salary' || r.name === 'Net Salary');
+          if (salaryRow && salaryRow.amount) {
+            setSalaryAmount(parseFloat(salaryRow.amount) || 0);
+          }
+        }
+
         const data = await getCostData(user.email, password);
         if (data && data.length > 0) {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
         } else {
-          // Pre-fill dates with current date and death date
-          const userData = await getUserData(user.email, password);
-          if (userData) {
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Use the theoretical death date from API
-            const deathDateStr = userData.theoreticalDeathDate || today;
-            
-            setRows([
-              { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-              { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
-            ]);
-          }
+          const defaultRows = await getDefaultRows();
+          setRows(defaultRows);
         }
       } catch (error) {
         console.error('Error loading cost data:', error);
@@ -79,7 +111,6 @@ const Costs = () => {
     setRows(rows.map(row => {
       if (row.id === id) {
         const updated = { ...row, [field]: value };
-        // Disable endDate if frequency is One-time
         if (field === 'frequency' && value === 'One-time') {
           updated.endDate = '';
         }
@@ -90,47 +121,29 @@ const Costs = () => {
   };
 
   const resetToDefaults = async () => {
-    const userData = await getUserData(user.email, password);
-    if (userData) {
-      const today = new Date().toISOString().split('T')[0];
-      const deathDateStr = userData.theoreticalDeathDate || today;
-      
-      setRows([
-        { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 2, name: 'Taxes', amount: '', frequency: 'Yearly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 3, name: 'Health insurance', amount: '', frequency: 'Monthly', category: 'Health', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 4, name: 'Food', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 5, name: 'Clothing', amount: '', frequency: 'Monthly', category: 'Elementary', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 6, name: 'Private transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 7, name: 'Public transportation', amount: '', frequency: 'Monthly', category: 'Transport', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 8, name: 'TV/Internet/Phone', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 9, name: 'Restaurants', amount: '', frequency: 'Monthly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
-        { id: 10, name: 'Vacation', amount: '', frequency: 'Yearly', category: 'Leisure', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true }
-      ]);
-      setNextId(11);
-      toast.success(t('costs.resetSuccess'));
-    }
+    const defaultRows = await getDefaultRows();
+    setRows(defaultRows);
+    setNextId(11);
+    toast.success(t('costs.resetSuccess'));
   };
 
   const addRow = async () => {
     const userData = await getUserData(user.email, password);
-    if (userData) {
-      const today = new Date().toISOString().split('T')[0];
-      const deathDateStr = userData.theoreticalDeathDate || today;
-      
-      setRows([...rows, {
-        id: nextId,
-        name: '',
-        amount: '',
-        frequency: 'Monthly',
-        category: '',
-        startDate: today,
-        endDate: deathDateStr,
-        locked: false,
-        categoryLocked: false
-      }]);
-      setNextId(nextId + 1);
-    }
+    const today = new Date().toISOString().split('T')[0];
+    const deathDateStr = userData?.theoreticalDeathDate || today;
+    
+    setRows([...rows, {
+      id: nextId,
+      name: '',
+      amount: '',
+      frequency: 'Monthly',
+      category: '',
+      startDate: today,
+      endDate: deathDateStr,
+      locked: false,
+      categoryLocked: false
+    }]);
+    setNextId(nextId + 1);
   };
 
   const deleteRow = (id) => {
@@ -140,20 +153,19 @@ const Costs = () => {
 
   const validateRows = () => {
     for (const row of rows) {
-      // Check if row is partially filled
       const hasAnyData = row.amount || row.startDate || row.endDate;
       
       if (hasAnyData) {
         if (!row.amount) {
-          toast.error(`${t('costs.amount')} - ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.amount')} - ${getCostName(row.name) || 'row ' + row.id}`);
           return false;
         }
         if (!row.startDate) {
-          toast.error(`${t('costs.startDate')} - ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.startDate')} - ${getCostName(row.name) || 'row ' + row.id}`);
           return false;
         }
         if (row.frequency !== 'One-time' && !row.endDate) {
-          toast.error(`${t('costs.endDate')} - ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('costs.endDate')} - ${getCostName(row.name) || 'row ' + row.id}`);
           return false;
         }
       }
@@ -180,6 +192,80 @@ const Costs = () => {
     }
   };
 
+  // Apply help modal answers
+  const applyHelpAnswers = () => {
+    // Calculate taxes: 18% of monthly salary, rounded up to nearest hundred
+    const monthlyTax = salaryAmount * 0.18;
+    const roundedTax = Math.ceil(monthlyTax / 100) * 100;
+
+    setRows(currentRows => {
+      let updatedRows = [...currentRows];
+      
+      // Handle car question
+      if (helpAnswers.hasCar === false) {
+        // Remove private transportation
+        updatedRows = updatedRows.filter(row => row.name !== 'Private transportation');
+      } else if (helpAnswers.hasCar === true) {
+        // Set private transportation to 600
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Private transportation' ? { ...row, amount: '600' } : row
+        );
+      }
+
+      // Handle vacation question
+      if (helpAnswers.highVacation !== null) {
+        const vacationAmount = helpAnswers.highVacation ? '10000' : '2000';
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Vacation' ? { ...row, amount: vacationAmount } : row
+        );
+      }
+
+      // Handle restaurant question
+      if (helpAnswers.goesOutOften !== null) {
+        const restaurantAmount = helpAnswers.goesOutOften ? '400' : '100';
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Restaurants' ? { ...row, amount: restaurantAmount } : row
+        );
+      }
+
+      // Handle food quality question
+      if (helpAnswers.qualityFood !== null) {
+        const foodAmount = helpAnswers.qualityFood ? '600' : '400';
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Food' ? { ...row, amount: foodAmount } : row
+        );
+      }
+
+      // Handle private insurance question
+      if (helpAnswers.privateInsurance !== null) {
+        const insuranceAmount = helpAnswers.privateInsurance ? '900' : '600';
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Health insurance' ? { ...row, amount: insuranceAmount } : row
+        );
+      }
+
+      // Set taxes based on salary
+      if (roundedTax > 0) {
+        updatedRows = updatedRows.map(row => 
+          row.name === 'Taxes' ? { ...row, amount: String(roundedTax) } : row
+        );
+      }
+
+      return updatedRows;
+    });
+
+    setShowHelpModal(false);
+    setHelpAnswers({
+      hasCar: null,
+      highVacation: null,
+      goesOutOften: null,
+      qualityFood: null,
+      privateInsurance: null
+    });
+    
+    toast.success(language === 'fr' ? 'Valeurs appliquées!' : 'Values applied!');
+  };
+
   // Get translated category
   const getCategoryLabel = (category) => {
     const key = category.toLowerCase();
@@ -200,6 +286,19 @@ const Costs = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Help Button */}
+          <div className="mb-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowHelpModal(true)}
+              className="flex items-center gap-2"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {t('costs.helpButton')}
+            </Button>
+          </div>
+
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
@@ -217,13 +316,21 @@ const Costs = () => {
                 {rows.map((row, index) => (
                   <tr key={row.id} className="border-b last:border-0">
                     <td className="p-2">
-                      <Input
-                        data-testid={`cost-name-${index}`}
-                        value={row.name}
-                        onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                        disabled={row.locked}
-                        className="min-w-[150px]"
-                      />
+                      {row.locked ? (
+                        <Input
+                          data-testid={`cost-name-${index}`}
+                          value={getCostName(row.name)}
+                          disabled={true}
+                          className="min-w-[150px]"
+                        />
+                      ) : (
+                        <Input
+                          data-testid={`cost-name-${index}`}
+                          value={row.name}
+                          onChange={(e) => updateRow(row.id, 'name', e.target.value)}
+                          className="min-w-[150px]"
+                        />
+                      )}
                     </td>
                     <td className="p-2">
                       <Input
@@ -345,6 +452,177 @@ const Costs = () => {
             {loading ? t('common.loading') : t('costs.continue')}
           </Button>
         </form>
+
+        {/* Help Modal */}
+        {showHelpModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-bold mb-4">{t('costs.helpModal.title')}</h3>
+              
+              <div className="space-y-4">
+                {/* Question 1: Car */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question1')}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="hasCar" 
+                        checked={helpAnswers.hasCar === true}
+                        onChange={() => setHelpAnswers({...helpAnswers, hasCar: true})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.yes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="hasCar" 
+                        checked={helpAnswers.hasCar === false}
+                        onChange={() => setHelpAnswers({...helpAnswers, hasCar: false})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.no')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 2: Vacation */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question2')}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="highVacation" 
+                        checked={helpAnswers.highVacation === true}
+                        onChange={() => setHelpAnswers({...helpAnswers, highVacation: true})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.yes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="highVacation" 
+                        checked={helpAnswers.highVacation === false}
+                        onChange={() => setHelpAnswers({...helpAnswers, highVacation: false})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.no')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 3: Restaurants */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question3')}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="goesOutOften" 
+                        checked={helpAnswers.goesOutOften === true}
+                        onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: true})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.yes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="goesOutOften" 
+                        checked={helpAnswers.goesOutOften === false}
+                        onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: false})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.no')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 4: Quality Food */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question4')}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="qualityFood" 
+                        checked={helpAnswers.qualityFood === true}
+                        onChange={() => setHelpAnswers({...helpAnswers, qualityFood: true})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.yes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="qualityFood" 
+                        checked={helpAnswers.qualityFood === false}
+                        onChange={() => setHelpAnswers({...helpAnswers, qualityFood: false})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.no')}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Question 5: Private Insurance */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="font-medium mb-2">{t('costs.helpModal.question5')}</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="privateInsurance" 
+                        checked={helpAnswers.privateInsurance === true}
+                        onChange={() => setHelpAnswers({...helpAnswers, privateInsurance: true})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.yes')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="privateInsurance" 
+                        checked={helpAnswers.privateInsurance === false}
+                        onChange={() => setHelpAnswers({...helpAnswers, privateInsurance: false})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.no')}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button 
+                  onClick={applyHelpAnswers}
+                  className="flex-1"
+                >
+                  {t('costs.helpModal.apply')}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowHelpModal(false);
+                    setHelpAnswers({
+                      hasCar: null,
+                      highVacation: null,
+                      goesOutOften: null,
+                      qualityFood: null,
+                      privateInsurance: null
+                    });
+                  }}
+                  className="flex-1"
+                >
+                  {t('costs.helpModal.cancel')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

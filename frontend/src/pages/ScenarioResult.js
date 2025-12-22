@@ -838,13 +838,12 @@ const ScenarioResult = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{language === 'fr' ? 'Votre rapport PDF' : 'Your PDF Report'}</span>
-                <a 
-                  href={pdfDataUrl} 
-                  download={language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`}
-                  className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm font-medium"
+                <Button 
+                  onClick={downloadPdf}
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   {language === 'fr' ? '⬇️ Télécharger le PDF' : '⬇️ Download PDF'}
-                </a>
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -857,8 +856,8 @@ const ScenarioResult = () => {
               />
               <p className="text-sm text-muted-foreground mt-4">
                 {language === 'fr' 
-                  ? 'Si le PDF ne s\'affiche pas, cliquez sur le bouton "Télécharger le PDF" ci-dessus.' 
-                  : 'If the PDF does not display, click the "Download PDF" button above.'}
+                  ? 'Cliquez sur le bouton vert "Télécharger le PDF" ci-dessus pour sauvegarder le fichier.' 
+                  : 'Click the green "Download PDF" button above to save the file.'}
               </p>
             </CardContent>
           </Card>

@@ -12,10 +12,33 @@ import { calculateYearlyAmount } from '../utils/calculations';
 import { NavigationButtons } from '../components/NavigationButtons';
 import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
 
+// Income name translation keys
+const INCOME_KEYS = {
+  'Salary': 'salary',
+  'Net Salary': 'salary',
+  'AVS': 'avs',
+  'LPP': 'lpp',
+  '3a': '3a'
+};
+
+// Cost name translation keys
+const COST_KEYS = {
+  'Rent/Mortgage': 'rentMortgage',
+  'Taxes': 'taxes',
+  'Health insurance': 'healthInsurance',
+  'Food': 'food',
+  'Clothing': 'clothing',
+  'Private transportation': 'privateTransport',
+  'Public transportation': 'publicTransport',
+  'TV/Internet/Phone': 'tvInternetPhone',
+  'Restaurants': 'restaurants',
+  'Vacation': 'vacation'
+};
+
 const Scenario = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [wishedRetirementDate, setWishedRetirementDate] = useState('');
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
@@ -31,6 +54,24 @@ const Scenario = () => {
   
   // Possible future inflows (inheritance, other)
   const [futureInflows, setFutureInflows] = useState([]);
+
+  // Get translated income name
+  const getIncomeName = (englishName) => {
+    const key = INCOME_KEYS[englishName];
+    if (key) {
+      return t(`income.${key}`);
+    }
+    return englishName;
+  };
+
+  // Get translated cost name
+  const getCostName = (englishName) => {
+    const key = COST_KEYS[englishName];
+    if (key) {
+      return t(`costs.costNames.${key}`);
+    }
+    return englishName;
+  };
 
   useEffect(() => {
     if (!user || !password) {
@@ -540,7 +581,7 @@ const Scenario = () => {
                       
                       return (
                         <tr key={income.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium">{income.name}</td>
+                          <td className="p-3 font-medium">{getIncomeName(income.name)}</td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {parseFloat(income.amount).toLocaleString()}
                           </td>
@@ -643,7 +684,7 @@ const Scenario = () => {
                           <td className="p-3 font-medium">
                             <div className="flex items-center gap-2">
                               {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
-                              {cost.name}
+                              {getCostName(cost.name)}
                               {isInGroup && !isChildCost && (
                                 <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
                               )}
@@ -749,10 +790,10 @@ const Scenario = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-400" />
-                Possible Future Inflows
+                {t('scenario.futureInflows')}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Add expected future inflows like inheritance or other one-time income. These will be added to your balance on the specified date.
+                {t('scenario.futureInflowsDesc')}
               </p>
             </CardHeader>
             <CardContent>
@@ -761,10 +802,10 @@ const Scenario = () => {
                   <table className="w-full">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="text-left p-3 font-semibold">Inflow Type</th>
-                        <th className="text-right p-3 font-semibold">Amount (CHF)</th>
-                        <th className="text-left p-3 font-semibold">Date</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">Actions</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.inflowType')}</th>
+                        <th className="text-right p-3 font-semibold">{t('scenario.inflowAmount')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.inflowDate')}</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -777,8 +818,8 @@ const Scenario = () => {
                               onChange={(e) => updateFutureInflow(inflow.id, 'type', e.target.value)}
                               className="w-full bg-background border rounded-md p-2"
                             >
-                              <option value="Inheritance">Inheritance</option>
-                              <option value="Other">Other</option>
+                              <option value="Inheritance">{t('scenario.inheritance')}</option>
+                              <option value="Other">{t('scenario.other')}</option>
                             </select>
                           </td>
                           <td className="p-3">
@@ -823,7 +864,7 @@ const Scenario = () => {
                 className="text-green-500 border-green-500/50 hover:bg-green-500/10"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Future Inflow
+                {t('scenario.addInflow')}
               </Button>
             </CardContent>
           </Card>

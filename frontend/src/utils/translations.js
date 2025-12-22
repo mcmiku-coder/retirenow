@@ -96,7 +96,8 @@ export const translations = {
       salary: "Net Salary",
       avs: "AVS",
       lpp: "LPP",
-      threeA: "3a"
+      threea: "3a",
+      "3a": "3a"
     },
 
     // Costs Page
@@ -118,6 +119,7 @@ export const translations = {
       resetSuccess: "Costs reset to defaults",
       costDeleted: "Cost item deleted",
       selectCategory: "Select category",
+      helpButton: "Help me fill this table",
       // Categories
       categories: {
         housing: "Housing",
@@ -127,16 +129,32 @@ export const translations = {
         leisure: "Leisure",
         other: "Other"
       },
-      // Default cost names
-      rent: "Rent/Mortgage",
-      utilities: "Utilities",
-      healthInsurance: "Health Insurance",
-      food: "Food & Groceries",
-      transportation: "Transportation",
-      entertainment: "Entertainment",
-      clothing: "Clothing",
-      phone: "Phone & Internet",
-      miscellaneous: "Miscellaneous"
+      // Default cost names (in English)
+      costNames: {
+        rentMortgage: "Rent/Mortgage",
+        taxes: "Taxes",
+        healthInsurance: "Health Insurance",
+        food: "Food",
+        clothing: "Clothing",
+        privateTransport: "Private transportation",
+        publicTransport: "Public transportation",
+        tvInternetPhone: "TV/Internet/Phone",
+        restaurants: "Restaurants",
+        vacation: "Vacation"
+      },
+      // Help modal
+      helpModal: {
+        title: "Help me fill the table",
+        question1: "Do you own a car?",
+        question2: "Do you spend a lot on vacation?",
+        question3: "Do you often go out or to the restaurant?",
+        question4: "Do you pay attention to buying quality food?",
+        question5: "Do you have private health insurance?",
+        yes: "Yes",
+        no: "No",
+        apply: "Apply",
+        cancel: "Cancel"
+      }
     },
 
     // Financial Balance Page
@@ -183,13 +201,22 @@ export const translations = {
       savings: "Savings",
       liquidAssets: "Liquid Assets (CHF)",
       nonLiquidAssets: "Non-Liquid Assets (CHF)",
-      transmission: "Transmission",
+      transmission: "Transmission / Inheritance",
       transmissionDesc: "Amount you wish to leave to heirs at end of life. This will be deducted from your final balance.",
       amountToTransmit: "Amount to Transmit (CHF)",
       transmissionWarning: "If your balance after transmission goes negative, you cannot quit!",
       runSimulation: "Can I Quit? - Run Simulation",
       splitSuccess: "Cost line split - adjust dates as needed",
-      costDeleted: "Cost line deleted"
+      costDeleted: "Cost line deleted",
+      // Future inflows
+      futureInflows: "Possible Future Inflows",
+      futureInflowsDesc: "Add expected future inflows like inheritance or other one-time income. These will be added to your balance on the specified date.",
+      inflowType: "Inflow Type",
+      inflowAmount: "Amount (CHF)",
+      inflowDate: "Date",
+      inheritance: "Inheritance",
+      other: "Other",
+      addInflow: "Add Inflow"
     },
 
     // Result Page
@@ -377,7 +404,8 @@ export const translations = {
       salary: "Salaire Net",
       avs: "AVS",
       lpp: "LPP",
-      threeA: "3a"
+      threea: "3a",
+      "3a": "3a"
     },
 
     // Costs Page
@@ -399,6 +427,7 @@ export const translations = {
       resetSuccess: "Dépenses réinitialisées",
       costDeleted: "Dépense supprimée",
       selectCategory: "Sélectionner une catégorie",
+      helpButton: "Aide moi à remplir cette table",
       // Categories
       categories: {
         housing: "Logement",
@@ -408,16 +437,32 @@ export const translations = {
         leisure: "Loisirs",
         other: "Autre"
       },
-      // Default cost names
-      rent: "Loyer/Hypothèque",
-      utilities: "Services publics",
-      healthInsurance: "Assurance maladie",
-      food: "Alimentation",
-      transportation: "Transport",
-      entertainment: "Divertissement",
-      clothing: "Vêtements",
-      phone: "Téléphone & Internet",
-      miscellaneous: "Divers"
+      // Default cost names (in French)
+      costNames: {
+        rentMortgage: "Loyer/Hypothèque",
+        taxes: "Impôts",
+        healthInsurance: "Assurance maladie",
+        food: "Alimentation",
+        clothing: "Vêtements",
+        privateTransport: "Transport privé",
+        publicTransport: "Transport public",
+        tvInternetPhone: "TV/Internet/Téléphone",
+        restaurants: "Restaurants",
+        vacation: "Vacances"
+      },
+      // Help modal
+      helpModal: {
+        title: "Aide pour remplir la table",
+        question1: "Possédez-vous une voiture ?",
+        question2: "Dépensez-vous beaucoup en vacances ?",
+        question3: "Sortez-vous souvent ou allez-vous au restaurant ?",
+        question4: "Faites-vous attention à acheter de la nourriture de qualité ?",
+        question5: "Avez-vous une assurance maladie privée ?",
+        yes: "Oui",
+        no: "Non",
+        apply: "Appliquer",
+        cancel: "Annuler"
+      }
     },
 
     // Financial Balance Page
@@ -464,13 +509,22 @@ export const translations = {
       savings: "Épargne",
       liquidAssets: "Actifs liquides (CHF)",
       nonLiquidAssets: "Actifs non liquides (CHF)",
-      transmission: "Transmission",
+      transmission: "Transmission / Héritage",
       transmissionDesc: "Montant que vous souhaitez léguer à vos héritiers en fin de vie. Ce montant sera déduit de votre solde final.",
       amountToTransmit: "Montant à transmettre (CHF)",
       transmissionWarning: "Si votre solde après transmission devient négatif, vous ne pouvez pas partir !",
       runSimulation: "Puis-je partir ? - Lancer la simulation",
       splitSuccess: "Ligne de dépense divisée - ajustez les dates si nécessaire",
-      costDeleted: "Ligne de dépense supprimée"
+      costDeleted: "Ligne de dépense supprimée",
+      // Future inflows
+      futureInflows: "Entrées futures possibles",
+      futureInflowsDesc: "Ajoutez les entrées futures attendues comme un héritage ou d'autres revenus ponctuels. Ceux-ci seront ajoutés à votre solde à la date spécifiée.",
+      inflowType: "Type d'entrée",
+      inflowAmount: "Montant (CHF)",
+      inflowDate: "Date",
+      inheritance: "Héritage",
+      other: "Autre",
+      addInflow: "Ajouter une entrée"
     },
 
     // Result Page

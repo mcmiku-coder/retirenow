@@ -14,7 +14,16 @@ import { NavigationButtons } from '../components/NavigationButtons';
 const Income = () => {
   const navigate = useNavigate();
   const { user, password } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  // Income name translation
+  const getIncomeName = (key) => {
+    if (key === 'Salary' || key === 'Net Salary') {
+      return t('income.salary');
+    }
+    return t(`income.${key.toLowerCase()}`) || key;
+  };
+
   const [rows, setRows] = useState([
     { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
     { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: '', endDate: '', locked: true },
@@ -209,13 +218,21 @@ const Income = () => {
                 {rows.map((row, index) => (
                   <tr key={row.id} className="border-b last:border-0">
                     <td className="p-2">
-                      <Input
-                        data-testid={`income-name-${index}`}
-                        value={row.name}
-                        onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                        disabled={row.locked}
-                        className="min-w-[120px]"
-                      />
+                      {row.locked ? (
+                        <Input
+                          data-testid={`income-name-${index}`}
+                          value={getIncomeName(row.name)}
+                          disabled={true}
+                          className="min-w-[120px]"
+                        />
+                      ) : (
+                        <Input
+                          data-testid={`income-name-${index}`}
+                          value={row.name}
+                          onChange={(e) => updateRow(row.id, 'name', e.target.value)}
+                          className="min-w-[120px]"
+                        />
+                      )}
                     </td>
                     <td className="p-2">
                       <Input
