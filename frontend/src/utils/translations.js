@@ -127,7 +127,8 @@ export const translations = {
         elementary: "Elementary",
         transport: "Transport",
         leisure: "Leisure",
-        other: "Other"
+        other: "Other",
+        taxes: "Taxes"
       },
       // Default cost names (in English)
       costNames: {
