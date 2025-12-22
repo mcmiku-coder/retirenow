@@ -608,7 +608,7 @@ const Scenario = () => {
                               className="max-w-[150px] ml-auto"
                             />
                           </td>
-                          <td className="p-3">{income.frequency}</td>
+                          <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
                           <td className="p-3">
                             {isStandardIncome ? (
                               <Input
