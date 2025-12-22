@@ -76,8 +76,12 @@ export const generatePDFReport = (data, t, language) => {
   };
 
   const formatCurrency = (amount) => {
-    if (amount === undefined || amount === null) return 'CHF 0';
-    return `CHF ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    if (amount === undefined || amount === null || amount === '') return 'CHF 0';
+    const numAmount = Number(amount);
+    if (isNaN(numAmount)) return 'CHF 0';
+    // Use simple formatting without locale to avoid special characters
+    const formatted = Math.round(numAmount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+    return `CHF ${formatted}`;
   };
 
   // ==========================================
