@@ -509,24 +509,21 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
       
-      // Generate PDF and store as data URL for display
+      // Generate PDF blob and data URL
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      // Get data URL to display in iframe
+      // Store blob for download
+      const blob = doc.output('blob');
+      setPdfBlob(blob);
+      setPdfFileName(fileName);
+      
+      // Get data URL to display in iframe (for preview only)
       const dataUrl = doc.output('dataurlstring');
       setPdfDataUrl(dataUrl);
       
-      // Also try to trigger download with file-saver
-      try {
-        const pdfBlob = doc.output('blob');
-        saveAs(pdfBlob, fileName);
-      } catch (downloadErr) {
-        console.log('Direct download failed, PDF is displayed below');
-      }
-      
       toast.success(language === 'fr' 
-        ? 'PDF généré! Voir ci-dessous ou téléchargez-le.' 
-        : 'PDF generated! View below or download it.');
+        ? 'PDF généré! Cliquez sur "Télécharger" pour sauvegarder.' 
+        : 'PDF generated! Click "Download" to save.');
       
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -534,6 +531,20 @@ const ScenarioResult = () => {
     } finally {
       setGeneratingPdf(false);
     }
+  };
+
+  // Download PDF function - creates fresh object URL and triggers download
+  const downloadPdf = () => {
+    if (!pdfBlob) return;
+    
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = pdfFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
