@@ -92,6 +92,19 @@ class LifeExpectancyResponse(BaseModel):
     retirement_legal_date: str
     theoretical_death_date: str
 
+# Admin models
+class AdminLoginRequest(BaseModel):
+    admin_key: str
+
+class AdminUserResponse(BaseModel):
+    user_id: str
+    email: str
+    created_at: Optional[str] = None
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    users: List[AdminUserResponse]
+
 # Auth helpers
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
