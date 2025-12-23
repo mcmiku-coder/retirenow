@@ -532,26 +532,26 @@ const Costs = () => {
               
               <div className="space-y-3">
                 {/* Question 1: Car */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">{t('costs.helpModal.question1')}</p>
+                <div className="p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-2">{t('costs.helpModal.question1')}</p>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="hasCar" 
                         checked={helpAnswers.hasCar === true}
                         onChange={() => setHelpAnswers({...helpAnswers, hasCar: true})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="hasCar" 
                         checked={helpAnswers.hasCar === false}
                         onChange={() => setHelpAnswers({...helpAnswers, hasCar: false})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.no')}
                     </label>
@@ -559,36 +559,36 @@ const Costs = () => {
                 </div>
 
                 {/* Question 2: Vacation Costs */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">{t('costs.helpModal.question2')}</p>
+                <div className="p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-2">{t('costs.helpModal.question2')}</p>
                   <div className="flex gap-4 flex-wrap">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="vacationCosts" 
                         checked={helpAnswers.vacationCosts === 'high'}
                         onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'high'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_high')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="vacationCosts" 
                         checked={helpAnswers.vacationCosts === 'moderate'}
                         onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'moderate'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_moderate')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="vacationCosts" 
                         checked={helpAnswers.vacationCosts === 'low'}
                         onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'low'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_low')}
                     </label>
