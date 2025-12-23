@@ -42,6 +42,9 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production'
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 1 week
 
+# Admin Secret Key - Change this in production!
+ADMIN_SECRET_KEY = os.environ.get('ADMIN_SECRET_KEY', 'quit-admin-2024-secret')
+
 # Load life expectancy data
 life_expectancy_data = {
     'male': {},
