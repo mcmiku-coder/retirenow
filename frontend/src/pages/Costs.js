@@ -525,6 +525,11 @@ const Costs = () => {
             <div className="bg-card border rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
               <h3 className="text-xl font-bold mb-4">{t('costs.helpModal.title')}</h3>
               
+              {/* Intro text */}
+              <p className="text-sm text-muted-foreground mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                {t('costs.helpModal.intro')}
+              </p>
+              
               <div className="space-y-4">
                 {/* Question 1: Car */}
                 <div className="p-3 bg-muted/50 rounded-lg">
@@ -553,29 +558,39 @@ const Costs = () => {
                   </div>
                 </div>
 
-                {/* Question 2: Vacation */}
+                {/* Question 2: Vacation Costs */}
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="font-medium mb-2">{t('costs.helpModal.question2')}</p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="radio" 
-                        name="highVacation" 
-                        checked={helpAnswers.highVacation === true}
-                        onChange={() => setHelpAnswers({...helpAnswers, highVacation: true})}
+                        name="vacationCosts" 
+                        checked={helpAnswers.vacationCosts === 'high'}
+                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'high'})}
                         className="w-4 h-4"
                       />
-                      {t('costs.helpModal.yes')}
+                      {t('costs.helpModal.question2_high')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="radio" 
-                        name="highVacation" 
-                        checked={helpAnswers.highVacation === false}
-                        onChange={() => setHelpAnswers({...helpAnswers, highVacation: false})}
+                        name="vacationCosts" 
+                        checked={helpAnswers.vacationCosts === 'moderate'}
+                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'moderate'})}
                         className="w-4 h-4"
                       />
-                      {t('costs.helpModal.no')}
+                      {t('costs.helpModal.question2_moderate')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="vacationCosts" 
+                        checked={helpAnswers.vacationCosts === 'low'}
+                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'low'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question2_low')}
                     </label>
                   </div>
                 </div>
