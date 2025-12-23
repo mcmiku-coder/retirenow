@@ -622,29 +622,39 @@ const Costs = () => {
                   </div>
                 </div>
 
-                {/* Question 4: Quality Food */}
+                {/* Question 4: Food Expenses */}
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="font-medium mb-2">{t('costs.helpModal.question4')}</p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="radio" 
-                        name="qualityFood" 
-                        checked={helpAnswers.qualityFood === true}
-                        onChange={() => setHelpAnswers({...helpAnswers, qualityFood: true})}
+                        name="foodExpenses" 
+                        checked={helpAnswers.foodExpenses === 'high'}
+                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'high'})}
                         className="w-4 h-4"
                       />
-                      {t('costs.helpModal.yes')}
+                      {t('costs.helpModal.question4_high')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="radio" 
-                        name="qualityFood" 
-                        checked={helpAnswers.qualityFood === false}
-                        onChange={() => setHelpAnswers({...helpAnswers, qualityFood: false})}
+                        name="foodExpenses" 
+                        checked={helpAnswers.foodExpenses === 'moderate'}
+                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'moderate'})}
                         className="w-4 h-4"
                       />
-                      {t('costs.helpModal.no')}
+                      {t('costs.helpModal.question4_moderate')}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="foodExpenses" 
+                        checked={helpAnswers.foodExpenses === 'low'}
+                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'low'})}
+                        className="w-4 h-4"
+                      />
+                      {t('costs.helpModal.question4_low')}
                     </label>
                   </div>
                 </div>
