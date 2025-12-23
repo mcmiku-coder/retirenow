@@ -522,15 +522,15 @@ const Costs = () => {
         {/* Help Modal */}
         {showHelpModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-card border rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <h3 className="text-xl font-bold mb-4">{t('costs.helpModal.title')}</h3>
+            <div className="bg-card border rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold mb-2">{t('costs.helpModal.title')}</h3>
               
-              {/* Intro text */}
-              <p className="text-sm text-muted-foreground mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              {/* Intro text - green, no background */}
+              <p className="text-xs text-green-600 dark:text-green-400 mb-4">
                 {t('costs.helpModal.intro')}
               </p>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Question 1: Car */}
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="font-medium mb-2">{t('costs.helpModal.question1')}</p>
