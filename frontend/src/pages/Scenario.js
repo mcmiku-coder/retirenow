@@ -190,7 +190,9 @@ const Scenario = () => {
           nonLiquidAssets,
           transmissionAmount,
           futureInflows,
-          wishedRetirementDate
+          wishedRetirementDate,
+          adjustedIncomes: incomes,
+          adjustedCosts: costs
         });
       } catch (error) {
         console.error('Failed to auto-save scenario data:', error);
