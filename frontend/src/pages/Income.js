@@ -284,7 +284,6 @@ const Income = () => {
                       />
                     </td>
                     <td className="p-2">
-                      {!row.locked && (
                         <Button
                           data-testid={`income-delete-${index}`}
                           type="button"
@@ -294,7 +293,6 @@ const Income = () => {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
                     </td>
                   </tr>
                 ))}
