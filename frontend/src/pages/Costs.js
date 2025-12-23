@@ -596,26 +596,26 @@ const Costs = () => {
                 </div>
 
                 {/* Question 3: Restaurants */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">{t('costs.helpModal.question3')}</p>
+                <div className="p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-2">{t('costs.helpModal.question3')}</p>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="goesOutOften" 
                         checked={helpAnswers.goesOutOften === true}
                         onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: true})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="goesOutOften" 
                         checked={helpAnswers.goesOutOften === false}
                         onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: false})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.no')}
                     </label>
@@ -623,36 +623,36 @@ const Costs = () => {
                 </div>
 
                 {/* Question 4: Food Expenses */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">{t('costs.helpModal.question4')}</p>
+                <div className="p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-2">{t('costs.helpModal.question4')}</p>
                   <div className="flex gap-4 flex-wrap">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="foodExpenses" 
                         checked={helpAnswers.foodExpenses === 'high'}
                         onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'high'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_high')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="foodExpenses" 
                         checked={helpAnswers.foodExpenses === 'moderate'}
                         onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'moderate'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_moderate')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="foodExpenses" 
                         checked={helpAnswers.foodExpenses === 'low'}
                         onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'low'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_low')}
                     </label>
@@ -660,20 +660,20 @@ const Costs = () => {
                 </div>
 
                 {/* Question 5: Private Insurance */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">{t('costs.helpModal.question5')}</p>
+                <div className="p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-2">{t('costs.helpModal.question5')}</p>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="privateInsurance" 
                         checked={helpAnswers.privateInsurance === true}
                         onChange={() => setHelpAnswers({...helpAnswers, privateInsurance: true})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="privateInsurance" 
