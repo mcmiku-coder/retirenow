@@ -5,6 +5,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from './components/ui/sonner';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
+import Admin from './pages/Admin';
 import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
