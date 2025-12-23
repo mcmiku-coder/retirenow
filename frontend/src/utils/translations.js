@@ -226,7 +226,7 @@ export const translations = {
     // Scenario Page
     scenario: {
       title: "Retirement Scenario Simulator",
-      subtitle: "Adjust your retirement date and values to see if you can quit early!",
+      subtitle: "Now add savings information, possible future inflows, transmission objective and set the desired retirement date. Run the simulator and see what happens!",
       wishedRetirement: "My Wished Retirement Date",
       legalRetirementDate: "Legal retirement date",
       month: "Month",
