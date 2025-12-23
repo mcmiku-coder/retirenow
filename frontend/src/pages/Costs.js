@@ -215,9 +215,16 @@ const Costs = () => {
         );
       }
 
-      // Handle vacation question
-      if (helpAnswers.highVacation !== null) {
-        const vacationAmount = helpAnswers.highVacation ? '10000' : '2000';
+      // Handle vacation question (now with 3 options)
+      if (helpAnswers.vacationCosts !== null) {
+        let vacationAmount = '5000';
+        if (helpAnswers.vacationCosts === 'high') {
+          vacationAmount = '10000';
+        } else if (helpAnswers.vacationCosts === 'moderate') {
+          vacationAmount = '5000';
+        } else if (helpAnswers.vacationCosts === 'low') {
+          vacationAmount = '2000';
+        }
         updatedRows = updatedRows.map(row => 
           row.name === 'Vacation' ? { ...row, amount: vacationAmount } : row
         );
@@ -231,9 +238,16 @@ const Costs = () => {
         );
       }
 
-      // Handle food quality question
-      if (helpAnswers.qualityFood !== null) {
-        const foodAmount = helpAnswers.qualityFood ? '600' : '400';
+      // Handle food expenses question (now with 3 options)
+      if (helpAnswers.foodExpenses !== null) {
+        let foodAmount = '500';
+        if (helpAnswers.foodExpenses === 'high') {
+          foodAmount = '800';
+        } else if (helpAnswers.foodExpenses === 'moderate') {
+          foodAmount = '500';
+        } else if (helpAnswers.foodExpenses === 'low') {
+          foodAmount = '350';
+        }
         updatedRows = updatedRows.map(row => 
           row.name === 'Food' ? { ...row, amount: foodAmount } : row
         );
