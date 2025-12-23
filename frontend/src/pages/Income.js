@@ -143,15 +143,17 @@ const Income = () => {
       
       if (hasAnyData) {
         if (!row.amount) {
-          toast.error(`${t('income.amount')} - ${row.name || 'row ' + row.id}`);
+          toast.error(language === 'fr' 
+            ? `Veuillez saisir un montant ou supprimer la ligne: ${getIncomeName(row.name) || 'ligne ' + row.id}`
+            : `Please enter an amount or delete the row: ${getIncomeName(row.name) || 'row ' + row.id}`);
           return false;
         }
         if (!row.startDate) {
-          toast.error(`${t('income.startDate')} - ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('income.startDate')} - ${getIncomeName(row.name) || 'row ' + row.id}`);
           return false;
         }
         if (row.frequency !== 'One-time' && !row.endDate) {
-          toast.error(`${t('income.endDate')} - ${row.name || 'row ' + row.id}`);
+          toast.error(`${t('income.endDate')} - ${getIncomeName(row.name) || 'row ' + row.id}`);
           return false;
         }
       }
