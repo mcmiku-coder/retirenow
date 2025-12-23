@@ -585,7 +585,7 @@ export const translations = {
     // Scenario Page
     scenario: {
       title: "Simulateur de scénarios de retraite",
-      subtitle: "Ajustez votre date de retraite et vos valeurs pour voir si vous pouvez partir !",
+      subtitle: "Ajoutez maintenant les informations d'épargne, les entrées futures possibles, l'objectif de transmission et définissez la date de retraite souhaitée. Lancez le simulateur et voyez ce qui se passe !",
       wishedRetirement: "Ma date de retraite souhaitée",
       legalRetirementDate: "Date de retraite légale",
       month: "Mois",
