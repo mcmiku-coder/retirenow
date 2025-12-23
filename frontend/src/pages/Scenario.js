@@ -202,7 +202,7 @@ const Scenario = () => {
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
-  }, [liquidAssets, nonLiquidAssets, transmissionAmount, futureInflows, wishedRetirementDate, user, password, loading]);
+  }, [liquidAssets, nonLiquidAssets, transmissionAmount, futureInflows, wishedRetirementDate, incomes, costs, user, password, loading]);
 
   const adjustDate = (months) => {
     const currentDate = new Date(wishedRetirementDate);
