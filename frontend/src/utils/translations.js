@@ -92,7 +92,7 @@ export const translations = {
       legalRetirementDesc: "Based on your birth date + 65 years + 1 month",
       lifeExpectancy: "Life Expectancy",
       lifeExpectancyDesc: "Based on statistical data for your gender",
-      theoreticalDeath: "Theoretical End Date",
+      theoreticalDeath: "Theoretical Death Date",
       theoreticalDeathDesc: "Used for financial projections",
       years: "years",
       continue: "Continue to Income"
