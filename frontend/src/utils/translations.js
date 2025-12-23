@@ -233,7 +233,7 @@ export const translations = {
       year: "Year",
       removeMonth: "Move forward 1 month",
       removeYear: "Move forward 1 year",
-      incomeSources: "Income Sources",
+      incomeSources: "Previous income inputs - can be adjusted for simulation",
       allDatesEditable: "All dates are editable to adjust your scenario",
       name: "Name",
       originalValue: "Original Value",
