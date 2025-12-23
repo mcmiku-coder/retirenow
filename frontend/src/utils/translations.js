@@ -604,7 +604,7 @@ export const translations = {
       startDate: "Date de début",
       endDate: "Date de fin",
       oneTime: "Unique",
-      costs: "Dépenses",
+      costs: "Dépenses précédentes - peuvent être ajustées pour la simulation",
       costsDescription: "Les dépenses divisées sont regroupées. Les changements de date de fin se synchronisent automatiquement avec les dates de début liées.",
       actions: "Actions",
       split: "divisé",
