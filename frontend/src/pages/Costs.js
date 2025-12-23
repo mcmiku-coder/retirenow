@@ -39,9 +39,9 @@ const Costs = () => {
   // Help modal answers
   const [helpAnswers, setHelpAnswers] = useState({
     hasCar: null,
-    highVacation: null,
+    vacationCosts: null, // 'high', 'moderate', 'low'
     goesOutOften: null,
-    qualityFood: null,
+    foodExpenses: null, // 'high', 'moderate', 'low'
     privateInsurance: null,
     publicTransport: null, // 'never', 'sometimes', 'always'
     clothingShopping: null, // 'veryOften', 'reasonably', 'rarely'
