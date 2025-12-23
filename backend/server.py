@@ -134,6 +134,56 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "OK", "message": "Backend is running"}
 
+# Admin Routes
+def verify_admin_key(admin_key: str) -> bool:
+    """Verify the admin secret key"""
+    return admin_key == ADMIN_SECRET_KEY
+
+@api_router.post("/admin/login")
+async def admin_login(request: AdminLoginRequest):
+    """Verify admin credentials and return success status"""
+    if not verify_admin_key(request.admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    return {"success": True, "message": "Admin access granted"}
+
+@api_router.post("/admin/users", response_model=AdminStatsResponse)
+async def get_all_users(request: AdminLoginRequest):
+    """Get all registered users (admin only)"""
+    if not verify_admin_key(request.admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Get all users from the access collection
+    users_cursor = db.access.find({}, {"_id": 0, "password": 0})
+    users = await users_cursor.to_list(length=None)
+    
+    user_list = [
+        AdminUserResponse(
+            user_id=user.get("user_id", ""),
+            email=user.get("email", ""),
+            created_at=user.get("created_at", None)
+        )
+        for user in users
+    ]
+    
+    return AdminStatsResponse(
+        total_users=len(user_list),
+        users=user_list
+    )
+
+@api_router.post("/admin/stats")
+async def get_admin_stats(request: AdminLoginRequest):
+    """Get admin statistics (admin only)"""
+    if not verify_admin_key(request.admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Count users
+    total_users = await db.access.count_documents({})
+    
+    return {
+        "total_users": total_users,
+        "database": os.environ.get('DB_NAME', 'unknown')
+    }
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserRegister):
     # Check if user exists
