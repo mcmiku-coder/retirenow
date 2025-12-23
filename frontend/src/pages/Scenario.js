@@ -134,19 +134,39 @@ const Scenario = () => {
           setNonLiquidAssets(scenarioData.nonLiquidAssets || '');
           setTransmissionAmount(scenarioData.transmissionAmount || '');
           setFutureInflows(scenarioData.futureInflows || []);
+          
+          // Use saved adjusted incomes if available, otherwise use original data
+          if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
+            setIncomes(scenarioData.adjustedIncomes);
+          } else {
+            setIncomes(incomeData.filter(i => i.amount).map(i => ({
+              ...i,
+              adjustedAmount: i.amount
+            })));
+          }
+          
+          // Use saved adjusted costs if available, otherwise use original data
+          if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
+            setCosts(scenarioData.adjustedCosts);
+          } else {
+            setCosts(costData.filter(c => c.amount).map(c => ({
+              ...c,
+              adjustedAmount: c.amount
+            })));
+          }
+        } else {
+          // Set incomes with adjusted values
+          setIncomes(incomeData.filter(i => i.amount).map(i => ({
+            ...i,
+            adjustedAmount: i.amount
+          })));
+
+          // Set costs with adjusted values
+          setCosts(costData.filter(c => c.amount).map(c => ({
+            ...c,
+            adjustedAmount: c.amount
+          })));
         }
-
-        // Set incomes with adjusted values
-        setIncomes(incomeData.filter(i => i.amount).map(i => ({
-          ...i,
-          adjustedAmount: i.amount
-        })));
-
-        // Set costs with adjusted values
-        setCosts(costData.filter(c => c.amount).map(c => ({
-          ...c,
-          adjustedAmount: c.amount
-        })));
 
       } catch (error) {
         toast.error('Failed to load data');
