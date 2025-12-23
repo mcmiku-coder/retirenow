@@ -245,7 +245,7 @@ export const translations = {
       startDate: "Start Date",
       endDate: "End Date",
       oneTime: "One-time",
-      costs: "Costs",
+      costs: "Previous cost inputs - can be adjusted for simulation",
       costsDescription: "Split costs are grouped together. End date changes auto-sync with linked start dates.",
       actions: "Actions",
       split: "split",
