@@ -320,9 +320,9 @@ const Costs = () => {
     setShowHelpModal(false);
     setHelpAnswers({
       hasCar: null,
-      highVacation: null,
+      vacationCosts: null,
       goesOutOften: null,
-      qualityFood: null,
+      foodExpenses: null,
       privateInsurance: null,
       publicTransport: null,
       clothingShopping: null,
