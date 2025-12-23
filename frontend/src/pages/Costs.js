@@ -780,17 +780,17 @@ const Costs = () => {
                         name="tvInternetCosts" 
                         checked={helpAnswers.tvInternetCosts === 'moderate'}
                         onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'moderate'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question8_moderate')}
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs">
                       <input 
                         type="radio" 
                         name="tvInternetCosts" 
                         checked={helpAnswers.tvInternetCosts === 'low'}
                         onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'low'})}
-                        className="w-4 h-4"
+                        className="w-3 h-3"
                       />
                       {t('costs.helpModal.question8_low')}
                     </label>
@@ -798,10 +798,11 @@ const Costs = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-3 mt-4">
                 <Button 
                   onClick={applyHelpAnswers}
-                  className="flex-1"
+                  className="flex-1 text-sm"
+                  size="sm"
                 >
                   {t('costs.helpModal.apply')}
                 </Button>
@@ -811,16 +812,17 @@ const Costs = () => {
                     setShowHelpModal(false);
                     setHelpAnswers({
                       hasCar: null,
-                      highVacation: null,
+                      vacationCosts: null,
                       goesOutOften: null,
-                      qualityFood: null,
+                      foodExpenses: null,
                       privateInsurance: null,
                       publicTransport: null,
                       clothingShopping: null,
                       tvInternetCosts: null
                     });
                   }}
-                  className="flex-1"
+                  className="flex-1 text-sm"
+                  size="sm"
                 >
                   {t('costs.helpModal.cancel')}
                 </Button>
