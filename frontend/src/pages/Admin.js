@@ -60,7 +60,9 @@ const Admin = () => {
       });
       setStats(statsResponse.data);
     } catch (error) {
-      toast.error('Failed to load data');
+      console.error('Load data error:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
+      toast.error(`Failed to load data: ${errorMessage}`);
     }
   };
 
