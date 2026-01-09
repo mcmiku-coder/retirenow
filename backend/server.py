@@ -317,6 +317,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Test database connection on startup"""
+    try:
+        # Test the connection
+        await client.admin.command('ping')
+        logger.info(f"Successfully connected to MongoDB database: {os.environ.get('DB_NAME', 'unknown')}")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
