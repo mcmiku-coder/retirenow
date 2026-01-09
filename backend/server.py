@@ -303,10 +303,16 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS middleware - must be added after routes
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "https://quit-frontend.onrender.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "*"
+    ],
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
