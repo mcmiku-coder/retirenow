@@ -10,7 +10,7 @@ import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
 import { NavigationButtons } from '../components/NavigationButtons';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
 
 const RetirementOverview = () => {
   const navigate = useNavigate();
