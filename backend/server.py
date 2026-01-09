@@ -194,9 +194,12 @@ async def get_admin_stats(request: AdminLoginRequest):
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserRegister):
+    logger.info(f"Registration attempt for email: {user.email}")
+    
     # Check if user exists
     existing = await db.access.find_one({"email": user.email}, {"_id": 0})
     if existing:
+        logger.warning(f"Registration failed - email already exists: {user.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
     
     # Create user
@@ -204,10 +207,16 @@ async def register(user: UserRegister):
     user_doc = {
         "user_id": str(uuid.uuid4()),
         "email": user.email,
-        "password": hashed_pw
+        "password": hashed_pw,
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.access.insert_one(user_doc)
+    try:
+        result = await db.access.insert_one(user_doc)
+        logger.info(f"User registered successfully: {user.email}, inserted_id: {result.inserted_id}")
+    except Exception as e:
+        logger.error(f"Failed to insert user {user.email}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create user")
     
     token = create_token(user.email)
     return TokenResponse(token=token, email=user.email)
