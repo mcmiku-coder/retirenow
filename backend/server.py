@@ -152,23 +152,27 @@ async def get_all_users(request: AdminLoginRequest):
     if not verify_admin_key(request.admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     
-    # Get all users from the access collection
-    users_cursor = db.access.find({}, {"_id": 0, "password": 0})
-    users = await users_cursor.to_list(length=None)
-    
-    user_list = [
-        AdminUserResponse(
-            user_id=user.get("user_id", ""),
-            email=user.get("email", ""),
-            created_at=user.get("created_at", None)
+    try:
+        # Get all users from the access collection
+        users_cursor = db.access.find({}, {"_id": 0, "password": 0})
+        users = await users_cursor.to_list(length=None)
+        
+        user_list = [
+            AdminUserResponse(
+                user_id=user.get("user_id", ""),
+                email=user.get("email", ""),
+                created_at=user.get("created_at", None)
+            )
+            for user in users
+        ]
+        
+        return AdminStatsResponse(
+            total_users=len(user_list),
+            users=user_list
         )
-        for user in users
-    ]
-    
-    return AdminStatsResponse(
-        total_users=len(user_list),
-        users=user_list
-    )
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/admin/stats")
 async def get_admin_stats(request: AdminLoginRequest):
@@ -176,13 +180,17 @@ async def get_admin_stats(request: AdminLoginRequest):
     if not verify_admin_key(request.admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     
-    # Count users
-    total_users = await db.access.count_documents({})
-    
-    return {
-        "total_users": total_users,
-        "database": os.environ.get('DB_NAME', 'unknown')
-    }
+    try:
+        # Count users
+        total_users = await db.access.count_documents({})
+        
+        return {
+            "total_users": total_users,
+            "database": os.environ.get('DB_NAME', 'unknown')
+        }
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user: UserRegister):
