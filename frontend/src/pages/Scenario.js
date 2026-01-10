@@ -786,30 +786,63 @@ const Scenario = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Radio Options */}
+              {/* Option 1: Choose retirement date - with date selector directly below */}
               <div className="space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                   <input
-                    type="radio"
-                    name="retirementOption"
-                    value="choose"
+                    type="checkbox"
                     checked={retirementOption === 'choose'}
                     onChange={() => setRetirementOption('choose')}
-                    className="w-4 h-4 text-blue-600"
+                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
                   />
                   <span className="text-white font-medium">
                     {language === 'fr' ? 'Choisir votre date de retraite anticipée' : 'Choose your early retirement date'}
                   </span>
                 </label>
                 
+                {/* Date selector - directly below the first option when selected */}
+                {retirementOption === 'choose' && (
+                  <div className="ml-8 pl-4 border-l-2 border-white/30">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Input
+                        data-testid="wished-retirement-date"
+                        type="date"
+                        value={wishedRetirementDate}
+                        onChange={(e) => setWishedRetirementDate(e.target.value)}
+                        className="max-w-xs bg-white text-black"
+                      />
+                      <Button
+                        data-testid="minus-1-month-btn"
+                        onClick={() => adjustDate(1)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {language === 'fr' ? 'Avancer de 1 mois' : 'Move forward 1 month'}
+                      </Button>
+                      <Button
+                        data-testid="minus-1-year-btn"
+                        onClick={() => adjustDate(12)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {language === 'fr' ? 'Avancer de 1 an' : 'Move forward 1 year'}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-white/80 mt-3">
+                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Option 2: Calculate earliest date */}
+              <div className="space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                   <input
-                    type="radio"
-                    name="retirementOption"
-                    value="calculate"
+                    type="checkbox"
                     checked={retirementOption === 'calculate'}
                     onChange={() => setRetirementOption('calculate')}
-                    className="w-4 h-4 text-blue-600"
+                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
                   />
                   <span className="text-white font-medium">
                     {language === 'fr' 
@@ -817,55 +850,21 @@ const Scenario = () => {
                       : 'Calculate the earliest retirement date possible (balance at death not negative)'}
                   </span>
                 </label>
-              </div>
-              
-              {/* Date selector - only shown for "choose" option */}
-              {retirementOption === 'choose' && (
-                <div className="pt-4 border-t border-white/20">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <Input
-                      data-testid="wished-retirement-date"
-                      type="date"
-                      value={wishedRetirementDate}
-                      onChange={(e) => setWishedRetirementDate(e.target.value)}
-                      className="max-w-xs bg-white text-black"
-                    />
-                    <Button
-                      data-testid="minus-1-month-btn"
-                      onClick={() => adjustDate(-1)}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      {t('scenario.removeMonth')}
-                    </Button>
-                    <Button
-                      data-testid="minus-1-year-btn"
-                      onClick={() => adjustDate(-12)}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      {t('scenario.removeYear')}
-                    </Button>
+                
+                {/* Info for "calculate" option - directly below when selected */}
+                {retirementOption === 'calculate' && (
+                  <div className="ml-8 pl-4 border-l-2 border-white/30">
+                    <p className="text-white/80 text-sm">
+                      {language === 'fr' 
+                        ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
+                        : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
+                    </p>
+                    <p className="text-sm text-white/80 mt-2">
+                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                    </p>
                   </div>
-                  <p className="text-sm text-white/80 mt-3">
-                    {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
-              
-              {/* Info for "calculate" option */}
-              {retirementOption === 'calculate' && (
-                <div className="pt-4 border-t border-white/20">
-                  <p className="text-white/80 text-sm">
-                    {language === 'fr' 
-                      ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
-                      : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
-                  </p>
-                  <p className="text-sm text-white/80 mt-2">
-                    {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
 
