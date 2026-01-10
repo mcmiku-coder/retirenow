@@ -352,77 +352,123 @@ const FinancialBalance = () => {
               </CardContent>
             </Card>
 
-            {/* Category Breakdown Donut Charts */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('financialBalance.incomeByCategory')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={incomeCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
-                      >
-                        {incomeCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                        formatter={(value) => `CHF ${value.toLocaleString()}`}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('financialBalance.costsByCategory')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={costCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
-                      >
-                        {costCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                        formatter={(value) => `CHF ${value.toLocaleString()}`}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+            {/* Collapsible Section Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowCategorySection(!showCategorySection)}
+                className="flex items-center justify-between gap-2 flex-1"
+              >
+                <span>{language === 'fr' ? 'Voir les revenus et dépenses par catégorie' : 'See Costs and Income by Category'}</span>
+                {showCategorySection ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowYearlySection(!showYearlySection)}
+                className="flex items-center justify-between gap-2 flex-1"
+              >
+                <span>{language === 'fr' ? 'Voir le détail financier par année' : 'See Year-by-Year Financial Breakdown'}</span>
+                {showYearlySection ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
             </div>
 
-            {/* Year-by-Year Breakdown Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('financialBalance.yearlyBreakdown')}</CardTitle>
-              </CardHeader>
-              <CardContent>
+            {/* Conditional Message Box */}
+            <div className={`mt-6 p-4 rounded-lg ${yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
+              <p className="text-white text-center font-medium">
+                {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 
+                  ? (language === 'fr' 
+                      ? 'Votre solde est positif! À la prochaine étape des simulations de retraites anticipées seront réalisées' 
+                      : 'Your balance is positive! In the next step, early retirement simulations will be performed')
+                  : (language === 'fr' 
+                      ? 'Votre solde est négatif. À la prochaine étape un simulateur servira à chercher des solutions d\'ajustement'
+                      : 'Your balance is negative. In the next step, a simulator will help find adjustment solutions')
+                }
+              </p>
+            </div>
+
+            {/* Category Breakdown Donut Charts - Collapsible */}
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategorySection ? 'max-h-[2000px] opacity-100 mt-6' : 'max-h-0 opacity-0'}`}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>{t('financialBalance.incomeByCategory')}</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setShowCategorySection(false)}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={incomeCategoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          paddingAngle={2}
+                          dataKey="value"
+                          label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
+                        >
+                          {incomeCategoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                          formatter={(value) => `CHF ${value.toLocaleString()}`}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>{t('financialBalance.costsByCategory')}</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setShowCategorySection(false)}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={costCategoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          paddingAngle={2}
+                          dataKey="value"
+                          label={(entry) => `${entry.name}: CHF ${entry.value.toLocaleString()}`}
+                        >
+                          {costCategoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                          formatter={(value) => `CHF ${value.toLocaleString()}`}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Year-by-Year Breakdown Table - Collapsible */}
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showYearlySection ? 'max-h-[2000px] opacity-100 mt-6' : 'max-h-0 opacity-0'}`}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>{t('financialBalance.yearlyBreakdown')}</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowYearlySection(false)}>
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-muted/50 sticky top-0">
