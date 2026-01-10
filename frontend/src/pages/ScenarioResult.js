@@ -723,6 +723,20 @@ const ScenarioResult = () => {
                           }}
                         />
                         <Legend />
+                        {/* Vertical line for calculated earliest retirement date */}
+                        {result?.calculatedEarliestDate && result?.retirementOption === 'calculate' && (
+                          <ReferenceLine 
+                            x={new Date(result.calculatedEarliestDate).getFullYear()} 
+                            stroke="#fbbf24" 
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ 
+                              value: language === 'fr' ? 'Retraite anticipée' : 'Early Retirement', 
+                              fill: '#fbbf24',
+                              position: 'top'
+                            }}
+                          />
+                        )}
                         <Area 
                           type="monotone" 
                           dataKey="cumulativeBalance" 
