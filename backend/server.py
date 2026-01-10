@@ -100,10 +100,39 @@ class AdminUserResponse(BaseModel):
     user_id: str
     email: str
     created_at: Optional[str] = None
+    login_count: int = 0
+    last_login: Optional[str] = None
+    last_page_visited: Optional[str] = None
+    deepest_page: Optional[str] = None
 
 class AdminStatsResponse(BaseModel):
     total_users: int
     users: List[AdminUserResponse]
+
+# Analytics models
+class PageVisitRequest(BaseModel):
+    page_path: str
+    session_id: Optional[str] = None
+
+# Page navigation order (for determining "deepest" page)
+PAGE_DEPTH_ORDER = [
+    '/',
+    '/information',
+    '/personal-info',
+    '/retirement-overview',
+    '/income',
+    '/costs',
+    '/financial-balance',
+    '/scenario',
+    '/scenario-result'
+]
+
+def get_page_depth(page_path: str) -> int:
+    """Get the depth/order of a page in the navigation flow"""
+    try:
+        return PAGE_DEPTH_ORDER.index(page_path)
+    except ValueError:
+        return -1  # Unknown page
 
 # Auth helpers
 def hash_password(password: str) -> str:
