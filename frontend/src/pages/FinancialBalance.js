@@ -231,18 +231,22 @@ const FinancialBalance = () => {
         {balance && yearlyBreakdown.length > 0 && (
           <div className="space-y-6 mb-8">
             <div className="grid md:grid-cols-2 gap-6">
-              <Card data-testid="death-balance-status-card" className={yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'border-green-500' : 'border-red-500'}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    {t('financialBalance.balanceAtDeath')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-4xl font-bold ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="death-balance-status">
-                    {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? t('financialBalance.positive') : t('financialBalance.negative')}
-                  </p>
-                </CardContent>
-              </Card>
+              {/* Conditional Message Box - replaces Balance at Death status card */}
+              <div 
+                data-testid="death-balance-status-card" 
+                className={`rounded-lg p-6 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
+              >
+                <p className="text-white text-center font-medium text-lg" data-testid="death-balance-status">
+                  {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 
+                    ? (language === 'fr' 
+                        ? 'Votre solde est positif! À la prochaine étape des simulations de retraites anticipées seront réalisées' 
+                        : 'Your balance is positive! In the next step, early retirement simulations will be performed')
+                    : (language === 'fr' 
+                        ? 'Votre solde est négatif. À la prochaine étape un simulateur servira à chercher des solutions d\'ajustement'
+                        : 'Your balance is negative. In the next step, a simulator will help find adjustment solutions')
+                  }
+                </p>
+              </div>
 
               <Card data-testid="death-balance-value-card">
                 <CardHeader>
