@@ -261,6 +261,25 @@ async def login(user: UserLogin):
     if not verify_password(user.password, user_doc['password']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Update login analytics
+    current_time = datetime.now(timezone.utc).isoformat()
+    await db.access.update_one(
+        {"email": user.email},
+        {
+            "$inc": {"login_count": 1},
+            "$set": {"last_login": current_time}
+        }
+    )
+    
+    # Log the login event in analytics collection
+    await db.login_events.insert_one({
+        "user_id": user_doc.get("user_id"),
+        "email": user.email,
+        "timestamp": current_time
+    })
+    
+    logger.info(f"User logged in: {user.email}")
+    
     token = create_token(user.email)
     return TokenResponse(token=token, email=user.email)
 
