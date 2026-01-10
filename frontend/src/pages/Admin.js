@@ -181,12 +181,15 @@ const Admin = () => {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left p-3 font-semibold">#</th>
                       <th className="text-left p-3 font-semibold">Email</th>
-                      <th className="text-left p-3 font-semibold">User ID</th>
+                      <th className="text-center p-3 font-semibold">Logins</th>
+                      <th className="text-left p-3 font-semibold">Last Login</th>
+                      <th className="text-left p-3 font-semibold">Last Page</th>
+                      <th className="text-left p-3 font-semibold">Deepest Page</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -194,8 +197,27 @@ const Admin = () => {
                       <tr key={user.user_id} className="border-b hover:bg-muted/30">
                         <td className="p-3 text-muted-foreground">{index + 1}</td>
                         <td className="p-3 font-medium">{user.email}</td>
-                        <td className="p-3 text-xs text-muted-foreground font-mono">
-                          {user.user_id}
+                        <td className="p-3 text-center">
+                          <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full">
+                            {user.login_count || 0}
+                          </span>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          {user.last_login ? formatDateTime(user.last_login) : '-'}
+                        </td>
+                        <td className="p-3">
+                          {user.last_page_visited ? (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded">
+                              {formatPageName(user.last_page_visited)}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="p-3">
+                          {user.deepest_page ? (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">
+                              {formatPageName(user.deepest_page)}
+                            </span>
+                          ) : '-'}
                         </td>
                       </tr>
                     ))}
