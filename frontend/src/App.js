@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from './components/ui/sonner';
+import PageHeader from './components/PageHeader';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
 import Admin from './pages/Admin';
@@ -29,6 +30,18 @@ const PageTracker = () => {
   }, [location.pathname, token]);
 
   return null;
+};
+
+// Global header component that shows on appropriate pages
+const GlobalHeader = () => {
+  const location = useLocation();
+  const hiddenPaths = ['/', '/admin', '/information'];
+  
+  if (hiddenPaths.includes(location.pathname)) {
+    return null;
+  }
+  
+  return <PageHeader showLanguageSelector={true} />;
 };
 
 const ProtectedRoute = ({ children }) => {
