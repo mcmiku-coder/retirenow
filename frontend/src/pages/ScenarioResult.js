@@ -636,10 +636,32 @@ const ScenarioResult = () => {
                     </p>
                   </div>
                 )}
-                {result.wishedRetirementDate && (
-                  <p className="text-sm text-muted-foreground mt-4">
-                    {t('result.basedOnRetirement')}: {new Date(result.wishedRetirementDate).toLocaleDateString()}
-                  </p>
+                
+                {/* Retirement Date Display - Different messages based on option and outcome */}
+                {result.retirementOption === 'calculate' ? (
+                  // Option 2: Calculate earliest retirement date
+                  result.calculatedEarliestDate && new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) ? (
+                    // Early retirement IS possible
+                    <p className="text-lg font-semibold text-green-500 mt-4" data-testid="early-retirement-message">
+                      {language === 'fr' 
+                        ? `Vous pouvez prendre une retraite anticipée le : ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`
+                        : `You can take an early retirement on: ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`}
+                    </p>
+                  ) : (
+                    // Early retirement is NOT possible
+                    <p className="text-lg font-semibold text-red-500 mt-4" data-testid="no-early-retirement-message">
+                      {language === 'fr' 
+                        ? `Vous ne pouvez pas prendre de retraite anticipée. Votre date de retraite légale reste : ${new Date(result.retirementLegalDate).toLocaleDateString()}`
+                        : `You cannot take an early retirement. Your legal retirement date remains: ${new Date(result.retirementLegalDate).toLocaleDateString()}`}
+                    </p>
+                  )
+                ) : (
+                  // Option 1: Manual date selection - show existing message
+                  result.wishedRetirementDate && (
+                    <p className="text-sm text-muted-foreground mt-4">
+                      {t('result.basedOnRetirement')}: {new Date(result.wishedRetirementDate).toLocaleDateString()}
+                    </p>
+                  )
                 )}
                 <p className="text-sm text-muted-foreground mt-6">
                   {result.canQuit 
