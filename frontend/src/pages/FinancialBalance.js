@@ -382,20 +382,6 @@ const FinancialBalance = () => {
               </Button>
             </div>
 
-            {/* Conditional Message Box */}
-            <div className={`mt-6 p-4 rounded-lg ${yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
-              <p className="text-white text-center font-medium">
-                {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 
-                  ? (language === 'fr' 
-                      ? 'Votre solde est positif! À la prochaine étape des simulations de retraites anticipées seront réalisées' 
-                      : 'Your balance is positive! In the next step, early retirement simulations will be performed')
-                  : (language === 'fr' 
-                      ? 'Votre solde est négatif. À la prochaine étape un simulateur servira à chercher des solutions d\'ajustement'
-                      : 'Your balance is negative. In the next step, a simulator will help find adjustment solutions')
-                }
-              </p>
-            </div>
-
             {/* Category Breakdown Donut Charts - Collapsible */}
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showCategorySection ? 'max-h-[2000px] opacity-100 mt-6' : 'max-h-0 opacity-0'}`}>
               <div className="grid md:grid-cols-2 gap-6">
