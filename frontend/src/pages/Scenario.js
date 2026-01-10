@@ -359,14 +359,50 @@ const Scenario = () => {
   const runSimulation = () => {
     try {
       const currentYear = new Date().getFullYear();
-      const wishedRetirementYear = new Date(wishedRetirementDate).getFullYear();
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
       const deathYear = new Date(deathDate).getFullYear();
+      const today = new Date().toISOString().split('T')[0];
+      
+      let simulationRetirementDate = wishedRetirementDate;
+      let calculatedEarliestDate = null;
+      
+      // If user chose "calculate earliest", find the earliest retirement date with non-negative balance
+      if (retirementOption === 'calculate') {
+        // Start from today and iterate month by month until legal retirement
+        const startDate = new Date();
+        const legalDate = new Date(retirementLegalDate);
+        let foundDate = null;
+        
+        // Check each month from now until legal retirement
+        let checkDate = new Date(startDate);
+        while (checkDate <= legalDate) {
+          const testRetirementDate = checkDate.toISOString().split('T')[0];
+          const testBalance = calculateBalanceForRetirementDate(testRetirementDate);
+          
+          if (testBalance >= 0) {
+            foundDate = testRetirementDate;
+            break;
+          }
+          
+          // Move to next month
+          checkDate.setMonth(checkDate.getMonth() + 1);
+        }
+        
+        if (foundDate) {
+          simulationRetirementDate = foundDate;
+          calculatedEarliestDate = foundDate;
+        } else {
+          // No valid date found - use legal retirement date and show "no" verdict
+          simulationRetirementDate = retirementLegalDate;
+          calculatedEarliestDate = null; // Signal that no early retirement is possible
+        }
+      }
+      
+      const wishedRetirementYear = new Date(simulationRetirementDate).getFullYear();
       
       let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
       const transmission = parseFloat(transmissionAmount || 0);
       const yearlyData = [];
-      const today = new Date().toISOString().split('T')[0];
 
       // Calculate year by year with detailed breakdown
       for (let year = currentYear; year <= deathYear; year++) {
@@ -385,16 +421,16 @@ const Scenario = () => {
           // Use date overrides if available, otherwise use calculated defaults
           if (income.name === 'Salary') {
             startDate = incomeDateOverrides['Salary']?.startDate || today;
-            endDate = incomeDateOverrides['Salary']?.endDate || wishedRetirementDate;
+            endDate = incomeDateOverrides['Salary']?.endDate || simulationRetirementDate;
           } else if (income.name === 'LPP') {
-            startDate = incomeDateOverrides['LPP']?.startDate || wishedRetirementDate;
+            startDate = incomeDateOverrides['LPP']?.startDate || simulationRetirementDate;
             endDate = incomeDateOverrides['LPP']?.endDate || deathDate;
           } else if (income.name === 'AVS') {
             startDate = incomeDateOverrides['AVS']?.startDate || retirementLegalDate;
             endDate = incomeDateOverrides['AVS']?.endDate || deathDate;
           } else if (income.name === '3a') {
-            // 3a is one-time at retirement - use override date or wished retirement
-            const threADate = incomeDateOverrides['3a']?.startDate || wishedRetirementDate;
+            // 3a is one-time at retirement - use override date or simulation retirement
+            const threADate = incomeDateOverrides['3a']?.startDate || simulationRetirementDate;
             const threAYear = new Date(threADate).getFullYear();
             if (year === threAYear) {
               yearData.income += amount;
@@ -486,7 +522,10 @@ const Scenario = () => {
           finalBalance: finalBalanceAfterTransmission,
           balanceBeforeTransmission: cumulativeBalance,
           transmissionAmount: transmission,
-          wishedRetirementDate,
+          wishedRetirementDate: simulationRetirementDate,
+          retirementLegalDate,
+          calculatedEarliestDate,
+          retirementOption,
           liquidAssets,
           nonLiquidAssets,
           yearlyBreakdown: breakdown,
@@ -500,6 +539,70 @@ const Scenario = () => {
       toast.error(t('common.error'));
       console.error(error);
     }
+  };
+  
+  // Helper function to calculate final balance for a given retirement date
+  const calculateBalanceForRetirementDate = (testRetirementDate) => {
+    const currentYear = new Date().getFullYear();
+    const deathYear = new Date(deathDate).getFullYear();
+    const today = new Date().toISOString().split('T')[0];
+    
+    let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
+    const transmission = parseFloat(transmissionAmount || 0);
+    let cumulativeBalance = initialSavings;
+    
+    for (let year = currentYear; year <= deathYear; year++) {
+      let yearIncome = 0;
+      let yearCosts = 0;
+      
+      incomes.forEach(income => {
+        const amount = parseFloat(income.adjustedAmount) || 0;
+        let startDate, endDate;
+        
+        if (income.name === 'Salary') {
+          startDate = today;
+          endDate = testRetirementDate;
+        } else if (income.name === 'LPP') {
+          startDate = testRetirementDate;
+          endDate = deathDate;
+        } else if (income.name === 'AVS') {
+          startDate = retirementLegalDate;
+          endDate = deathDate;
+        } else if (income.name === '3a') {
+          const threAYear = new Date(testRetirementDate).getFullYear();
+          if (year === threAYear) {
+            yearIncome += amount;
+          }
+          return;
+        } else {
+          startDate = income.startDate;
+          endDate = income.endDate;
+        }
+        
+        const yearlyAmount = calculateYearlyAmount(amount, income.frequency, startDate, endDate, year);
+        yearIncome += yearlyAmount;
+      });
+      
+      costs.forEach(cost => {
+        const amount = parseFloat(cost.adjustedAmount) || 0;
+        const yearlyAmount = calculateYearlyAmount(amount, cost.frequency, cost.startDate, cost.endDate, year);
+        yearCosts += yearlyAmount;
+      });
+      
+      futureInflows.forEach(inflow => {
+        const inflowAmount = parseFloat(inflow.amount) || 0;
+        if (inflowAmount > 0 && inflow.date) {
+          const inflowYear = new Date(inflow.date).getFullYear();
+          if (inflowYear === year) {
+            yearIncome += inflowAmount;
+          }
+        }
+      });
+      
+      cumulativeBalance += (yearIncome - yearCosts);
+    }
+    
+    return cumulativeBalance - transmission;
   };
 
   if (loading) {
