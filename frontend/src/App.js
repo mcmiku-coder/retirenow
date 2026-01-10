@@ -62,6 +62,7 @@ function AppRoutes() {
   return (
     <>
       <PageTracker />
+      <GlobalHeader />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/information" element={<Information />} />
