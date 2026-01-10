@@ -272,9 +272,14 @@ const FinancialBalance = () => {
                 <ResponsiveContainer width="100%" height={400}>
                   <AreaChart data={yearlyBreakdown}>
                     <defs>
-                      <linearGradient id="colorCumulative" x1="0" y1="0" x2="0" y2="1">
+                      {/* Dynamic gradient based on final balance */}
+                      <linearGradient id="colorCumulativePositive" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorCumulativeNegative" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -294,6 +299,7 @@ const FinancialBalance = () => {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length > 0) {
                           const data = payload[0].payload;
+                          const isPositive = yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0;
                           return (
                             <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}>
                               <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {data.year}</div>
@@ -302,7 +308,7 @@ const FinancialBalance = () => {
                                 <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
                                   Annual Balance: CHF {data.annualBalance.toLocaleString()}
                                 </div>
-                                <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                <div style={{ color: isPositive ? '#10b981' : '#ef4444', fontWeight: '600' }}>
                                   Cumulative Balance: CHF {Math.round(data.cumulativeBalance).toLocaleString()}
                                 </div>
                               </div>
@@ -338,9 +344,9 @@ const FinancialBalance = () => {
                     <Area 
                       type="monotone" 
                       dataKey="cumulativeBalance" 
-                      stroke="#10b981" 
+                      stroke={yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? "#10b981" : "#ef4444"}
                       fillOpacity={1} 
-                      fill="url(#colorCumulative)"
+                      fill={yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? "url(#colorCumulativePositive)" : "url(#colorCumulativeNegative)"}
                       name="Cumulative Balance"
                     />
                     <Line 
