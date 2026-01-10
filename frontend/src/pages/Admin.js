@@ -10,6 +10,41 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
 
+// Helper function to format date/time
+const formatDateTime = (isoString) => {
+  if (!isoString) return '-';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return isoString;
+  }
+};
+
+// Helper function to format page name
+const formatPageName = (path) => {
+  if (!path) return '-';
+  const pageNames = {
+    '/': 'Home',
+    '/information': 'Info',
+    '/personal-info': 'Personal Info',
+    '/retirement-overview': 'Retirement',
+    '/income': 'Income',
+    '/costs': 'Costs',
+    '/financial-balance': 'Balance',
+    '/scenario': 'Scenario',
+    '/result': 'Result',
+    '/scenario-result': 'Result'
+  };
+  return pageNames[path] || path;
+};
+
 const Admin = () => {
   const navigate = useNavigate();
   const [adminKey, setAdminKey] = useState('');
