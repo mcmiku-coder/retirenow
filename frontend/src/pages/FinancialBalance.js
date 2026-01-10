@@ -556,6 +556,7 @@ const FinancialBalance = () => {
               </CardContent>
             </Card>
           </div>
+          </div>
         )}
 
         <Button
