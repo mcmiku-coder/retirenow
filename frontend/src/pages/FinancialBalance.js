@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
-import { TrendingUp, TrendingDown, DollarSign, ArrowLeft, Home } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ArrowLeft, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell } from 'recharts';
 
 const FinancialBalance = () => {
@@ -20,6 +20,8 @@ const FinancialBalance = () => {
   const [costCategoryData, setCostCategoryData] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCategorySection, setShowCategorySection] = useState(false);
+  const [showYearlySection, setShowYearlySection] = useState(false);
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
