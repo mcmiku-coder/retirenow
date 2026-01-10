@@ -177,7 +177,7 @@ async def admin_login(request: AdminLoginRequest):
 
 @api_router.post("/admin/users", response_model=AdminStatsResponse)
 async def get_all_users(request: AdminLoginRequest):
-    """Get all registered users (admin only)"""
+    """Get all registered users with analytics (admin only)"""
     if not verify_admin_key(request.admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     
@@ -190,7 +190,11 @@ async def get_all_users(request: AdminLoginRequest):
             AdminUserResponse(
                 user_id=user.get("user_id", ""),
                 email=user.get("email", ""),
-                created_at=user.get("created_at", None)
+                created_at=user.get("created_at", None),
+                login_count=user.get("login_count", 0),
+                last_login=user.get("last_login", None),
+                last_page_visited=user.get("last_page_visited", None),
+                deepest_page=user.get("deepest_page", None)
             )
             for user in users
         ]
@@ -200,7 +204,7 @@ async def get_all_users(request: AdminLoginRequest):
             users=user_list
         )
     except Exception as e:
-        print(f"Error fetching users: {e}")
+        logger.error(f"Error fetching users: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/admin/stats")
