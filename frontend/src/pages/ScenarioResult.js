@@ -61,12 +61,32 @@ const ScenarioResult = () => {
         if (location.state && location.state.yearlyBreakdown) {
           // Use the breakdown data directly from simulation
           setYearlyBreakdown(location.state.yearlyBreakdown);
+          
+          // Determine if user can quit based on option chosen
+          const retirementOption = location.state.retirementOption || 'choose';
+          const calculatedEarliestDate = location.state.calculatedEarliestDate;
+          const retirementLegalDate = location.state.retirementLegalDate;
+          
+          let canQuit = location.state.finalBalance >= 0;
+          
+          // For "calculate" option, check if an early retirement date was found
+          if (retirementOption === 'calculate') {
+            if (calculatedEarliestDate && new Date(calculatedEarliestDate) < new Date(retirementLegalDate)) {
+              canQuit = true;
+            } else {
+              canQuit = false;
+            }
+          }
+          
           setResult({
-            canQuit: location.state.finalBalance >= 0,
+            canQuit,
             balance: location.state.finalBalance,
             balanceBeforeTransmission: location.state.balanceBeforeTransmission,
             transmissionAmount: location.state.transmissionAmount || 0,
             wishedRetirementDate: location.state.wishedRetirementDate,
+            retirementLegalDate: location.state.retirementLegalDate,
+            calculatedEarliestDate: location.state.calculatedEarliestDate,
+            retirementOption: location.state.retirementOption,
             fromSimulation: true
           });
         } else {
