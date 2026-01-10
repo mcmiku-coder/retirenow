@@ -363,7 +363,7 @@ export const translations = {
     // Landing Page
     landing: {
       title: "quit?",
-      subtitle: "Découvrez si vous pouvez vous permettre financièrement une retraite anticipée",
+      subtitle: "Pouvez-vous vous permettre financièrement une retraite anticipée?",
       description: "Un outil complet de planification de retraite qui analyse vos revenus, dépenses et épargne pour déterminer si vous pouvez quitter votre emploi et prendre une retraite anticipée.",
       learnMore: "En savoir plus sur la solution avant de créer un compte",
       createAccount: "Créer un compte",
