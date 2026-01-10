@@ -63,6 +63,9 @@ const Scenario = () => {
   const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
   
+  // Retirement option: 'choose' (manual) or 'calculate' (automatic earliest)
+  const [retirementOption, setRetirementOption] = useState('choose');
+  
   // Track date overrides for standard income sources
   const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
   
