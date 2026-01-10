@@ -777,43 +777,95 @@ const Scenario = () => {
             </CardContent>
           </Card>
 
-          {/* Wished Retirement Date Selector */}
-          <Card className="border-blue-400/30">
+          {/* Retirement Date Selector - Redesigned */}
+          <Card className="bg-blue-600 border-blue-600">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-400">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <Calendar className="h-5 w-5" />
-                {t('scenario.wishedRetirement')}
+                {language === 'fr' ? 'Date de retraite' : 'Retirement Date'}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <Input
-                  data-testid="wished-retirement-date"
-                  type="date"
-                  value={wishedRetirementDate}
-                  onChange={(e) => setWishedRetirementDate(e.target.value)}
-                  className="max-w-xs"
-                />
-                <Button
-                  data-testid="minus-1-month-btn"
-                  onClick={() => adjustDate(-1)}
-                  variant="outline"
-                  size="sm"
-                >
-                  {t('scenario.removeMonth')}
-                </Button>
-                <Button
-                  data-testid="minus-1-year-btn"
-                  onClick={() => adjustDate(-12)}
-                  variant="outline"
-                  size="sm"
-                >
-                  {t('scenario.removeYear')}
-                </Button>
+            <CardContent className="space-y-4">
+              {/* Radio Options */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                  <input
+                    type="radio"
+                    name="retirementOption"
+                    value="choose"
+                    checked={retirementOption === 'choose'}
+                    onChange={() => setRetirementOption('choose')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-white font-medium">
+                    {language === 'fr' ? 'Choisir votre date de retraite anticipée' : 'Choose your early retirement date'}
+                  </span>
+                </label>
+                
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                  <input
+                    type="radio"
+                    name="retirementOption"
+                    value="calculate"
+                    checked={retirementOption === 'calculate'}
+                    onChange={() => setRetirementOption('calculate')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-white font-medium">
+                    {language === 'fr' 
+                      ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)' 
+                      : 'Calculate the earliest retirement date possible (balance at death not negative)'}
+                  </span>
+                </label>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
-              </p>
+              
+              {/* Date selector - only shown for "choose" option */}
+              {retirementOption === 'choose' && (
+                <div className="pt-4 border-t border-white/20">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Input
+                      data-testid="wished-retirement-date"
+                      type="date"
+                      value={wishedRetirementDate}
+                      onChange={(e) => setWishedRetirementDate(e.target.value)}
+                      className="max-w-xs bg-white text-black"
+                    />
+                    <Button
+                      data-testid="minus-1-month-btn"
+                      onClick={() => adjustDate(-1)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      {t('scenario.removeMonth')}
+                    </Button>
+                    <Button
+                      data-testid="minus-1-year-btn"
+                      onClick={() => adjustDate(-12)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      {t('scenario.removeYear')}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-white/80 mt-3">
+                    {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              
+              {/* Info for "calculate" option */}
+              {retirementOption === 'calculate' && (
+                <div className="pt-4 border-t border-white/20">
+                  <p className="text-white/80 text-sm">
+                    {language === 'fr' 
+                      ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
+                      : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
+                  </p>
+                  <p className="text-sm text-white/80 mt-2">
+                    {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
