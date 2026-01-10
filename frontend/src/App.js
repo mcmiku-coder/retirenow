@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from './components/ui/sonner';
@@ -13,7 +13,23 @@ import Costs from './pages/Costs';
 import FinancialBalance from './pages/FinancialBalance';
 import Scenario from './pages/Scenario';
 import ScenarioResult from './pages/ScenarioResult';
+import { useEffect } from 'react';
+import { trackPageVisit } from './utils/analytics';
 import './App.css';
+
+// Page tracking component
+const PageTracker = () => {
+  const location = useLocation();
+  const { token } = useAuth();
+
+  useEffect(() => {
+    if (token) {
+      trackPageVisit(location.pathname, token);
+    }
+  }, [location.pathname, token]);
+
+  return null;
+};
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -31,46 +47,49 @@ const ProtectedRoute = ({ children }) => {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/information" element={<Information />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/personal-info" element={
-        <ProtectedRoute>
-          <PersonalInfo />
-        </ProtectedRoute>
-      } />
-      <Route path="/retirement-overview" element={
-        <ProtectedRoute>
-          <RetirementOverview />
-        </ProtectedRoute>
-      } />
-      <Route path="/income" element={
-        <ProtectedRoute>
-          <Income />
-        </ProtectedRoute>
-      } />
-      <Route path="/costs" element={
-        <ProtectedRoute>
-          <Costs />
-        </ProtectedRoute>
-      } />
-      <Route path="/financial-balance" element={
-        <ProtectedRoute>
-          <FinancialBalance />
-        </ProtectedRoute>
-      } />
-      <Route path="/scenario" element={
-        <ProtectedRoute>
-          <Scenario />
-        </ProtectedRoute>
-      } />
-      <Route path="/result" element={
-        <ProtectedRoute>
-          <ScenarioResult />
-        </ProtectedRoute>
-      } />
-    </Routes>
+    <>
+      <PageTracker />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/information" element={<Information />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/personal-info" element={
+          <ProtectedRoute>
+            <PersonalInfo />
+          </ProtectedRoute>
+        } />
+        <Route path="/retirement-overview" element={
+          <ProtectedRoute>
+            <RetirementOverview />
+          </ProtectedRoute>
+        } />
+        <Route path="/income" element={
+          <ProtectedRoute>
+            <Income />
+          </ProtectedRoute>
+        } />
+        <Route path="/costs" element={
+          <ProtectedRoute>
+            <Costs />
+          </ProtectedRoute>
+        } />
+        <Route path="/financial-balance" element={
+          <ProtectedRoute>
+            <FinancialBalance />
+          </ProtectedRoute>
+        } />
+        <Route path="/scenario" element={
+          <ProtectedRoute>
+            <Scenario />
+          </ProtectedRoute>
+        } />
+        <Route path="/result" element={
+          <ProtectedRoute>
+            <ScenarioResult />
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </>
   );
 }
 
