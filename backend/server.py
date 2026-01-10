@@ -283,6 +283,50 @@ async def login(user: UserLogin):
     token = create_token(user.email)
     return TokenResponse(token=token, email=user.email)
 
+@api_router.post("/track-page")
+async def track_page_visit(request: PageVisitRequest, email: str = Depends(verify_token)):
+    """Track user page visits for analytics"""
+    try:
+        current_time = datetime.now(timezone.utc).isoformat()
+        
+        # Get current user data
+        user_doc = await db.access.find_one({"email": email}, {"_id": 0})
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Calculate page depth
+        new_page_depth = get_page_depth(request.page_path)
+        current_deepest = user_doc.get("deepest_page", "/")
+        current_deepest_depth = get_page_depth(current_deepest)
+        
+        # Update user's last visited page and deepest page if applicable
+        update_data = {
+            "last_page_visited": request.page_path,
+            "last_page_visit_time": current_time
+        }
+        
+        if new_page_depth > current_deepest_depth:
+            update_data["deepest_page"] = request.page_path
+        
+        await db.access.update_one(
+            {"email": email},
+            {"$set": update_data}
+        )
+        
+        # Log the page visit in analytics collection
+        await db.page_visits.insert_one({
+            "user_id": user_doc.get("user_id"),
+            "email": email,
+            "page_path": request.page_path,
+            "session_id": request.session_id,
+            "timestamp": current_time
+        })
+        
+        return {"success": True, "page": request.page_path}
+    except Exception as e:
+        logger.error(f"Error tracking page visit: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/life-expectancy", response_model=LifeExpectancyResponse)
 async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str = Depends(verify_token)):
     try:
