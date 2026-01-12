@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { validatePassword } from '../utils/encryption';
 import { Lock, Mail, Globe } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
 
 const Landing = () => {
@@ -25,22 +25,47 @@ const Landing = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    
+    console.log('Register clicked', { email, password });
+
     const passwordError = validatePassword(password);
+    console.log('Password validation result:', passwordError);
     if (passwordError) {
       toast.error(passwordError);
       return;
     }
 
     setLoading(true);
+    console.log('Sending request to:', `${API}/auth/register`);
     try {
+      // 1. Register with backend
       const response = await axios.post(`${API}/auth/register`, { email, password });
-      // Use local email variable as fallback in case response.data.email is undefined
+      console.log('Response:', response);
+
       const userEmail = response.data.email || email;
-      login(userEmail, response.data.token, password);
-      toast.success(t('auth.registrationSuccess'));
-      navigate('/personal-info');
+      const token = response.data.token;
+
+      // 2. Log in locally (sets context)
+      login(userEmail, token, password);
+
+      // 3. Initialize local encrypted storage immediately
+      // This verifies that encryption keys can be derived and data can be written
+      try {
+        // Dynamic import to avoid circular dependencies if any, or just direct import usage
+        // But since we are inside formatting, we'll assume the import is added at top
+        const { initializeUserDB } = await import('../utils/database');
+        await initializeUserDB(userEmail, password);
+
+        toast.success(t('auth.registrationSuccess'));
+        navigate('/personal-info');
+      } catch (dbError) {
+        console.error('Local DB Init Error:', dbError);
+        toast.error('Account created, but local storage failed. Please try logging in again.');
+        // We still navigate because the account exists, they might just need to retry or check browser settings
+        navigate('/personal-info');
+      }
+
     } catch (error) {
+      console.error('Registration error:', error);
       toast.error(error.response?.data?.detail || t('auth.registrationFailed'));
     } finally {
       setLoading(false);
@@ -85,17 +110,17 @@ const Landing = () => {
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6" data-testid="app-title">
-            <img 
-              src="https://customer-assets.emergentagent.com/job_retire-compass/artifacts/ltntsblz_quit.png" 
-              alt="Can I quit?" 
+            <img
+              src="https://customer-assets.emergentagent.com/job_retire-compass/artifacts/ltntsblz_quit.png"
+              alt="Can I quit?"
               className="max-w-md w-full h-auto rounded-lg shadow-lg"
             />
           </div>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4" data-testid="tagline">
             {t('landing.subtitle')}
           </p>
-          <Link 
-            to="/information" 
+          <Link
+            to="/information"
             className="text-green-500 hover:text-green-400 hover:underline text-sm inline-flex items-center gap-1"
           >
             {t('landing.learnMore')}
@@ -141,7 +166,7 @@ const Landing = () => {
             <h2 className="text-2xl font-semibold mb-6" data-testid="auth-form-title">
               {showRegister ? t('auth.createAccount') : t('auth.login')}
             </h2>
-            
+
             {showRegister && (
               <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-md">
                 <p className="text-sm text-yellow-200 font-semibold mb-2">⚠️ {t('landing.securityWarning').split(':')[0]}:</p>

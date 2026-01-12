@@ -28,11 +28,11 @@ export async function saveUserData(email, password, data) {
     console.error('saveUserData: Missing email or password', { email: !!email, password: !!password });
     throw new Error('Email and password are required');
   }
-  
+
   try {
     const salt = generateSalt();
     const encrypted = await encryptData(data, password, salt);
-    
+
     await db.userData.put({
       email: email,
       encryptedData: encrypted.encryptedData,
@@ -54,19 +54,19 @@ export async function getUserData(email, password) {
     console.warn('getUserData: Invalid email provided');
     return null;
   }
-  
+
   if (!password) {
     console.warn('getUserData: No password provided');
     return null;
   }
-  
+
   try {
     const record = await db.userData.get(email);
     if (!record) {
       // No record exists yet - this is normal for new users
       return null;
     }
-    
+
     return await decryptData({
       encryptedData: record.encryptedData,
       salt: record.salt,
@@ -86,10 +86,10 @@ export async function saveIncomeData(email, password, data) {
   if (!email || !password) {
     throw new Error('Email and password are required');
   }
-  
+
   const salt = generateSalt();
   const encrypted = await encryptData(data, password, salt);
-  
+
   await db.incomeData.put({
     email: email,
     encryptedData: encrypted.encryptedData,
@@ -107,18 +107,18 @@ export async function getIncomeData(email, password) {
     console.warn('getIncomeData: Invalid email provided');
     return null;
   }
-  
+
   if (!password) {
     console.warn('getIncomeData: No password provided');
     return null;
   }
-  
+
   try {
     const record = await db.incomeData.get(email);
     if (!record) {
       return null;
     }
-    
+
     return await decryptData({
       encryptedData: record.encryptedData,
       salt: record.salt,
@@ -137,10 +137,10 @@ export async function saveCostData(email, password, data) {
   if (!email || !password) {
     throw new Error('Email and password are required');
   }
-  
+
   const salt = generateSalt();
   const encrypted = await encryptData(data, password, salt);
-  
+
   await db.costData.put({
     email: email,
     encryptedData: encrypted.encryptedData,
@@ -158,18 +158,18 @@ export async function getCostData(email, password) {
     console.warn('getCostData: Invalid email provided');
     return null;
   }
-  
+
   if (!password) {
     console.warn('getCostData: No password provided');
     return null;
   }
-  
+
   try {
     const record = await db.costData.get(email);
     if (!record) {
       return null;
     }
-    
+
     return await decryptData({
       encryptedData: record.encryptedData,
       salt: record.salt,
@@ -189,11 +189,11 @@ export async function saveScenarioData(email, password, data) {
     console.error('saveScenarioData: Missing email or password');
     throw new Error('Email and password are required');
   }
-  
+
   try {
     const salt = generateSalt();
     const encrypted = await encryptData(data, password, salt);
-    
+
     await db.scenarioData.put({
       email: email,
       encryptedData: encrypted.encryptedData,
@@ -214,18 +214,18 @@ export async function getScenarioData(email, password) {
     console.warn('getScenarioData: Invalid email provided');
     return null;
   }
-  
+
   if (!password) {
     console.warn('getScenarioData: No password provided');
     return null;
   }
-  
+
   try {
     const record = await db.scenarioData.get(email);
     if (!record) {
       return null;
     }
-    
+
     return await decryptData({
       encryptedData: record.encryptedData,
       salt: record.salt,
@@ -244,7 +244,7 @@ export async function clearUserData(email) {
   if (!email) {
     return;
   }
-  
+
   try {
     await db.userData.delete(email);
     await db.incomeData.delete(email);
@@ -252,6 +252,37 @@ export async function clearUserData(email) {
     await db.scenarioData.delete(email);
   } catch (error) {
     console.error('clearUserData error:', error);
+  }
+}
+
+/**
+ * Initialize user database with empty record to verify encryption works
+ */
+export async function initializeUserDB(email, password) {
+  if (!email || !password) {
+    throw new Error('Email and password are required for initialization');
+  }
+
+  try {
+    // Check if data already exists
+    const existing = await getUserData(email, password);
+    if (existing) {
+      console.log('User data already exists, skipping initialization');
+      return;
+    }
+
+    // Initialize with empty profile
+    const emptyProfile = {
+      birthDate: '',
+      gender: '',
+      residence: ''
+    };
+
+    await saveUserData(email, password, emptyProfile);
+    console.log('User database initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize user database:', error);
+    throw new Error(`Local storage initialization failed: ${error.message}`);
   }
 }
 

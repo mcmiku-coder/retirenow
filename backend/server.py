@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -14,6 +15,7 @@ import bcrypt
 import jwt
 import pandas as pd
 import csv
+import traceback
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -44,6 +46,19 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 1 week
 
 # Admin Secret Key - Change this in production!
 ADMIN_SECRET_KEY = os.environ.get('ADMIN_SECRET_KEY', 'quit-admin-2024-secret')
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        logger.error(f"Global exception handler: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error", "error": str(e)}
+        )
+
 
 # Load life expectancy data
 life_expectancy_data = {
@@ -248,8 +263,10 @@ async def register(user: UserRegister):
         result = await db.access.insert_one(user_doc)
         logger.info(f"User registered successfully: {user.email}, inserted_id: {result.inserted_id}")
     except Exception as e:
-        logger.error(f"Failed to insert user {user.email}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create user")
+        logger.error(f"Failed to insert user {user.email}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to create user in database: {str(e)}")
     
     token = create_token(user.email)
     return TokenResponse(token=token, email=user.email)
@@ -405,22 +422,22 @@ async def calculate_life_expectancy(request: LifeExpectancyRequest, email: str =
         logger.error(f"Error calculating life expectancy: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Include the router in the main app
-app.include_router(api_router)
-
-# CORS middleware - must be added after routes
+# CORS middleware - must be added BEFORE routes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://quit-frontend.onrender.com",
-        "http://localhost:3000",
+        "http://localhost:3000", 
         "http://127.0.0.1:3000",
-        "*"
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the router in the main app
+app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_db_client():
