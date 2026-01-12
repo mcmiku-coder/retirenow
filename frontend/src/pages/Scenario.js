@@ -62,13 +62,13 @@ const Scenario = () => {
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
-  
+
   // Retirement option: 'choose' (manual) or 'calculate' (automatic earliest)
   const [retirementOption, setRetirementOption] = useState('choose');
-  
+
   // Track date overrides for standard income sources
   const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
-  
+
   // Possible future inflows (inheritance, other)
   const [futureInflows, setFutureInflows] = useState([]);
 
@@ -114,7 +114,7 @@ const Scenario = () => {
         retirementDate.setFullYear(retirementDate.getFullYear() + 65);
         retirementDate.setMonth(retirementDate.getMonth() + 1);
         const retirementDateStr = retirementDate.toISOString().split('T')[0];
-        
+
         // Use the theoretical death date from API
         let deathDateStr;
         if (userData.theoreticalDeathDate) {
@@ -137,7 +137,7 @@ const Scenario = () => {
           setNonLiquidAssets(scenarioData.nonLiquidAssets || '');
           setTransmissionAmount(scenarioData.transmissionAmount || '');
           setFutureInflows(scenarioData.futureInflows || []);
-          
+
           // Use saved adjusted incomes if available, otherwise use original data
           if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
             setIncomes(scenarioData.adjustedIncomes);
@@ -147,7 +147,7 @@ const Scenario = () => {
               adjustedAmount: i.amount
             })));
           }
-          
+
           // Use saved adjusted costs if available, otherwise use original data
           if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
             setCosts(scenarioData.adjustedCosts);
@@ -185,7 +185,7 @@ const Scenario = () => {
   // Auto-save scenario data when values change
   useEffect(() => {
     if (loading || !user?.email || !password) return;
-    
+
     const saveData = async () => {
       try {
         await saveScenarioData(user.email, password, {
@@ -201,7 +201,7 @@ const Scenario = () => {
         console.error('Failed to auto-save scenario data:', error);
       }
     };
-    
+
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
@@ -214,25 +214,25 @@ const Scenario = () => {
   };
 
   const updateIncomeAdjusted = (id, value) => {
-    setIncomes(incomes.map(inc => 
+    setIncomes(incomes.map(inc =>
       inc.id === id ? { ...inc, adjustedAmount: value } : inc
     ));
   };
 
   const updateCostAdjusted = (id, value) => {
-    setCosts(costs.map(cost => 
+    setCosts(costs.map(cost =>
       cost.id === id ? { ...cost, adjustedAmount: value } : cost
     ));
   };
 
   const updateCostDate = (id, field, value) => {
-    setCosts(costs.map(cost => 
+    setCosts(costs.map(cost =>
       cost.id === id ? { ...cost, [field]: value } : cost
     ));
   };
 
   const updateIncomeDate = (id, field, value) => {
-    setIncomes(incomes.map(income => 
+    setIncomes(incomes.map(income =>
       income.id === id ? { ...income, [field]: value } : income
     ));
   };
@@ -252,9 +252,9 @@ const Scenario = () => {
   const getEffectiveIncomeDate = (income, field) => {
     const override = incomeDateOverrides[income.name]?.[field];
     if (override) return override;
-    
+
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (income.name === 'Salary') {
       return field === 'startDate' ? today : wishedRetirementDate;
     } else if (income.name === 'LPP') {
@@ -270,7 +270,7 @@ const Scenario = () => {
   const deleteCost = (id) => {
     // Find the cost to delete
     const costToDelete = costs.find(c => c.id === id);
-    
+
     // If it has children (split items), also delete them or unlink them
     const updatedCosts = costs.filter(cost => {
       if (cost.id === id) return false;
@@ -281,7 +281,7 @@ const Scenario = () => {
       }
       return true;
     });
-    
+
     setCosts(updatedCosts);
     toast.success(t('scenario.costDeleted'));
   };
@@ -297,7 +297,7 @@ const Scenario = () => {
   };
 
   const updateFutureInflow = (id, field, value) => {
-    setFutureInflows(futureInflows.map(inflow => 
+    setFutureInflows(futureInflows.map(inflow =>
       inflow.id === id ? { ...inflow, [field]: value } : inflow
     ));
   };
@@ -309,17 +309,17 @@ const Scenario = () => {
   const splitCost = (id) => {
     const costIndex = costs.findIndex(cost => cost.id === id);
     if (costIndex === -1) return;
-    
+
     const originalCost = costs[costIndex];
     const newId = Date.now();
     const groupId = originalCost.groupId || originalCost.id; // Use existing groupId or create new
-    
+
     // Update original cost to have groupId
     const updatedOriginal = {
       ...originalCost,
       groupId: groupId
     };
-    
+
     // Create new cost with the same values but starting where the original ends
     const newCost = {
       ...originalCost,
@@ -328,13 +328,13 @@ const Scenario = () => {
       groupId: groupId, // Same group for visual grouping
       startDate: originalCost.endDate // New line starts where original ends
     };
-    
+
     // Insert the new cost right after the original
     const updatedCosts = [...costs];
     updatedCosts[costIndex] = updatedOriginal;
     updatedCosts.splice(costIndex + 1, 0, newCost);
     setCosts(updatedCosts);
-    
+
     toast.success('Cost line split - adjust dates as needed');
   };
 
@@ -362,32 +362,32 @@ const Scenario = () => {
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
       const deathYear = new Date(deathDate).getFullYear();
       const today = new Date().toISOString().split('T')[0];
-      
+
       let simulationRetirementDate = wishedRetirementDate;
       let calculatedEarliestDate = null;
-      
+
       // If user chose "calculate earliest", find the earliest retirement date with non-negative balance
       if (retirementOption === 'calculate') {
         // Start from today and iterate month by month until legal retirement
         const startDate = new Date();
         const legalDate = new Date(retirementLegalDate);
         let foundDate = null;
-        
+
         // Check each month from now until legal retirement
         let checkDate = new Date(startDate);
         while (checkDate <= legalDate) {
           const testRetirementDate = checkDate.toISOString().split('T')[0];
           const testBalance = calculateBalanceForRetirementDate(testRetirementDate);
-          
+
           if (testBalance >= 0) {
             foundDate = testRetirementDate;
             break;
           }
-          
+
           // Move to next month
           checkDate.setMonth(checkDate.getMonth() + 1);
         }
-        
+
         if (foundDate) {
           simulationRetirementDate = foundDate;
           calculatedEarliestDate = foundDate;
@@ -397,9 +397,9 @@ const Scenario = () => {
           calculatedEarliestDate = null; // Signal that no early retirement is possible
         }
       }
-      
+
       const wishedRetirementYear = new Date(simulationRetirementDate).getFullYear();
-      
+
       let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
       const transmission = parseFloat(transmissionAmount || 0);
       const yearlyData = [];
@@ -413,11 +413,11 @@ const Scenario = () => {
           incomeBreakdown: {},
           costBreakdown: {}
         };
-        
+
         incomes.forEach(income => {
           const amount = parseFloat(income.adjustedAmount) || 0;
           let startDate, endDate;
-          
+
           // Use date overrides if available, otherwise use calculated defaults
           if (income.name === 'Salary') {
             startDate = incomeDateOverrides['Salary']?.startDate || today;
@@ -442,7 +442,7 @@ const Scenario = () => {
             startDate = income.startDate;
             endDate = income.endDate;
           }
-          
+
           const yearlyAmount = calculateYearlyAmount(
             amount,
             income.frequency,
@@ -450,7 +450,7 @@ const Scenario = () => {
             endDate,
             year
           );
-          
+
           if (yearlyAmount > 0) {
             yearData.income += yearlyAmount;
             yearData.incomeBreakdown[income.name] = yearlyAmount;
@@ -466,7 +466,7 @@ const Scenario = () => {
             cost.endDate,
             year
           );
-          
+
           if (yearlyAmount > 0) {
             yearData.costs += yearlyAmount;
             const category = cost.category || cost.name || 'Other';
@@ -495,12 +495,12 @@ const Scenario = () => {
       const breakdown = yearlyData.map((year, index) => {
         const annualBalance = year.income - year.costs;
         cumulativeBalance += annualBalance;
-        
+
         // Apply transmission deduction in the final year (death year)
         const isLastYear = index === yearlyData.length - 1;
         const transmissionDeduction = isLastYear ? transmission : 0;
         const cumulativeAfterTransmission = cumulativeBalance - transmissionDeduction;
-        
+
         return {
           year: year.year,
           income: year.income,
@@ -540,25 +540,25 @@ const Scenario = () => {
       console.error(error);
     }
   };
-  
+
   // Helper function to calculate final balance for a given retirement date
   const calculateBalanceForRetirementDate = (testRetirementDate) => {
     const currentYear = new Date().getFullYear();
     const deathYear = new Date(deathDate).getFullYear();
     const today = new Date().toISOString().split('T')[0];
-    
+
     let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
     const transmission = parseFloat(transmissionAmount || 0);
     let cumulativeBalance = initialSavings;
-    
+
     for (let year = currentYear; year <= deathYear; year++) {
       let yearIncome = 0;
       let yearCosts = 0;
-      
+
       incomes.forEach(income => {
         const amount = parseFloat(income.adjustedAmount) || 0;
         let startDate, endDate;
-        
+
         if (income.name === 'Salary') {
           startDate = today;
           endDate = testRetirementDate;
@@ -578,17 +578,17 @@ const Scenario = () => {
           startDate = income.startDate;
           endDate = income.endDate;
         }
-        
+
         const yearlyAmount = calculateYearlyAmount(amount, income.frequency, startDate, endDate, year);
         yearIncome += yearlyAmount;
       });
-      
+
       costs.forEach(cost => {
         const amount = parseFloat(cost.adjustedAmount) || 0;
         const yearlyAmount = calculateYearlyAmount(amount, cost.frequency, cost.startDate, cost.endDate, year);
         yearCosts += yearlyAmount;
       });
-      
+
       futureInflows.forEach(inflow => {
         const inflowAmount = parseFloat(inflow.amount) || 0;
         if (inflowAmount > 0 && inflow.date) {
@@ -598,10 +598,10 @@ const Scenario = () => {
           }
         }
       });
-      
+
       cumulativeBalance += (yearIncome - yearCosts);
     }
-    
+
     return cumulativeBalance - transmission;
   };
 
@@ -799,7 +799,7 @@ const Scenario = () => {
                     {language === 'fr' ? 'Choisir votre date de retraite anticipée' : 'Choose your early retirement date'}
                   </span>
                 </label>
-                
+
                 {/* Date selector - directly below the first option when selected */}
                 {retirementOption === 'choose' && (
                   <div className="ml-8 pl-4 border-l-2 border-white/30">
@@ -813,7 +813,7 @@ const Scenario = () => {
                       />
                       <Button
                         data-testid="minus-1-month-btn"
-                        onClick={() => adjustDate(1)}
+                        onClick={() => adjustDate(-1)}
                         variant="secondary"
                         size="sm"
                       >
@@ -821,7 +821,7 @@ const Scenario = () => {
                       </Button>
                       <Button
                         data-testid="minus-1-year-btn"
-                        onClick={() => adjustDate(12)}
+                        onClick={() => adjustDate(-12)}
                         variant="secondary"
                         size="sm"
                       >
@@ -834,7 +834,7 @@ const Scenario = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Option 2: Calculate earliest date */}
               <div className="space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
@@ -845,17 +845,17 @@ const Scenario = () => {
                     className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
                   />
                   <span className="text-white font-medium">
-                    {language === 'fr' 
-                      ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)' 
+                    {language === 'fr'
+                      ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)'
                       : 'Calculate the earliest retirement date possible (balance at death not negative)'}
                   </span>
                 </label>
-                
+
                 {/* Info for "calculate" option - directly below when selected */}
                 {retirementOption === 'calculate' && (
                   <div className="ml-8 pl-4 border-l-2 border-white/30">
                     <p className="text-white/80 text-sm">
-                      {language === 'fr' 
+                      {language === 'fr'
                         ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
                         : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
                     </p>
@@ -892,11 +892,11 @@ const Scenario = () => {
                       // Get effective dates (override or default)
                       const today = new Date().toISOString().split('T')[0];
                       const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
-                      
+
                       // Calculate default dates for standard income types
                       let defaultStartDate = '';
                       let defaultEndDate = '';
-                      
+
                       if (income.name === 'Salary') {
                         defaultStartDate = today;
                         defaultEndDate = wishedRetirementDate;
@@ -910,15 +910,15 @@ const Scenario = () => {
                         defaultStartDate = wishedRetirementDate;
                         defaultEndDate = '';
                       }
-                      
+
                       // Get current values (override or default)
-                      const currentStartDate = isStandardIncome 
+                      const currentStartDate = isStandardIncome
                         ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
                         : income.startDate;
-                      const currentEndDate = isStandardIncome 
+                      const currentEndDate = isStandardIncome
                         ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
                         : income.endDate;
-                      
+
                       return (
                         <tr key={income.id} className="border-b hover:bg-muted/30">
                           <td className="p-3 font-medium">{getIncomeName(income.name)}</td>
@@ -1007,18 +1007,18 @@ const Scenario = () => {
                       // Check if this cost is part of a split group
                       const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
                       const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
-                      
+
                       // Visual grouping - lighter background for grouped costs, slightly indented for children
-                      const groupStyles = isInGroup 
-                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50' 
+                      const groupStyles = isInGroup
+                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
                         : '';
-                      const childStyles = isChildCost 
-                        ? 'bg-muted/10' 
+                      const childStyles = isChildCost
+                        ? 'bg-muted/10'
                         : '';
-                      
+
                       return (
-                        <tr 
-                          key={cost.id} 
+                        <tr
+                          key={cost.id}
                           className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}
                         >
                           <td className="p-3 font-medium">

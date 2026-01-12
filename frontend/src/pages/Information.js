@@ -89,12 +89,12 @@ const Information = () => {
           {steps.map((step, index) => {
             const Icon = step.icon;
             const isEven = index % 2 === 0;
-            
+
             return (
               <Card key={index} className="overflow-hidden">
-                <CardContent className={`p-0 flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                <CardContent className="p-0">
                   {/* Text Content */}
-                  <div className="flex-1 p-6 md:p-8 flex flex-col justify-center">
+                  <div className="p-6 md:p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
                       <div className={`p-2 rounded-lg bg-muted ${step.color}`}>
                         <Icon className="h-6 w-6" />
@@ -106,18 +106,6 @@ const Information = () => {
                     <p className="text-muted-foreground leading-relaxed">
                       {t(`infoPage.${step.descKey}`)}
                     </p>
-                  </div>
-                  
-                  {/* Screenshot Placeholder */}
-                  <div className="flex-1 bg-muted/30 min-h-[200px] md:min-h-[250px] flex items-center justify-center p-4">
-                    <div className="w-full h-full bg-gradient-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center border border-border/50">
-                      <div className="text-center p-4">
-                        <Icon className={`h-12 w-12 mx-auto mb-2 ${step.color} opacity-50`} />
-                        <p className="text-sm text-muted-foreground">
-                          {t(`infoPage.${step.titleKey}`).replace(/^\d+\.\s*/, '')}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
