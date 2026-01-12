@@ -34,7 +34,7 @@ const WorkflowNavigation = () => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto mb-8 px-4">
+        <div className="w-full max-w-6xl mx-auto px-4" style={{ marginTop: '20px', marginBottom: '30px' }}>
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:flex-nowrap">
                 {steps.map((step, index) => {
                     const Icon = step.icon;
