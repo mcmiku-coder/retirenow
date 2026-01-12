@@ -15,14 +15,12 @@ services:
       - key: MONGODB_URI
         sync: false # You must set this in the Data/Environment tab in Render dashboard
 
-  # FRONTEND SERVICE
-  - type: static
-    name: retirenow-frontend
-    runtime: node
+# FRONTEND SERVICE (Static Site)
+staticSites:
+  - name: retirenow-frontend
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
-    plan: free
     envVars:
       - key: REACT_APP_BACKEND_URL
         fromService:
