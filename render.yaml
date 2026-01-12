@@ -3,6 +3,8 @@ services:
   - type: web
     name: retirenow-backend
     runtime: python
+    # Explicitly requesting Free plan to bypass payment requirement
+    plan: free
     # Explicit commands for clarity
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
@@ -17,10 +19,11 @@ services:
         value: retirenow
 
   # FRONTEND SERVICE
-  # Using type: web + runtime: static for Static Site
   - type: web
     name: retirenow-frontend
     runtime: static
+    # Explicitly requesting Free plan
+    plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
@@ -28,7 +31,6 @@ services:
         fromService:
           type: web
           name: retirenow-backend
-          # Valid way to get public URL: reference the auto-generated env var
           envVarKey: RENDER_EXTERNAL_URL
     routes:
       - type: rewrite
