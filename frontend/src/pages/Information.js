@@ -98,7 +98,7 @@ const Information = () => {
             const isEven = index % 2 === 0;
 
             return (
-              <Card key={index} className="overflow-hidden">
+              <Card key={index} className={`overflow-hidden ${index === 6 ? 'bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20' : ''}`}>
                 <CardContent className="p-0">
                   {/* Text Content */}
                   <div className="p-6 md:p-8 flex flex-col justify-center">
