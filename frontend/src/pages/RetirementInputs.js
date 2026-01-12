@@ -1,54 +1,356 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Label } from '../components/ui/label';
+import { toast } from 'sonner';
+import { saveRetirementData, getRetirementData, getUserData } from '../utils/database';
+import { getLegalRetirementDate } from '../utils/calculations';
 import WorkflowNavigation from '../components/WorkflowNavigation';
-import { Sliders } from 'lucide-react';
 
 const RetirementInputs = () => {
     const navigate = useNavigate();
+    const { user, password } = useAuth();
     const { t } = useLanguage();
+    const [loading, setLoading] = useState(false);
+
+    // Green block data (Legal Retirement)
+    const [legalRetirementDate, setLegalRetirementDate] = useState('');
+    const [rows, setRows] = useState([]);
+
+    // Blue block data (Pre-retirement option)
+    const [hasPreRetirement, setHasPreRetirement] = useState(false);
+
+    // Yellow block data (Pre-retirement years)
+    const [preRetirementRows, setPreRetirementRows] = useState([]);
+
+    useEffect(() => {
+        if (!user || !password) {
+            navigate('/');
+            return;
+        }
+
+        const initializeData = async () => {
+            try {
+                // 1. Get User Data to calculate Legal Retirement Date
+                const userData = await getUserData(user.email, password);
+                if (!userData) {
+                    navigate('/personal-info');
+                    return;
+                }
+
+                const legalDate = getLegalRetirementDate(userData.birthDate, userData.gender);
+                const legalDateStr = legalDate.toISOString().split('T')[0];
+                setLegalRetirementDate(legalDateStr);
+
+                // 2. Try to load existing Retirement Data
+                const savedData = await getRetirementData(user.email, password);
+
+                if (savedData) {
+                    setRows(savedData.rows);
+                    setHasPreRetirement(savedData.hasPreRetirement);
+                    setPreRetirementRows(savedData.preRetirementRows);
+                } else {
+                    // 3. Initialize default rows if no saved data
+                    // Green Block Defaults
+                    const initialRows = [
+                        { id: 'avs', name: 'AVS', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
+                        { id: '3a', name: '3a', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true },
+                        { id: 'lpp_pension', name: 'LPP pension at legal retirement date', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
+                        { id: 'lpp_capital', name: 'LPP capital at legal retirement date', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true }
+                    ];
+                    setRows(initialRows);
+
+                    // Yellow Block Defaults (1-7 years earlier)
+                    const initialPreRows = [];
+                    for (let i = 1; i <= 7; i++) {
+                        const earlyDate = new Date(legalDate);
+                        earlyDate.setFullYear(earlyDate.getFullYear() - i);
+                        const earlyDateStr = earlyDate.toISOString().split('T')[0];
+
+                        initialPreRows.push({
+                            id: `lpp_pension_${i}y`,
+                            yearOffset: i,
+                            type: 'pension',
+                            name: `LPP pension (${i}y earlier)`, // Will be translated in render
+                            startDate: earlyDateStr,
+                            amount: '',
+                            frequency: 'Monthly'
+                        });
+                        initialPreRows.push({
+                            id: `lpp_capital_${i}y`,
+                            yearOffset: i,
+                            type: 'capital',
+                            name: `LPP capital (${i}y earlier)`, // Will be translated in render
+                            startDate: earlyDateStr,
+                            amount: '',
+                            frequency: 'One-time'
+                        });
+                    }
+                    setPreRetirementRows(initialPreRows);
+                }
+
+            } catch (error) {
+                console.error('Error initializing data:', error);
+                toast.error(t('common.error'));
+            }
+        };
+
+        initializeData();
+    }, [user, password, navigate]);
+
+    // Update Green Block Row
+    const updateRow = (id, field, value) => {
+        setRows(rows.map(row =>
+            row.id === id ? { ...row, [field]: value } : row
+        ));
+    };
+
+    // Update Yellow Block Row
+    const updatePreRow = (id, field, value) => {
+        setPreRetirementRows(preRetirementRows.map(row =>
+            row.id === id ? { ...row, [field]: value } : row
+        ));
+    };
+
+    // Helper to get translated name
+    const getTranslatedName = (row) => {
+        if (row.id === 'avs') return t('retirementInputs.avs');
+        if (row.id === '3a') return t('retirementInputs.threea');
+        if (row.id === 'lpp_pension') return t('retirementInputs.lppPension');
+        if (row.id === 'lpp_capital') return t('retirementInputs.lppCapital');
+
+        if (row.type === 'pension') {
+            return t('retirementInputs.lppPensionEarlier').replace('{years}', row.yearOffset);
+        }
+        if (row.type === 'capital') {
+            return t('retirementInputs.lppCapitalEarlier').replace('{years}', row.yearOffset);
+        }
+        return row.name;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const [year, month, day] = dateString.split('-');
+        return `${day}.${month}.${year}`;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            const dataToSave = {
+                rows,
+                hasPreRetirement,
+                preRetirementRows
+            };
+
+            await saveRetirementData(user.email, password, dataToSave);
+            toast.success(t('retirementInputs.saveSuccess'));
+            navigate('/scenario');
+        } catch (error) {
+            console.error('Save error:', error);
+            toast.error(t('retirementInputs.saveFailed'));
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen py-8 px-4" data-testid="retirement-inputs-page">
             <div className="max-w-7xl mx-auto">
-                {/* Workflow Navigation */}
                 <WorkflowNavigation />
 
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 mb-4">
-                        <Sliders className="h-8 w-8 text-primary" />
-                    </div>
+                <div className="text-center mb-8">
                     <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">
                         {t('retirementInputs.title')}
                     </h1>
-                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    <p className="text-lg text-muted-foreground">
                         {t('retirementInputs.subtitle')}
                     </p>
                 </div>
 
-                <Card className="max-w-3xl mx-auto mb-8 text-center p-12">
-                    <CardContent>
-                        <p className="text-xl text-muted-foreground mb-4">
-                            {/* Placeholder content */}
-                            This section will contain inputs for savings, future inflows, and transmission objectives.
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            (Content coming soon)
-                        </p>
-                    </CardContent>
-                </Card>
+                <form onSubmit={handleSubmit} className="space-y-8">
 
-                <div className="flex justify-center">
-                    <Button
-                        size="lg"
-                        onClick={() => navigate('/scenario')}
-                        className="px-8"
-                    >
-                        {t('retirementInputs.continue')}
-                    </Button>
-                </div>
+                    {/* GREEN BLOCK: Legal Retirement */}
+                    <div className="bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+                        <h2 className="text-xl font-semibold mb-4 text-green-800 dark:text-green-300">
+                            {t('retirementInputs.section1Title')}
+                        </h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[800px]">
+                                <thead>
+                                    <tr className="border-b border-green-200 dark:border-green-800">
+                                        <th className="text-left p-2 w-1/3">{t('income.name')}</th>
+                                        <th className="text-left p-2 w-1/4">{t('income.startDate')}</th>
+                                        <th className="text-left p-2 w-1/4">{t('income.amount')}</th>
+                                        <th className="text-left p-2 w-1/6">{t('income.frequency')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row) => (
+                                        <tr key={row.id} className="border-b border-green-200/50 last:border-0">
+                                            <td className="p-2 font-medium">
+                                                {getTranslatedName(row)}
+                                            </td>
+                                            <td className="p-2">
+                                                <Input
+                                                    value={formatDate(row.startDate)}
+                                                    readOnly
+                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100"
+                                                />
+                                            </td>
+                                            <td className="p-2">
+                                                <Input
+                                                    type="number"
+                                                    placeholder="0"
+                                                    value={row.amount}
+                                                    onChange={(e) => updateRow(row.id, 'amount', e.target.value)}
+                                                    className="bg-white dark:bg-black/40"
+                                                />
+                                            </td>
+                                            <td className="p-2">
+                                                <RadioGroup
+                                                    value={row.frequency}
+                                                    onValueChange={(value) => updateRow(row.id, 'frequency', value)}
+                                                    className="flex gap-2"
+                                                >
+                                                    {(row.id === 'avs' || row.id === 'lpp_pension') && (
+                                                        <>
+                                                            <div className="flex items-center gap-1">
+                                                                <RadioGroupItem value="Monthly" id={`monthly-${row.id}`} />
+                                                                <Label htmlFor={`monthly-${row.id}`} className="text-sm">{t('income.monthly')}</Label>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <RadioGroupItem value="Yearly" id={`yearly-${row.id}`} />
+                                                                <Label htmlFor={`yearly-${row.id}`} className="text-sm">{t('income.yearly')}</Label>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {(row.id === '3a' || row.id === 'lpp_capital') && (
+                                                        <div className="flex items-center gap-1">
+                                                            <RadioGroupItem value="One-time" id={`onetime-${row.id}`} />
+                                                            <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
+                                                        </div>
+                                                    )}
+                                                </RadioGroup>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* BLUE BLOCK: Pre-retirement Option Toggle */}
+                    <div className="bg-blue-100/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span className="font-medium text-lg text-blue-800 dark:text-blue-300">
+                            {t('retirementInputs.pensionPlanOption')}
+                        </span>
+                        <RadioGroup
+                            value={hasPreRetirement ? 'yes' : 'no'}
+                            onValueChange={(val) => setHasPreRetirement(val === 'yes')}
+                            className="flex gap-4"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="yes" id="r-yes" />
+                                <Label htmlFor="r-yes" className="text-lg cursor-pointer">{t('retirementInputs.yes')}</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="no" id="r-no" />
+                                <Label htmlFor="r-no" className="text-lg cursor-pointer">{t('retirementInputs.no')}</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
+                    {/* YELLOW BLOCK: Pre-retirement Options */}
+                    {hasPreRetirement && (
+                        <div className="bg-yellow-100/50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 animate-in slide-in-from-top-4 fade-in duration-300">
+                            <h2 className="text-xl font-semibold mb-4 text-yellow-800 dark:text-yellow-500">
+                                {t('retirementInputs.section2Title')}
+                            </h2>
+
+                            {/* Group by Year Offset */}
+                            {[1, 2, 3, 4, 5, 6, 7].map(year => (
+                                <div key={year} className="mb-8 last:mb-0">
+                                    <h3 className="font-bold text-yellow-900 dark:text-yellow-400 mb-2 border-b border-yellow-300 dark:border-yellow-800 pb-1">
+                                        {year} {t('retirementInputs.preRetirementOption')}
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[800px]">
+                                            <tbody>
+                                                {preRetirementRows.filter(r => r.yearOffset === year).map(row => (
+                                                    <tr key={row.id} className="border-b border-yellow-200/50 last:border-0 hover:bg-yellow-200/20">
+                                                        <td className="p-2 w-1/3 pl-4">
+                                                            {getTranslatedName(row)}
+                                                        </td>
+                                                        <td className="p-2 w-1/4">
+                                                            <Input
+                                                                value={formatDate(row.startDate)}
+                                                                readOnly
+                                                                className="bg-white/10 dark:bg-black/20 text-white opacity-100"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2 w-1/4">
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={row.amount}
+                                                                onChange={(e) => updatePreRow(row.id, 'amount', e.target.value)}
+                                                                className="bg-white dark:bg-black/40"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2 w-1/6">
+                                                            <RadioGroup
+                                                                value={row.frequency}
+                                                                onValueChange={(value) => updatePreRow(row.id, 'frequency', value)}
+                                                                className="flex gap-2"
+                                                            >
+                                                                {row.type === 'pension' && (
+                                                                    <>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <RadioGroupItem value="Monthly" id={`monthly-${row.id}`} />
+                                                                            <Label htmlFor={`monthly-${row.id}`} className="text-sm">{t('income.monthly')}</Label>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <RadioGroupItem value="Yearly" id={`yearly-${row.id}`} />
+                                                                            <Label htmlFor={`yearly-${row.id}`} className="text-sm">{t('income.yearly')}</Label>
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                                {row.type === 'capital' && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <RadioGroupItem value="One-time" id={`onetime-${row.id}`} />
+                                                                        <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
+                                                                    </div>
+                                                                )}
+                                                            </RadioGroup>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex justify-center pt-8">
+                        <Button
+                            size="lg"
+                            type="submit"
+                            className="px-12 text-lg"
+                            disabled={loading}
+                        >
+                            {loading ? t('common.loading') : t('retirementInputs.continue')}
+                        </Button>
+                    </div>
+                </form>
             </div>
         </div>
     );

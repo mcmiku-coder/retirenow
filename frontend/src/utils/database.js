@@ -9,11 +9,12 @@ import { encryptData, decryptData, generateSalt } from './encryption';
 class EncryptedDatabase extends Dexie {
   constructor() {
     super('QuitRetirementDB');
-    this.version(2).stores({
+    this.version(3).stores({
       userData: 'email, encryptedData, salt, iv',
       incomeData: 'email, encryptedData, salt, iv',
       costData: 'email, encryptedData, salt, iv',
-      scenarioData: 'email, encryptedData, salt, iv'
+      scenarioData: 'email, encryptedData, salt, iv',
+      retirementData: 'email, encryptedData, salt, iv'
     });
   }
 }
@@ -238,6 +239,54 @@ export async function getScenarioData(email, password) {
 }
 
 /**
+ * Save retirement data (encrypted)
+ */
+export async function saveRetirementData(email, password, data) {
+  if (!email || !password) {
+    throw new Error('Email and password are required');
+  }
+
+  const salt = generateSalt();
+  const encrypted = await encryptData(data, password, salt);
+
+  await db.retirementData.put({
+    email: email,
+    encryptedData: encrypted.encryptedData,
+    salt: encrypted.salt,
+    iv: encrypted.iv
+  });
+}
+
+/**
+ * Get retirement data (decrypted)
+ */
+export async function getRetirementData(email, password) {
+  if (!email || typeof email !== 'string' || email.trim() === '') {
+    return null;
+  }
+
+  if (!password) {
+    return null;
+  }
+
+  try {
+    const record = await db.retirementData.get(email);
+    if (!record) {
+      return null;
+    }
+
+    return await decryptData({
+      encryptedData: record.encryptedData,
+      salt: record.salt,
+      iv: record.iv
+    }, password);
+  } catch (error) {
+    console.error('getRetirementData error:', error);
+    return null;
+  }
+}
+
+/**
  * Clear all user data
  */
 export async function clearUserData(email) {
@@ -250,6 +299,7 @@ export async function clearUserData(email) {
     await db.incomeData.delete(email);
     await db.costData.delete(email);
     await db.scenarioData.delete(email);
+    await db.retirementData.delete(email);
   } catch (error) {
     console.error('clearUserData error:', error);
   }

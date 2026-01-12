@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { getIncomeData, getCostData, getUserData, getScenarioData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import WorkflowNavigation from '../components/WorkflowNavigation';
@@ -93,7 +93,9 @@ const ScenarioResult = () => {
           // Fallback: calculate from original data if accessed directly
           const userData = await getUserData(user.email, password);
           const incomeData = await getIncomeData(user.email, password) || [];
+
           const costData = await getCostData(user.email, password) || [];
+          const retirementData = await getRetirementData(user.email, password);
 
           if (!userData) {
             navigate('/personal-info');
@@ -137,6 +139,38 @@ const ScenarioResult = () => {
                 incomeBreakdown[row.name] = yearlyAmount;
               }
             });
+
+            // Add Retirement Data
+            if (retirementData && retirementData.rows) {
+              retirementData.rows.forEach(row => {
+                const amount = parseFloat(row.amount) || 0;
+                if (amount > 0) {
+                  // Calculate approximate death date string for calculateYearlyAmount
+                  const deathDateStr = `${deathYear}-12-31`; // Approx
+
+                  let frequency = row.frequency;
+                  let startDate = row.startDate;
+                  let endDateStr = deathDateStr;
+
+                  if (frequency === 'One-time') {
+                    endDateStr = startDate;
+                  }
+
+                  const yearlyAmount = calculateYearlyAmount(
+                    amount,
+                    frequency,
+                    startDate,
+                    endDateStr,
+                    year
+                  );
+
+                  if (yearlyAmount > 0) {
+                    yearIncome += yearlyAmount;
+                    incomeBreakdown[row.name] = yearlyAmount;
+                  }
+                }
+              });
+            }
 
             costData.filter(row => row.amount).forEach(row => {
               const amount = parseFloat(row.amount) || 0;

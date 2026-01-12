@@ -8,7 +8,7 @@ import { LogOut, Globe } from 'lucide-react';
 const PageHeader = ({ showLanguageSelector = false }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { language, switchLanguage } = useLanguage();
 
   const handleLogout = () => {
     logout();
@@ -20,7 +20,7 @@ const PageHeader = ({ showLanguageSelector = false }) => {
       {showLanguageSelector && (
         <select
           value={language}
-          onChange={(e) => setLanguage(e.target.value)}
+          onChange={(e) => switchLanguage(e.target.value)}
           className="bg-muted border rounded-md px-2 py-1 text-sm outline-none"
         >
           <option value="en">English</option>

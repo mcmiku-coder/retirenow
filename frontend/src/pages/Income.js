@@ -64,11 +64,9 @@ const Income = () => {
             const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
 
             setRows([
-              { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
-              { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-              { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-              { id: 4, name: '3a', amount: '', frequency: 'One-time', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+              { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
             ]);
+            setNextId(2);
           }
         }
       } catch (error) {
@@ -107,12 +105,9 @@ const Income = () => {
       const deathDateStr = userData.theoreticalDeathDate || retirementDateStr;
 
       setRows([
-        { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
-        { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-        { id: 3, name: 'LPP', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
-        { id: 4, name: '3a', amount: '', frequency: 'One-time', category: '', startDate: retirementDateStr, endDate: '', locked: true }
+        { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
       ]);
-      setNextId(5);
+      setNextId(2);
       toast.success(t('income.resetSuccess'));
     }
   };

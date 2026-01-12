@@ -229,7 +229,22 @@ export const translations = {
     retirementInputs: {
       title: "Retirement inputs",
       subtitle: "Define your savings and future financial events",
-      continue: "Continue to Scenario Simulator"
+      continue: "Continue to Scenario Simulator",
+      section1Title: "Legal Retirement",
+      section2Title: "Pre-retirement Options",
+      pensionPlanOption: "Pension plan offers pre-retirement option",
+      yes: "Yes",
+      no: "No",
+      avs: "AVS",
+      lppPension: "LPP pension at legal retirement date",
+      lppCapital: "LPP capital at legal retirement date",
+      threea: "3a",
+      preRetirementOption: "year pre-retirement option",
+      lppPensionEarlier: "LPP pension ({years}y earlier)",
+      lppCapitalEarlier: "LPP capital ({years}y earlier)",
+      years: "years",
+      saveSuccess: "Retirement data saved",
+      saveFailed: "Failed to save retirement data"
     },
 
     // Scenario Page
@@ -597,7 +612,22 @@ export const translations = {
     retirementInputs: {
       title: "Paramètres de retraite",
       subtitle: "Définissez votre épargne et événements financiers futurs",
-      continue: "Continuer vers le simulateur de scénarios"
+      continue: "Continuer vers le simulateur de scénarios",
+      section1Title: "Retraite Légale",
+      section2Title: "Options de pré-retraite",
+      pensionPlanOption: "La caisse de pension offre une option de pré-retraite",
+      yes: "Oui",
+      no: "Non",
+      avs: "AVS",
+      lppPension: "Rente LPP à l'âge légal",
+      lppCapital: "Capital LPP à l'âge légal",
+      threea: "3a",
+      preRetirementOption: "an(s) option pré-retraite",
+      lppPensionEarlier: "Rente LPP ({years} ans plus tôt)",
+      lppCapitalEarlier: "Capital LPP ({years} ans plus tôt)",
+      years: "ans",
+      saveSuccess: "Données de retraite enregistrées",
+      saveFailed: "Échec de l'enregistrement"
     },
 
     // Scenario Page

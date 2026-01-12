@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
@@ -58,6 +58,7 @@ const Scenario = () => {
   const [deathDate, setDeathDate] = useState('');
   const [incomes, setIncomes] = useState([]);
   const [costs, setCosts] = useState([]);
+  const [retirementData, setRetirementData] = useState(null);
   const [liquidAssets, setLiquidAssets] = useState('');
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [transmissionAmount, setTransmissionAmount] = useState('');
@@ -102,6 +103,8 @@ const Scenario = () => {
         const incomeData = await getIncomeData(user.email, password) || [];
         const costData = await getCostData(user.email, password) || [];
         const scenarioData = await getScenarioData(user.email, password);
+        const rData = await getRetirementData(user.email, password);
+        setRetirementData(rData);
 
         if (!userData) {
           navigate('/personal-info');
@@ -457,6 +460,40 @@ const Scenario = () => {
           }
         });
 
+        // Add Retirement Data (AVS, LPP, 3a from RetirementInputs)
+        if (retirementData && retirementData.rows) {
+          retirementData.rows.forEach(row => {
+            const amount = parseFloat(row.amount) || 0;
+            if (amount > 0) {
+              const frequency = row.frequency;
+              let startDate = row.startDate;
+              // AVS/LPP start at legal retirement usually, but user can edit start date in RetirementInputs.
+              // We trust the startDate from RetirementInputs (green block).
+
+              // Special case: If 3a is One-time, it happens once.
+              // If AVS is monthly, it continues until death.
+              let endDate = deathDate;
+              if (frequency === 'One-time') {
+                endDate = startDate; // Handled by calculateYearlyAmount or manual check
+              }
+
+              // Use calculateYearlyAmount
+              const yearlyAmount = calculateYearlyAmount(
+                amount,
+                frequency,
+                startDate,
+                endDate,
+                year
+              );
+
+              if (yearlyAmount > 0) {
+                yearData.income += yearlyAmount;
+                yearData.incomeBreakdown[row.name] = (yearData.incomeBreakdown[row.name] || 0) + yearlyAmount;
+              }
+            }
+          });
+        }
+
         costs.forEach(cost => {
           const amount = parseFloat(cost.adjustedAmount) || 0;
           const yearlyAmount = calculateYearlyAmount(
@@ -582,6 +619,28 @@ const Scenario = () => {
         const yearlyAmount = calculateYearlyAmount(amount, income.frequency, startDate, endDate, year);
         yearIncome += yearlyAmount;
       });
+
+      // Add Retirement Data for Balance Calculation
+      if (retirementData && retirementData.rows) {
+        retirementData.rows.forEach(row => {
+          const amount = parseFloat(row.amount) || 0;
+          if (amount > 0) {
+            let endDate = deathDate;
+            if (row.frequency === 'One-time') {
+              endDate = row.startDate;
+            }
+
+            const yearlyAmount = calculateYearlyAmount(
+              amount,
+              row.frequency,
+              row.startDate,
+              endDate,
+              year
+            );
+            yearIncome += yearlyAmount;
+          }
+        });
+      }
 
       costs.forEach(cost => {
         const amount = parseFloat(cost.adjustedAmount) || 0;
