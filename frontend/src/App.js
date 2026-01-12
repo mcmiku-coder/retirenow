@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -12,9 +12,10 @@ import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
 import Costs from './pages/Costs';
 import FinancialBalance from './pages/FinancialBalance';
+import RetirementInputs from './pages/RetirementInputs';
 import Scenario from './pages/Scenario';
 import ScenarioResult from './pages/ScenarioResult';
-import { useEffect } from 'react';
+
 import { trackPageVisit } from './utils/analytics';
 import './App.css';
 
@@ -36,17 +37,17 @@ const PageTracker = () => {
 const GlobalHeader = () => {
   const location = useLocation();
   const hiddenPaths = ['/', '/admin', '/information'];
-  
+
   if (hiddenPaths.includes(location.pathname)) {
     return null;
   }
-  
+
   return <PageHeader showLanguageSelector={true} />;
 };
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -54,7 +55,7 @@ const ProtectedRoute = ({ children }) => {
       </div>
     );
   }
-  
+
   return user ? children : <Navigate to="/" />;
 };
 
@@ -92,6 +93,11 @@ function AppRoutes() {
             <FinancialBalance />
           </ProtectedRoute>
         } />
+        <Route path="/retirement-inputs" element={
+          <ProtectedRoute>
+            <RetirementInputs />
+          </ProtectedRoute>
+        } />
         <Route path="/scenario" element={
           <ProtectedRoute>
             <Scenario />
@@ -114,7 +120,7 @@ function App() {
         <BrowserRouter>
           <div className="App dark min-h-screen bg-background text-foreground">
             <AppRoutes />
-            <Toaster position="top-center" />
+            <Toaster position="bottom-center" />
           </div>
         </BrowserRouter>
       </AuthProvider>

@@ -8,8 +8,8 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import { saveIncomeData, getIncomeData, getUserData } from '../utils/database';
-import { Trash2, Plus } from 'lucide-react';
-import { NavigationButtons } from '../components/NavigationButtons';
+import { Trash2, Plus, HelpCircle } from 'lucide-react';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const Income = () => {
   const navigate = useNavigate();
@@ -52,17 +52,17 @@ const Income = () => {
           const userData = await getUserData(user.email, password);
           if (userData) {
             const today = new Date().toISOString().split('T')[0];
-            
+
             // Calculate retirement date
             const birthDate = new Date(userData.birthDate);
             const retirementDate = new Date(birthDate);
             retirementDate.setFullYear(retirementDate.getFullYear() + 65);
             retirementDate.setMonth(retirementDate.getMonth() + 1);
             const retirementDateStr = retirementDate.toISOString().split('T')[0];
-            
+
             // Use the theoretical death date from API (already in ISO format)
             const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
-            
+
             setRows([
               { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
               { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
@@ -96,16 +96,16 @@ const Income = () => {
     const userData = await getUserData(user.email, password);
     if (userData) {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const birthDate = new Date(userData.birthDate);
       const retirementDate = new Date(birthDate);
       retirementDate.setFullYear(retirementDate.getFullYear() + 65);
       retirementDate.setMonth(retirementDate.getMonth() + 1);
       const retirementDateStr = retirementDate.toISOString().split('T')[0];
-      
+
       // Use the theoretical death date from API
       const deathDateStr = userData.theoreticalDeathDate || retirementDateStr;
-      
+
       setRows([
         { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true },
         { id: 2, name: 'AVS', amount: '', frequency: 'Monthly', category: '', startDate: retirementDateStr, endDate: deathDateStr, locked: true },
@@ -140,10 +140,10 @@ const Income = () => {
     for (const row of rows) {
       // Check if row is partially filled
       const hasAnyData = row.amount || row.startDate || row.endDate || (row.category && !row.locked);
-      
+
       if (hasAnyData) {
         if (!row.amount) {
-          toast.error(language === 'fr' 
+          toast.error(language === 'fr'
             ? `Veuillez saisir un montant ou supprimer la ligne: ${getIncomeName(row.name) || 'ligne ' + row.id}`
             : `Please enter an amount or delete the row: ${getIncomeName(row.name) || 'row ' + row.id}`);
           return false;
@@ -163,7 +163,7 @@ const Income = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateRows()) {
       return;
     }
@@ -182,7 +182,7 @@ const Income = () => {
 
   // Get translated frequency label
   const getFrequencyLabel = (freq) => {
-    switch(freq) {
+    switch (freq) {
       case 'Monthly': return t('income.monthly');
       case 'Yearly': return t('income.yearly');
       case 'One-time': return t('income.oneTime');
@@ -193,6 +193,7 @@ const Income = () => {
   return (
     <div className="min-h-screen py-12 px-4" data-testid="income-page">
       <div className="max-w-6xl mx-auto">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('income.title')}</h1>
@@ -200,7 +201,6 @@ const Income = () => {
               {t('income.subtitle')}
             </p>
           </div>
-          <NavigationButtons backPath="/retirement-overview" />
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -286,15 +286,15 @@ const Income = () => {
                       />
                     </td>
                     <td className="p-2">
-                        <Button
-                          data-testid={`income-delete-${index}`}
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteRow(row.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <Button
+                        data-testid={`income-delete-${index}`}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteRow(row.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -311,7 +311,7 @@ const Income = () => {
               <Plus className="h-4 w-4 mr-2" />
               {t('income.addIncome')}
             </Button>
-            
+
             <Button
               data-testid="reset-btn"
               type="button"

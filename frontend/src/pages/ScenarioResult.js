@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { getIncomeData, getCostData, getUserData, getScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
-import { NavigationButtons } from '../components/NavigationButtons';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -591,6 +591,7 @@ const ScenarioResult = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="scenario-result-page">
       <div className="max-w-4xl w-full">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('result.title')}</h1>
@@ -598,8 +599,8 @@ const ScenarioResult = () => {
               {t('result.subtitle')}
             </p>
           </div>
-          <NavigationButtons backPath="/scenario" />
         </div>
+
 
         {result && (
           <div className="space-y-6">
@@ -937,6 +938,8 @@ const ScenarioResult = () => {
           </Card>
         )}
       </div>
+      )
+}
     </div>
   );
 };

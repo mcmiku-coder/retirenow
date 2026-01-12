@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
-import { TrendingUp, TrendingDown, DollarSign, ArrowLeft, Home, ChevronDown, ChevronUp } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, ChevronUp, ChevronDown } from 'lucide-react';
+import WorkflowNavigation from '../components/WorkflowNavigation';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
 
 const FinancialBalance = () => {
   const navigate = useNavigate();
@@ -39,7 +41,7 @@ const FinancialBalance = () => {
 
         const currentYear = new Date().getFullYear();
         const birthDate = new Date(userData.birthDate);
-        
+
         // Use the theoretical death date from API
         let deathYear;
         if (userData.theoreticalDeathDate) {
@@ -58,7 +60,7 @@ const FinancialBalance = () => {
           // Calculate income for this year
           let yearIncome = 0;
           const incomeBreakdown = {};
-          
+
           incomeData.filter(row => row.amount).forEach(row => {
             const amount = parseFloat(row.amount) || 0;
             const yearlyAmount = calculateYearlyAmount(
@@ -68,7 +70,7 @@ const FinancialBalance = () => {
               row.endDate,
               year
             );
-            
+
             if (yearlyAmount > 0) {
               yearIncome += yearlyAmount;
               incomeBreakdown[row.name] = yearlyAmount;
@@ -78,7 +80,7 @@ const FinancialBalance = () => {
           // Calculate costs for this year
           let yearCosts = 0;
           const costBreakdown = {};
-          
+
           costData.filter(row => row.amount).forEach(row => {
             const amount = parseFloat(row.amount) || 0;
             const yearlyAmount = calculateYearlyAmount(
@@ -88,7 +90,7 @@ const FinancialBalance = () => {
               row.endDate,
               year
             );
-            
+
             if (yearlyAmount > 0) {
               yearCosts += yearlyAmount;
               const category = row.category || row.name || 'Other';
@@ -159,7 +161,7 @@ const FinancialBalance = () => {
           const category = row.name || 'Other';
           incomeByCat[category] = (incomeByCat[category] || 0) + yearlyAmount;
         });
-        
+
         setIncomeCategoryData(
           Object.entries(incomeByCat).map(([name, value]) => ({ name, value }))
         );
@@ -172,7 +174,7 @@ const FinancialBalance = () => {
           const category = row.category || 'Other';
           costsByCat[category] = (costsByCat[category] || 0) + yearlyAmount;
         });
-        
+
         setCostCategoryData(
           Object.entries(costsByCat).map(([name, value]) => ({ name, value }))
         );
@@ -201,49 +203,33 @@ const FinancialBalance = () => {
   return (
     <div className="min-h-screen py-12 px-4" data-testid="financial-balance-page">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('financialBalance.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('financialBalance.subtitle')}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              data-testid="back-btn"
-              onClick={() => navigate('/costs')}
-              variant="outline"
-              size="icon"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              data-testid="home-btn"
-              onClick={() => navigate('/')}
-              variant="outline"
-              size="icon"
-            >
-              <Home className="h-4 w-4" />
-            </Button>
+        <WorkflowNavigation />
+        <div className="max-w-4xl w-full">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('financialBalance.title')}</h1>
+              <p className="text-muted-foreground" data-testid="page-subtitle">
+                {t('financialBalance.subtitle')}
+              </p>
+            </div>
           </div>
         </div>
-
         {balance && yearlyBreakdown.length > 0 && (
           <div className="space-y-6 mb-8">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Conditional Message Box - replaces Balance at Death status card */}
-              <div 
-                data-testid="death-balance-status-card" 
+              <div
+                data-testid="death-balance-status-card"
                 className={`rounded-lg p-6 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
               >
                 <p className="text-white text-center font-medium text-lg" data-testid="death-balance-status">
-                  {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 
-                    ? (language === 'fr' 
-                        ? 'Votre solde est positif! À la prochaine étape des simulations de retraites anticipées seront réalisées' 
-                        : 'Your balance is positive! In the next step, early retirement simulations will be performed')
-                    : (language === 'fr' 
-                        ? 'Votre solde est négatif. À la prochaine étape un simulateur servira à chercher des solutions d\'ajustement'
-                        : 'Your balance is negative. In the next step, a simulator will help find adjustment solutions')
+                  {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0
+                    ? (language === 'fr'
+                      ? 'Votre solde est positif! À la prochaine étape des simulations de retraites anticipées seront réalisées'
+                      : 'Your balance is positive! In the next step, early retirement simulations will be performed')
+                    : (language === 'fr'
+                      ? 'Votre solde est négatif. À la prochaine étape un simulateur servira à chercher des solutions d\'ajustement'
+                      : 'Your balance is negative. In the next step, a simulator will help find adjustment solutions')
                   }
                 </p>
               </div>
@@ -274,26 +260,26 @@ const FinancialBalance = () => {
                     <defs>
                       {/* Dynamic gradient based on final balance */}
                       <linearGradient id="colorCumulativePositive" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorCumulativeNegative" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis 
-                      dataKey="year" 
+                    <XAxis
+                      dataKey="year"
                       stroke="#9ca3af"
                       tick={{ fill: '#9ca3af' }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#9ca3af"
                       tick={{ fill: '#9ca3af' }}
-                      tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)} k`}
                     />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}
                       labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}
                       content={({ active, payload }) => {
@@ -303,7 +289,7 @@ const FinancialBalance = () => {
                           return (
                             <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}>
                               <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {data.year}</div>
-                              
+
                               <div style={{ marginBottom: '8px' }}>
                                 <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
                                   Annual Balance: CHF {data.annualBalance.toLocaleString()}
@@ -312,7 +298,7 @@ const FinancialBalance = () => {
                                   Cumulative Balance: CHF {Math.round(data.cumulativeBalance).toLocaleString()}
                                 </div>
                               </div>
-                              
+
                               <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
                                 <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
                                   Income: CHF {data.income.toLocaleString()}
@@ -323,7 +309,7 @@ const FinancialBalance = () => {
                                   </div>
                                 ))}
                               </div>
-                              
+
                               <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
                                 <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
                                   Costs: CHF {data.costs.toLocaleString()}
@@ -341,18 +327,18 @@ const FinancialBalance = () => {
                       }}
                     />
                     <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="cumulativeBalance" 
+                    <Area
+                      type="monotone"
+                      dataKey="cumulativeBalance"
                       stroke={yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? "#10b981" : "#ef4444"}
-                      fillOpacity={1} 
+                      fillOpacity={1}
                       fill={yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0 ? "url(#colorCumulativePositive)" : "url(#colorCumulativeNegative)"}
                       name="Cumulative Balance"
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="annualBalance" 
-                      stroke="#3b82f6" 
+                    <Line
+                      type="monotone"
+                      dataKey="annualBalance"
+                      stroke="#3b82f6"
                       strokeWidth={2}
                       name="Annual Balance"
                       dot={false}
@@ -410,7 +396,7 @@ const FinancialBalance = () => {
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
                           formatter={(value) => `CHF ${value.toLocaleString()}`}
                         />
@@ -444,7 +430,7 @@ const FinancialBalance = () => {
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
                           formatter={(value) => `CHF ${value.toLocaleString()}`}
                         />
@@ -465,93 +451,93 @@ const FinancialBalance = () => {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50 sticky top-0">
-                      <tr>
-                        <th className="text-left p-3 font-semibold">{t('financialBalance.year')}</th>
-                        <th className="text-right p-3 font-semibold">{t('financialBalance.income')}</th>
-                        <th className="text-right p-3 font-semibold">{t('financialBalance.costs')}</th>
-                        <th className="text-right p-3 font-semibold">{t('financialBalance.annualBalance')}</th>
-                        <th className="text-right p-3 font-semibold">{t('financialBalance.cumulativeBalance')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {yearlyBreakdown.map((row, index) => (
-                        <tr 
-                          key={row.year} 
-                          className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''} hover:bg-muted/30 cursor-pointer relative`}
-                          onMouseEnter={() => setHoveredRow(index)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                        >
-                          <td className="p-3 font-medium">{row.year}</td>
-                          <td className="text-right p-3 text-green-500">
-                            CHF {row.income.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </td>
-                          <td className="text-right p-3 text-red-500">
-                            CHF {row.costs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </td>
-                          <td className={`text-right p-3 font-semibold ${row.annualBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {row.annualBalance >= 0 ? '+' : ''}CHF {row.annualBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </td>
-                          <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </td>
-                          
-                          {/* Hover Tooltip */}
-                          {hoveredRow === index && (
-                            <td className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50">
-                              <div style={{ 
-                                backgroundColor: '#1f2937', 
-                                border: '1px solid #374151', 
-                                borderRadius: '8px', 
-                                padding: '12px',
-                                minWidth: '300px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                              }}>
-                                <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {row.year}</div>
-                                
-                                <div style={{ marginBottom: '8px' }}>
-                                  <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
-                                    Annual Balance: CHF {row.annualBalance.toLocaleString()}
-                                  </div>
-                                  <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                    Cumulative Balance: CHF {Math.round(row.cumulativeBalance).toLocaleString()}
-                                  </div>
-                                </div>
-                                
-                                <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
-                                  <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
-                                    Income: CHF {row.income.toLocaleString()}
-                                  </div>
-                                  {row.incomeBreakdown && Object.entries(row.incomeBreakdown).map(([name, value]) => (
-                                    <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                      • {name}: CHF {value.toLocaleString()}
-                                    </div>
-                                  ))}
-                                </div>
-                                
-                                <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
-                                  <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
-                                    Costs: CHF {row.costs.toLocaleString()}
-                                  </div>
-                                  {row.costBreakdown && Object.entries(row.costBreakdown).map(([name, value]) => (
-                                    <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                      • {name}: CHF {value.toLocaleString()}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </td>
-                          )}
+                  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr>
+                          <th className="text-left p-3 font-semibold">{t('financialBalance.year')}</th>
+                          <th className="text-right p-3 font-semibold">{t('financialBalance.income')}</th>
+                          <th className="text-right p-3 font-semibold">{t('financialBalance.costs')}</th>
+                          <th className="text-right p-3 font-semibold">{t('financialBalance.annualBalance')}</th>
+                          <th className="text-right p-3 font-semibold">{t('financialBalance.cumulativeBalance')}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                      </thead>
+                      <tbody>
+                        {yearlyBreakdown.map((row, index) => (
+                          <tr
+                            key={row.year}
+                            className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''} hover:bg-muted/30 cursor-pointer relative`}
+                            onMouseEnter={() => setHoveredRow(index)}
+                            onMouseLeave={() => setHoveredRow(null)}
+                          >
+                            <td className="p-3 font-medium">{row.year}</td>
+                            <td className="text-right p-3 text-green-500">
+                              CHF {row.income.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </td>
+                            <td className="text-right p-3 text-red-500">
+                              CHF {row.costs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </td>
+                            <td className={`text-right p-3 font-semibold ${row.annualBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {row.annualBalance >= 0 ? '+' : ''}CHF {row.annualBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </td>
+                            <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </td>
+
+                            {/* Hover Tooltip */}
+                            {hoveredRow === index && (
+                              <td className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50">
+                                <div style={{
+                                  backgroundColor: '#1f2937',
+                                  border: '1px solid #374151',
+                                  borderRadius: '8px',
+                                  padding: '12px',
+                                  minWidth: '300px',
+                                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                                }}>
+                                  <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {row.year}</div>
+
+                                  <div style={{ marginBottom: '8px' }}>
+                                    <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
+                                      Annual Balance: CHF {row.annualBalance.toLocaleString()}
+                                    </div>
+                                    <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                      Cumulative Balance: CHF {Math.round(row.cumulativeBalance).toLocaleString()}
+                                    </div>
+                                  </div>
+
+                                  <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
+                                    <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
+                                      Income: CHF {row.income.toLocaleString()}
+                                    </div>
+                                    {row.incomeBreakdown && Object.entries(row.incomeBreakdown).map(([name, value]) => (
+                                      <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                        • {name}: CHF {value.toLocaleString()}
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
+                                    <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
+                                      Costs: CHF {row.costs.toLocaleString()}
+                                    </div>
+                                    {row.costBreakdown && Object.entries(row.costBreakdown).map(([name, value]) => (
+                                      <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
+                                        • {name}: CHF {value.toLocaleString()}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
 
@@ -563,7 +549,7 @@ const FinancialBalance = () => {
           {t('financialBalance.continue')}
         </Button>
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -28,18 +28,20 @@ export const translations = {
       backToHome: "Back to Home",
       step1Title: "1. Personal Information",
       step1Desc: "Start by entering your birth date, gender, and country of residence. This information is used to calculate your legal retirement age and life expectancy based on official Swiss statistics.",
-      step2Title: "2. Retirement Overview",
+      step2Title: "2. Retirement and life expectancy",
       step2Desc: "See your legal retirement date (65 years + 1 month), your life expectancy, and your theoretical end date. All calculations are performed locally in your browser - no data is sent to our servers.",
-      step3Title: "3. Income Sources",
+      step3Title: "3. Current income sources",
       step3Desc: "Enter all your income sources: Net Salary, AVS (Swiss social security), LPP (occupational pension), 3a (private pension), and any custom income. Specify amounts, frequencies, and date ranges for each source.",
-      step4Title: "4. Life Costs",
+      step4Title: "4. Current expenses",
       step4Desc: "List your monthly and yearly expenses across categories: Housing, Taxes, Health Insurance, Food, Transport, Leisure, and more. Use our 'Help me fill this table' feature to quickly estimate typical costs based on your lifestyle.",
-      step5Title: "5. Financial Balance",
+      step5Title: "5. Current financial balance",
       step5Desc: "View your projected financial balance over time with interactive charts. See year-by-year breakdowns of income vs. costs, and understand if your current trajectory leads to a positive or negative balance.",
-      step6Title: "6. Scenario Simulator",
-      step6Desc: "The heart of quit? - Adjust your wished retirement date, modify income and cost projections, add savings and future inflows (inheritance, etc.), and set a transmission amount for your heirs.",
-      step7Title: "7. Your Verdict",
-      step7Desc: "Get your personalized verdict: Can you quit? See your final projected balance, download a comprehensive PDF report, and make informed decisions about your retirement timeline.",
+      step6Title: "6. Retirement inputs",
+      step6Desc: "Define your retirement parameters: savings, future inflows, transmission objectives, and other key inputs that will shape your scenario simulation.",
+      step7Title: "7. Scenario Simulator",
+      step7Desc: "The heart of quit? - Adjust your wished retirement date, modify income and cost projections, and see real-time impact on your financial future.",
+      step8Title: "8. Scenario verdict",
+      step8Desc: "Get your personalized verdict: Can you quit? See your final projected balance, download a comprehensive PDF report, and make informed decisions.",
       securityTitle: "Zero-Knowledge Security",
       securityDesc: "Your financial data never leaves your device. All calculations happen locally, and your data is encrypted with AES-256 encryption using your password as the only key. We cannot access or recover your data - your privacy is guaranteed.",
       ctaTitle: "Ready to plan your retirement?",
@@ -86,7 +88,7 @@ export const translations = {
 
     // Retirement Overview Page
     retirementOverview: {
-      title: "Retirement Overview",
+      title: "Retirement and life expectancy",
       subtitle: "Your retirement timeline based on official regulations",
       legalRetirement: "Legal Retirement Date",
       legalRetirementDesc: "Based on your birth date + 65 years + 1 month",
@@ -100,7 +102,7 @@ export const translations = {
 
     // Income Page
     income: {
-      title: "Income Overview",
+      title: "Current income sources",
       subtitle: "Enter your income sources and their details",
       name: "Name",
       amount: "Amount (CHF)",
@@ -128,7 +130,7 @@ export const translations = {
 
     // Costs Page
     costs: {
-      title: "Cost Overview",
+      title: "Current expenses",
       subtitle: "Enter your monthly and yearly expenses",
       name: "Name",
       category: "Category",
@@ -205,7 +207,7 @@ export const translations = {
 
     // Financial Balance Page
     financialBalance: {
-      title: "Financial Balance Overview",
+      title: "Current financial balance",
       subtitle: "Your projected financial situation over time",
       balanceAtDeath: "Balance at Death",
       positive: "POSITIVE",
@@ -220,6 +222,13 @@ export const translations = {
       costs: "Costs",
       annualBalance: "Annual Balance",
       cumulativeBalance: "Cumulative Balance",
+      continue: "Continue to Retirement Inputs"
+    },
+
+    // Retirement Inputs Page
+    retirementInputs: {
+      title: "Retirement inputs",
+      subtitle: "Define your savings and future financial events",
       continue: "Continue to Scenario Simulator"
     },
 
@@ -272,7 +281,7 @@ export const translations = {
 
     // Result Page
     result: {
-      title: "Your Retirement Verdict",
+      title: "Scenario verdict",
       subtitle: "Based on your financial data and retirement timeline, here is our assessment:",
       yesCanQuit: "YES YOU CAN! QUIT!",
       noCannotQuit: "NO YOU CANNOT QUIT YET!",
@@ -387,18 +396,20 @@ export const translations = {
       backToHome: "Retour à l'accueil",
       step1Title: "1. Informations personnelles",
       step1Desc: "Commencez par entrer votre date de naissance, votre genre et votre pays de résidence. Ces informations sont utilisées pour calculer votre âge légal de retraite et votre espérance de vie selon les statistiques officielles suisses.",
-      step2Title: "2. Aperçu de la retraite",
+      step2Title: "2. Retraite et espérance de vie",
       step2Desc: "Visualisez votre date de retraite légale (65 ans + 1 mois), votre espérance de vie et votre date de fin théorique. Tous les calculs sont effectués localement dans votre navigateur - aucune donnée n'est envoyée à nos serveurs.",
-      step3Title: "3. Sources de revenus",
+      step3Title: "3. Sources de revenus actuels",
       step3Desc: "Entrez toutes vos sources de revenus : Salaire Net, AVS (assurance sociale suisse), LPP (prévoyance professionnelle), 3a (prévoyance privée) et tout revenu personnalisé. Spécifiez les montants, fréquences et périodes pour chaque source.",
-      step4Title: "4. Coûts de la vie",
+      step4Title: "4. Dépenses actuelles",
       step4Desc: "Listez vos dépenses mensuelles et annuelles par catégories : Logement, Impôts, Assurance Maladie, Alimentation, Transport, Loisirs, et plus. Utilisez notre fonction 'Aide pour remplir ce tableau' pour estimer rapidement les coûts typiques selon votre style de vie.",
-      step5Title: "5. Bilan financier",
+      step5Title: "5. Bilan financier actuel",
       step5Desc: "Visualisez votre projection financière dans le temps avec des graphiques interactifs. Consultez les détails année par année des revenus vs dépenses et comprenez si votre trajectoire actuelle mène à un solde positif ou négatif.",
-      step6Title: "6. Simulateur de scénarios",
-      step6Desc: "Le cœur de quit? - Ajustez votre date de retraite souhaitée, modifiez les projections de revenus et de coûts, ajoutez épargne et entrées futures (héritage, etc.), et définissez un montant de transmission pour vos héritiers.",
-      step7Title: "7. Votre verdict",
-      step7Desc: "Obtenez votre verdict personnalisé : Pouvez-vous partir ? Visualisez votre solde final projeté, téléchargez un rapport PDF complet et prenez des décisions éclairées sur votre calendrier de retraite.",
+      step6Title: "6. Paramètres de retraite",
+      step6Desc: "Définissez vos paramètres de retraite : épargne, entrées futures, objectifs de transmission et autres éléments clés qui façonneront votre simulation.",
+      step7Title: "7. Simulateur de scénarios",
+      step7Desc: "Le cœur de quit? - Ajustez votre date de retraite souhaitée, modifiez les projections de revenus et de coûts, et voyez l'impact en temps réel sur votre avenir financier.",
+      step8Title: "8. Verdict du scénario",
+      step8Desc: "Obtenez votre verdict personnalisé : Pouvez-vous partir ? Visualisez votre solde final projeté, téléchargez un rapport PDF complet et prenez des décisions éclairées.",
       securityTitle: "Sécurité Zero-Knowledge",
       securityDesc: "Vos données financières ne quittent jamais votre appareil. Tous les calculs sont effectués localement, et vos données sont chiffrées avec un chiffrement AES-256 utilisant votre mot de passe comme seule clé. Nous ne pouvons pas accéder ou récupérer vos données - votre confidentialité est garantie.",
       ctaTitle: "Prêt à planifier votre retraite ?",
@@ -445,7 +456,7 @@ export const translations = {
 
     // Retirement Overview Page
     retirementOverview: {
-      title: "Aperçu de la retraite",
+      title: "Retraite et espérance de vie",
       subtitle: "Votre calendrier de retraite basé sur les réglementations officielles",
       legalRetirement: "Date de retraite légale",
       legalRetirementDesc: "Basée sur votre date de naissance + 65 ans + 1 mois",
@@ -459,7 +470,7 @@ export const translations = {
 
     // Income Page
     income: {
-      title: "Aperçu des revenus",
+      title: "Sources de revenus actuels",
       subtitle: "Entrez vos sources de revenus et leurs détails",
       name: "Nom",
       amount: "Montant (CHF)",
@@ -487,7 +498,7 @@ export const translations = {
 
     // Costs Page
     costs: {
-      title: "Aperçu des dépenses",
+      title: "Dépenses actuelles",
       subtitle: "Entrez vos dépenses mensuelles et annuelles",
       name: "Nom",
       category: "Catégorie",
@@ -564,7 +575,7 @@ export const translations = {
 
     // Financial Balance Page
     financialBalance: {
-      title: "Aperçu du bilan financier",
+      title: "Bilan financier actuel",
       subtitle: "Votre situation financière projetée dans le temps",
       balanceAtDeath: "Solde au décès",
       positive: "POSITIF",
@@ -579,6 +590,13 @@ export const translations = {
       costs: "Dépenses",
       annualBalance: "Solde annuel",
       cumulativeBalance: "Solde cumulé",
+      continue: "Continuer vers les paramètres de retraite"
+    },
+
+    // Retirement Inputs Page
+    retirementInputs: {
+      title: "Paramètres de retraite",
+      subtitle: "Définissez votre épargne et événements financiers futurs",
       continue: "Continuer vers le simulateur de scénarios"
     },
 
@@ -631,7 +649,7 @@ export const translations = {
 
     // Result Page
     result: {
-      title: "Votre verdict de retraite",
+      title: "Verdict du scénario",
       subtitle: "Basé sur vos données financières et votre calendrier de retraite, voici notre évaluation :",
       yesCanQuit: "OUI VOUS POUVEZ ! PARTEZ !",
       noCannotQuit: "NON VOUS NE POUVEZ PAS ENCORE PARTIR !",

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { getUserData, saveUserData } from '../utils/database';
 import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
-import { NavigationButtons } from '../components/NavigationButtons';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
 
@@ -30,7 +30,7 @@ const RetirementOverview = () => {
       navigate('/');
       return;
     }
-    
+
     if (!password) {
       console.warn('No password available, redirecting to login');
       navigate('/');
@@ -41,7 +41,7 @@ const RetirementOverview = () => {
       try {
         console.log('Loading user data for:', userEmail);
         const userData = await getUserData(userEmail, password);
-        
+
         if (!userData || !userData.birthDate) {
           console.warn('No user data or birth date found, redirecting to personal-info');
           navigate('/personal-info');
@@ -54,9 +54,9 @@ const RetirementOverview = () => {
         console.log('Calculating life expectancy locally...');
         const retirementResult = calculateLifeExpectancy(userData.birthDate, userData.gender);
         console.log('Life expectancy calculation result:', retirementResult);
-        
+
         setRetirementData(retirementResult);
-        
+
         // Save the calculated dates back to user data for use in other pages
         const updatedUserData = {
           ...userData,
@@ -120,8 +120,9 @@ const RetirementOverview = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="retirement-overview-page">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen py-12 px-4" data-testid="retirement-overview-page">
+      <div className="max-w-4xl w-full mx-auto">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('retirementOverview.title')}</h1>
@@ -129,7 +130,6 @@ const RetirementOverview = () => {
               {t('retirementOverview.subtitle')}
             </p>
           </div>
-          <NavigationButtons backPath="/personal-info" />
         </div>
 
         {retirementData && (

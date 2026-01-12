@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { saveCostData, getCostData, getUserData, getIncomeData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
-import { NavigationButtons } from '../components/NavigationButtons';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 
 // Cost name keys for translation
 const COST_KEYS = {
@@ -35,7 +35,7 @@ const Costs = () => {
   const [loading, setLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [salaryAmount, setSalaryAmount] = useState(0);
-  
+
   // Help modal answers
   const [helpAnswers, setHelpAnswers] = useState({
     hasCar: null,
@@ -62,7 +62,7 @@ const Costs = () => {
     const userData = await getUserData(user.email, password);
     const today = new Date().toISOString().split('T')[0];
     const deathDateStr = userData?.theoreticalDeathDate || today;
-    
+
     return [
       { id: 1, name: 'Rent/Mortgage', amount: '', frequency: 'Monthly', category: 'Housing', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
       { id: 2, name: 'Taxes', amount: '', frequency: 'Monthly', category: 'Taxes', startDate: today, endDate: deathDateStr, locked: true, categoryLocked: true },
@@ -134,7 +134,7 @@ const Costs = () => {
     const userData = await getUserData(user.email, password);
     const today = new Date().toISOString().split('T')[0];
     const deathDateStr = userData?.theoreticalDeathDate || today;
-    
+
     setRows([...rows, {
       id: nextId,
       name: '',
@@ -157,7 +157,7 @@ const Costs = () => {
   const validateRows = () => {
     for (const row of rows) {
       const hasAnyData = row.amount || row.startDate || row.endDate;
-      
+
       if (hasAnyData) {
         if (!row.amount) {
           toast.error(`${t('costs.amount')} - ${getCostName(row.name) || 'row ' + row.id}`);
@@ -178,7 +178,7 @@ const Costs = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateRows()) {
       return;
     }
@@ -203,14 +203,14 @@ const Costs = () => {
 
     setRows(currentRows => {
       let updatedRows = [...currentRows];
-      
+
       // Handle car question
       if (helpAnswers.hasCar === false) {
         // Remove private transportation
         updatedRows = updatedRows.filter(row => row.name !== 'Private transportation');
       } else if (helpAnswers.hasCar === true) {
         // Set private transportation to 600
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Private transportation' ? { ...row, amount: '600' } : row
         );
       }
@@ -225,7 +225,7 @@ const Costs = () => {
         } else if (helpAnswers.vacationCosts === 'low') {
           vacationAmount = '2000';
         }
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Vacation' ? { ...row, amount: vacationAmount } : row
         );
       }
@@ -233,7 +233,7 @@ const Costs = () => {
       // Handle restaurant question
       if (helpAnswers.goesOutOften !== null) {
         const restaurantAmount = helpAnswers.goesOutOften ? '400' : '100';
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Restaurants' ? { ...row, amount: restaurantAmount } : row
         );
       }
@@ -248,7 +248,7 @@ const Costs = () => {
         } else if (helpAnswers.foodExpenses === 'low') {
           foodAmount = '350';
         }
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Food' ? { ...row, amount: foodAmount } : row
         );
       }
@@ -256,7 +256,7 @@ const Costs = () => {
       // Handle private insurance question
       if (helpAnswers.privateInsurance !== null) {
         const insuranceAmount = helpAnswers.privateInsurance ? '900' : '600';
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Health insurance' ? { ...row, amount: insuranceAmount } : row
         );
       }
@@ -267,11 +267,11 @@ const Costs = () => {
           // Remove public transportation line
           updatedRows = updatedRows.filter(row => row.name !== 'Public transportation');
         } else if (helpAnswers.publicTransport === 'sometimes') {
-          updatedRows = updatedRows.map(row => 
+          updatedRows = updatedRows.map(row =>
             row.name === 'Public transportation' ? { ...row, amount: '100' } : row
           );
         } else if (helpAnswers.publicTransport === 'always') {
-          updatedRows = updatedRows.map(row => 
+          updatedRows = updatedRows.map(row =>
             row.name === 'Public transportation' ? { ...row, amount: '300' } : row
           );
         }
@@ -287,7 +287,7 @@ const Costs = () => {
         } else if (helpAnswers.clothingShopping === 'rarely') {
           clothingAmount = '100';
         }
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Clothing' ? { ...row, amount: clothingAmount } : row
         );
       }
@@ -302,14 +302,14 @@ const Costs = () => {
         } else if (helpAnswers.tvInternetCosts === 'low') {
           tvAmount = '80';
         }
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'TV/Internet/Phone' ? { ...row, amount: tvAmount } : row
         );
       }
 
       // Set taxes based on salary
       if (roundedTax > 0) {
-        updatedRows = updatedRows.map(row => 
+        updatedRows = updatedRows.map(row =>
           row.name === 'Taxes' ? { ...row, amount: String(roundedTax) } : row
         );
       }
@@ -328,7 +328,7 @@ const Costs = () => {
       clothingShopping: null,
       tvInternetCosts: null
     });
-    
+
     toast.success(language === 'fr' ? 'Valeurs appliquées!' : 'Values applied!');
   };
 
@@ -341,6 +341,7 @@ const Costs = () => {
   return (
     <div className="min-h-screen py-12 px-4" data-testid="costs-page">
       <div className="max-w-6xl mx-auto">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('costs.title')}</h1>
@@ -348,7 +349,6 @@ const Costs = () => {
               {t('costs.subtitle')}
             </p>
           </div>
-          <NavigationButtons backPath="/income" />
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -497,7 +497,7 @@ const Costs = () => {
               <Plus className="h-4 w-4 mr-2" />
               {t('costs.addCost')}
             </Button>
-            
+
             <Button
               data-testid="reset-btn"
               type="button"
@@ -524,33 +524,33 @@ const Costs = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-card border rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-bold mb-2">{t('costs.helpModal.title')}</h3>
-              
+
               {/* Intro text - green, no background */}
               <p className="text-xs text-green-600 dark:text-green-400 mb-4">
                 {t('costs.helpModal.intro')}
               </p>
-              
+
               <div className="space-y-3">
                 {/* Question 1: Car */}
                 <div className="p-2 bg-muted/50 rounded-lg">
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question1')}</p>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="hasCar" 
+                      <input
+                        type="radio"
+                        name="hasCar"
                         checked={helpAnswers.hasCar === true}
-                        onChange={() => setHelpAnswers({...helpAnswers, hasCar: true})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, hasCar: true })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="hasCar" 
+                      <input
+                        type="radio"
+                        name="hasCar"
                         checked={helpAnswers.hasCar === false}
-                        onChange={() => setHelpAnswers({...helpAnswers, hasCar: false})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, hasCar: false })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.no')}
@@ -563,31 +563,31 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question2')}</p>
                   <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="vacationCosts" 
+                      <input
+                        type="radio"
+                        name="vacationCosts"
                         checked={helpAnswers.vacationCosts === 'high'}
-                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'high'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, vacationCosts: 'high' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_high')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="vacationCosts" 
+                      <input
+                        type="radio"
+                        name="vacationCosts"
                         checked={helpAnswers.vacationCosts === 'moderate'}
-                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'moderate'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, vacationCosts: 'moderate' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_moderate')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="vacationCosts" 
+                      <input
+                        type="radio"
+                        name="vacationCosts"
                         checked={helpAnswers.vacationCosts === 'low'}
-                        onChange={() => setHelpAnswers({...helpAnswers, vacationCosts: 'low'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, vacationCosts: 'low' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question2_low')}
@@ -600,21 +600,21 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question3')}</p>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="goesOutOften" 
+                      <input
+                        type="radio"
+                        name="goesOutOften"
                         checked={helpAnswers.goesOutOften === true}
-                        onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: true})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, goesOutOften: true })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="goesOutOften" 
+                      <input
+                        type="radio"
+                        name="goesOutOften"
                         checked={helpAnswers.goesOutOften === false}
-                        onChange={() => setHelpAnswers({...helpAnswers, goesOutOften: false})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, goesOutOften: false })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.no')}
@@ -627,31 +627,31 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question4')}</p>
                   <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="foodExpenses" 
+                      <input
+                        type="radio"
+                        name="foodExpenses"
                         checked={helpAnswers.foodExpenses === 'high'}
-                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'high'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, foodExpenses: 'high' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_high')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="foodExpenses" 
+                      <input
+                        type="radio"
+                        name="foodExpenses"
                         checked={helpAnswers.foodExpenses === 'moderate'}
-                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'moderate'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, foodExpenses: 'moderate' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_moderate')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="foodExpenses" 
+                      <input
+                        type="radio"
+                        name="foodExpenses"
                         checked={helpAnswers.foodExpenses === 'low'}
-                        onChange={() => setHelpAnswers({...helpAnswers, foodExpenses: 'low'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, foodExpenses: 'low' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question4_low')}
@@ -664,21 +664,21 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question5')}</p>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="privateInsurance" 
+                      <input
+                        type="radio"
+                        name="privateInsurance"
                         checked={helpAnswers.privateInsurance === true}
-                        onChange={() => setHelpAnswers({...helpAnswers, privateInsurance: true})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, privateInsurance: true })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.yes')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="privateInsurance" 
+                      <input
+                        type="radio"
+                        name="privateInsurance"
                         checked={helpAnswers.privateInsurance === false}
-                        onChange={() => setHelpAnswers({...helpAnswers, privateInsurance: false})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, privateInsurance: false })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.no')}
@@ -691,31 +691,31 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question6')}</p>
                   <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="publicTransport" 
+                      <input
+                        type="radio"
+                        name="publicTransport"
                         checked={helpAnswers.publicTransport === 'never'}
-                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'never'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, publicTransport: 'never' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question6_never')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="publicTransport" 
+                      <input
+                        type="radio"
+                        name="publicTransport"
                         checked={helpAnswers.publicTransport === 'sometimes'}
-                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'sometimes'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, publicTransport: 'sometimes' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question6_sometimes')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="publicTransport" 
+                      <input
+                        type="radio"
+                        name="publicTransport"
                         checked={helpAnswers.publicTransport === 'always'}
-                        onChange={() => setHelpAnswers({...helpAnswers, publicTransport: 'always'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, publicTransport: 'always' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question6_always')}
@@ -728,31 +728,31 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question7')}</p>
                   <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="clothingShopping" 
+                      <input
+                        type="radio"
+                        name="clothingShopping"
                         checked={helpAnswers.clothingShopping === 'veryOften'}
-                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'veryOften'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, clothingShopping: 'veryOften' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question7_veryOften')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="clothingShopping" 
+                      <input
+                        type="radio"
+                        name="clothingShopping"
                         checked={helpAnswers.clothingShopping === 'reasonably'}
-                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'reasonably'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, clothingShopping: 'reasonably' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question7_reasonably')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="clothingShopping" 
+                      <input
+                        type="radio"
+                        name="clothingShopping"
                         checked={helpAnswers.clothingShopping === 'rarely'}
-                        onChange={() => setHelpAnswers({...helpAnswers, clothingShopping: 'rarely'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, clothingShopping: 'rarely' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question7_rarely')}
@@ -765,31 +765,31 @@ const Costs = () => {
                   <p className="text-sm font-medium mb-2">{t('costs.helpModal.question8')}</p>
                   <div className="flex gap-4 flex-wrap">
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="tvInternetCosts" 
+                      <input
+                        type="radio"
+                        name="tvInternetCosts"
                         checked={helpAnswers.tvInternetCosts === 'high'}
-                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'high'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, tvInternetCosts: 'high' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question8_high')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="tvInternetCosts" 
+                      <input
+                        type="radio"
+                        name="tvInternetCosts"
                         checked={helpAnswers.tvInternetCosts === 'moderate'}
-                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'moderate'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, tvInternetCosts: 'moderate' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question8_moderate')}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input 
-                        type="radio" 
-                        name="tvInternetCosts" 
+                      <input
+                        type="radio"
+                        name="tvInternetCosts"
                         checked={helpAnswers.tvInternetCosts === 'low'}
-                        onChange={() => setHelpAnswers({...helpAnswers, tvInternetCosts: 'low'})}
+                        onChange={() => setHelpAnswers({ ...helpAnswers, tvInternetCosts: 'low' })}
                         className="w-3 h-3"
                       />
                       {t('costs.helpModal.question8_low')}
@@ -799,14 +799,14 @@ const Costs = () => {
               </div>
 
               <div className="flex gap-3 mt-4">
-                <Button 
+                <Button
                   onClick={applyHelpAnswers}
                   className="flex-1 text-sm"
                   size="sm"
                 >
                   {t('costs.helpModal.apply')}
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => {
                     setShowHelpModal(false);
@@ -831,7 +831,7 @@ const Costs = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

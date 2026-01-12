@@ -15,8 +15,8 @@ import {
 } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
-import { Calendar, Info } from 'lucide-react';
-import { NavigationButtons } from '../components/NavigationButtons';
+import { Trash2, Plus, HelpCircle } from 'lucide-react';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ const PersonalInfo = () => {
       navigate('/');
       return;
     }
-    
+
     // If user exists but password is null (page was refreshed), redirect to login
     if (!password) {
       console.warn('Password not available - session may have been refreshed. Redirecting to login.');
@@ -72,12 +72,12 @@ const PersonalInfo = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!birthDate || !gender || !residence) {
       toast.error(t('common.error'));
       return;
     }
-    
+
     // Double-check email and password are available before trying to save
     if (!userEmail) {
       console.error('No email available for save');
@@ -85,7 +85,7 @@ const PersonalInfo = () => {
       navigate('/');
       return;
     }
-    
+
     if (!password) {
       console.error('No password available for save');
       toast.error('Session expired. Please log in again.');
@@ -100,7 +100,7 @@ const PersonalInfo = () => {
         gender,
         residence
       };
-      
+
       console.log('Saving user data for:', userEmail);
       await saveUserData(userEmail, password, userData);
       toast.success(t('personalInfo.saveSuccess'));
@@ -127,7 +127,8 @@ const PersonalInfo = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="personal-info-page">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-6xl mx-auto">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('personalInfo.title')}</h1>
@@ -137,14 +138,14 @@ const PersonalInfo = () => {
             <Dialog>
               <DialogTrigger asChild>
                 <button className="text-primary flex items-center gap-1 mt-2 cursor-pointer hover:underline text-sm">
-                  <Info className="h-4 w-4" />
+                  <HelpCircle className="h-4 w-4" />
                   {t('dataPrivacy.title')}
                 </button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
-                    <Info className="h-5 w-5 text-primary" />
+                    <HelpCircle className="h-5 w-5 text-primary" />
                     {t('dataPrivacy.popupTitle')}
                   </DialogTitle>
                 </DialogHeader>
@@ -175,64 +176,66 @@ const PersonalInfo = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <NavigationButtons backPath="/" showHome={false} />
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
-          <div>
-            <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                data-testid="birth-date-input"
-                id="birthDate"
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                required
-                className="pl-10"
-              />
+        <div className="max-w-2xl mx-auto">
+          <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
+            <div>
+              <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
+              <div className="relative">
+                <HelpCircle className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  data-testid="birth-date-input"
+                  id="birthDate"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  required
+                  className="pl-10"
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
-            <Select value={gender} onValueChange={setGender} required>
-              <SelectTrigger data-testid="gender-select">
-                <SelectValue placeholder={t('personalInfo.gender')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
-                <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div>
+              <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
+              <Select value={gender} onValueChange={setGender} required>
+                <SelectTrigger data-testid="gender-select">
+                  <SelectValue placeholder={t('personalInfo.gender')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
+                  <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <Label htmlFor="residence">{t('personalInfo.country')}</Label>
-            <Select value={residence} onValueChange={setResidence} required>
-              <SelectTrigger data-testid="residence-select">
-                <SelectValue placeholder={t('personalInfo.country')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Switzerland" data-testid="residence-switzerland">{t('personalInfo.switzerland')}</SelectItem>
-                <SelectItem value="France" data-testid="residence-france">{t('personalInfo.france')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div>
+              <Label htmlFor="residence">{t('personalInfo.country')}</Label>
+              <Select value={residence} onValueChange={setResidence} required>
+                <SelectTrigger data-testid="residence-select">
+                  <SelectValue placeholder={t('personalInfo.country')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Switzerland" data-testid="residence-switzerland">{t('personalInfo.switzerland')}</SelectItem>
+                  <SelectItem value="France" data-testid="residence-france">{t('personalInfo.france')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Button
-            data-testid="next-btn"
-            type="submit"
-            className="w-full"
-            disabled={loading}
-          >
-            {loading ? t('personalInfo.saving') : t('personalInfo.continue')}
-          </Button>
-        </form>
+            <Button
+              data-testid="next-btn"
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? t('personalInfo.saving') : t('personalInfo.continue')}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 export default PersonalInfo;
+

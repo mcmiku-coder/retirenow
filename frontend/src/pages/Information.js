@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank, LineChart, Target, FileText } from 'lucide-react';
+import { ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Target, FileText } from 'lucide-react';
 
 const Information = () => {
   const navigate = useNavigate();
@@ -46,16 +46,23 @@ const Information = () => {
       color: 'text-purple-500'
     },
     {
-      icon: Target,
+      icon: Sliders,
       titleKey: 'step6Title',
       descKey: 'step6Desc',
+      image: '/screenshots/retirement-inputs.png',
+      color: 'text-indigo-500'
+    },
+    {
+      icon: Target,
+      titleKey: 'step7Title',
+      descKey: 'step7Desc',
       image: '/screenshots/scenario.png',
       color: 'text-pink-500'
     },
     {
       icon: FileText,
-      titleKey: 'step7Title',
-      descKey: 'step7Desc',
+      titleKey: 'step8Title',
+      descKey: 'step8Desc',
       image: '/screenshots/result.png',
       color: 'text-red-500'
     }

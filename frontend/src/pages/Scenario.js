@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
-import { NavigationButtons } from '../components/NavigationButtons';
+import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
 
 // Income name translation keys
@@ -619,6 +619,7 @@ const Scenario = () => {
   return (
     <div className="min-h-screen py-12 px-4" data-testid="scenario-page">
       <div className="max-w-7xl mx-auto">
+        <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('scenario.title')}</h1>
@@ -626,7 +627,6 @@ const Scenario = () => {
               {t('scenario.subtitle')}
             </p>
           </div>
-          <NavigationButtons backPath="/financial-balance" />
         </div>
 
         <div className="space-y-6">
