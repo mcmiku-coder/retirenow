@@ -61,14 +61,14 @@ const ScenarioResult = () => {
         if (location.state && location.state.yearlyBreakdown) {
           // Use the breakdown data directly from simulation
           setYearlyBreakdown(location.state.yearlyBreakdown);
-          
+
           // Determine if user can quit based on option chosen
           const retirementOption = location.state.retirementOption || 'choose';
           const calculatedEarliestDate = location.state.calculatedEarliestDate;
           const retirementLegalDate = location.state.retirementLegalDate;
-          
+
           let canQuit = location.state.finalBalance >= 0;
-          
+
           // For "calculate" option, check if an early retirement date was found
           if (retirementOption === 'calculate') {
             if (calculatedEarliestDate && new Date(calculatedEarliestDate) < new Date(retirementLegalDate)) {
@@ -77,7 +77,7 @@ const ScenarioResult = () => {
               canQuit = false;
             }
           }
-          
+
           setResult({
             canQuit,
             balance: location.state.finalBalance,
@@ -102,7 +102,7 @@ const ScenarioResult = () => {
 
           const currentYear = new Date().getFullYear();
           const birthDate = new Date(userData.birthDate);
-          
+
           // Use the theoretical death date from API
           let deathYear;
           if (userData.theoreticalDeathDate) {
@@ -131,7 +131,7 @@ const ScenarioResult = () => {
                 row.endDate,
                 year
               );
-              
+
               if (yearlyAmount > 0) {
                 yearIncome += yearlyAmount;
                 incomeBreakdown[row.name] = yearlyAmount;
@@ -147,7 +147,7 @@ const ScenarioResult = () => {
                 row.endDate,
                 year
               );
-              
+
               if (yearlyAmount > 0) {
                 yearCosts += yearlyAmount;
                 const category = row.category || row.name || 'Other';
@@ -170,7 +170,7 @@ const ScenarioResult = () => {
           }
 
           setYearlyBreakdown(breakdown);
-          
+
           setResult({
             canQuit: cumulativeBalance >= 0,
             balance: cumulativeBalance,
@@ -197,27 +197,27 @@ const ScenarioResult = () => {
   const generatePDF = async () => {
     setGeneratingPdf(true);
     toast.info(language === 'fr' ? 'Génération du PDF...' : 'Generating PDF...');
-    
+
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 14;
       let yPos = 20;
-      
+
       // Helper function for formatting currency - avoid toLocaleString to prevent special chars
       const formatCurrency = (val) => {
         const num = Math.round(val || 0);
         const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
         return `CHF ${formatted}`;
       };
-      
+
       // Helper function for formatting numbers without currency
       const formatNumber = (val) => {
         const num = Math.round(val || 0);
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
       };
-      
+
       // Helper function to check page break
       const checkPageBreak = (needed = 30) => {
         if (yPos + needed > pageHeight - 20) {
@@ -225,35 +225,35 @@ const ScenarioResult = () => {
           yPos = 20;
         }
       };
-      
+
       // ============================
       // PAGE 1: Title & Personal Info
       // ============================
-      
+
       // Title
       doc.setFontSize(28);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text('quit?', pageWidth / 2, yPos, { align: 'center' });
       yPos += 12;
-      
+
       doc.setFontSize(14);
       doc.setTextColor(100, 100, 100);
       doc.setFont('helvetica', 'normal');
       doc.text(language === 'fr' ? 'Rapport de planification de retraite' : 'Retirement Planning Report', pageWidth / 2, yPos, { align: 'center' });
       yPos += 8;
-      
+
       doc.setFontSize(10);
       doc.text(`${language === 'fr' ? 'Généré le' : 'Generated on'}: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 18;
-      
+
       // Personal Information Section
       doc.setFontSize(16);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Informations personnelles' : 'Personal Information', margin, yPos);
       yPos += 10;
-      
+
       doc.setFontSize(11);
       doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
@@ -265,14 +265,14 @@ const ScenarioResult = () => {
         doc.text(`${language === 'fr' ? 'Pays' : 'Country'}: ${userData.residence || 'N/A'}`, margin, yPos);
         yPos += 14;
       }
-      
+
       // Retirement Overview Section
       doc.setFontSize(16);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Aperçu de la retraite' : 'Retirement Overview', margin, yPos);
       yPos += 10;
-      
+
       doc.setFontSize(11);
       doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
@@ -284,14 +284,14 @@ const ScenarioResult = () => {
         doc.text(`${language === 'fr' ? 'Date de fin théorique' : 'Theoretical End Date'}: ${userData.theoreticalDeathDate || 'N/A'}`, margin, yPos);
         yPos += 14;
       }
-      
+
       // Scenario Parameters Section
       doc.setFontSize(16);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Paramètres du scénario' : 'Scenario Parameters', margin, yPos);
       yPos += 10;
-      
+
       doc.setFontSize(11);
       doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
@@ -299,7 +299,7 @@ const ScenarioResult = () => {
       const liquidAssets = scenarioData?.liquidAssets || location.state?.liquidAssets || 0;
       const nonLiquidAssets = scenarioData?.nonLiquidAssets || location.state?.nonLiquidAssets || 0;
       const transmissionAmt = scenarioData?.transmissionAmount || result?.transmissionAmount || 0;
-      
+
       doc.text(`${language === 'fr' ? 'Date de retraite souhaitée' : 'Wished Retirement Date'}: ${wishedDate || 'N/A'}`, margin, yPos);
       yPos += 6;
       doc.text(`${language === 'fr' ? 'Actifs liquides' : 'Liquid Assets'}: ${formatCurrency(liquidAssets)}`, margin, yPos);
@@ -308,7 +308,7 @@ const ScenarioResult = () => {
       yPos += 6;
       doc.text(`${language === 'fr' ? 'Transmission/Héritage' : 'Transmission/Inheritance'}: ${formatCurrency(transmissionAmt)}`, margin, yPos);
       yPos += 14;
-      
+
       // Income Sources Table
       checkPageBreak(50);
       doc.setFontSize(14);
@@ -316,7 +316,7 @@ const ScenarioResult = () => {
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Sources de revenus' : 'Income Sources', margin, yPos);
       yPos += 8;
-      
+
       const adjustedIncomes = location.state?.adjustedIncomes || [];
       if (adjustedIncomes.length > 0) {
         const incomeHeaders = [
@@ -328,10 +328,10 @@ const ScenarioResult = () => {
           inc.name || '-',
           formatCurrency(inc.adjustedAmount || inc.amount),
           inc.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
-          inc.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
-          (language === 'fr' ? 'Unique' : 'One-time')
+            inc.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
+              (language === 'fr' ? 'Unique' : 'One-time')
         ]);
-        
+
         autoTable(doc, {
           head: [incomeHeaders],
           body: incomeRows,
@@ -354,7 +354,7 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de revenus' : 'No income data available', margin, yPos);
         yPos += 15;
       }
-      
+
       // Costs Table
       checkPageBreak(50);
       doc.setFontSize(14);
@@ -362,7 +362,7 @@ const ScenarioResult = () => {
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Dépenses' : 'Costs', margin, yPos);
       yPos += 8;
-      
+
       const adjustedCosts = location.state?.adjustedCosts || [];
       if (adjustedCosts.length > 0) {
         const costHeaders = [
@@ -376,10 +376,10 @@ const ScenarioResult = () => {
           cost.category || '-',
           formatCurrency(cost.adjustedAmount || cost.amount),
           cost.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
-          cost.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
-          (language === 'fr' ? 'Unique' : 'One-time')
+            cost.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
+              (language === 'fr' ? 'Unique' : 'One-time')
         ]);
-        
+
         autoTable(doc, {
           head: [costHeaders],
           body: costRows,
@@ -402,36 +402,36 @@ const ScenarioResult = () => {
         doc.text(language === 'fr' ? 'Aucune donnée de dépenses' : 'No cost data available', margin, yPos);
         yPos += 15;
       }
-      
+
       // ============================
       // VERDICT PAGE
       // ============================
       doc.addPage();
       yPos = 25;
-      
+
       doc.setFontSize(18);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Verdict' : 'Verdict', margin, yPos);
       yPos += 15;
-      
+
       // Verdict box
       const canQuit = result?.canQuit;
       doc.setFillColor(canQuit ? 40 : 220, canQuit ? 167 : 53, canQuit ? 69 : 69);
       doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 25, 3, 3, 'F');
-      
+
       doc.setFontSize(16);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      const verdictText = canQuit 
+      const verdictText = canQuit
         ? (language === 'fr' ? 'OUI VOUS POUVEZ ! PARTEZ !' : 'YES YOU CAN! QUIT!')
         : (language === 'fr' ? 'NON VOUS NE POUVEZ PAS ENCORE PARTIR !' : 'NO YOU CANNOT QUIT YET!');
       doc.text(verdictText, pageWidth / 2, yPos + 10, { align: 'center' });
-      
+
       doc.setFontSize(12);
       doc.text(`${language === 'fr' ? 'Solde final' : 'Final Balance'}: ${formatCurrency(result?.balance)}`, pageWidth / 2, yPos + 18, { align: 'center' });
       yPos += 40;
-      
+
       // Transmission info
       if (result?.transmissionAmount > 0) {
         doc.setFontSize(11);
@@ -442,7 +442,7 @@ const ScenarioResult = () => {
         doc.text(`${language === 'fr' ? 'Montant à transmettre' : 'Amount to transmit'}: ${formatCurrency(result.transmissionAmount)}`, margin, yPos);
         yPos += 12;
       }
-      
+
       doc.setFontSize(11);
       doc.setTextColor(33, 33, 33);
       doc.setFont('helvetica', 'normal');
@@ -451,30 +451,30 @@ const ScenarioResult = () => {
         : (language === 'fr' ? 'Votre solde projeté est négatif. Envisagez d\'ajuster votre plan financier ou votre date de retraite.' : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date.');
       const splitMessage = doc.splitTextToSize(message, pageWidth - 2 * margin);
       doc.text(splitMessage, margin, yPos);
-      
+
       // ============================
       // ANNEX PAGE: Landscape Year-by-Year Table
       // ============================
       doc.addPage('a4', 'landscape');
       const landscapeWidth = doc.internal.pageSize.getWidth();
-      
+
       doc.setFontSize(16);
       doc.setTextColor(220, 53, 69);
       doc.setFont('helvetica', 'bold');
       doc.text(language === 'fr' ? 'Annexe: Projection financière détaillée' : 'Annex: Detailed Financial Projection', margin, 20);
-      
+
       // Collect all unique income and cost categories
       const allIncomeCategories = new Set();
       const allCostCategories = new Set();
-      
+
       yearlyBreakdown.forEach(year => {
         Object.keys(year.incomeBreakdown || {}).forEach(cat => allIncomeCategories.add(cat));
         Object.keys(year.costBreakdown || {}).forEach(cat => allCostCategories.add(cat));
       });
-      
+
       const incomeColumns = Array.from(allIncomeCategories);
       const costColumns = Array.from(allCostCategories);
-      
+
       // Build table headers with categories - Year first
       const headers = [
         language === 'fr' ? 'Année' : 'Year',
@@ -482,7 +482,7 @@ const ScenarioResult = () => {
         ...costColumns.map(c => (language === 'fr' ? 'Dép. ' : 'Cost ') + c.substring(0, 8)),
         language === 'fr' ? 'Solde cumulé' : 'Running Balance'
       ];
-      
+
       // Build table rows - Year first
       const tableData = yearlyBreakdown.map(year => {
         const row = [
@@ -499,7 +499,7 @@ const ScenarioResult = () => {
         ];
         return row;
       });
-      
+
       // Add table using autoTable (only if we have data)
       if (tableData.length > 0 && headers.length > 0) {
         autoTable(doc, {
@@ -516,7 +516,7 @@ const ScenarioResult = () => {
             0: { cellWidth: 12, fontStyle: 'bold' }, // Year column (now first)
             [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column (last)
           },
-          didParseCell: function(data) {
+          didParseCell: function (data) {
             // Color negative running balance red
             if (data.section === 'body' && data.column.index === headers.length - 1) {
               const cellText = String(data.cell.raw);
@@ -525,7 +525,7 @@ const ScenarioResult = () => {
               }
             }
           },
-          didDrawPage: function(data) {
+          didDrawPage: function (data) {
             // Footer with page number
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
@@ -538,23 +538,23 @@ const ScenarioResult = () => {
         doc.setFont('helvetica', 'normal');
         doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
       }
-      
+
       // Generate PDF blob and data URL
       const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
-      
+
       // Store blob for download
       const blob = doc.output('blob');
       setPdfBlob(blob);
       setPdfFileName(fileName);
-      
+
       // Get data URL to display in iframe (for preview only)
       const dataUrl = doc.output('dataurlstring');
       setPdfDataUrl(dataUrl);
-      
-      toast.success(language === 'fr' 
-        ? 'PDF généré! Cliquez sur "Télécharger" pour sauvegarder.' 
+
+      toast.success(language === 'fr'
+        ? 'PDF généré! Cliquez sur "Télécharger" pour sauvegarder.'
         : 'PDF generated! Click "Download" to save.');
-      
+
     } catch (error) {
       console.error('PDF generation error:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la génération du PDF' : 'Error generating PDF');
@@ -566,7 +566,7 @@ const ScenarioResult = () => {
   // Download PDF function - creates fresh object URL and triggers download
   const downloadPdf = () => {
     if (!pdfBlob) return;
-    
+
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = url;
@@ -636,21 +636,21 @@ const ScenarioResult = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {/* Retirement Date Display - Different messages based on option and outcome */}
                 {result.retirementOption === 'calculate' ? (
                   // Option 2: Calculate earliest retirement date
                   result.calculatedEarliestDate && new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) ? (
                     // Early retirement IS possible
                     <p className="text-lg font-semibold text-green-500 mt-4" data-testid="early-retirement-message">
-                      {language === 'fr' 
+                      {language === 'fr'
                         ? `Vous pouvez prendre une retraite anticipée le : ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`
                         : `You can take an early retirement on: ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`}
                     </p>
                   ) : (
                     // Early retirement is NOT possible
                     <p className="text-lg font-semibold text-red-500 mt-4" data-testid="no-early-retirement-message">
-                      {language === 'fr' 
+                      {language === 'fr'
                         ? `Vous ne pouvez pas prendre de retraite anticipée. Votre date de retraite légale reste : ${new Date(result.retirementLegalDate).toLocaleDateString()}`
                         : `You cannot take an early retirement. Your legal retirement date remains: ${new Date(result.retirementLegalDate).toLocaleDateString()}`}
                     </p>
@@ -664,7 +664,7 @@ const ScenarioResult = () => {
                   )
                 )}
                 <p className="text-sm text-muted-foreground mt-6">
-                  {result.canQuit 
+                  {result.canQuit
                     ? t('result.positiveMessage')
                     : t('result.negativeMessage')}
                 </p>
@@ -682,23 +682,27 @@ const ScenarioResult = () => {
                     <ResponsiveContainer width="100%" height={400}>
                       <AreaChart data={yearlyBreakdown}>
                         <defs>
-                          <linearGradient id="colorCumulativeResult" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          <linearGradient id="colorCumulativeResultPositive" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="colorCumulativeResultNegative" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis 
-                          dataKey="year" 
+                        <XAxis
+                          dataKey="year"
                           stroke="#9ca3af"
                           tick={{ fill: '#9ca3af' }}
                         />
-                        <YAxis 
+                        <YAxis
                           stroke="#9ca3af"
                           tick={{ fill: '#9ca3af' }}
                           tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)}k`}
                         />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}
                           labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}
                           content={({ active, payload }) => {
@@ -707,7 +711,7 @@ const ScenarioResult = () => {
                               return (
                                 <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}>
                                   <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {data.year}</div>
-                                  
+
                                   <div style={{ marginBottom: '8px' }}>
                                     <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
                                       Annual Balance: CHF {data.annualBalance.toLocaleString()}
@@ -716,7 +720,7 @@ const ScenarioResult = () => {
                                       Cumulative Balance: CHF {Math.round(data.cumulativeBalance).toLocaleString()}
                                     </div>
                                   </div>
-                                  
+
                                   <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
                                     <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
                                       Income: CHF {data.income.toLocaleString()}
@@ -727,7 +731,7 @@ const ScenarioResult = () => {
                                       </div>
                                     ))}
                                   </div>
-                                  
+
                                   <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
                                     <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
                                       Costs: CHF {data.costs.toLocaleString()}
@@ -746,35 +750,35 @@ const ScenarioResult = () => {
                         />
                         <Legend />
                         {/* Vertical line for calculated earliest retirement date - only shown when early retirement IS possible */}
-                        {result?.retirementOption === 'calculate' && 
-                         result?.calculatedEarliestDate && 
-                         new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) && (
-                          <ReferenceLine 
-                            x={new Date(result.calculatedEarliestDate).getFullYear()} 
-                            stroke="#22c55e" 
-                            strokeWidth={3}
-                            strokeDasharray="8 4"
-                            label={{ 
-                              value: language === 'fr' ? 'Date de retraite anticipée la plus précoce' : 'Earliest retirement date', 
-                              fill: '#22c55e',
-                              position: 'top',
-                              fontSize: 14,
-                              fontWeight: 'bold'
-                            }}
-                          />
-                        )}
-                        <Area 
-                          type="monotone" 
-                          dataKey="cumulativeBalance" 
-                          stroke="#10b981" 
-                          fillOpacity={1} 
-                          fill="url(#colorCumulativeResult)"
+                        {result?.retirementOption === 'calculate' &&
+                          result?.calculatedEarliestDate &&
+                          new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) && (
+                            <ReferenceLine
+                              x={new Date(result.calculatedEarliestDate).getFullYear()}
+                              stroke="#22c55e"
+                              strokeWidth={3}
+                              strokeDasharray="8 4"
+                              label={{
+                                value: language === 'fr' ? 'Date de retraite anticipée la plus précoce' : 'Earliest retirement date',
+                                fill: '#22c55e',
+                                position: 'top',
+                                fontSize: 14,
+                                fontWeight: 'bold'
+                              }}
+                            />
+                          )}
+                        <Area
+                          type="monotone"
+                          dataKey="cumulativeBalance"
+                          stroke={result.canQuit ? "#10b981" : "#ef4444"}
+                          fillOpacity={1}
+                          fill={result.canQuit ? "url(#colorCumulativeResultPositive)" : "url(#colorCumulativeResultNegative)"}
                           name="Cumulative Balance"
                         />
-                        <Line 
-                          type="monotone" 
-                          dataKey="annualBalance" 
-                          stroke="#3b82f6" 
+                        <Line
+                          type="monotone"
+                          dataKey="annualBalance"
+                          stroke="#3b82f6"
                           strokeWidth={2}
                           name="Annual Balance"
                           dot={false}
@@ -803,8 +807,8 @@ const ScenarioResult = () => {
                         </thead>
                         <tbody>
                           {yearlyBreakdown.map((row, index) => (
-                            <tr 
-                              key={row.year} 
+                            <tr
+                              key={row.year}
                               className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''} hover:bg-muted/30 cursor-pointer relative`}
                               onMouseEnter={() => setHoveredRow(index)}
                               onMouseLeave={() => setHoveredRow(null)}
@@ -822,20 +826,20 @@ const ScenarioResult = () => {
                               <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                 {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                               </td>
-                              
+
                               {/* Hover Tooltip */}
                               {hoveredRow === index && (
                                 <td className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50">
-                                  <div style={{ 
-                                    backgroundColor: '#1f2937', 
-                                    border: '1px solid #374151', 
-                                    borderRadius: '8px', 
+                                  <div style={{
+                                    backgroundColor: '#1f2937',
+                                    border: '1px solid #374151',
+                                    borderRadius: '8px',
                                     padding: '12px',
                                     minWidth: '300px',
                                     boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
                                   }}>
                                     <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {row.year}</div>
-                                    
+
                                     <div style={{ marginBottom: '8px' }}>
                                       <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
                                         Annual Balance: CHF {row.annualBalance.toLocaleString()}
@@ -844,7 +848,7 @@ const ScenarioResult = () => {
                                         Cumulative Balance: CHF {Math.round(row.cumulativeBalance).toLocaleString()}
                                       </div>
                                     </div>
-                                    
+
                                     <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
                                       <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
                                         Income: CHF {row.income.toLocaleString()}
@@ -855,7 +859,7 @@ const ScenarioResult = () => {
                                         </div>
                                       ))}
                                     </div>
-                                    
+
                                     <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
                                       <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
                                         Costs: CHF {row.costs.toLocaleString()}
@@ -889,8 +893,8 @@ const ScenarioResult = () => {
             className="flex-1"
             disabled={generatingPdf}
           >
-            {generatingPdf 
-              ? (language === 'fr' ? 'Génération en cours...' : 'Generating...') 
+            {generatingPdf
+              ? (language === 'fr' ? 'Génération en cours...' : 'Generating...')
               : (language === 'fr' ? 'Générer le rapport PDF' : 'Generate PDF Report')}
           </Button>
           <Button
@@ -908,7 +912,7 @@ const ScenarioResult = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{language === 'fr' ? 'Votre rapport PDF' : 'Your PDF Report'}</span>
-                <Button 
+                <Button
                   onClick={downloadPdf}
                   className="bg-green-600 hover:bg-green-700"
                 >
@@ -917,16 +921,16 @@ const ScenarioResult = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <iframe 
-                src={pdfDataUrl} 
-                width="100%" 
-                height="600px" 
+              <iframe
+                src={pdfDataUrl}
+                width="100%"
+                height="600px"
                 title="PDF Preview"
                 className="border rounded-lg"
               />
               <p className="text-sm text-muted-foreground mt-4">
-                {language === 'fr' 
-                  ? 'Cliquez sur le bouton vert "Télécharger le PDF" ci-dessus pour sauvegarder le fichier.' 
+                {language === 'fr'
+                  ? 'Cliquez sur le bouton vert "Télécharger le PDF" ci-dessus pour sauvegarder le fichier.'
                   : 'Click the green "Download PDF" button above to save the file.'}
               </p>
             </CardContent>
