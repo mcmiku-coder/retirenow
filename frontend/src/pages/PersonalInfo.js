@@ -126,7 +126,7 @@ const PersonalInfo = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="personal-info-page">
+    <div className="min-h-screen py-12 px-4" data-testid="personal-info-page">
       <div className="max-w-6xl mx-auto">
         <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
