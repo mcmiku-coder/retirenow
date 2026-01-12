@@ -124,10 +124,10 @@ const RetirementInputs = () => {
         if (row.id === 'lpp_capital') return t('retirementInputs.lppCapital');
 
         if (row.type === 'pension') {
-            return t('retirementInputs.lppPensionEarlier').replace('{years}', row.yearOffset);
+            return t('retirementInputs.lppPensionEarlier');
         }
         if (row.type === 'capital') {
-            return t('retirementInputs.lppCapitalEarlier').replace('{years}', row.yearOffset);
+            return t('retirementInputs.lppCapitalEarlier');
         }
         return row.name;
     };
@@ -278,7 +278,7 @@ const RetirementInputs = () => {
                             {[1, 2, 3, 4, 5, 6, 7].map(year => (
                                 <div key={year} className="mb-8 last:mb-0">
                                     <h3 className="font-bold mb-2 border-b pb-1">
-                                        {year} {t('retirementInputs.preRetirementOption')}
+                                        {year} {t('retirementInputs.preRetirementOption').replace('{age}', 65 - year)}
                                     </h3>
                                     <div className="overflow-x-auto">
                                         <table className="w-full min-w-[700px]">
