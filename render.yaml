@@ -3,24 +3,25 @@ services:
   - type: web
     name: retirenow-backend
     runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
-    plan: free
+    # Using explicit paths instead of rootDir for clarity and path safety
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: SECRET_KEY
         generateValue: true
-      - key: MONGODB_URI
-        sync: false # You must set this in the Data/Environment tab in Render dashboard
+      - key: MONGO_URL
+        sync: false # Set this in Render Dashboard (Connection String)
+      - key: DB_NAME
+        value: retirenow # Default database name
 
 # FRONTEND SERVICE (Static Site)
 staticSites:
   - name: retirenow-frontend
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./build
+    # Using explicit paths
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_BACKEND_URL
         fromService:
