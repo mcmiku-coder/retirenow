@@ -3,6 +3,7 @@ services:
   - type: web
     name: retirenow-backend
     runtime: python
+    # Explicit commands for clarity
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
     envVars:
@@ -11,12 +12,12 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: MONGO_URL
-        sync: false
+        sync: false # Set in Dashboard
       - key: DB_NAME
         value: retirenow
 
-  # FRONTEND SERVICE (Static Site)
-  # Defined as type: web with runtime: static per Render Blueprint spec
+  # FRONTEND SERVICE
+  # Using type: web + runtime: static for Static Site
   - type: web
     name: retirenow-frontend
     runtime: static
@@ -27,7 +28,8 @@ services:
         fromService:
           type: web
           name: retirenow-backend
-          property: url
+          # Valid way to get public URL: reference the auto-generated env var
+          envVarKey: RENDER_EXTERNAL_URL
     routes:
       - type: rewrite
         source: /*
