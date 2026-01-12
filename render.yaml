@@ -3,7 +3,6 @@ services:
   - type: web
     name: retirenow-backend
     runtime: python
-    # Using explicit paths instead of rootDir for clarity and path safety
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
     envVars:
@@ -12,14 +11,15 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: MONGO_URL
-        sync: false # Set this in Render Dashboard (Connection String)
+        sync: false
       - key: DB_NAME
-        value: retirenow # Default database name
+        value: retirenow
 
-# FRONTEND SERVICE (Static Site)
-staticSites:
-  - name: retirenow-frontend
-    # Using explicit paths
+  # FRONTEND SERVICE (Static Site)
+  # Defined as type: web with runtime: static per Render Blueprint spec
+  - type: web
+    name: retirenow-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
