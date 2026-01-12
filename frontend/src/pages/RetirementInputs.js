@@ -162,7 +162,7 @@ const RetirementInputs = () => {
 
     return (
         <div className="min-h-screen py-8 px-4" data-testid="retirement-inputs-page">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-6xl mx-auto">
                 <WorkflowNavigation />
 
                 <div className="text-center mb-8">
@@ -177,23 +177,23 @@ const RetirementInputs = () => {
                 <form onSubmit={handleSubmit} className="space-y-8">
 
                     {/* GREEN BLOCK: Legal Retirement */}
-                    <div className="bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
-                        <h2 className="text-xl font-semibold mb-4 text-green-800 dark:text-green-300">
+                    <div className="bg-card border rounded-lg p-6">
+                        <h2 className="text-xl font-semibold mb-4">
                             {t('retirementInputs.section1Title')}
                         </h2>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[800px]">
+                            <table className="w-full min-w-[700px]">
                                 <thead>
-                                    <tr className="border-b border-green-200 dark:border-green-800">
+                                    <tr className="border-b">
                                         <th className="text-left p-2 w-1/3">{t('income.name')}</th>
-                                        <th className="text-left p-2 w-1/4">{t('income.startDate')}</th>
-                                        <th className="text-left p-2 w-1/4">{t('income.amount')}</th>
-                                        <th className="text-left p-2 w-1/6">{t('income.frequency')}</th>
+                                        <th className="text-left p-2 w-1/6">{t('income.startDate')}</th>
+                                        <th className="text-left p-2 w-1/6">{t('income.amount')}</th>
+                                        <th className="text-left p-2 w-1/3">{t('income.frequency')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rows.map((row) => (
-                                        <tr key={row.id} className="border-b border-green-200/50 last:border-0">
+                                        <tr key={row.id} className="border-b last:border-0">
                                             <td className="p-2 font-medium">
                                                 {getTranslatedName(row)}
                                             </td>
@@ -201,7 +201,7 @@ const RetirementInputs = () => {
                                                 <Input
                                                     value={formatDate(row.startDate)}
                                                     readOnly
-                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100"
+                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px]"
                                                 />
                                             </td>
                                             <td className="p-2">
@@ -210,7 +210,7 @@ const RetirementInputs = () => {
                                                     placeholder="0"
                                                     value={row.amount}
                                                     onChange={(e) => updateRow(row.id, 'amount', e.target.value)}
-                                                    className="bg-white dark:bg-black/40"
+                                                    className="bg-white dark:bg-black/40 min-w-[100px]"
                                                 />
                                             </td>
                                             <td className="p-2">
@@ -247,8 +247,8 @@ const RetirementInputs = () => {
                     </div>
 
                     {/* BLUE BLOCK: Pre-retirement Option Toggle */}
-                    <div className="bg-blue-100/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <span className="font-medium text-lg text-blue-800 dark:text-blue-300">
+                    <div className="bg-card border rounded-lg p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span className="font-medium text-lg">
                             {t('retirementInputs.pensionPlanOption')}
                         </span>
                         <RadioGroup
@@ -269,42 +269,42 @@ const RetirementInputs = () => {
 
                     {/* YELLOW BLOCK: Pre-retirement Options */}
                     {hasPreRetirement && (
-                        <div className="bg-yellow-100/50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 animate-in slide-in-from-top-4 fade-in duration-300">
-                            <h2 className="text-xl font-semibold mb-4 text-yellow-800 dark:text-yellow-500">
+                        <div className="bg-card border rounded-lg p-6 animate-in slide-in-from-top-4 fade-in duration-300">
+                            <h2 className="text-xl font-semibold mb-4">
                                 {t('retirementInputs.section2Title')}
                             </h2>
 
                             {/* Group by Year Offset */}
                             {[1, 2, 3, 4, 5, 6, 7].map(year => (
                                 <div key={year} className="mb-8 last:mb-0">
-                                    <h3 className="font-bold text-yellow-900 dark:text-yellow-400 mb-2 border-b border-yellow-300 dark:border-yellow-800 pb-1">
+                                    <h3 className="font-bold mb-2 border-b pb-1">
                                         {year} {t('retirementInputs.preRetirementOption')}
                                     </h3>
                                     <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[800px]">
+                                        <table className="w-full min-w-[700px]">
                                             <tbody>
                                                 {preRetirementRows.filter(r => r.yearOffset === year).map(row => (
-                                                    <tr key={row.id} className="border-b border-yellow-200/50 last:border-0 hover:bg-yellow-200/20">
+                                                    <tr key={row.id} className="border-b last:border-0">
                                                         <td className="p-2 w-1/3 pl-4">
                                                             {getTranslatedName(row)}
                                                         </td>
-                                                        <td className="p-2 w-1/4">
+                                                        <td className="p-2 w-1/6">
                                                             <Input
                                                                 value={formatDate(row.startDate)}
                                                                 readOnly
-                                                                className="bg-white/10 dark:bg-black/20 text-white opacity-100"
+                                                                className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px]"
                                                             />
                                                         </td>
-                                                        <td className="p-2 w-1/4">
+                                                        <td className="p-2 w-1/6">
                                                             <Input
                                                                 type="number"
                                                                 placeholder="0"
                                                                 value={row.amount}
                                                                 onChange={(e) => updatePreRow(row.id, 'amount', e.target.value)}
-                                                                className="bg-white dark:bg-black/40"
+                                                                className="bg-white dark:bg-black/40 min-w-[100px]"
                                                             />
                                                         </td>
-                                                        <td className="p-2 w-1/6">
+                                                        <td className="p-2 w-1/3">
                                                             <RadioGroup
                                                                 value={row.frequency}
                                                                 onValueChange={(value) => updatePreRow(row.id, 'frequency', value)}
