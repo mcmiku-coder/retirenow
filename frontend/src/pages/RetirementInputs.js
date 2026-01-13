@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { saveRetirementData, getRetirementData, getUserData } from '../utils/database';
 import { getLegalRetirementDate } from '../utils/calculations';
@@ -23,6 +24,7 @@ const RetirementInputs = () => {
 
     // Blue block data (Pre-retirement option)
     const [hasPreRetirement, setHasPreRetirement] = useState(false);
+    const [earlyRetirementAge, setEarlyRetirementAge] = useState('');
 
     // Yellow block data (Pre-retirement years)
     const [preRetirementRows, setPreRetirementRows] = useState([]);
@@ -52,6 +54,7 @@ const RetirementInputs = () => {
                 if (savedData) {
                     setRows(savedData.rows);
                     setHasPreRetirement(savedData.hasPreRetirement);
+                    setEarlyRetirementAge(savedData.earlyRetirementAge || '');
                     setPreRetirementRows(savedData.preRetirementRows);
                 } else {
                     // 3. Initialize default rows if no saved data
@@ -146,6 +149,7 @@ const RetirementInputs = () => {
             const dataToSave = {
                 rows,
                 hasPreRetirement,
+                earlyRetirementAge,
                 preRetirementRows
             };
 
@@ -247,24 +251,49 @@ const RetirementInputs = () => {
                     </div>
 
                     {/* BLUE BLOCK: Pre-retirement Option Toggle */}
-                    <div className="bg-card border rounded-lg p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <span className="font-medium text-lg">
-                            {t('retirementInputs.pensionPlanOption')}
-                        </span>
-                        <RadioGroup
-                            value={hasPreRetirement ? 'yes' : 'no'}
-                            onValueChange={(val) => setHasPreRetirement(val === 'yes')}
-                            className="flex gap-4"
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="yes" id="r-yes" />
-                                <Label htmlFor="r-yes" className="text-lg cursor-pointer">{t('retirementInputs.yes')}</Label>
+                    <div className="bg-card border rounded-lg p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                            <span className="font-medium text-lg">
+                                {t('retirementInputs.pensionPlanOption')}
+                            </span>
+                            <RadioGroup
+                                value={hasPreRetirement ? 'yes' : 'no'}
+                                onValueChange={(val) => setHasPreRetirement(val === 'yes')}
+                                className="flex gap-4"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="yes" id="r-yes" />
+                                    <Label htmlFor="r-yes" className="text-lg cursor-pointer">{t('retirementInputs.yes')}</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="no" id="r-no" />
+                                    <Label htmlFor="r-no" className="text-lg cursor-pointer">{t('retirementInputs.no')}</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+
+                        {/* Early Retirement Age Dropdown - appears when Yes is selected */}
+                        {hasPreRetirement && (
+                            <div className="mt-4 pt-4 border-t animate-in slide-in-from-top-2 fade-in duration-200">
+                                <Label htmlFor="early-retirement-age" className="text-base mb-2 block">
+                                    {t('retirementInputs.earlyRetirementAgeQuestion')}
+                                </Label>
+                                <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
+                                    <SelectTrigger id="early-retirement-age" className="max-w-xs">
+                                        <SelectValue placeholder={t('retirementInputs.selectAge')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="58">58</SelectItem>
+                                        <SelectItem value="59">59</SelectItem>
+                                        <SelectItem value="60">60</SelectItem>
+                                        <SelectItem value="61">61</SelectItem>
+                                        <SelectItem value="62">62</SelectItem>
+                                        <SelectItem value="63">63</SelectItem>
+                                        <SelectItem value="64">64</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="no" id="r-no" />
-                                <Label htmlFor="r-no" className="text-lg cursor-pointer">{t('retirementInputs.no')}</Label>
-                            </div>
-                        </RadioGroup>
+                        )}
                     </div>
 
                     {/* YELLOW BLOCK: Pre-retirement Options */}
