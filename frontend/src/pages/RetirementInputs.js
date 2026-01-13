@@ -201,11 +201,11 @@ const RetirementInputs = () => {
                                             <td className="p-2 font-medium">
                                                 {getTranslatedName(row)}
                                             </td>
-                                            <td className="p-2">
+                                            <td className="p-2 text-center">
                                                 <Input
                                                     value={formatDate(row.startDate)}
                                                     readOnly
-                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px]"
+                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px] text-center"
                                                 />
                                             </td>
                                             <td className="p-2">
@@ -253,21 +253,21 @@ const RetirementInputs = () => {
                     {/* BLUE BLOCK: Pre-retirement Option Toggle */}
                     <div className="bg-card border rounded-lg p-6">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                            <span className="font-medium text-lg">
+                            <span className="font-medium text-base">
                                 {t('retirementInputs.pensionPlanOption')}
                             </span>
                             <RadioGroup
                                 value={hasPreRetirement ? 'yes' : 'no'}
                                 onValueChange={(val) => setHasPreRetirement(val === 'yes')}
-                                className="flex gap-4"
+                                className="flex gap-2"
                             >
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-1">
                                     <RadioGroupItem value="yes" id="r-yes" />
-                                    <Label htmlFor="r-yes" className="text-lg cursor-pointer">{t('retirementInputs.yes')}</Label>
+                                    <Label htmlFor="r-yes" className="text-sm cursor-pointer">{t('retirementInputs.yes')}</Label>
                                 </div>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-1">
                                     <RadioGroupItem value="no" id="r-no" />
-                                    <Label htmlFor="r-no" className="text-lg cursor-pointer">{t('retirementInputs.no')}</Label>
+                                    <Label htmlFor="r-no" className="text-sm cursor-pointer">{t('retirementInputs.no')}</Label>
                                 </div>
                             </RadioGroup>
                         </div>
@@ -275,7 +275,7 @@ const RetirementInputs = () => {
                         {/* Early Retirement Age Dropdown - appears when Yes is selected */}
                         {hasPreRetirement && (
                             <div className="mt-4 pt-4 border-t animate-in slide-in-from-top-2 fade-in duration-200">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <Label htmlFor="early-retirement-age" className="text-base whitespace-nowrap">
                                         {t('retirementInputs.earlyRetirementAgeQuestion')}
                                     </Label>
