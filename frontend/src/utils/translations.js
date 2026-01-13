@@ -623,7 +623,7 @@ export const translations = {
       yes: "Oui",
       no: "Non",
       avs: "AVS",
-      lppPension: "Pension LPP projeté à 65ans",
+      lppPension: "Pension LPP projeté à l'âge de 65ans",
       lppCapital: "Capital LPP projeté à l'âge de 65ans",
       threea: "3a",
       preRetirementOption: "an plus tôt ({age}ans)",

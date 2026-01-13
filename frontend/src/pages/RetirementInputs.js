@@ -252,7 +252,7 @@ const RetirementInputs = () => {
 
                     {/* BLUE BLOCK: Pre-retirement Option Toggle */}
                     <div className="bg-card border rounded-lg p-6">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             <span className="font-medium text-base">
                                 {t('retirementInputs.pensionPlanOption')}
                             </span>
@@ -275,7 +275,7 @@ const RetirementInputs = () => {
                         {/* Early Retirement Age Dropdown - appears when Yes is selected */}
                         {hasPreRetirement && (
                             <div className="mt-4 pt-4 border-t animate-in slide-in-from-top-2 fade-in duration-200">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                                     <Label htmlFor="early-retirement-age" className="text-base whitespace-nowrap">
                                         {t('retirementInputs.earlyRetirementAgeQuestion')}
                                     </Label>
@@ -325,11 +325,11 @@ const RetirementInputs = () => {
                                                             <td className="p-2 w-1/3 pl-4">
                                                                 {getTranslatedName(row)}
                                                             </td>
-                                                            <td className="p-2 w-1/6">
+                                                            <td className="p-2 w-1/6 text-center">
                                                                 <Input
                                                                     value={formatDate(row.startDate)}
                                                                     readOnly
-                                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px]"
+                                                                    className="bg-white/10 dark:bg-black/20 text-white opacity-100 min-w-[100px] text-center"
                                                                 />
                                                             </td>
                                                             <td className="p-2 w-1/6">
