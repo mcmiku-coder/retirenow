@@ -159,10 +159,12 @@ const RetirementInputs = () => {
         if (row.id === 'lpp_capital') return t('retirementInputs.lppCapital');
 
         if (row.type === 'pension') {
-            return t('retirementInputs.lppPensionEarlier');
+            const age = 65 - row.yearOffset;
+            return `Pension LPP projeté à l'âge de ${age}ans`;
         }
         if (row.type === 'capital') {
-            return t('retirementInputs.lppCapitalEarlier');
+            const age = 65 - row.yearOffset;
+            return `Capital LPP projeté à l'âge de ${age}ans`;
         }
         return row.name;
     };
