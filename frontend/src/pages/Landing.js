@@ -91,9 +91,9 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="landing-page">
-      {/* Language Selector - Top Right */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="flex items-center gap-2 bg-card border rounded-lg p-2">
+      {/* Language Selector - Bottom Center */}
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="flex items-center gap-2 bg-card border rounded-lg p-2 shadow-lg">
           <Globe className="h-4 w-4 text-muted-foreground" />
           <select
             data-testid="language-selector"
