@@ -238,7 +238,6 @@ const RetirementInputs = () => {
                                                     <Input
                                                         value={row.name}
                                                         onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                                                        placeholder={t('income.namePlaceholder')}
                                                         className="bg-white dark:bg-black/40 min-w-[150px]"
                                                     />
                                                 )}
@@ -282,6 +281,22 @@ const RetirementInputs = () => {
                                                             <RadioGroupItem value="One-time" id={`onetime-${row.id}`} />
                                                             <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
                                                         </div>
+                                                    )}
+                                                    {!row.locked && (
+                                                        <>
+                                                            <div className="flex items-center gap-1">
+                                                                <RadioGroupItem value="Yearly" id={`yearly-${row.id}`} />
+                                                                <Label htmlFor={`yearly-${row.id}`} className="text-sm">{t('income.yearly')}</Label>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <RadioGroupItem value="Monthly" id={`monthly-${row.id}`} />
+                                                                <Label htmlFor={`monthly-${row.id}`} className="text-sm">{t('income.monthly')}</Label>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <RadioGroupItem value="One-time" id={`onetime-${row.id}`} />
+                                                                <Label htmlFor={`onetime-${row.id}`} className="text-sm">{t('income.oneTime')}</Label>
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </RadioGroup>
                                             </td>

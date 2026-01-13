@@ -613,7 +613,7 @@ export const translations = {
     // Retirement Inputs Page
     retirementInputs: {
       title: "Paramètres de retraite",
-      subtitle: "Définissez votre épargne et événements financiers futurs",
+      subtitle: "Saisissez les informations relatives aux 3 piliers de prévoyance",
       continue: "Continuer vers le simulateur de scénarios",
       section1Title: "Retraite Légale",
       section2Title: "Options de pré-retraite",
