@@ -6,13 +6,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
@@ -129,56 +122,15 @@ const PersonalInfo = () => {
     <div className="min-h-screen py-12 px-4" data-testid="personal-info-page">
       <div className="max-w-6xl mx-auto">
         <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
+
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8">
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('personalInfo.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
               {t('personalInfo.subtitle')}
             </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <button className="text-primary flex items-center gap-1 mt-2 cursor-pointer hover:underline text-sm">
-                  <HelpCircle className="h-4 w-4" />
-                  {t('dataPrivacy.title')}
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-primary" />
-                    {t('dataPrivacy.popupTitle')}
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 mt-4">
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {t('dataPrivacy.line1')}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {t('dataPrivacy.line2')}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {t('dataPrivacy.line3')}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {t('dataPrivacy.line4')}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {t('dataPrivacy.line5')}
-                    </li>
-                  </ul>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
-        </div>
 
-        <div className="max-w-2xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
             <div>
               <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
