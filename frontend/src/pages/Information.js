@@ -91,6 +91,23 @@ const Information = () => {
           </p>
         </div>
 
+        {/* Security Section - First Position */}
+        <Card className="mb-12 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-green-500/20 text-green-500">
+                <Shield className="h-6 w-6" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                {t('infoPage.securityTitle')}
+              </h2>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              {t('infoPage.securityDesc')}
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Steps */}
         <div className="space-y-12">
           {steps.map((step, index) => {
@@ -119,23 +136,6 @@ const Information = () => {
             );
           })}
         </div>
-
-        {/* Security Section */}
-        <Card className="mt-12 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <CardContent className="p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-green-500/20 text-green-500">
-                <Shield className="h-6 w-6" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
-                {t('infoPage.securityTitle')}
-              </h2>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              {t('infoPage.securityDesc')}
-            </p>
-          </CardContent>
-        </Card>
 
         {/* CTA Section */}
         <div className="mt-12 text-center py-8">
