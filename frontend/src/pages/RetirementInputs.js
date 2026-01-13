@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { saveRetirementData, getRetirementData, getUserData } from '../utils/database';
 import { getLegalRetirementDate } from '../utils/calculations';
+import { Trash2, Plus } from 'lucide-react';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const RetirementInputs = () => {
@@ -112,6 +113,37 @@ const RetirementInputs = () => {
         ));
     };
 
+    // Add new row to Green Block
+    const addRow = () => {
+        const newId = `custom_${Date.now()}`;
+        const newRow = {
+            id: newId,
+            name: '',
+            startDate: legalRetirementDate,
+            amount: '',
+            frequency: 'Monthly',
+            locked: false
+        };
+        setRows([...rows, newRow]);
+    };
+
+    // Delete row from Green Block
+    const deleteRow = (id) => {
+        setRows(rows.filter(row => row.id !== id));
+    };
+
+    // Reset Green Block to initial state
+    const resetRows = () => {
+        const initialRows = [
+            { id: 'avs', name: 'AVS', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
+            { id: '3a', name: '3a', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true },
+            { id: 'lpp_pension', name: 'LPP pension at legal retirement date', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
+            { id: 'lpp_capital', name: 'LPP capital at legal retirement date', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true }
+        ];
+        setRows(initialRows);
+        toast.success(t('common.resetSuccess'));
+    };
+
     // Update Yellow Block Row
     const updatePreRow = (id, field, value) => {
         setPreRetirementRows(preRetirementRows.map(row =>
@@ -193,13 +225,23 @@ const RetirementInputs = () => {
                                         <th className="text-left p-2 w-1/6">{t('income.startDate')}</th>
                                         <th className="text-left p-2 w-1/6">{t('income.amount')}</th>
                                         <th className="text-left p-2 w-1/3">{t('income.frequency')}</th>
+                                        <th className="text-left p-2 w-16">{t('income.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rows.map((row) => (
                                         <tr key={row.id} className="border-b last:border-0">
                                             <td className="p-2 font-medium">
-                                                {getTranslatedName(row)}
+                                                {row.locked ? (
+                                                    getTranslatedName(row)
+                                                ) : (
+                                                    <Input
+                                                        value={row.name}
+                                                        onChange={(e) => updateRow(row.id, 'name', e.target.value)}
+                                                        placeholder={t('income.namePlaceholder')}
+                                                        className="bg-white dark:bg-black/40 min-w-[150px]"
+                                                    />
+                                                )}
                                             </td>
                                             <td className="p-2 text-center">
                                                 <Input
@@ -243,10 +285,41 @@ const RetirementInputs = () => {
                                                     )}
                                                 </RadioGroup>
                                             </td>
+                                            <td className="p-2">
+                                                {!row.locked && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => deleteRow(row.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 mt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={addRow}
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t('income.addIncome')}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={resetRows}
+                            >
+                                {t('income.reset')}
+                            </Button>
                         </div>
                     </div>
 
