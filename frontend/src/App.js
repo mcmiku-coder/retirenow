@@ -13,6 +13,7 @@ import Income from './pages/Income';
 import Costs from './pages/Costs';
 import FinancialBalance from './pages/FinancialBalance';
 import RetirementInputs from './pages/RetirementInputs';
+import AssetsAndSavings from './pages/AssetsAndSavings';
 import Scenario from './pages/Scenario';
 import ScenarioResult from './pages/ScenarioResult';
 
@@ -96,6 +97,11 @@ function AppRoutes() {
         <Route path="/retirement-inputs" element={
           <ProtectedRoute>
             <RetirementInputs />
+          </ProtectedRoute>
+        } />
+        <Route path="/assets-savings" element={
+          <ProtectedRoute>
+            <AssetsAndSavings />
           </ProtectedRoute>
         } />
         <Route path="/scenario" element={

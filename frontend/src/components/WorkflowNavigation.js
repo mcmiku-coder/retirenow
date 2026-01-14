@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Target, FileText, ChevronRight } from 'lucide-react';
+import { User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Landmark, Target, FileText, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const WorkflowNavigation = () => {
@@ -15,8 +15,9 @@ const WorkflowNavigation = () => {
         { path: '/costs', icon: PiggyBank, id: 4 },
         { path: '/financial-balance', icon: LineChart, id: 5 },
         { path: '/retirement-inputs', icon: Sliders, id: 6 },
-        { path: '/scenario', icon: Target, id: 7 },
-        { path: '/result', icon: FileText, id: 8 },
+        { path: '/assets-savings', icon: Landmark, id: 7 },
+        { path: '/scenario', icon: Target, id: 8 },
+        { path: '/result', icon: FileText, id: 9 },
     ];
 
     // Find current step index

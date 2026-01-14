@@ -9,12 +9,13 @@ import { encryptData, decryptData, generateSalt } from './encryption';
 class EncryptedDatabase extends Dexie {
   constructor() {
     super('QuitRetirementDB');
-    this.version(3).stores({
+    this.version(4).stores({
       userData: 'email, encryptedData, salt, iv',
       incomeData: 'email, encryptedData, salt, iv',
       costData: 'email, encryptedData, salt, iv',
       scenarioData: 'email, encryptedData, salt, iv',
-      retirementData: 'email, encryptedData, salt, iv'
+      retirementData: 'email, encryptedData, salt, iv',
+      assetsData: 'email, encryptedData, salt, iv'
     });
   }
 }
@@ -287,6 +288,62 @@ export async function getRetirementData(email, password) {
 }
 
 /**
+ * Save assets data (liquid assets, non-liquid assets, future inflows) - encrypted
+ */
+export async function saveAssetsData(email, password, data) {
+  if (!email || !password) {
+    console.error('saveAssetsData: Missing email or password');
+    throw new Error('Email and password are required');
+  }
+
+  try {
+    const salt = generateSalt();
+    const encrypted = await encryptData(data, password, salt);
+
+    await db.assetsData.put({
+      email: email,
+      encryptedData: encrypted.encryptedData,
+      salt: encrypted.salt,
+      iv: encrypted.iv
+    });
+  } catch (error) {
+    console.error('saveAssetsData: Encryption or storage failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Get assets data (decrypted)
+ */
+export async function getAssetsData(email, password) {
+  if (!email || typeof email !== 'string' || email.trim() === '') {
+    console.warn('getAssetsData: Invalid email provided');
+    return null;
+  }
+
+  if (!password) {
+    console.warn('getAssetsData: No password provided');
+    return null;
+  }
+
+  try {
+    const record = await db.assetsData.get(email);
+    if (!record) {
+      return null;
+    }
+
+    return await decryptData({
+      encryptedData: record.encryptedData,
+      salt: record.salt,
+      iv: record.iv
+    }, password);
+  } catch (error) {
+    console.error('getAssetsData error:', error);
+    return null;
+  }
+}
+
+/**
  * Clear all user data
  */
 export async function clearUserData(email) {
@@ -300,6 +357,7 @@ export async function clearUserData(email) {
     await db.costData.delete(email);
     await db.scenarioData.delete(email);
     await db.retirementData.delete(email);
+    await db.assetsData.delete(email);
   } catch (error) {
     console.error('clearUserData error:', error);
   }

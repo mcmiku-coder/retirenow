@@ -249,6 +249,13 @@ export const translations = {
       saveFailed: "Failed to save retirement data"
     },
 
+    // Assets and Savings Page
+    assetsAndSavings: {
+      title: "Assets and Savings",
+      subtitle: "Define your liquid assets, non-liquid assets, and possible future income",
+      continue: "Continue to Scenario Simulator"
+    },
+
     // Scenario Page
     scenario: {
       title: "Retirement Scenario Simulator",
@@ -632,6 +639,13 @@ export const translations = {
       years: "ans",
       saveSuccess: "Données de retraite enregistrées",
       saveFailed: "Échec de l'enregistrement"
+    },
+
+    // Assets and Savings Page
+    assetsAndSavings: {
+      title: "Actifs et épargne",
+      subtitle: "Définissez vos actifs liquides, non-liquides et revenus futurs possibles",
+      continue: "Continuer vers le simulateur de scénarios"
     },
 
     // Scenario Page

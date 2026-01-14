@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
@@ -61,6 +61,7 @@ const Scenario = () => {
   const [retirementData, setRetirementData] = useState(null);
   const [liquidAssets, setLiquidAssets] = useState('');
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
+  const [futureInflows, setFutureInflows] = useState([]);
   const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -69,9 +70,6 @@ const Scenario = () => {
 
   // Track date overrides for standard income sources
   const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
-
-  // Possible future inflows (inheritance, other)
-  const [futureInflows, setFutureInflows] = useState([]);
 
   // Get translated income name
   const getIncomeName = (englishName) => {
@@ -134,12 +132,17 @@ const Scenario = () => {
         setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
         setDeathDate(deathDateStr);
 
+        // Load assets data from assetsData store
+        const assetsData = await getAssetsData(user.email, password);
+        if (assetsData) {
+          setLiquidAssets(assetsData.liquidAssets || '');
+          setNonLiquidAssets(assetsData.nonLiquidAssets || '');
+          setFutureInflows(assetsData.futureInflows || []);
+        }
+
         // Load saved scenario data if available
         if (scenarioData) {
-          setLiquidAssets(scenarioData.liquidAssets || '');
-          setNonLiquidAssets(scenarioData.nonLiquidAssets || '');
           setTransmissionAmount(scenarioData.transmissionAmount || '');
-          setFutureInflows(scenarioData.futureInflows || []);
 
           // Use saved adjusted incomes if available, otherwise use original data
           if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
