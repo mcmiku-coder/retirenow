@@ -773,37 +773,40 @@ const Scenario = () => {
                           </p>
                         </div>
 
-                        {/* Pension Capital Field */}
-                        <div>
-                          <Label htmlFor="pensionCapital" className="text-white mb-2 block">
-                            {language === 'fr' ? 'Statut actuel du capital de prévoyance (en CHF)' : 'Current pension plan capital status (in CHF)'}
-                          </Label>
-                          <Input
-                            id="pensionCapital"
-                            type="number"
-                            value={pensionCapital}
-                            onChange={(e) => setPensionCapital(e.target.value)}
-                            placeholder="0"
-                            className="max-w-xs bg-white text-black"
-                          />
-                        </div>
+                        {/* Pension Capital and Yearly Return - Side by Side */}
+                        <div className="flex gap-4">
+                          {/* Pension Capital Field */}
+                          <div className="flex-1">
+                            <Label htmlFor="pensionCapital" className="text-white mb-2 block">
+                              {language === 'fr' ? 'Statut actuel du capital de prévoyance (en CHF)' : 'Current pension plan capital status (in CHF)'}
+                            </Label>
+                            <Input
+                              id="pensionCapital"
+                              type="number"
+                              value={pensionCapital}
+                              onChange={(e) => setPensionCapital(e.target.value)}
+                              placeholder="0"
+                              className="bg-white text-black"
+                            />
+                          </div>
 
-                        {/* Yearly Return Dropdown */}
-                        <div>
-                          <Label htmlFor="yearlyReturn" className="text-white mb-2 block">
-                            {language === 'fr' ? 'Rendement annuel sur le capital de pension' : 'Yearly return on pension capital'}
-                          </Label>
-                          <Select value={yearlyReturn} onValueChange={setYearlyReturn}>
-                            <SelectTrigger className="max-w-xs bg-white text-black">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0">0%</SelectItem>
-                              <SelectItem value="1">1%</SelectItem>
-                              <SelectItem value="2">2%</SelectItem>
-                              <SelectItem value="3">3%</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {/* Yearly Return Dropdown */}
+                          <div className="flex-1">
+                            <Label htmlFor="yearlyReturn" className="text-white mb-2 block">
+                              {language === 'fr' ? 'Rendement annuel sur le capital de pension' : 'Yearly return on pension capital'}
+                            </Label>
+                            <Select value={yearlyReturn} onValueChange={setYearlyReturn}>
+                              <SelectTrigger className="bg-white text-black">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0">0%</SelectItem>
+                                <SelectItem value="1">1%</SelectItem>
+                                <SelectItem value="2">2%</SelectItem>
+                                <SelectItem value="3">3%</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </>
                     )}
