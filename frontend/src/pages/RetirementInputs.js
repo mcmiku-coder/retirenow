@@ -63,8 +63,8 @@ const RetirementInputs = () => {
                     const initialRows = [
                         { id: 'avs', name: 'AVS', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
                         { id: '3a', name: '3a', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true },
-                        { id: 'lpp_pension', name: 'LPP pension at legal retirement date', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
-                        { id: 'lpp_capital', name: 'LPP capital at legal retirement date', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true }
+                        { id: 'lpp_pension', name: 'Projected LPP Pension at 65y age', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
+                        { id: 'lpp_capital', name: 'Projected LPP Capital at 65y age', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true }
                     ];
                     setRows(initialRows);
 
@@ -137,8 +137,8 @@ const RetirementInputs = () => {
         const initialRows = [
             { id: 'avs', name: 'AVS', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
             { id: '3a', name: '3a', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true },
-            { id: 'lpp_pension', name: 'LPP pension at legal retirement date', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
-            { id: 'lpp_capital', name: 'LPP capital at legal retirement date', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true }
+            { id: 'lpp_pension', name: 'Projected LPP Pension at 65y age', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
+            { id: 'lpp_capital', name: 'Projected LPP Capital at 65y age', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true }
         ];
         setRows(initialRows);
         toast.success(t('common.resetSuccess'));
@@ -160,11 +160,15 @@ const RetirementInputs = () => {
 
         if (row.type === 'pension') {
             const age = 65 - row.yearOffset;
-            return `Pension LPP projeté à l'âge de ${age}ans`;
+            return language === 'fr'
+                ? `Pension LPP projeté à l'âge de ${age}ans`
+                : `Projected LPP Pension at ${age}y age`;
         }
         if (row.type === 'capital') {
             const age = 65 - row.yearOffset;
-            return `Capital LPP projeté à l'âge de ${age}ans`;
+            return language === 'fr'
+                ? `Capital LPP projeté à l'âge de ${age}ans`
+                : `Projected LPP Capital at ${age}y age`;
         }
         return row.name;
     };
