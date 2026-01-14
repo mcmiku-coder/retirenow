@@ -25,7 +25,6 @@ const AssetsOverview = () => {
     const [loading, setLoading] = useState(true);
 
     const timeframeOptions = [
-        { value: '', label: language === 'fr' ? '' : '' },
         { value: 'within_5y', label: language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years' },
         { value: 'within_5_10y', label: language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y' },
         { value: 'within_10_15y', label: language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y' },
@@ -113,7 +112,7 @@ const AssetsOverview = () => {
             id: 1,
             name: language === 'fr' ? 'Donations avant décès' : 'Donations before death',
             amount: '',
-            category: '',
+            category: 'none',
             madeAvailableDate: '',
             madeAvailableTimeframe: '',
             locked: true
@@ -173,7 +172,7 @@ const AssetsOverview = () => {
             id: nextOutflowId,
             name: '',
             amount: '',
-            category: '',
+            category: 'none',
             madeAvailableDate: '',
             madeAvailableTimeframe: '',
             locked: false
@@ -413,7 +412,7 @@ const AssetsOverview = () => {
                                                                 <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="">{language === 'fr' ? 'Aucune' : 'None'}</SelectItem>
+                                                                <SelectItem value="none">{language === 'fr' ? 'Aucune' : 'None'}</SelectItem>
                                                                 <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
                                                                 <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
                                                             </SelectContent>
