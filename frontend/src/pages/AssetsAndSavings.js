@@ -383,8 +383,8 @@ const AssetsAndSavings = () => {
                     </Card>
 
                     {/* Continue Button */}
-                    <div className="flex justify-end">
-                        <Button type="submit" size="lg" disabled={loading}>
+                    <div className="flex justify-center mt-6">
+                        <Button type="submit" size="lg" className="px-12 text-lg" disabled={loading}>
                             {t('assetsAndSavings.continue')}
                         </Button>
                     </div>

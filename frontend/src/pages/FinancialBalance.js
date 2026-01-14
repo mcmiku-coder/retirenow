@@ -541,13 +541,16 @@ const FinancialBalance = () => {
           </div>
         )}
 
-        <Button
-          data-testid="next-btn"
-          onClick={() => navigate('/assets-savings')}
-          className="w-full"
-        >
-          {t('financialBalance.continue')}
-        </Button>
+        <div className="flex justify-center mt-6">
+          <Button
+            data-testid="next-btn"
+            onClick={() => navigate('/assets-savings')}
+            size="lg"
+            className="px-12 text-lg"
+          >
+            {t('financialBalance.continue')}
+          </Button>
+        </div>
       </div>
     </div >
   );

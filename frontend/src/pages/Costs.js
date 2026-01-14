@@ -509,14 +509,17 @@ const Costs = () => {
             </Button>
           </div>
 
-          <Button
-            data-testid="next-btn"
-            type="submit"
-            className="w-full"
-            disabled={loading}
-          >
-            {loading ? t('common.loading') : t('costs.continue')}
-          </Button>
+          <div className="flex justify-center mt-6">
+            <Button
+              data-testid="next-btn"
+              type="submit"
+              size="lg"
+              className="px-12 text-lg"
+              disabled={loading}
+            >
+              {loading ? t('common.loading') : t('costs.continue')}
+            </Button>
+          </div>
         </form>
 
         {/* Help Modal */}
