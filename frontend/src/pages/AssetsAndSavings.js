@@ -83,7 +83,7 @@ const AssetsOverview = () => {
             preserve: 'No',
             availabilityDate: today,
             availabilityTimeframe: '',
-            locked: true
+            locked: false
         },
         {
             id: 2,
@@ -93,7 +93,7 @@ const AssetsOverview = () => {
             preserve: 'No',
             availabilityDate: '',
             availabilityTimeframe: '',
-            locked: true
+            locked: false
         },
         {
             id: 3,
@@ -103,7 +103,7 @@ const AssetsOverview = () => {
             preserve: 'No',
             availabilityDate: '',
             availabilityTimeframe: '',
-            locked: true
+            locked: false
         }
     ];
 
@@ -115,7 +115,7 @@ const AssetsOverview = () => {
             category: 'none',
             madeAvailableDate: '',
             madeAvailableTimeframe: '',
-            locked: true
+            locked: false
         },
         {
             id: 2,
@@ -124,7 +124,7 @@ const AssetsOverview = () => {
             category: 'Illiquid',
             madeAvailableDate: deathDate,
             madeAvailableTimeframe: '',
-            locked: true
+            locked: false
         }
     ];
 
@@ -251,12 +251,12 @@ const AssetsOverview = () => {
                                     <table className="w-full">
                                         <thead>
                                             <tr className="border-b">
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
                                                 <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Disponibilité' : 'Availability'}</th>
-                                                <th className="text-center p-2 font-semibold">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                                                <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -334,17 +334,15 @@ const AssetsOverview = () => {
                                                         </div>
                                                     </td>
                                                     <td className="p-2 text-center">
-                                                        {!row.locked && (
-                                                            <Button
-                                                                type="button"
-                                                                onClick={() => deleteAsset(row.id)}
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => deleteAsset(row.id)}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -376,11 +374,11 @@ const AssetsOverview = () => {
                                     <table className="w-full">
                                         <thead>
                                             <tr className="border-b">
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                                                 <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Rendu disponible' : 'Made available'}</th>
-                                                <th className="text-center p-2 font-semibold">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                                                <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -442,17 +440,15 @@ const AssetsOverview = () => {
                                                         </div>
                                                     </td>
                                                     <td className="p-2 text-center">
-                                                        {!row.locked && (
-                                                            <Button
-                                                                type="button"
-                                                                onClick={() => deleteOutflow(row.id)}
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => deleteOutflow(row.id)}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             ))}
