@@ -55,7 +55,6 @@ const Landing = () => {
         const { initializeUserDB } = await import('../utils/database');
         await initializeUserDB(userEmail, password);
 
-        toast.success(t('auth.registrationSuccess'));
         navigate('/personal-info');
       } catch (dbError) {
         console.error('Local DB Init Error:', dbError);
@@ -80,7 +79,6 @@ const Landing = () => {
       // Use local email variable as fallback in case response.data.email is undefined
       const userEmail = response.data.email || email;
       login(userEmail, response.data.token, password);
-      toast.success(t('auth.loginSuccess'));
       navigate('/personal-info');
     } catch (error) {
       toast.error(error.response?.data?.detail || t('auth.loginFailed'));

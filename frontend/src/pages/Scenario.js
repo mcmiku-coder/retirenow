@@ -301,7 +301,6 @@ const Scenario = () => {
     });
 
     setCosts(updatedCosts);
-    toast.success(t('scenario.costDeleted'));
   };
 
   // Future inflows management
@@ -352,8 +351,6 @@ const Scenario = () => {
     updatedCosts[costIndex] = updatedOriginal;
     updatedCosts.splice(costIndex + 1, 0, newCost);
     setCosts(updatedCosts);
-
-    toast.success('Cost line split - adjust dates as needed');
   };
 
   // Update cost date with auto-sync for linked costs

@@ -127,7 +127,6 @@ const Costs = () => {
     const defaultRows = await getDefaultRows();
     setRows(defaultRows);
     setNextId(11);
-    toast.success(t('costs.resetSuccess'));
   };
 
   const addRow = async () => {
@@ -151,7 +150,6 @@ const Costs = () => {
 
   const deleteRow = (id) => {
     setRows(rows.filter(row => row.id !== id));
-    toast.success(t('costs.costDeleted'));
   };
 
   const validateRows = () => {
@@ -186,7 +184,6 @@ const Costs = () => {
     setLoading(true);
     try {
       await saveCostData(user.email, password, rows);
-      toast.success(t('costs.saveSuccess'));
       navigate('/financial-balance');
     } catch (error) {
       toast.error(t('costs.saveFailed'));
@@ -328,8 +325,6 @@ const Costs = () => {
       clothingShopping: null,
       tvInternetCosts: null
     });
-
-    toast.success(language === 'fr' ? 'Valeurs appliquées!' : 'Values applied!');
   };
 
   // Get translated category

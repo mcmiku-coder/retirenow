@@ -85,7 +85,6 @@ const AssetsAndSavings = () => {
 
     const deleteSavingsRow = (id) => {
         setSavingsRows(savingsRows.filter(row => row.id !== id));
-        toast.success(language === 'fr' ? 'Ligne supprimée' : 'Row deleted');
     };
 
     const resetSavingsRows = () => {
@@ -102,7 +101,6 @@ const AssetsAndSavings = () => {
             }
         ]);
         setNextId(2);
-        toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to defaults');
     };
 
     const addFutureInflow = () => {
@@ -136,7 +134,6 @@ const AssetsAndSavings = () => {
             };
 
             await saveAssetsData(user.email, password, dataToSave);
-            toast.success(t('common.saveSuccess'));
             navigate('/retirement-inputs');
         } catch (error) {
             console.error('Error saving assets data:', error);

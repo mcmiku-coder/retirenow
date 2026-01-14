@@ -126,7 +126,7 @@ function App() {
         <BrowserRouter>
           <div className="App dark min-h-screen bg-background text-foreground">
             <AppRoutes />
-            <Toaster position="bottom-center" />
+            <Toaster position="top-center" />
           </div>
         </BrowserRouter>
       </AuthProvider>

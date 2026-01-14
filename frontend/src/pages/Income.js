@@ -108,7 +108,6 @@ const Income = () => {
         { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
       ]);
       setNextId(2);
-      toast.success(t('income.resetSuccess'));
     }
   };
 
@@ -128,7 +127,6 @@ const Income = () => {
 
   const deleteRow = (id) => {
     setRows(rows.filter(row => row.id !== id));
-    toast.success(t('income.incomeDeleted'));
   };
 
   const validateRows = () => {
@@ -166,7 +164,6 @@ const Income = () => {
     setLoading(true);
     try {
       await saveIncomeData(user.email, password, rows);
-      toast.success(t('income.saveSuccess'));
       navigate('/costs');
     } catch (error) {
       toast.error(t('income.saveFailed'));

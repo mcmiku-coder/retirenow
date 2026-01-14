@@ -141,7 +141,6 @@ const RetirementInputs = () => {
             { id: 'lpp_capital', name: 'Projected LPP Capital at 65y age', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true }
         ];
         setRows(initialRows);
-        toast.success(t('common.resetSuccess'));
     };
 
     // Update Yellow Block Row
@@ -200,7 +199,6 @@ const RetirementInputs = () => {
             };
 
             await saveRetirementData(user.email, password, dataToSave);
-            toast.success(t('retirementInputs.saveSuccess'));
             navigate('/scenario');
         } catch (error) {
             console.error('Save error:', error);

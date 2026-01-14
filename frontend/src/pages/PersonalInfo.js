@@ -96,7 +96,6 @@ const PersonalInfo = () => {
 
       console.log('Saving user data for:', userEmail);
       await saveUserData(userEmail, password, userData);
-      toast.success(t('personalInfo.saveSuccess'));
       navigate('/retirement-overview');
     } catch (error) {
       console.error('Save error:', error);
