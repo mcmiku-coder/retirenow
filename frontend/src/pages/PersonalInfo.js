@@ -130,7 +130,7 @@ const PersonalInfo = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
+          <form id="personal-info-form" onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
             <div>
               <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
               <div className="relative">
@@ -172,16 +172,20 @@ const PersonalInfo = () => {
                 </SelectContent>
               </Select>
             </div>
+          </form>
 
+          <div className="flex justify-center mt-6">
             <Button
               data-testid="next-btn"
               type="submit"
-              className="w-full"
+              form="personal-info-form"
+              size="lg"
+              className="px-12 text-lg"
               disabled={loading}
             >
               {loading ? t('personalInfo.saving') : t('personalInfo.continue')}
             </Button>
-          </form>
+          </div>
         </div>
       </div>
     </div>
