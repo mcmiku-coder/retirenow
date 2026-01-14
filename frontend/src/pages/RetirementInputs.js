@@ -218,7 +218,9 @@ const RetirementInputs = () => {
                         {t('retirementInputs.title')}
                     </h1>
                     <p className="text-lg text-muted-foreground">
-                        {t('retirementInputs.subtitle')}
+                        {language === 'fr'
+                            ? 'Entrez les informations concernant les 3 piliers de vos plans de retraite'
+                            : 'Enter the information regarding the 3 pillars of your pension plans'}
                     </p>
                 </div>
 
