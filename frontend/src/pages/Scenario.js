@@ -135,8 +135,20 @@ const Scenario = () => {
         // Load assets data from assetsData store
         const assetsData = await getAssetsData(user.email, password);
         if (assetsData) {
-          setLiquidAssets(assetsData.liquidAssets || '');
-          setNonLiquidAssets(assetsData.nonLiquidAssets || '');
+          // Calculate liquid and non-liquid assets from savingsRows
+          if (assetsData.savingsRows && assetsData.savingsRows.length > 0) {
+            const liquidTotal = assetsData.savingsRows
+              .filter(row => row.category === 'Liquid')
+              .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+            const illiquidTotal = assetsData.savingsRows
+              .filter(row => row.category === 'Illiquid')
+              .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+            setLiquidAssets(liquidTotal.toString());
+            setNonLiquidAssets(illiquidTotal.toString());
+          } else {
+            setLiquidAssets('');
+            setNonLiquidAssets('');
+          }
           setFutureInflows(assetsData.futureInflows || []);
         }
 

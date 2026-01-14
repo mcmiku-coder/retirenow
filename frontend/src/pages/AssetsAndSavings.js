@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { toast } from 'sonner';
 import { getAssetsData, saveAssetsData } from '../utils/database';
 import WorkflowNavigation from '../components/WorkflowNavigation';
@@ -14,9 +15,9 @@ import { TrendingUp, Plus, Trash2 } from 'lucide-react';
 const AssetsAndSavings = () => {
     const navigate = useNavigate();
     const { user, password } = useAuth();
-    const { t } = useLanguage();
-    const [liquidAssets, setLiquidAssets] = useState('');
-    const [nonLiquidAssets, setNonLiquidAssets] = useState('');
+    const { t, language } = useLanguage();
+    const [savingsRows, setSavingsRows] = useState([]);
+    const [nextId, setNextId] = useState(2);
     const [futureInflows, setFutureInflows] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -29,11 +30,28 @@ const AssetsAndSavings = () => {
         const loadData = async () => {
             try {
                 const savedData = await getAssetsData(user.email, password);
-                if (savedData) {
-                    setLiquidAssets(savedData.liquidAssets || '');
-                    setNonLiquidAssets(savedData.nonLiquidAssets || '');
-                    setFutureInflows(savedData.futureInflows || []);
+                const today = new Date().toISOString().split('T')[0];
+
+                if (savedData && savedData.savingsRows && savedData.savingsRows.length > 0) {
+                    setSavingsRows(savedData.savingsRows);
+                    const maxId = Math.max(...savedData.savingsRows.map(r => r.id));
+                    setNextId(maxId + 1);
+                } else {
+                    // Initialize with default row
+                    setSavingsRows([
+                        {
+                            id: 1,
+                            name: language === 'fr' ? 'Liquidités' : 'Liquidities',
+                            amount: '',
+                            category: 'Liquid',
+                            preserve: 'No',
+                            availability: today,
+                            locked: true
+                        }
+                    ]);
                 }
+
+                setFutureInflows(savedData?.futureInflows || []);
             } catch (error) {
                 console.error('Error loading assets data:', error);
                 toast.error(t('common.error'));
@@ -43,7 +61,49 @@ const AssetsAndSavings = () => {
         };
 
         loadData();
-    }, [user, password, navigate, t]);
+    }, [user, password, navigate, t, language]);
+
+    const updateSavingsRow = (id, field, value) => {
+        setSavingsRows(savingsRows.map(row =>
+            row.id === id ? { ...row, [field]: value } : row
+        ));
+    };
+
+    const addSavingsRow = () => {
+        const today = new Date().toISOString().split('T')[0];
+        setSavingsRows([...savingsRows, {
+            id: nextId,
+            name: '',
+            amount: '',
+            category: 'Liquid',
+            preserve: 'No',
+            availability: today,
+            locked: false
+        }]);
+        setNextId(nextId + 1);
+    };
+
+    const deleteSavingsRow = (id) => {
+        setSavingsRows(savingsRows.filter(row => row.id !== id));
+        toast.success(language === 'fr' ? 'Ligne supprimée' : 'Row deleted');
+    };
+
+    const resetSavingsRows = () => {
+        const today = new Date().toISOString().split('T')[0];
+        setSavingsRows([
+            {
+                id: 1,
+                name: language === 'fr' ? 'Liquidités' : 'Liquidities',
+                amount: '',
+                category: 'Liquid',
+                preserve: 'No',
+                availability: today,
+                locked: true
+            }
+        ]);
+        setNextId(2);
+        toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to defaults');
+    };
 
     const addFutureInflow = () => {
         const newInflow = {
@@ -71,8 +131,7 @@ const AssetsAndSavings = () => {
 
         try {
             const dataToSave = {
-                liquidAssets,
-                nonLiquidAssets,
+                savingsRows,
                 futureInflows
             };
 
@@ -112,35 +171,127 @@ const AssetsAndSavings = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Savings Section */}
+                    {/* Savings Table */}
                     <Card>
                         <CardHeader>
                             <CardTitle>{t('scenario.savings')}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="liquid-assets">{t('scenario.liquidAssets')}</Label>
-                                    <Input
-                                        data-testid="liquid-assets-input"
-                                        id="liquid-assets"
-                                        type="number"
-                                        value={liquidAssets}
-                                        onChange={(e) => setLiquidAssets(e.target.value)}
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="non-liquid-assets">{t('scenario.nonLiquidAssets')}</Label>
-                                    <Input
-                                        data-testid="non-liquid-assets-input"
-                                        id="non-liquid-assets"
-                                        type="number"
-                                        value={nonLiquidAssets}
-                                        onChange={(e) => setNonLiquidAssets(e.target.value)}
-                                        placeholder="0"
-                                    />
-                                </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Disponibilité' : 'Availability'}</th>
+                                            <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {savingsRows.map((row, index) => (
+                                            <tr key={row.id} className="border-b hover:bg-muted/30">
+                                                <td className="p-2">
+                                                    {row.locked ? (
+                                                        <Input
+                                                            data-testid={`savings-name-${index}`}
+                                                            value={row.name}
+                                                            disabled={true}
+                                                            className="min-w-[120px]"
+                                                        />
+                                                    ) : (
+                                                        <Input
+                                                            data-testid={`savings-name-${index}`}
+                                                            value={row.name}
+                                                            onChange={(e) => updateSavingsRow(row.id, 'name', e.target.value)}
+                                                            className="min-w-[120px]"
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="p-2">
+                                                    <Input
+                                                        data-testid={`savings-amount-${index}`}
+                                                        type="number"
+                                                        value={row.amount}
+                                                        onChange={(e) => updateSavingsRow(row.id, 'amount', e.target.value)}
+                                                        placeholder="0"
+                                                        className="min-w-[100px]"
+                                                    />
+                                                </td>
+                                                <td className="p-2">
+                                                    <select
+                                                        data-testid={`savings-category-${index}`}
+                                                        value={row.category}
+                                                        onChange={(e) => updateSavingsRow(row.id, 'category', e.target.value)}
+                                                        className="w-full bg-background border rounded-md p-2 min-w-[120px]"
+                                                    >
+                                                        <option value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</option>
+                                                        <option value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</option>
+                                                    </select>
+                                                </td>
+                                                <td className="p-2">
+                                                    <RadioGroup
+                                                        value={row.preserve}
+                                                        onValueChange={(value) => updateSavingsRow(row.id, 'preserve', value)}
+                                                        className="flex gap-2"
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <RadioGroupItem value="Yes" id={`yes-${row.id}`} data-testid={`savings-preserve-yes-${index}`} />
+                                                            <Label htmlFor={`yes-${row.id}`} className="text-sm">{language === 'fr' ? 'Oui' : 'Yes'}</Label>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <RadioGroupItem value="No" id={`no-${row.id}`} data-testid={`savings-preserve-no-${index}`} />
+                                                            <Label htmlFor={`no-${row.id}`} className="text-sm">{language === 'fr' ? 'Non' : 'No'}</Label>
+                                                        </div>
+                                                    </RadioGroup>
+                                                </td>
+                                                <td className="p-2">
+                                                    <Input
+                                                        data-testid={`savings-availability-${index}`}
+                                                        type="date"
+                                                        value={row.availability}
+                                                        onChange={(e) => updateSavingsRow(row.id, 'availability', e.target.value)}
+                                                        className="min-w-[140px]"
+                                                    />
+                                                </td>
+                                                <td className="p-2 text-center">
+                                                    {!row.locked && (
+                                                        <Button
+                                                            onClick={() => deleteSavingsRow(row.id)}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                            type="button"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="flex gap-2 mt-4">
+                                <Button
+                                    onClick={addSavingsRow}
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    {language === 'fr' ? '+ Ajouter une source' : '+ Add Source'}
+                                </Button>
+                                <Button
+                                    onClick={resetSavingsRows}
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                >
+                                    {language === 'fr' ? 'Réinitialiser' : 'Reset to Defaults'}
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
