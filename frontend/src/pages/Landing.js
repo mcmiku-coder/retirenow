@@ -106,7 +106,7 @@ const Landing = () => {
       </div>
 
       <div className="max-w-4xl w-full">
-        <div className="text-center mb-12">
+        <div className="text-center mb-6">
           <div className="flex justify-center mb-6" data-testid="app-title">
             <img
               src="https://customer-assets.emergentagent.com/job_retire-compass/artifacts/ltntsblz_quit.png"
@@ -114,15 +114,6 @@ const Landing = () => {
               className="max-w-md w-full h-auto rounded-lg shadow-lg"
             />
           </div>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-4" data-testid="tagline">
-            {t('landing.subtitle')}
-          </p>
-          <Link
-            to="/information"
-            className="text-green-500 hover:text-green-400 hover:underline text-sm inline-flex items-center gap-1"
-          >
-            {t('landing.learnMore')}
-          </Link>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
