@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import WorkflowNavigation from '../components/WorkflowNavigation';
-import { Calendar, Minus, Trash2, Split, Gift, Plus, TrendingUp } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split, Plus, TrendingUp } from 'lucide-react';
 
 // Income name translation keys
 const INCOME_KEYS = {
@@ -62,7 +62,6 @@ const Scenario = () => {
   const [liquidAssets, setLiquidAssets] = useState('');
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [futureInflows, setFutureInflows] = useState([]);
-  const [transmissionAmount, setTransmissionAmount] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Retirement option: 'choose' (manual) or 'calculate' (automatic earliest)
@@ -154,7 +153,6 @@ const Scenario = () => {
 
         // Load saved scenario data if available
         if (scenarioData) {
-          setTransmissionAmount(scenarioData.transmissionAmount || '');
 
           // Use saved adjusted incomes if available, otherwise use original data
           if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
@@ -416,7 +414,7 @@ const Scenario = () => {
       const wishedRetirementYear = new Date(simulationRetirementDate).getFullYear();
 
       let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
-      const transmission = parseFloat(transmissionAmount || 0);
+      const transmission = 0; // Transmission removed - set to 0 for backward compatibility
       const yearlyData = [];
 
       // Calculate year by year with detailed breakdown
@@ -555,22 +553,21 @@ const Scenario = () => {
           income: year.income,
           costs: year.costs,
           annualBalance,
-          cumulativeBalance: isLastYear ? cumulativeAfterTransmission : cumulativeBalance,
+          cumulativeBalance,
           incomeBreakdown: year.incomeBreakdown,
-          costBreakdown: year.costBreakdown,
-          transmissionDeduction: isLastYear ? transmissionDeduction : 0
+          costBreakdown: year.costBreakdown
         };
       });
 
-      // Final balance after transmission
-      const finalBalanceAfterTransmission = cumulativeBalance - transmission;
+      // Final balance
+      const finalBalance = cumulativeBalance;
 
       // Navigate to result with full simulation data
       navigate('/result', {
         state: {
-          finalBalance: finalBalanceAfterTransmission,
+          finalBalance,
           balanceBeforeTransmission: cumulativeBalance,
-          transmissionAmount: transmission,
+          transmissionAmount: 0,
           wishedRetirementDate: simulationRetirementDate,
           retirementLegalDate,
           calculatedEarliestDate,
@@ -597,7 +594,7 @@ const Scenario = () => {
     const today = new Date().toISOString().split('T')[0];
 
     let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);
-    const transmission = parseFloat(transmissionAmount || 0);
+    const transmission = 0; // Transmission removed
     let cumulativeBalance = initialSavings;
 
     for (let year = currentYear; year <= deathYear; year++) {
@@ -695,41 +692,14 @@ const Scenario = () => {
           <div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('scenario.title')}</h1>
             <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('scenario.subtitle')}
+              {language === 'fr'
+                ? 'A cette étape vous pouvez ajuster les revenus et coûts qui vous semblent les plus pertinents pour le futur et choisir le type de simulation que vous souhaiter effectuer.'
+                : 'At this step you can adjust the income and costs that seem most relevant for the future and choose the type of simulation you wish to perform.'}
             </p>
           </div>
         </div>
 
         <div className="space-y-6">
-          {/* Transmission Section */}
-          <Card className="border-amber-500/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gift className="h-5 w-5 text-amber-400" />
-                {t('scenario.transmission')}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {t('scenario.transmissionDesc')}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="max-w-md">
-                <Label htmlFor="transmission">{t('scenario.amountToTransmit')}</Label>
-                <Input
-                  data-testid="transmission-input"
-                  id="transmission"
-                  type="number"
-                  value={transmissionAmount}
-                  onChange={(e) => setTransmissionAmount(e.target.value)}
-                  placeholder="0"
-                  className="mt-1"
-                />
-                <p className="text-xs text-amber-400/80 mt-2">
-                  ⚠️ {t('scenario.transmissionWarning')}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Incomes Table */}
           <Card>
