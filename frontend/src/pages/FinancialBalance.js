@@ -215,12 +215,12 @@ const FinancialBalance = () => {
           </div>
         </div>
         {balance && yearlyBreakdown.length > 0 && (
-          <div className="space-y-6 mb-4">
+          <div className="space-y-3 mb-4">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Conditional Message Box - replaces Balance at Death status card */}
               <div
                 data-testid="death-balance-status-card"
-                className={`rounded-lg p-4 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
+                className={`rounded-lg p-3 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
               >
                 <p className="text-white text-center font-medium text-lg" data-testid="death-balance-status">
                   {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0
@@ -235,12 +235,12 @@ const FinancialBalance = () => {
               </div>
 
               <Card data-testid="death-balance-value-card">
-                <CardHeader className="p-4">
+                <CardHeader className="p-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     {t('financialBalance.balanceValue')}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 pt-0">
+                <CardContent className="p-3 pt-0">
                   <p className={`text-3xl font-bold ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="death-balance-value">
                     {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? '+' : ''}
                     CHF {yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
