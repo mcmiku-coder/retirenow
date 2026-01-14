@@ -181,13 +181,16 @@ const RetirementOverview = () => {
           </div>
         )}
 
-        <Button
-          data-testid="next-btn"
-          onClick={() => navigate('/income')}
-          className="w-full"
-        >
-          {t('retirementOverview.continue')}
-        </Button>
+        <div className="flex justify-center mt-6">
+          <Button
+            data-testid="next-btn"
+            onClick={() => navigate('/income')}
+            size="lg"
+            className="px-12 text-lg"
+          >
+            {t('retirementOverview.continue')}
+          </Button>
+        </div>
       </div>
     </div>
   );
