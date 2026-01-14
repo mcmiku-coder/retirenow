@@ -78,7 +78,7 @@ const AssetsAndSavings = () => {
 
             await saveAssetsData(user.email, password, dataToSave);
             toast.success(t('common.saveSuccess'));
-            navigate('/scenario');
+            navigate('/retirement-inputs');
         } catch (error) {
             console.error('Error saving assets data:', error);
             toast.error(t('common.saveFailed'));

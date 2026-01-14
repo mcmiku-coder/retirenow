@@ -14,8 +14,8 @@ const WorkflowNavigation = () => {
         { path: '/income', icon: Wallet, id: 3 },
         { path: '/costs', icon: PiggyBank, id: 4 },
         { path: '/financial-balance', icon: LineChart, id: 5 },
-        { path: '/retirement-inputs', icon: Sliders, id: 6 },
-        { path: '/assets-savings', icon: Landmark, id: 7 },
+        { path: '/assets-savings', icon: Landmark, id: 6 },
+        { path: '/retirement-inputs', icon: Sliders, id: 7 },
         { path: '/scenario', icon: Target, id: 8 },
         { path: '/result', icon: FileText, id: 9 },
     ];

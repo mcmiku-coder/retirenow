@@ -253,7 +253,7 @@ export const translations = {
     assetsAndSavings: {
       title: "Assets and Savings",
       subtitle: "Define your liquid assets, non-liquid assets, and possible future income",
-      continue: "Continue to Scenario Simulator"
+      continue: "Continue to Retirement Inputs"
     },
 
     // Scenario Page
@@ -645,7 +645,7 @@ export const translations = {
     assetsAndSavings: {
       title: "Actifs et épargne",
       subtitle: "Définissez vos actifs liquides, non-liquides et revenus futurs possibles",
-      continue: "Continuer vers le simulateur de scénarios"
+      continue: "Continuer vers les paramètres de retraite"
     },
 
     // Scenario Page

@@ -543,7 +543,7 @@ const FinancialBalance = () => {
 
         <Button
           data-testid="next-btn"
-          onClick={() => navigate('/retirement-inputs')}
+          onClick={() => navigate('/assets-savings')}
           className="w-full"
         >
           {t('financialBalance.continue')}
