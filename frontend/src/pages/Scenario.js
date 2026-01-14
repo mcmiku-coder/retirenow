@@ -692,123 +692,6 @@ const Scenario = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Savings Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('scenario.savings')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="liquid-assets">{t('scenario.liquidAssets')}</Label>
-                  <Input
-                    data-testid="liquid-assets-input"
-                    id="liquid-assets"
-                    type="number"
-                    value={liquidAssets}
-                    onChange={(e) => setLiquidAssets(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="non-liquid-assets">{t('scenario.nonLiquidAssets')}</Label>
-                  <Input
-                    data-testid="non-liquid-assets-input"
-                    id="non-liquid-assets"
-                    type="number"
-                    value={nonLiquidAssets}
-                    onChange={(e) => setNonLiquidAssets(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Possible Future Inflows Section */}
-          <Card className="border-green-500/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-400" />
-                {t('scenario.futureInflows')}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {t('scenario.futureInflowsDesc')}
-              </p>
-            </CardHeader>
-            <CardContent>
-              {futureInflows.length > 0 && (
-                <div className="overflow-x-auto mb-4">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-semibold">{t('scenario.inflowType')}</th>
-                        <th className="text-right p-3 font-semibold">{t('scenario.inflowAmount')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.inflowDate')}</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {futureInflows.map((inflow, index) => (
-                        <tr key={inflow.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3">
-                            <select
-                              data-testid={`inflow-type-${index}`}
-                              value={inflow.type}
-                              onChange={(e) => updateFutureInflow(inflow.id, 'type', e.target.value)}
-                              className="w-full bg-background border rounded-md p-2"
-                            >
-                              <option value="Inheritance">{t('scenario.inheritance')}</option>
-                              <option value="Other">{t('scenario.other')}</option>
-                            </select>
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              data-testid={`inflow-amount-${index}`}
-                              type="number"
-                              value={inflow.amount}
-                              onChange={(e) => updateFutureInflow(inflow.id, 'amount', e.target.value)}
-                              placeholder="0"
-                              className="max-w-[150px] ml-auto"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              data-testid={`inflow-date-${index}`}
-                              type="date"
-                              value={inflow.date}
-                              onChange={(e) => updateFutureInflow(inflow.id, 'date', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <Button
-                              onClick={() => deleteFutureInflow(inflow.id)}
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <Button
-                onClick={addFutureInflow}
-                variant="outline"
-                size="sm"
-                className="text-green-500 border-green-500/50 hover:bg-green-500/10"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t('scenario.addInflow')}
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* Transmission Section */}
           <Card className="border-amber-500/30">
             <CardHeader>
@@ -835,97 +718,6 @@ const Scenario = () => {
                 <p className="text-xs text-amber-400/80 mt-2">
                   ⚠️ {t('scenario.transmissionWarning')}
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Retirement Date Selector - Redesigned */}
-          <Card className="bg-blue-600 border-blue-600">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <Calendar className="h-5 w-5" />
-                {language === 'fr' ? 'Date de retraite' : 'Retirement Date'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Option 1: Choose retirement date - with date selector directly below */}
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={retirementOption === 'choose'}
-                    onChange={() => setRetirementOption('choose')}
-                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
-                  />
-                  <span className="text-white font-medium">
-                    {language === 'fr' ? 'Choisir votre date de retraite anticipée' : 'Choose your early retirement date'}
-                  </span>
-                </label>
-
-                {/* Date selector - directly below the first option when selected */}
-                {retirementOption === 'choose' && (
-                  <div className="ml-8 pl-4 border-l-2 border-white/30">
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Input
-                        data-testid="wished-retirement-date"
-                        type="date"
-                        value={wishedRetirementDate}
-                        onChange={(e) => setWishedRetirementDate(e.target.value)}
-                        className="max-w-xs bg-white text-black"
-                      />
-                      <Button
-                        data-testid="minus-1-month-btn"
-                        onClick={() => adjustDate(-1)}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        {language === 'fr' ? 'Avancer de 1 mois' : 'Move forward 1 month'}
-                      </Button>
-                      <Button
-                        data-testid="minus-1-year-btn"
-                        onClick={() => adjustDate(-12)}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        {language === 'fr' ? 'Avancer de 1 an' : 'Move forward 1 year'}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-white/80 mt-3">
-                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Option 2: Calculate earliest date */}
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={retirementOption === 'calculate'}
-                    onChange={() => setRetirementOption('calculate')}
-                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
-                  />
-                  <span className="text-white font-medium">
-                    {language === 'fr'
-                      ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)'
-                      : 'Calculate the earliest retirement date possible (balance at death not negative)'}
-                  </span>
-                </label>
-
-                {/* Info for "calculate" option - directly below when selected */}
-                {retirementOption === 'calculate' && (
-                  <div className="ml-8 pl-4 border-l-2 border-white/30">
-                    <p className="text-white/80 text-sm">
-                      {language === 'fr'
-                        ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
-                        : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
-                    </p>
-                    <p className="text-sm text-white/80 mt-2">
-                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -1150,6 +942,97 @@ const Scenario = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Retirement Date Selector - Redesigned */}
+          <Card className="bg-blue-600 border-blue-600">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Calendar className="h-5 w-5" />
+                {language === 'fr' ? 'Date de retraite' : 'Retirement Date'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Option 1: Choose retirement date - with date selector directly below */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={retirementOption === 'choose'}
+                    onChange={() => setRetirementOption('choose')}
+                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
+                  />
+                  <span className="text-white font-medium">
+                    {language === 'fr' ? 'Choisir votre date de retraite anticipée' : 'Choose your early retirement date'}
+                  </span>
+                </label>
+
+                {/* Date selector - directly below the first option when selected */}
+                {retirementOption === 'choose' && (
+                  <div className="ml-8 pl-4 border-l-2 border-white/30">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Input
+                        data-testid="wished-retirement-date"
+                        type="date"
+                        value={wishedRetirementDate}
+                        onChange={(e) => setWishedRetirementDate(e.target.value)}
+                        className="max-w-xs bg-white text-black"
+                      />
+                      <Button
+                        data-testid="minus-1-month-btn"
+                        onClick={() => adjustDate(-1)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {language === 'fr' ? 'Avancer de 1 mois' : 'Move forward 1 month'}
+                      </Button>
+                      <Button
+                        data-testid="minus-1-year-btn"
+                        onClick={() => adjustDate(-12)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {language === 'fr' ? 'Avancer de 1 an' : 'Move forward 1 year'}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-white/80 mt-3">
+                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Option 2: Calculate earliest date */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={retirementOption === 'calculate'}
+                    onChange={() => setRetirementOption('calculate')}
+                    className="w-5 h-5 rounded border-2 border-white/50 text-blue-800 focus:ring-blue-500"
+                  />
+                  <span className="text-white font-medium">
+                    {language === 'fr'
+                      ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)'
+                      : 'Calculate the earliest retirement date possible (balance at death not negative)'}
+                  </span>
+                </label>
+
+                {/* Info for "calculate" option - directly below when selected */}
+                {retirementOption === 'calculate' && (
+                  <div className="ml-8 pl-4 border-l-2 border-white/30">
+                    <p className="text-white/80 text-sm">
+                      {language === 'fr'
+                        ? '📊 Le simulateur calculera automatiquement la date de retraite la plus précoce qui maintient un solde positif à votre décès théorique.'
+                        : '📊 The simulator will automatically calculate the earliest retirement date that maintains a positive balance at your theoretical death.'}
+                    </p>
+                    <p className="text-sm text-white/80 mt-2">
+                      {t('scenario.legalRetirementDate')}: {new Date(retirementLegalDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
