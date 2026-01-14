@@ -155,8 +155,16 @@ const RetirementInputs = () => {
     const getTranslatedName = (row) => {
         if (row.id === 'avs') return t('retirementInputs.avs');
         if (row.id === '3a') return t('retirementInputs.threea');
-        if (row.id === 'lpp_pension') return t('retirementInputs.lppPension');
-        if (row.id === 'lpp_capital') return t('retirementInputs.lppCapital');
+        if (row.id === 'lpp_pension') {
+            return language === 'fr'
+                ? 'Pension LPP projeté à l\'âge de 65ans'
+                : 'Projected LPP Pension at 65y age';
+        }
+        if (row.id === 'lpp_capital') {
+            return language === 'fr'
+                ? 'Capital LPP projeté à l\'âge de 65ans'
+                : 'Projected LPP Capital at 65y age';
+        }
 
         if (row.type === 'pension') {
             const age = 65 - row.yearOffset;
