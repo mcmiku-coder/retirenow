@@ -16,7 +16,7 @@ import WorkflowNavigation from '../components/WorkflowNavigation';
 const RetirementInputs = () => {
     const navigate = useNavigate();
     const { user, password } = useAuth();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [loading, setLoading] = useState(false);
 
     // Green block data (Legal Retirement)
