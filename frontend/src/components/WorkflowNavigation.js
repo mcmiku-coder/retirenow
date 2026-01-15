@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Landmark, Target, FileText, ChevronRight } from 'lucide-react';
+import { User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Landmark, Target, ClipboardCheck, FileText, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const WorkflowNavigation = () => {
@@ -17,7 +17,7 @@ const WorkflowNavigation = () => {
         { path: '/assets-savings', icon: Landmark, id: 6 },
         { path: '/retirement-inputs', icon: Sliders, id: 7 },
         { path: '/retirement-parameters', icon: Target, id: 8 },
-        { path: '/data-review', icon: Target, id: 9 },
+        { path: '/data-review', icon: ClipboardCheck, id: 9 },
         { path: '/result', icon: FileText, id: 10 },
     ];
 
