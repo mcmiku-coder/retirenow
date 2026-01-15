@@ -220,7 +220,7 @@ const FinancialBalance = () => {
               {/* Conditional Message Box - replaces Balance at Death status card */}
               <div
                 data-testid="death-balance-status-card"
-                className={`rounded-lg p-3 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
+                className={`rounded-lg py-1 px-3 flex flex-col justify-center ${yearlyBreakdown[yearlyBreakdown.length - 1].cumulativeBalance >= 0 ? 'bg-green-600' : 'bg-red-600'}`}
               >
                 <p className="text-white text-center font-medium text-lg" data-testid="death-balance-status">
                   {yearlyBreakdown[yearlyBreakdown.length - 1]?.cumulativeBalance >= 0
@@ -541,7 +541,7 @@ const FinancialBalance = () => {
           </div>
         )}
 
-        <div className="flex justify-center mt-6">
+        <div className="flex justify-center" style={{ marginTop: '0.625rem' }}>
           <Button
             data-testid="next-btn"
             onClick={() => navigate('/assets-savings')}
