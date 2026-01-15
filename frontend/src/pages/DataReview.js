@@ -321,6 +321,18 @@ const DataReview = () => {
         adjustedAmount: inc.amount
       }));
       setIncomes(processedIncomes);
+
+      // Explicitly save the reset data to ensure persistence
+      await saveScenarioData(user.email, password, {
+        liquidAssets,
+        nonLiquidAssets,
+        transmissionAmount,
+        futureInflows,
+        wishedRetirementDate,
+        adjustedIncomes: processedIncomes,
+        adjustedCosts: costs
+      });
+
       toast.success(language === 'fr' ? 'Revenus réinitialisés aux valeurs par défaut' : 'Income reset to default values');
     } catch (error) {
       console.error('Error resetting incomes:', error);
@@ -337,6 +349,18 @@ const DataReview = () => {
         adjustedAmount: cost.amount
       }));
       setCosts(processedCosts);
+
+      // Explicitly save the reset data to ensure persistence
+      await saveScenarioData(user.email, password, {
+        liquidAssets,
+        nonLiquidAssets,
+        transmissionAmount,
+        futureInflows,
+        wishedRetirementDate,
+        adjustedIncomes: incomes,
+        adjustedCosts: processedCosts
+      });
+
       toast.success(language === 'fr' ? 'Coûts réinitialisés aux valeurs par défaut' : 'Costs reset to default values');
     } catch (error) {
       console.error('Error resetting costs:', error);
