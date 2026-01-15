@@ -293,7 +293,71 @@ const DataReview = () => {
     return income[field];
   };
 
+
+  const deleteIncome = (id) => {
+    // Find the income to delete
+    const incomeToDelete = incomes.find(i => i.id === id);
+
+    // If it has children (split items), also delete them or unlink them
+    const updatedIncomes = incomes.filter(income => {
+      if (income.id === id) return false;
+      // If this income was linked to the deleted one, unlink it
+      if (income.parentId === id) {
+        income.parentId = null;
+        income.groupId = null;
+      }
+      return true;
+    });
+
+    setIncomes(updatedIncomes);
+  };
+
+  const splitIncome = (id) => {
+    const incomeIndex = incomes.findIndex(income => income.id === id);
+    if (incomeIndex === -1) return;
+
+    const originalIncome = incomes[incomeIndex];
+    const newId = Date.now();
+    const groupId = originalIncome.groupId || originalIncome.id; // Use existing groupId or create new
+
+    // Update original income to have groupId
+    const updatedOriginal = {
+      ...originalIncome,
+      groupId: groupId
+    };
+
+    // Create new income with the same values but starting where the original ends
+    const newIncome = {
+      ...originalIncome,
+      id: newId,
+      parentId: originalIncome.id, // Link to parent for auto-update
+      groupId: groupId, // Same group for visual grouping
+      startDate: originalIncome.endDate // New line starts where original ends
+    };
+
+    // Insert the new income right after the original
+    const updatedIncomes = [...incomes];
+    updatedIncomes[incomeIndex] = updatedOriginal;
+    updatedIncomes.splice(incomeIndex + 1, 0, newIncome);
+    setIncomes(updatedIncomes);
+  };
+
+  const updateIncomeDateWithSync = (id, field, value) => {
+    const updatedIncomes = incomes.map(income => {
+      if (income.id === id) {
+        return { ...income, [field]: value };
+      }
+      // Auto-sync linked incomes (children)
+      if (income.parentId === id && field === 'endDate') {
+        return { ...income, startDate: value };
+      }
+      return income;
+    });
+    setIncomes(updatedIncomes);
+  };
+
   const deleteCost = (id) => {
+
     // Find the cost to delete
     const costToDelete = costs.find(c => c.id === id);
 
@@ -730,10 +794,23 @@ const DataReview = () => {
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {incomes.map((income, index) => {
+                      // Check if this income is part of a split group
+                      const isInGroup = income.groupId !== undefined && income.groupId !== null;
+                      const isChildIncome = income.parentId !== undefined && income.parentId !== null;
+
+                      // Visual grouping - lighter background for grouped incomes, slightly indented for children
+                      const groupStyles = isInGroup
+                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
+                        : '';
+                      const childStyles = isChildIncome
+                        ? 'bg-muted/10'
+                        : '';
+
                       // Get effective dates (override or default)
                       const today = new Date().toISOString().split('T')[0];
                       const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
@@ -765,8 +842,16 @@ const DataReview = () => {
                         : income.endDate;
 
                       return (
-                        <tr key={income.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium">{getIncomeName(income.name)}</td>
+                        <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                          <td className="p-3 font-medium">
+                            <div className="flex items-center gap-2">
+                              {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
+                              {getIncomeName(income.name)}
+                              {isInGroup && !isChildIncome && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {parseFloat(income.amount).toLocaleString()}
                           </td>
@@ -793,7 +878,7 @@ const DataReview = () => {
                               <Input
                                 type="date"
                                 value={income.startDate || ''}
-                                onChange={(e) => updateIncomeDate(income.id, 'startDate', e.target.value)}
+                                onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
                                 className="max-w-[150px]"
                               />
                             )}
@@ -813,10 +898,32 @@ const DataReview = () => {
                               <Input
                                 type="date"
                                 value={income.endDate || ''}
-                                onChange={(e) => updateIncomeDate(income.id, 'endDate', e.target.value)}
+                                onChange={(e) => updateIncomeDateWithSync(income.id, 'endDate', e.target.value)}
                                 className="max-w-[150px]"
                               />
                             )}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => splitIncome(income.id)}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Split this income into two periods"
+                              >
+                                <Split className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteIncome(income.id)}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                title="Delete this income line"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
