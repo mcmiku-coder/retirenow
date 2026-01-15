@@ -199,7 +199,7 @@ const RetirementInputs = () => {
             };
 
             await saveRetirementData(user.email, password, dataToSave);
-            navigate('/scenario');
+            navigate('/retirement-parameters');
         } catch (error) {
             console.error('Save error:', error);
             toast.error(t('retirementInputs.saveFailed'));

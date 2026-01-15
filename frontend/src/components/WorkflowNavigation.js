@@ -16,8 +16,9 @@ const WorkflowNavigation = () => {
         { path: '/financial-balance', icon: LineChart, id: 5 },
         { path: '/assets-savings', icon: Landmark, id: 6 },
         { path: '/retirement-inputs', icon: Sliders, id: 7 },
-        { path: '/scenario', icon: Target, id: 8 },
-        { path: '/result', icon: FileText, id: 9 },
+        { path: '/retirement-parameters', icon: Target, id: 8 },
+        { path: '/data-review', icon: Target, id: 9 },
+        { path: '/result', icon: FileText, id: 10 },
     ];
 
     // Find current step index

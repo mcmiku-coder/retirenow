@@ -14,7 +14,8 @@ import Costs from './pages/Costs';
 import FinancialBalance from './pages/FinancialBalance';
 import RetirementInputs from './pages/RetirementInputs';
 import AssetsAndSavings from './pages/AssetsAndSavings';
-import Scenario from './pages/Scenario';
+import RetirementParameters from './pages/RetirementParameters';
+import DataReview from './pages/DataReview';
 import ScenarioResult from './pages/ScenarioResult';
 
 import { trackPageVisit } from './utils/analytics';
@@ -104,9 +105,14 @@ function AppRoutes() {
             <AssetsAndSavings />
           </ProtectedRoute>
         } />
-        <Route path="/scenario" element={
+        <Route path="/retirement-parameters" element={
           <ProtectedRoute>
-            <Scenario />
+            <RetirementParameters />
+          </ProtectedRoute>
+        } />
+        <Route path="/data-review" element={
+          <ProtectedRoute>
+            <DataReview />
           </ProtectedRoute>
         } />
         <Route path="/result" element={
