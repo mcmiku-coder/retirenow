@@ -145,7 +145,7 @@ const RetirementParameters = () => {
                                     {language === 'fr' ? 'Date de retraite' : 'Retirement Date'}
                                 </CardTitle>
                                 <p className="text-sm text-white/80">
-                                    {language === 'fr' ? 'Date de retraite légale' : 'Legal retirement date'}: {new Date(retirementLegalDate).toLocaleDateString()}
+                                    {language === 'fr' ? 'Date de retraite légale' : 'Legal retirement date'}: {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : '-'}
                                 </p>
                             </div>
                         </CardHeader>
@@ -199,6 +199,29 @@ const RetirementParameters = () => {
                             </label>
                         </CardContent>
                     </Card>
+
+                    {/* Reset to Default Button */}
+                    <div className="flex justify-center">
+                        <Button
+                            onClick={() => {
+                                // Reset all fields
+                                setRetirementOption('');
+                                setWishedRetirementDate('');
+                                setPensionCapital('');
+                                setYearlyReturn('0');
+                                setEarlyRetirementAge('62');
+                                setProjectedLPPPension('');
+                                setProjectedLPPCapital('');
+                                setOption3EarlyAge('');
+                                setPreRetirementData({});
+                                toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
+                            }}
+                            variant="outline"
+                            className="px-8"
+                        >
+                            {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to default'}
+                        </Button>
+                    </div>
 
                     {/* Conditional Fields Card - Appears below blue card when option is selected */}
                     {retirementOption === 'option1' && (
