@@ -842,59 +842,62 @@ const Scenario = () => {
                       </p>
                     </div>
 
-                    {/* Desired Retirement Age Dropdown */}
-                    <div>
-                      <Label htmlFor="earlyRetirementAge" className="text-white mb-2 block">
-                        {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
-                      </Label>
-                      <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
-                        <SelectTrigger className="max-w-xs bg-white text-black">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="58">58</SelectItem>
-                          <SelectItem value="59">59</SelectItem>
-                          <SelectItem value="60">60</SelectItem>
-                          <SelectItem value="61">61</SelectItem>
-                          <SelectItem value="62">62</SelectItem>
-                          <SelectItem value="63">63</SelectItem>
-                          <SelectItem value="64">64</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Three fields side by side */}
+                    <div className="flex gap-4">
+                      {/* Desired Retirement Age Dropdown */}
+                      <div className="flex-1">
+                        <Label htmlFor="earlyRetirementAge" className="text-white mb-2 block">
+                          {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
+                        </Label>
+                        <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
+                          <SelectTrigger className="bg-white text-black">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="58">58</SelectItem>
+                            <SelectItem value="59">59</SelectItem>
+                            <SelectItem value="60">60</SelectItem>
+                            <SelectItem value="61">61</SelectItem>
+                            <SelectItem value="62">62</SelectItem>
+                            <SelectItem value="63">63</SelectItem>
+                            <SelectItem value="64">64</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    {/* Projected LPP Pension */}
-                    <div>
-                      <Label htmlFor="projectedLPPPension" className="text-white mb-2 block">
-                        {language === 'fr'
-                          ? `Pension LPP projetée (en CHF) à ${earlyRetirementAge} ans`
-                          : `Projected LPP Pension (in CHF) at ${earlyRetirementAge} years old`}
-                      </Label>
-                      <Input
-                        id="projectedLPPPension"
-                        type="number"
-                        value={projectedLPPPension}
-                        onChange={(e) => setProjectedLPPPension(e.target.value)}
-                        placeholder="0"
-                        className="max-w-xs bg-white text-black"
-                      />
-                    </div>
+                      {/* Projected LPP Pension */}
+                      <div className="flex-1">
+                        <Label htmlFor="projectedLPPPension" className="text-white mb-2 block">
+                          {language === 'fr'
+                            ? `Pension LPP projetée (en CHF) à ${earlyRetirementAge} ans`
+                            : `Projected LPP Pension (in CHF) at ${earlyRetirementAge} years old`}
+                        </Label>
+                        <Input
+                          id="projectedLPPPension"
+                          type="number"
+                          value={projectedLPPPension}
+                          onChange={(e) => setProjectedLPPPension(e.target.value)}
+                          placeholder="0"
+                          className="bg-white text-black"
+                        />
+                      </div>
 
-                    {/* Projected LPP Capital */}
-                    <div>
-                      <Label htmlFor="projectedLPPCapital" className="text-white mb-2 block">
-                        {language === 'fr'
-                          ? `Capital de pension LPP projeté (en CHF) à ${earlyRetirementAge} ans`
-                          : `Projected LPP Pension capital (in CHF) at ${earlyRetirementAge} years old`}
-                      </Label>
-                      <Input
-                        id="projectedLPPCapital"
-                        type="number"
-                        value={projectedLPPCapital}
-                        onChange={(e) => setProjectedLPPCapital(e.target.value)}
-                        placeholder="0"
-                        className="max-w-xs bg-white text-black"
-                      />
+                      {/* Projected LPP Capital */}
+                      <div className="flex-1">
+                        <Label htmlFor="projectedLPPCapital" className="text-white mb-2 block">
+                          {language === 'fr'
+                            ? `Capital de pension LPP projeté (en CHF) à ${earlyRetirementAge} ans`
+                            : `Projected LPP Pension capital (in CHF) at ${earlyRetirementAge} years old`}
+                        </Label>
+                        <Input
+                          id="projectedLPPCapital"
+                          type="number"
+                          value={projectedLPPCapital}
+                          onChange={(e) => setProjectedLPPCapital(e.target.value)}
+                          placeholder="0"
+                          className="bg-white text-black"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

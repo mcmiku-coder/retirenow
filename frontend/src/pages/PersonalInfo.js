@@ -17,7 +17,7 @@ const PersonalInfo = () => {
   const { t } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
-  const [residence, setResidence] = useState('');
+  const [residence] = useState('Switzerland'); // Default to Switzerland, field removed from UI
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -49,7 +49,7 @@ const PersonalInfo = () => {
           if (data) {
             setBirthDate(data.birthDate || '');
             setGender(data.gender || '');
-            setResidence(data.residence || '');
+            // residence is now hardcoded to Switzerland
           }
           // If data is null, that's fine - it's a new user with empty form
         }
@@ -66,7 +66,7 @@ const PersonalInfo = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!birthDate || !gender || !residence) {
+    if (!birthDate || !gender) {
       toast.error(t('common.error'));
       return;
     }
@@ -160,18 +160,7 @@ const PersonalInfo = () => {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="residence">{t('personalInfo.country')}</Label>
-              <Select value={residence} onValueChange={setResidence} required>
-                <SelectTrigger data-testid="residence-select">
-                  <SelectValue placeholder={t('personalInfo.country')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Switzerland" data-testid="residence-switzerland">{t('personalInfo.switzerland')}</SelectItem>
-                  <SelectItem value="France" data-testid="residence-france">{t('personalInfo.france')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
           </form>
 
           <div className="flex justify-center mt-6">
