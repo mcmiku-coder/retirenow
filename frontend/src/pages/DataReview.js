@@ -312,6 +312,26 @@ const DataReview = () => {
     setIncomes(updatedIncomes);
   };
 
+  const resetIncomesToDefaults = () => {
+    // Reset all adjusted amounts to original amounts
+    const resetIncomes = incomes.map(income => ({
+      ...income,
+      adjustedAmount: income.amount
+    }));
+    setIncomes(resetIncomes);
+    toast.success(language === 'fr' ? 'Revenus réinitialisés aux valeurs par défaut' : 'Income reset to default values');
+  };
+
+  const resetCostsToDefaults = () => {
+    // Reset all adjusted amounts to original amounts
+    const resetCosts = costs.map(cost => ({
+      ...cost,
+      adjustedAmount: cost.amount
+    }));
+    setCosts(resetCosts);
+    toast.success(language === 'fr' ? 'Coûts réinitialisés aux valeurs par défaut' : 'Costs reset to default values');
+  };
+
   const splitIncome = (id) => {
     const incomeIndex = incomes.findIndex(income => income.id === id);
     if (incomeIndex === -1) return;
@@ -780,8 +800,19 @@ const DataReview = () => {
           {/* Incomes Table */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('scenario.incomeSources')}</CardTitle>
-              <p className="text-sm text-muted-foreground">{t('scenario.allDatesEditable')}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t('scenario.incomeSources')}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{t('scenario.allDatesEditable')}</p>
+                </div>
+                <Button
+                  onClick={resetIncomesToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -937,8 +968,19 @@ const DataReview = () => {
           {/* Costs Table */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('scenario.costs')}</CardTitle>
-              <p className="text-sm text-muted-foreground">{t('scenario.costsDescription')}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t('scenario.costs')}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{t('scenario.costsDescription')}</p>
+                </div>
+                <Button
+                  onClick={resetCostsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
