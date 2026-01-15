@@ -916,8 +916,9 @@ const DataReview = () => {
                               </Button>
                               <Button
                                 onClick={() => deleteIncome(income.id)}
+                                variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-transparent"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                                 title="Delete this income line"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1025,8 +1026,9 @@ const DataReview = () => {
                               </Button>
                               <Button
                                 onClick={() => deleteCost(cost.id)}
+                                variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-transparent"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                                 title="Delete this cost line"
                               >
                                 <Trash2 className="h-4 w-4" />

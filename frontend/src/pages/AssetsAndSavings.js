@@ -337,8 +337,9 @@ const AssetsOverview = () => {
                                                         <Button
                                                             type="button"
                                                             onClick={() => deleteAsset(row.id)}
+                                                            variant="ghost"
                                                             size="sm"
-                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-transparent"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -442,8 +443,9 @@ const AssetsOverview = () => {
                                                         <Button
                                                             type="button"
                                                             onClick={() => deleteOutflow(row.id)}
+                                                            variant="ghost"
                                                             size="sm"
-                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-transparent"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>

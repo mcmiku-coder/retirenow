@@ -317,9 +317,10 @@ const RetirementInputs = () => {
                                             <td className="p-2">
                                                 <Button
                                                     type="button"
+                                                    variant="ghost"
                                                     size="icon"
                                                     onClick={() => deleteRow(row.id)}
-                                                    className="text-red-500 hover:text-red-700 hover:bg-transparent"
+                                                    className="text-red-500 hover:text-red-700"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
