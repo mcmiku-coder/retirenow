@@ -217,7 +217,6 @@ const DataReview = () => {
         await saveScenarioData(user.email, password, {
           liquidAssets,
           nonLiquidAssets,
-          transmissionAmount,
           futureInflows,
           wishedRetirementDate,
           adjustedIncomes: incomes,
@@ -335,7 +334,6 @@ const DataReview = () => {
       const dataToSave = {
         liquidAssets,
         nonLiquidAssets,
-        transmissionAmount,
         futureInflows,
         wishedRetirementDate,
         adjustedIncomes: processedIncomes,
@@ -375,7 +373,6 @@ const DataReview = () => {
       const dataToSave = {
         liquidAssets,
         nonLiquidAssets,
-        transmissionAmount,
         futureInflows,
         wishedRetirementDate,
         adjustedIncomes: incomes,
