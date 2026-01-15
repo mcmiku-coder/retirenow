@@ -197,31 +197,30 @@ const RetirementParameters = () => {
                                         : 'Calculate the earliest retirement date possible (balance at death not negative) - Coming soon'}
                                 </span>
                             </label>
+
+                            {/* Reset to Default Button - Bottom Left */}
+                            <div className="mt-4 pt-4 border-t border-white/20">
+                                <Button
+                                    onClick={() => {
+                                        // Reset all fields
+                                        setRetirementOption('');
+                                        setWishedRetirementDate('');
+                                        setPensionCapital('');
+                                        setYearlyReturn('0');
+                                        setEarlyRetirementAge('62');
+                                        setProjectedLPPPension('');
+                                        setProjectedLPPCapital('');
+                                        setOption3EarlyAge('');
+                                        setPreRetirementData({});
+                                        toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
+                                    }}
+                                    className="bg-blue-800 hover:bg-blue-900 text-white px-6"
+                                >
+                                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to default'}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
-
-                    {/* Reset to Default Button */}
-                    <div className="flex justify-center">
-                        <Button
-                            onClick={() => {
-                                // Reset all fields
-                                setRetirementOption('');
-                                setWishedRetirementDate('');
-                                setPensionCapital('');
-                                setYearlyReturn('0');
-                                setEarlyRetirementAge('62');
-                                setProjectedLPPPension('');
-                                setProjectedLPPCapital('');
-                                setOption3EarlyAge('');
-                                setPreRetirementData({});
-                                toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
-                            }}
-                            variant="outline"
-                            className="px-8"
-                        >
-                            {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to default'}
-                        </Button>
-                    </div>
 
                     {/* Conditional Fields Card - Appears below blue card when option is selected */}
                     {retirementOption === 'option1' && (
