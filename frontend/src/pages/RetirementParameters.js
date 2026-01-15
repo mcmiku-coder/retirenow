@@ -29,7 +29,7 @@ const RetirementParameters = () => {
     const [yearlyReturn, setYearlyReturn] = useState('0');
 
     // Option 2 fields
-    const [earlyRetirementAge, setEarlyRetirementAge] = useState('62');
+    const [earlyRetirementAge, setEarlyRetirementAge] = useState('');
     const [projectedLPPPension, setProjectedLPPPension] = useState('');
     const [projectedLPPCapital, setProjectedLPPCapital] = useState('');
 
@@ -207,7 +207,7 @@ const RetirementParameters = () => {
                                         setWishedRetirementDate('');
                                         setPensionCapital('');
                                         setYearlyReturn('0');
-                                        setEarlyRetirementAge('62');
+                                        setEarlyRetirementAge('');
                                         setProjectedLPPPension('');
                                         setProjectedLPPCapital('');
                                         setOption3EarlyAge('');
@@ -310,7 +310,7 @@ const RetirementParameters = () => {
                                     </Label>
                                     <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
                                         <SelectTrigger className="max-w-xs">
-                                            <SelectValue />
+                                            <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="58">58</SelectItem>
@@ -324,38 +324,40 @@ const RetirementParameters = () => {
                                     </Select>
                                 </div>
 
-                                {/* Two fields side by side */}
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <Label htmlFor="projectedLPPPension" className="mb-2 block">
-                                            {language === 'fr'
-                                                ? `Pension LPP projetée (en CHF) à ${earlyRetirementAge} ans`
-                                                : `Projected LPP Pension (in CHF) at ${earlyRetirementAge} years old`}
-                                        </Label>
-                                        <Input
-                                            id="projectedLPPPension"
-                                            type="number"
-                                            value={projectedLPPPension}
-                                            onChange={(e) => setProjectedLPPPension(e.target.value)}
-                                            placeholder="0"
-                                        />
-                                    </div>
+                                {/* Two fields side by side - Only show when age is selected */}
+                                {earlyRetirementAge && (
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <Label htmlFor="projectedLPPPension" className="mb-2 block">
+                                                {language === 'fr'
+                                                    ? `Pension LPP projetée (en CHF) à ${earlyRetirementAge} ans`
+                                                    : `Projected LPP Pension (in CHF) at ${earlyRetirementAge} years old`}
+                                            </Label>
+                                            <Input
+                                                id="projectedLPPPension"
+                                                type="number"
+                                                value={projectedLPPPension}
+                                                onChange={(e) => setProjectedLPPPension(e.target.value)}
+                                                placeholder="0"
+                                            />
+                                        </div>
 
-                                    <div className="flex-1">
-                                        <Label htmlFor="projectedLPPCapital" className="mb-2 block">
-                                            {language === 'fr'
-                                                ? `Capital de pension LPP projeté (en CHF) à ${earlyRetirementAge} ans`
-                                                : `Projected LPP Pension capital (in CHF) at ${earlyRetirementAge} years old`}
-                                        </Label>
-                                        <Input
-                                            id="projectedLPPCapital"
-                                            type="number"
-                                            value={projectedLPPCapital}
-                                            onChange={(e) => setProjectedLPPCapital(e.target.value)}
-                                            placeholder="0"
-                                        />
+                                        <div className="flex-1">
+                                            <Label htmlFor="projectedLPPCapital" className="mb-2 block">
+                                                {language === 'fr'
+                                                    ? `Capital de pension LPP projeté (en CHF) à ${earlyRetirementAge} ans`
+                                                    : `Projected LPP Pension capital (in CHF) at ${earlyRetirementAge} years old`}
+                                            </Label>
+                                            <Input
+                                                id="projectedLPPCapital"
+                                                type="number"
+                                                value={projectedLPPCapital}
+                                                onChange={(e) => setProjectedLPPCapital(e.target.value)}
+                                                placeholder="0"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
