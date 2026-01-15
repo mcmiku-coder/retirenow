@@ -412,8 +412,8 @@ const RetirementParameters = () => {
                                                                         ? `Pension LPP projetée (en CHF) à ${age} ans`
                                                                         : `Projected LPP Pension (in CHF) at ${age} years old`}
                                                                 </Label>
-                                                                {/* Input narrowed and radio buttons below */}
-                                                                <div className="flex flex-col gap-2">
+                                                                {/* Input narrowed and radio buttons on the right */}
+                                                                <div className="flex gap-3 items-center">
                                                                     <Input
                                                                         id={`pension-${age}`}
                                                                         type="number"
