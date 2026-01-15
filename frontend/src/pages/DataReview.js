@@ -314,16 +314,25 @@ const DataReview = () => {
 
   const resetIncomesToDefaults = async () => {
     try {
+      console.log('Resetting incomes to defaults...');
       // Reload income data from database to get original values
       const incomeData = await getIncomeData(user.email, password) || [];
-      const processedIncomes = incomeData.map(inc => ({
-        ...inc,
-        adjustedAmount: inc.amount
-      }));
+      console.log('Loaded income data from database:', incomeData);
+
+      // Process incomes: set adjusted amount and remove any split-related properties
+      const processedIncomes = incomeData.map(inc => {
+        const { groupId, parentId, ...cleanIncome } = inc; // Remove split properties
+        return {
+          ...cleanIncome,
+          adjustedAmount: inc.amount
+        };
+      });
+
+      console.log('Processed incomes:', processedIncomes);
       setIncomes(processedIncomes);
 
       // Explicitly save the reset data to ensure persistence
-      await saveScenarioData(user.email, password, {
+      const dataToSave = {
         liquidAssets,
         nonLiquidAssets,
         transmissionAmount,
@@ -331,7 +340,10 @@ const DataReview = () => {
         wishedRetirementDate,
         adjustedIncomes: processedIncomes,
         adjustedCosts: costs
-      });
+      };
+      console.log('Saving scenario data:', dataToSave);
+      await saveScenarioData(user.email, password, dataToSave);
+      console.log('Scenario data saved successfully');
 
       toast.success(language === 'fr' ? 'Revenus réinitialisés aux valeurs par défaut' : 'Income reset to default values');
     } catch (error) {
@@ -342,16 +354,25 @@ const DataReview = () => {
 
   const resetCostsToDefaults = async () => {
     try {
+      console.log('Resetting costs to defaults...');
       // Reload cost data from database to get original values
       const costData = await getCostData(user.email, password) || [];
-      const processedCosts = costData.map(cost => ({
-        ...cost,
-        adjustedAmount: cost.amount
-      }));
+      console.log('Loaded cost data from database:', costData);
+
+      // Process costs: set adjusted amount and remove any split-related properties
+      const processedCosts = costData.map(cost => {
+        const { groupId, parentId, ...cleanCost } = cost; // Remove split properties
+        return {
+          ...cleanCost,
+          adjustedAmount: cost.amount
+        };
+      });
+
+      console.log('Processed costs:', processedCosts);
       setCosts(processedCosts);
 
       // Explicitly save the reset data to ensure persistence
-      await saveScenarioData(user.email, password, {
+      const dataToSave = {
         liquidAssets,
         nonLiquidAssets,
         transmissionAmount,
@@ -359,7 +380,10 @@ const DataReview = () => {
         wishedRetirementDate,
         adjustedIncomes: incomes,
         adjustedCosts: processedCosts
-      });
+      };
+      console.log('Saving scenario data:', dataToSave);
+      await saveScenarioData(user.email, password, dataToSave);
+      console.log('Scenario data saved successfully');
 
       toast.success(language === 'fr' ? 'Coûts réinitialisés aux valeurs par défaut' : 'Costs reset to default values');
     } catch (error) {
