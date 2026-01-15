@@ -233,7 +233,7 @@ const RetirementInputs = () => {
                         </h2>
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[700px]">
-                                <thead>
+                                <thead className="bg-muted/50">
                                     <tr className="border-b">
                                         <th className="text-left p-2 w-1/3">{t('income.name')}</th>
                                         <th className="text-left p-2 w-1/6">{t('income.startDate')}</th>

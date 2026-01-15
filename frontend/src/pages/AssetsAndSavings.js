@@ -249,7 +249,7 @@ const AssetsOverview = () => {
                             <CardContent>
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
-                                        <thead>
+                                        <thead className="bg-muted/50">
                                             <tr className="border-b">
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
@@ -372,7 +372,7 @@ const AssetsOverview = () => {
                             <CardContent>
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
-                                        <thead>
+                                        <thead className="bg-muted/50">
                                             <tr className="border-b">
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>

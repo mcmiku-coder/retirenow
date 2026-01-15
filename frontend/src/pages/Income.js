@@ -198,7 +198,7 @@ const Income = () => {
         <form onSubmit={handleSubmit}>
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">
             <table className="w-full min-w-[900px]">
-              <thead>
+              <thead className="bg-muted/50">
                 <tr className="border-b">
                   <th className="text-left p-2 font-semibold">{t('income.name')}</th>
                   <th className="text-left p-2 font-semibold">{t('income.amount')}</th>
