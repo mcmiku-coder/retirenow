@@ -116,6 +116,21 @@ const Landing = () => {
           </div>
         </div>
 
+        {/* Subtitle and Info Link - Only shown when not in auth mode */}
+        {!showRegister && !showLogin && (
+          <div className="text-center mb-6">
+            <p className="text-xl text-muted-foreground mb-4">
+              {t('landing.subtitle')}
+            </p>
+            <Link
+              to="/information"
+              className="text-primary hover:underline text-sm"
+            >
+              {t('landing.learnMore')}
+            </Link>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           {!showRegister && !showLogin && (
             <>
