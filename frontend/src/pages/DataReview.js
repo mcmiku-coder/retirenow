@@ -208,11 +208,17 @@ const DataReview = () => {
             }
           } else if (option === 'option2') {
             // Option 2: Early retirement with projected values
+            console.log('Option 2 detected, scenarioData:', scenarioData);
+            console.log('projectedLPPPension:', scenarioData.projectedLPPPension);
+            console.log('projectedLPPCapital:', scenarioData.projectedLPPCapital);
+            console.log('earlyRetirementAge:', scenarioData.earlyRetirementAge);
+
             setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
             setProjectedLPPPension(scenarioData.projectedLPPPension || '');
             setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
 
-            if (scenarioData.projectedLPPPension) {
+            // Check if fields exist (not just truthy) to handle zero values
+            if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
               processedRetirementIncome.push({
                 id: 'projected_lpp_pension',
                 name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
@@ -224,7 +230,7 @@ const DataReview = () => {
                 isRetirement: true
               });
             }
-            if (scenarioData.projectedLPPCapital) {
+            if (scenarioData.projectedLPPCapital !== undefined && scenarioData.projectedLPPCapital !== null && scenarioData.projectedLPPCapital !== '') {
               processedRetirementIncome.push({
                 id: 'projected_lpp_capital',
                 name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
