@@ -1428,7 +1428,14 @@ const DataReview = () => {
                   <tbody>
                     {currentAssets.map((asset) => (
                       <tr key={asset.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3">{asset.name}</td>
+                        <td className="p-3">
+                          <Input
+                            type="text"
+                            value={asset.name}
+                            onChange={(e) => updateAsset(asset.id, 'name', e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </td>
                         <td className="p-3 text-right">
                           <Input
                             type="number"
@@ -1437,8 +1444,34 @@ const DataReview = () => {
                             className="max-w-[120px] ml-auto"
                           />
                         </td>
-                        <td className="p-3">{asset.category}</td>
-                        <td className="p-3">{asset.preserve === 'Yes' ? (language === 'fr' ? 'Oui' : 'Yes') : (language === 'fr' ? 'Non' : 'No')}</td>
+                        <td className="p-3">
+                          <Select
+                            value={asset.category}
+                            onValueChange={(value) => updateAsset(asset.id, 'category', value)}
+                          >
+                            <SelectTrigger className="max-w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
+                              <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3">
+                          <Select
+                            value={asset.preserve}
+                            onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
+                          >
+                            <SelectTrigger className="max-w-[100px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
+                              <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
                         <td className="p-3">
                           <div className="flex gap-2">
                             <Input
@@ -1447,7 +1480,21 @@ const DataReview = () => {
                               onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
                               className="max-w-[140px]"
                             />
-                            <span className="text-muted-foreground">{asset.availabilityTimeframe}</span>
+                            <Select
+                              value={asset.availabilityTimeframe || 'Select'}
+                              onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                            >
+                              <SelectTrigger className="max-w-[150px]">
+                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </td>
                         <td className="p-3">
@@ -1476,7 +1523,7 @@ const DataReview = () => {
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter un actif ou un apport' : '+ add asset or inflow'}
+                  {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
                 </Button>
                 <Button
                   onClick={resetAssetsToDefaults}
@@ -1508,7 +1555,14 @@ const DataReview = () => {
                   <tbody>
                     {desiredOutflows.map((debt) => (
                       <tr key={debt.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3">{debt.name}</td>
+                        <td className="p-3">
+                          <Input
+                            type="text"
+                            value={debt.name}
+                            onChange={(e) => updateDebt(debt.id, 'name', e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </td>
                         <td className="p-3 text-right">
                           <Input
                             type="number"
@@ -1525,7 +1579,21 @@ const DataReview = () => {
                               onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
                               className="max-w-[140px]"
                             />
-                            <span className="text-muted-foreground">{debt.madeAvailableTimeframe}</span>
+                            <Select
+                              value={debt.madeAvailableTimeframe || 'Select'}
+                              onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                            >
+                              <SelectTrigger className="max-w-[150px]">
+                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </td>
                         <td className="p-3">
@@ -1554,7 +1622,7 @@ const DataReview = () => {
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter une dette ou une sortie' : '+ add debt or outflow'}
+                  {language === 'fr' ? '+ ajouter une dette' : '+ add debt'}
                 </Button>
                 <Button
                   onClick={resetDebtsToDefaults}
