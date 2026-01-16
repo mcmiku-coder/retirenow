@@ -136,7 +136,11 @@ const RetirementParameters = () => {
                 projectedLPPCapital
             };
 
-            console.log('updatedScenarioData to save:', updatedScenarioData);
+            console.log('updatedScenarioData to save:', JSON.stringify(updatedScenarioData, null, 2));
+            console.log('Specifically - retirementOption:', updatedScenarioData.retirementOption);
+            console.log('Specifically - earlyRetirementAge:', updatedScenarioData.earlyRetirementAge);
+            console.log('Specifically - projectedLPPPension:', updatedScenarioData.projectedLPPPension);
+            console.log('Specifically - projectedLPPCapital:', updatedScenarioData.projectedLPPCapital);
 
             await saveScenarioData(userEmail, password, updatedScenarioData);
             navigate('/data-review');
