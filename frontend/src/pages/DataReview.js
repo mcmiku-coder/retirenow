@@ -1287,9 +1287,9 @@ const splitCost = (id) => {
                             <div className="flex gap-2 justify-center">
                               <Button
                                 onClick={() => splitIncome(income.id)}
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                 title="Split this income into two periods"
                                 disabled={income.isRetirement}
                               >
@@ -1419,9 +1419,9 @@ const splitCost = (id) => {
                             <div className="flex gap-2 justify-center">
                               <Button
                                 onClick={() => splitCost(cost.id)}
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                 title="Split this cost into two periods"
                               >
                                 <Split className="h-4 w-4" />
