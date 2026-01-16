@@ -163,7 +163,7 @@ const DataReview = () => {
           setFutureInflows(assetsData.futureInflows || []);
 
           // Load current assets and desired outflows for display
-          setCurrentAssets(assetsData.savingsRows || []);
+          setCurrentAssets(assetsData.currentAssets || []);
           setDesiredOutflows(assetsData.desiredOutflows || []);
         }
 
@@ -537,7 +537,7 @@ const DataReview = () => {
     try {
       const assetsData = await getAssetsData(user.email, password);
       if (assetsData) {
-        setCurrentAssets(assetsData.savingsRows || []);
+        setCurrentAssets(assetsData.currentAssets || []);
         toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
       }
     } catch (error) {

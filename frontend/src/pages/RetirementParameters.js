@@ -79,7 +79,27 @@ const RetirementParameters = () => {
     }, [user, userEmail, password, navigate]);
 
     const handleContinue = async () => {
-        if (!wishedRetirementDate) {
+        // For Option 2, calculate retirement date from age if not manually set
+        let effectiveRetirementDate = wishedRetirementDate;
+
+        if (retirementOption === 'option2' && !wishedRetirementDate && earlyRetirementAge) {
+            try {
+                const userData = await getUserData(userEmail, password);
+                if (userData && userData.birthDate) {
+                    const birthDate = new Date(userData.birthDate);
+                    const calculatedRetirementDate = new Date(birthDate);
+                    calculatedRetirementDate.setFullYear(calculatedRetirementDate.getFullYear() + parseInt(earlyRetirementAge));
+                    calculatedRetirementDate.setMonth(calculatedRetirementDate.getMonth() + 1);
+                    effectiveRetirementDate = calculatedRetirementDate.toISOString().split('T')[0];
+                    setWishedRetirementDate(effectiveRetirementDate);
+                }
+            } catch (error) {
+                console.error('Error calculating retirement date:', error);
+            }
+        }
+
+        // Validate retirement date
+        if (!effectiveRetirementDate && retirementOption !== 'option3') {
             toast.error(language === 'fr' ? 'Veuillez sélectionner une date de retraite' : 'Please select a retirement date');
             return;
         }
@@ -93,7 +113,7 @@ const RetirementParameters = () => {
 
             const updatedScenarioData = {
                 ...scenarioData,
-                wishedRetirementDate,
+                wishedRetirementDate: effectiveRetirementDate,
                 retirementOption,
                 pensionCapital,
                 yearlyReturn,
