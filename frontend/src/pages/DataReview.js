@@ -63,6 +63,8 @@ const DataReview = () => {
   const [liquidAssets, setLiquidAssets] = useState('');
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [futureInflows, setFutureInflows] = useState([]);
+  const [currentAssets, setCurrentAssets] = useState([]);
+  const [desiredOutflows, setDesiredOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Retirement option: 'option1', 'option2', or 'option3'
@@ -159,19 +161,106 @@ const DataReview = () => {
             setNonLiquidAssets('');
           }
           setFutureInflows(assetsData.futureInflows || []);
+
+          // Load current assets and desired outflows for display
+          setCurrentAssets(assetsData.savingsRows || []);
+          setDesiredOutflows(assetsData.desiredOutflows || []);
+        }
+
+        // Process retirement income based on selected option
+        const processedRetirementIncome = [];
+        if (rData && scenarioData) {
+          // Always include AVS and 3a
+          const avsRow = rData.rows?.find(r => r.id === 'avs');
+          const threeARow = rData.rows?.find(r => r.id === '3a');
+          if (avsRow) processedRetirementIncome.push({ ...avsRow, adjustedAmount: avsRow.amount, isRetirement: true });
+          if (threeARow) processedRetirementIncome.push({ ...threeARow, adjustedAmount: threeARow.amount, isRetirement: true });
+
+          // Add custom retirement incomes
+          const customRows = rData.rows?.filter(r => r.id.startsWith('custom_')) || [];
+          customRows.forEach(row => {
+            processedRetirementIncome.push({ ...row, adjustedAmount: row.amount, isRetirement: true });
+          });
+
+          // Handle LPP based on selected option
+          const option = scenarioData.retirementOption || 'option1';
+          setRetirementOption(option);
+
+          if (option === 'option1') {
+            // Option 1: Pension capital investment
+            setPensionCapital(scenarioData.pensionCapital || '');
+            setYearlyReturn(scenarioData.yearlyReturn || '0');
+
+            if (scenarioData.pensionCapital) {
+              processedRetirementIncome.push({
+                id: 'pension_capital_investment',
+                name: 'Pension Capital Investment',
+                amount: scenarioData.pensionCapital,
+                adjustedAmount: scenarioData.pensionCapital,
+                pensionCapital: scenarioData.pensionCapital,
+                yearlyReturn: scenarioData.yearlyReturn || '0',
+                frequency: 'Investment',
+                startDate: retirementDateStr,
+                endDate: deathDateStr,
+                isRetirement: true,
+                isOption1: true
+              });
+            }
+          } else if (option === 'option2') {
+            // Option 2: Early retirement with projected values
+            setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
+            setProjectedLPPPension(scenarioData.projectedLPPPension || '');
+            setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
+
+            if (scenarioData.projectedLPPPension) {
+              processedRetirementIncome.push({
+                id: 'projected_lpp_pension',
+                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
+                amount: scenarioData.projectedLPPPension,
+                adjustedAmount: scenarioData.projectedLPPPension,
+                frequency: 'Monthly',
+                startDate: retirementDateStr,
+                endDate: deathDateStr,
+                isRetirement: true
+              });
+            }
+            if (scenarioData.projectedLPPCapital) {
+              processedRetirementIncome.push({
+                id: 'projected_lpp_capital',
+                name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
+                amount: scenarioData.projectedLPPCapital,
+                adjustedAmount: scenarioData.projectedLPPCapital,
+                frequency: 'One-time',
+                startDate: retirementDateStr,
+                endDate: retirementDateStr,
+                isRetirement: true
+              });
+            }
+          } else if (option === 'option3') {
+            // Option 3: Flexible pre-retirement
+            const preRetirementRows = scenarioData.preRetirementRows || [];
+            preRetirementRows.forEach(row => {
+              processedRetirementIncome.push({
+                ...row,
+                adjustedAmount: row.amount,
+                isRetirement: true
+              });
+            });
+          }
         }
 
         // Load saved scenario data if available
         if (scenarioData) {
 
-          // Use saved adjusted incomes if available, otherwise use original data
+          // Use saved adjusted incomes if available, otherwise use original data + retirement
           if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
             setIncomes(scenarioData.adjustedIncomes);
           } else {
-            setIncomes(incomeData.filter(i => i.amount).map(i => ({
+            const regularIncomes = incomeData.filter(i => i.amount).map(i => ({
               ...i,
               adjustedAmount: i.amount
-            })));
+            }));
+            setIncomes([...regularIncomes, ...processedRetirementIncome]);
           }
 
           // Use saved adjusted costs if available, otherwise use original data
@@ -184,11 +273,12 @@ const DataReview = () => {
             })));
           }
         } else {
-          // Set incomes with adjusted values
-          setIncomes(incomeData.filter(i => i.amount).map(i => ({
+          // Set incomes with adjusted values + retirement
+          const regularIncomes = incomeData.filter(i => i.amount).map(i => ({
             ...i,
             adjustedAmount: i.amount
-          })));
+          }));
+          setIncomes([...regularIncomes, ...processedRetirementIncome]);
 
           // Set costs with adjusted values
           setCosts(costData.filter(c => c.amount).map(c => ({
@@ -314,34 +404,96 @@ const DataReview = () => {
   const resetIncomesToDefaults = async () => {
     try {
       console.log('Resetting incomes to defaults...');
-      // Reload income data from database to get original values
+      // Reload income data from database
       const incomeData = await getIncomeData(user.email, password) || [];
-      console.log('Loaded income data from database:', incomeData);
+      const scenarioData = await getScenarioData(user.email, password);
+      const rData = await getRetirementData(user.email, password);
 
-      // Process incomes: set adjusted amount and remove any split-related properties
+      // Process regular incomes
       const processedIncomes = incomeData.map(inc => {
-        const { groupId, parentId, ...cleanIncome } = inc; // Remove split properties
+        const { groupId, parentId, ...cleanIncome } = inc;
         return {
           ...cleanIncome,
           adjustedAmount: inc.amount
         };
       });
 
-      console.log('Processed incomes:', processedIncomes);
-      setIncomes(processedIncomes);
+      // Reprocess retirement income based on current option
+      const processedRetirementIncome = [];
+      if (rData && scenarioData) {
+        const avsRow = rData.rows?.find(r => r.id === 'avs');
+        const threeARow = rData.rows?.find(r => r.id === '3a');
+        if (avsRow) processedRetirementIncome.push({ ...avsRow, adjustedAmount: avsRow.amount, isRetirement: true });
+        if (threeARow) processedRetirementIncome.push({ ...threeARow, adjustedAmount: threeARow.amount, isRetirement: true });
 
-      // Explicitly save the reset data to ensure persistence
-      const dataToSave = {
+        const customRows = rData.rows?.filter(r => r.id.startsWith('custom_')) || [];
+        customRows.forEach(row => {
+          processedRetirementIncome.push({ ...row, adjustedAmount: row.amount, isRetirement: true });
+        });
+
+        const option = scenarioData.retirementOption || 'option1';
+        if (option === 'option1' && scenarioData.pensionCapital) {
+          processedRetirementIncome.push({
+            id: 'pension_capital_investment',
+            name: 'Pension Capital Investment',
+            amount: scenarioData.pensionCapital,
+            adjustedAmount: scenarioData.pensionCapital,
+            pensionCapital: scenarioData.pensionCapital,
+            yearlyReturn: scenarioData.yearlyReturn || '0',
+            frequency: 'Investment',
+            startDate: retirementLegalDate,
+            endDate: deathDate,
+            isRetirement: true,
+            isOption1: true
+          });
+        } else if (option === 'option2') {
+          if (scenarioData.projectedLPPPension) {
+            processedRetirementIncome.push({
+              id: 'projected_lpp_pension',
+              name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
+              amount: scenarioData.projectedLPPPension,
+              adjustedAmount: scenarioData.projectedLPPPension,
+              frequency: 'Monthly',
+              startDate: retirementLegalDate,
+              endDate: deathDate,
+              isRetirement: true
+            });
+          }
+          if (scenarioData.projectedLPPCapital) {
+            processedRetirementIncome.push({
+              id: 'projected_lpp_capital',
+              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
+              amount: scenarioData.projectedLPPCapital,
+              adjustedAmount: scenarioData.projectedLPPCapital,
+              frequency: 'One-time',
+              startDate: retirementLegalDate,
+              endDate: retirementLegalDate,
+              isRetirement: true
+            });
+          }
+        } else if (option === 'option3') {
+          const preRetirementRows = scenarioData.preRetirementRows || [];
+          preRetirementRows.forEach(row => {
+            processedRetirementIncome.push({
+              ...row,
+              adjustedAmount: row.amount,
+              isRetirement: true
+            });
+          });
+        }
+      }
+
+      const allIncomes = [...processedIncomes, ...processedRetirementIncome];
+      setIncomes(allIncomes);
+
+      await saveScenarioData(user.email, password, {
         liquidAssets,
         nonLiquidAssets,
         futureInflows,
         wishedRetirementDate,
-        adjustedIncomes: processedIncomes,
+        adjustedIncomes: allIncomes,
         adjustedCosts: costs
-      };
-      console.log('Saving scenario data:', dataToSave);
-      await saveScenarioData(user.email, password, dataToSave);
-      console.log('Scenario data saved successfully');
+      });
 
       toast.success(language === 'fr' ? 'Revenus réinitialisés aux valeurs par défaut' : 'Income reset to default values');
     } catch (error) {
@@ -353,34 +505,26 @@ const DataReview = () => {
   const resetCostsToDefaults = async () => {
     try {
       console.log('Resetting costs to defaults...');
-      // Reload cost data from database to get original values
       const costData = await getCostData(user.email, password) || [];
-      console.log('Loaded cost data from database:', costData);
 
-      // Process costs: set adjusted amount and remove any split-related properties
       const processedCosts = costData.map(cost => {
-        const { groupId, parentId, ...cleanCost } = cost; // Remove split properties
+        const { groupId, parentId, ...cleanCost } = cost;
         return {
           ...cleanCost,
           adjustedAmount: cost.amount
         };
       });
 
-      console.log('Processed costs:', processedCosts);
       setCosts(processedCosts);
 
-      // Explicitly save the reset data to ensure persistence
-      const dataToSave = {
+      await saveScenarioData(user.email, password, {
         liquidAssets,
         nonLiquidAssets,
         futureInflows,
         wishedRetirementDate,
         adjustedIncomes: incomes,
         adjustedCosts: processedCosts
-      };
-      console.log('Saving scenario data:', dataToSave);
-      await saveScenarioData(user.email, password, dataToSave);
-      console.log('Scenario data saved successfully');
+      });
 
       toast.success(language === 'fr' ? 'Coûts réinitialisés aux valeurs par défaut' : 'Costs reset to default values');
     } catch (error) {
@@ -388,6 +532,55 @@ const DataReview = () => {
       toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
     }
   };
+
+  const resetAssetsToDefaults = async () => {
+    try {
+      const assetsData = await getAssetsData(user.email, password);
+      if (assetsData) {
+        setCurrentAssets(assetsData.savingsRows || []);
+        toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
+      }
+    } catch (error) {
+      console.error('Error resetting assets:', error);
+      toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
+    }
+  };
+
+  const resetDebtsToDefaults = async () => {
+    try {
+      const assetsData = await getAssetsData(user.email, password);
+      if (assetsData) {
+        setDesiredOutflows(assetsData.desiredOutflows || []);
+        toast.success(language === 'fr' ? 'Dettes réinitialisées aux valeurs par défaut' : 'Debts reset to default values');
+      }
+    } catch (error) {
+      console.error('Error resetting debts:', error);
+      toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
+    }
+  };
+
+  // Asset update and delete functions
+  const updateAsset = (id, field, value) => {
+    setCurrentAssets(currentAssets.map(asset =>
+      asset.id === id ? { ...asset, [field]: value } : asset
+    ));
+  };
+
+  const deleteAsset = (id) => {
+    setCurrentAssets(currentAssets.filter(asset => asset.id !== id));
+  };
+
+  // Debt update and delete functions
+  const updateDebt = (id, field, value) => {
+    setDesiredOutflows(desiredOutflows.map(debt =>
+      debt.id === id ? { ...debt, [field]: value } : debt
+    ));
+  };
+
+  const deleteDebt = (id) => {
+    setDesiredOutflows(desiredOutflows.filter(debt => debt.id !== id));
+  };
+
 
   const splitIncome = (id) => {
     const incomeIndex = incomes.findIndex(income => income.id === id);
