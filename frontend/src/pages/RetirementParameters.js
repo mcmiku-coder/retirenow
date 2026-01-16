@@ -53,11 +53,12 @@ const RetirementParameters = () => {
                 const scenarioData = await getScenarioData(userEmail, password);
 
                 console.log('=== LOADING RETIREMENT DATA ===');
-                console.log('retirementData:', retirementData);
-                console.log('retirementLegalDate from retirementData:', retirementData?.retirementLegalDate);
+                console.log('userData:', userData);
+                console.log('retirementLegalDate from userData:', userData?.retirementLegalDate);
 
-                if (retirementData) {
-                    setRetirementLegalDate(retirementData.retirementLegalDate || '');
+                // Load legal retirement date from userData (saved by RetirementOverview)
+                if (userData && userData.retirementLegalDate) {
+                    setRetirementLegalDate(userData.retirementLegalDate);
                 }
 
                 if (scenarioData) {
