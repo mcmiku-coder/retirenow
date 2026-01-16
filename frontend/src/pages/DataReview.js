@@ -1275,12 +1275,7 @@ const splitCost = (id) => {
                                 className="max-w-[150px]"
                               />
                             ) : (
-                              <Input
-                                type="date"
-                                value={income.endDate || ''}
-                                onChange={(e) => updateIncomeDateWithSync(income.id, 'endDate', e.target.value)}
-                                className="max-w-[150px]"
-                              />
+                              (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null : <Input type="date" value={income.endDate || ""} onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)} className="max-w-[150px]" />
                             )}
                           </td>
                           <td className="p-3">
@@ -1407,13 +1402,7 @@ const splitCost = (id) => {
                             />
                           </td>
                           <td className="p-3">
-                            <Input
-                              data-testid={`cost-end-date-${index}`}
-                              type="date"
-                              value={cost.endDate || ''}
-                              onChange={(e) => updateCostDateWithSync(cost.id, 'endDate', e.target.value)}
-                              className="max-w-[150px]"
-                            />
+                            {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost-end-date-${index}`} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
