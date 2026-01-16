@@ -622,6 +622,7 @@ const DataReview = () => {
       id: newId,
       name: language === 'fr' ? 'Nouvel actif' : 'New asset',
       amount: '',
+      adjustedAmount: '',
       category: 'Liquid',
       preserve: 'No',
       availabilityDate: new Date().toISOString().split('T')[0],
@@ -648,6 +649,7 @@ const DataReview = () => {
       id: newId,
       name: language === 'fr' ? 'Nouvelle dette' : 'New debt',
       amount: '',
+      adjustedAmount: '',
       madeAvailableDate: new Date().toISOString().split('T')[0],
       madeAvailableTimeframe: '',
       locked: false
@@ -1418,7 +1420,8 @@ const DataReview = () => {
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
@@ -1426,92 +1429,95 @@ const DataReview = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentAssets.map((asset) => (
-                      <tr key={asset.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3">
-                          <Input
-                            type="text"
-                            value={asset.name}
-                            onChange={(e) => updateAsset(asset.id, 'name', e.target.value)}
-                            className="max-w-[150px]"
-                          />
-                        </td>
-                        <td className="p-3 text-right">
-                          <Input
-                            type="number"
-                            value={asset.amount}
-                            onChange={(e) => updateAsset(asset.id, 'amount', e.target.value)}
-                            className="max-w-[120px] ml-auto"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <Select
-                            value={asset.category}
-                            onValueChange={(value) => updateAsset(asset.id, 'category', value)}
-                          >
-                            <SelectTrigger className="max-w-[120px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
-                              <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-3">
-                          <Select
-                            value={asset.preserve}
-                            onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
-                          >
-                            <SelectTrigger className="max-w-[100px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
-                              <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
+                    {currentAssets.map((asset) => {
+                      const originalAmount = parseFloat(asset.amount) || 0;
+                      const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
+                      const isDecreased = adjustedAmount < originalAmount;
+                      const isIncreased = adjustedAmount > originalAmount;
+
+                      return (
+                        <tr key={asset.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3 font-medium">{asset.name}</td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {originalAmount.toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
                             <Input
-                              type="date"
-                              value={asset.availabilityDate || ''}
-                              onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                              className="max-w-[140px]"
+                              type="number"
+                              value={asset.adjustedAmount || asset.amount}
+                              onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
+                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
+                                }`}
                             />
+                          </td>
+                          <td className="p-3">
                             <Select
-                              value={asset.availabilityTimeframe || 'Select'}
-                              onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                              value={asset.category}
+                              onValueChange={(value) => updateAsset(asset.id, 'category', value)}
                             >
-                              <SelectTrigger className="max-w-[150px]">
-                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
+                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
                               </SelectContent>
                             </Select>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              onClick={() => deleteAsset(asset.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                              title="Delete this asset"
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.preserve}
+                              onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <SelectTrigger className="max-w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
+                                <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <Input
+                                type="date"
+                                value={asset.availabilityDate || ''}
+                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                className="max-w-[140px]"
+                              />
+                              <Select
+                                value={asset.availabilityTimeframe || 'Select'}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                              >
+                                <SelectTrigger className="max-w-[150px]">
+                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                  <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => deleteAsset(asset.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this asset"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -1547,70 +1553,74 @@ const DataReview = () => {
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {desiredOutflows.map((debt) => (
-                      <tr key={debt.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3">
-                          <Input
-                            type="text"
-                            value={debt.name}
-                            onChange={(e) => updateDebt(debt.id, 'name', e.target.value)}
-                            className="max-w-[150px]"
-                          />
-                        </td>
-                        <td className="p-3 text-right">
-                          <Input
-                            type="number"
-                            value={debt.amount}
-                            onChange={(e) => updateDebt(debt.id, 'amount', e.target.value)}
-                            className="max-w-[120px] ml-auto"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
+                    {desiredOutflows.map((debt) => {
+                      const originalAmount = parseFloat(debt.amount) || 0;
+                      const adjustedAmount = parseFloat(debt.adjustedAmount || debt.amount) || 0;
+                      const isDecreased = adjustedAmount < originalAmount;
+                      const isIncreased = adjustedAmount > originalAmount;
+
+                      return (
+                        <tr key={debt.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3 font-medium">{debt.name}</td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {originalAmount.toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
                             <Input
-                              type="date"
-                              value={debt.madeAvailableDate || ''}
-                              onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
-                              className="max-w-[140px]"
+                              type="number"
+                              value={debt.adjustedAmount || debt.amount}
+                              onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
+                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
+                                }`}
                             />
-                            <Select
-                              value={debt.madeAvailableTimeframe || 'Select'}
-                              onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
-                            >
-                              <SelectTrigger className="max-w-[150px]">
-                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2 justify-center">
-                            <Button
-                              onClick={() => deleteDebt(debt.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                              title="Delete this debt"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <Input
+                                type="date"
+                                value={debt.madeAvailableDate || ''}
+                                onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
+                                className="max-w-[140px]"
+                              />
+                              <Select
+                                value={debt.madeAvailableTimeframe || 'Select'}
+                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                              >
+                                <SelectTrigger className="max-w-[150px]">
+                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                  <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => deleteDebt(debt.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this debt"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
