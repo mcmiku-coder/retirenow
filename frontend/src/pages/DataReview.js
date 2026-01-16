@@ -248,13 +248,38 @@ const DataReview = () => {
           } else if (option === 'option3') {
             // Option 3: Flexible pre-retirement
             const preRetirementRows = scenarioData.preRetirementRows || [];
+            console.log('Processing Option 3 preRetirementRows:', preRetirementRows);
+
             preRetirementRows.forEach(row => {
-              processedRetirementIncome.push({
-                ...row,
-                adjustedAmount: row.amount,
-                isRetirement: true
-              });
+              // Create pension row if pension value exists
+              if (row.pension && row.pension !== '' && row.pension !== '0') {
+                processedRetirementIncome.push({
+                  id: `pre_retirement_pension_${row.age}`,
+                  name: `Pre-retirement LPP Pension at ${row.age}y`,
+                  amount: row.pension,
+                  adjustedAmount: row.pension,
+                  frequency: row.frequency || 'Monthly',
+                  startDate: retirementDateStr,
+                  endDate: deathDateStr,
+                  isRetirement: true
+                });
+              }
+
+              // Create capital row if capital value exists
+              if (row.capital && row.capital !== '' && row.capital !== '0') {
+                processedRetirementIncome.push({
+                  id: `pre_retirement_capital_${row.age}`,
+                  name: `Pre-retirement LPP Capital at ${row.age}y`,
+                  amount: row.capital,
+                  adjustedAmount: row.capital,
+                  frequency: 'One-time',
+                  startDate: retirementDateStr,
+                  endDate: retirementDateStr,
+                  isRetirement: true
+                });
+              }
             });
+            console.log('Processed retirement income for Option 3:', processedRetirementIncome);
           }
         }
 
