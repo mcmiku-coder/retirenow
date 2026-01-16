@@ -255,7 +255,7 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Période de disponibilité' : 'Availability period'}</th>
+                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -376,7 +376,7 @@ const AssetsOverview = () => {
                                             <tr className="border-b">
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Période de disponibilité' : 'Availability period'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '400px' }}>{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
