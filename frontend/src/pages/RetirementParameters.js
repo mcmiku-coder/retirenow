@@ -111,6 +111,13 @@ const RetirementParameters = () => {
         try {
             const scenarioData = await getScenarioData(userEmail, password) || {};
 
+            console.log('=== SAVING RETIREMENT PARAMETERS ===');
+            console.log('retirementOption:', retirementOption);
+            console.log('earlyRetirementAge:', earlyRetirementAge);
+            console.log('projectedLPPPension:', projectedLPPPension);
+            console.log('projectedLPPCapital:', projectedLPPCapital);
+            console.log('effectiveRetirementDate:', effectiveRetirementDate);
+
             const updatedScenarioData = {
                 ...scenarioData,
                 wishedRetirementDate: effectiveRetirementDate,
@@ -121,6 +128,8 @@ const RetirementParameters = () => {
                 projectedLPPPension,
                 projectedLPPCapital
             };
+
+            console.log('updatedScenarioData to save:', updatedScenarioData);
 
             await saveScenarioData(userEmail, password, updatedScenarioData);
             navigate('/data-review');
