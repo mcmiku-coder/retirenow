@@ -1517,7 +1517,7 @@ const DataReview = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
                   </tbody>
                 </table>
               </div>
@@ -1620,7 +1620,7 @@ const DataReview = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
                   </tbody>
                 </table>
               </div>
