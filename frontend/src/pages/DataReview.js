@@ -1050,7 +1050,7 @@ const DataReview = () => {
           {/* Incomes Table */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('scenario.incomeSources')}</CardTitle>
+              <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
               <p className="text-sm text-muted-foreground">{t('scenario.allDatesEditable')}</p>
             </CardHeader>
             <CardContent>
@@ -1181,6 +1181,7 @@ const DataReview = () => {
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 title="Split this income into two periods"
+                                disabled={income.isRetirement}
                               >
                                 <Split className="h-4 w-4" />
                               </Button>
@@ -1216,7 +1217,7 @@ const DataReview = () => {
           {/* Costs Table */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('scenario.costs')}</CardTitle>
+              <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
               <p className="text-sm text-muted-foreground">{t('scenario.costsDescription')}</p>
             </CardHeader>
             <CardContent>
