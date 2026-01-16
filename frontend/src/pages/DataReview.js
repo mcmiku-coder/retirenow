@@ -1333,6 +1333,148 @@ const DataReview = () => {
             </CardContent>
           </Card>
 
+          {/* Assets Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentAssets.map((asset) => (
+                      <tr key={asset.id} className="border-b hover:bg-muted/30">
+                        <td className="p-3">{asset.name}</td>
+                        <td className="p-3 text-right">
+                          <Input
+                            type="number"
+                            value={asset.amount}
+                            onChange={(e) => updateAsset(asset.id, 'amount', e.target.value)}
+                            className="max-w-[120px] ml-auto"
+                          />
+                        </td>
+                        <td className="p-3">{asset.category}</td>
+                        <td className="p-3">{asset.preserve === 'Yes' ? (language === 'fr' ? 'Oui' : 'Yes') : (language === 'fr' ? 'Non' : 'No')}</td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <Input
+                              type="date"
+                              value={asset.availabilityDate || ''}
+                              onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                              className="max-w-[140px]"
+                            />
+                            <span className="text-muted-foreground">{asset.availabilityTimeframe}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              onClick={() => deleteAsset(asset.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                              title="Delete this asset"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4">
+                <Button
+                  onClick={resetAssetsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Debts Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Dettes actuelles ou futures' : 'Current or future Debts'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {desiredOutflows.map((debt) => (
+                      <tr key={debt.id} className="border-b hover:bg-muted/30">
+                        <td className="p-3">{debt.name}</td>
+                        <td className="p-3 text-right">
+                          <Input
+                            type="number"
+                            value={debt.amount}
+                            onChange={(e) => updateDebt(debt.id, 'amount', e.target.value)}
+                            className="max-w-[120px] ml-auto"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <Input
+                              type="date"
+                              value={debt.madeAvailableDate || ''}
+                              onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
+                              className="max-w-[140px]"
+                            />
+                            <span className="text-muted-foreground">{debt.madeAvailableTimeframe}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              onClick={() => deleteDebt(debt.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                              title="Delete this debt"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4">
+                <Button
+                  onClick={resetDebtsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-center mt-6">
             <Button
               data-testid="can-i-quit-btn"
