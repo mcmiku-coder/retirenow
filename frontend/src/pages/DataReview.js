@@ -1424,7 +1424,7 @@ const splitCost = (id) => {
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  {language === \'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow\'}
+                  {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
                 </Button>
                 <Button
                   onClick={resetCostsToDefaults}
