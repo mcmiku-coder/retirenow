@@ -219,6 +219,7 @@ const DataReview = () => {
 
             // Check if fields exist (not just truthy) to handle zero values
             if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
+              console.log('Adding projected LPP Pension row');
               processedRetirementIncome.push({
                 id: 'projected_lpp_pension',
                 name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
@@ -231,6 +232,7 @@ const DataReview = () => {
               });
             }
             if (scenarioData.projectedLPPCapital !== undefined && scenarioData.projectedLPPCapital !== null && scenarioData.projectedLPPCapital !== '') {
+              console.log('Adding projected LPP Capital row');
               processedRetirementIncome.push({
                 id: 'projected_lpp_capital',
                 name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
@@ -242,6 +244,7 @@ const DataReview = () => {
                 isRetirement: true
               });
             }
+            console.log('Processed retirement income for Option 2:', processedRetirementIncome);
           } else if (option === 'option3') {
             // Option 3: Flexible pre-retirement
             const preRetirementRows = scenarioData.preRetirementRows || [];
@@ -258,16 +261,23 @@ const DataReview = () => {
         // Load saved scenario data if available
         if (scenarioData) {
 
-          // Use saved adjusted incomes if available, otherwise use original data + retirement
+          // Always merge retirement income with regular income
+          // Filter out any old retirement income from saved adjustedIncomes
+          let regularIncomes = [];
           if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
-            setIncomes(scenarioData.adjustedIncomes);
+            // Use saved adjusted incomes but remove old retirement income rows
+            regularIncomes = scenarioData.adjustedIncomes.filter(inc => !inc.isRetirement);
           } else {
-            const regularIncomes = incomeData.filter(i => i.amount).map(i => ({
+            // Use fresh income data
+            regularIncomes = incomeData.filter(i => i.amount).map(i => ({
               ...i,
               adjustedAmount: i.amount
             }));
-            setIncomes([...regularIncomes, ...processedRetirementIncome]);
           }
+
+          // Always merge with fresh retirement income
+          console.log('Merging regular incomes:', regularIncomes.length, 'with retirement incomes:', processedRetirementIncome.length);
+          setIncomes([...regularIncomes, ...processedRetirementIncome]);
 
           // Use saved adjusted costs if available, otherwise use original data
           if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
