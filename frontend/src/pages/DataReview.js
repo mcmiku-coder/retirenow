@@ -741,7 +741,23 @@ const DataReview = () => {
     setFutureInflows(futureInflows.filter(inflow => inflow.id !== id));
   };
 
-  const splitCost = (id) => {
+  
+  const addCost = () => {
+    const newId = Date.now();
+    const newCost = {
+      id: newId,
+      name: language === 'fr' ? 'Nouvelle sortie' : 'New outflow',
+      amount: '',
+      adjustedAmount: '',
+      frequency: 'Monthly',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: deathDate || '',
+      locked: false
+    };
+    setCosts([...costs, newCost]);
+  };
+
+const splitCost = (id) => {
     const costIndex = costs.findIndex(cost => cost.id === id);
     if (costIndex === -1) return;
 
@@ -1348,6 +1364,9 @@ const DataReview = () => {
                               value={cost.adjustedAmount}
                               onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
                               className="max-w-[150px] ml-auto"
+                              style={{
+                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? \'rgba(34, 197, 94, 0.1)\' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? \'rgba(239, 68, 68, 0.1)\' : \'transparent\'
+                              }}
                             />
                           </td>
                           <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
@@ -1397,7 +1416,16 @@ const DataReview = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addCost}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === \'fr\' ? \'+ ajouter une sortie périodique\' : \'+ add periodic outflow\'}
+                </Button>
                 <Button
                   onClick={resetCostsToDefaults}
                   variant="outline"
