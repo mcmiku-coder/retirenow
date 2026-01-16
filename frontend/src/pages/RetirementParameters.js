@@ -57,6 +57,13 @@ const RetirementParameters = () => {
                 }
 
                 if (scenarioData) {
+                    console.log('=== LOADING RETIREMENT PARAMETERS ===');
+                    console.log('scenarioData:', scenarioData);
+                    console.log('retirementOption:', scenarioData.retirementOption);
+                    console.log('earlyRetirementAge:', scenarioData.earlyRetirementAge);
+                    console.log('projectedLPPPension:', scenarioData.projectedLPPPension);
+                    console.log('projectedLPPCapital:', scenarioData.projectedLPPCapital);
+
                     setWishedRetirementDate(scenarioData.wishedRetirementDate || retirementData?.retirementLegalDate || '');
                     setRetirementOption(scenarioData.retirementOption || '');
                     setPensionCapital(scenarioData.pensionCapital || '');
