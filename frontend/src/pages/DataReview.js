@@ -616,6 +616,21 @@ const DataReview = () => {
     setCurrentAssets(currentAssets.filter(asset => asset.id !== id));
   };
 
+  const addAsset = () => {
+    const newId = Date.now();
+    const newAsset = {
+      id: newId,
+      name: language === 'fr' ? 'Nouvel actif' : 'New asset',
+      amount: '',
+      category: 'Liquid',
+      preserve: 'No',
+      availabilityDate: new Date().toISOString().split('T')[0],
+      availabilityTimeframe: '',
+      locked: false
+    };
+    setCurrentAssets([...currentAssets, newAsset]);
+  };
+
   // Debt update and delete functions
   const updateDebt = (id, field, value) => {
     setDesiredOutflows(desiredOutflows.map(debt =>
@@ -625,6 +640,19 @@ const DataReview = () => {
 
   const deleteDebt = (id) => {
     setDesiredOutflows(desiredOutflows.filter(debt => debt.id !== id));
+  };
+
+  const addDebt = () => {
+    const newId = Date.now();
+    const newDebt = {
+      id: newId,
+      name: language === 'fr' ? 'Nouvelle dette' : 'New debt',
+      amount: '',
+      madeAvailableDate: new Date().toISOString().split('T')[0],
+      madeAvailableTimeframe: '',
+      locked: false
+    };
+    setDesiredOutflows([...desiredOutflows, newDebt]);
   };
 
 
@@ -1440,7 +1468,16 @@ const DataReview = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addAsset}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter un actif ou un apport' : '+ add asset or inflow'}
+                </Button>
                 <Button
                   onClick={resetAssetsToDefaults}
                   variant="outline"
@@ -1509,7 +1546,16 @@ const DataReview = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addDebt}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter une dette ou une sortie' : '+ add debt or outflow'}
+                </Button>
                 <Button
                   onClick={resetDebtsToDefaults}
                   variant="outline"
