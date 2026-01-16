@@ -63,6 +63,8 @@ const RetirementParameters = () => {
                     console.log('earlyRetirementAge:', scenarioData.earlyRetirementAge);
                     console.log('projectedLPPPension:', scenarioData.projectedLPPPension);
                     console.log('projectedLPPCapital:', scenarioData.projectedLPPCapital);
+                    console.log('option3EarlyAge:', scenarioData.option3EarlyAge);
+                    console.log('preRetirementRows:', scenarioData.preRetirementRows);
 
                     setWishedRetirementDate(scenarioData.wishedRetirementDate || retirementData?.retirementLegalDate || '');
                     setRetirementOption(scenarioData.retirementOption || '');
@@ -71,6 +73,20 @@ const RetirementParameters = () => {
                     setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
                     setProjectedLPPPension(scenarioData.projectedLPPPension || '');
                     setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
+                    setOption3EarlyAge(scenarioData.option3EarlyAge || '');
+
+                    // Convert preRetirementRows array back to preRetirementData object
+                    if (scenarioData.preRetirementRows && Array.isArray(scenarioData.preRetirementRows)) {
+                        const dataObj = {};
+                        scenarioData.preRetirementRows.forEach(row => {
+                            dataObj[row.age] = {
+                                pension: row.pension || '',
+                                capital: row.capital || '',
+                                frequency: row.frequency || 'Monthly'
+                            };
+                        });
+                        setPreRetirementData(dataObj);
+                    }
                 } else if (retirementData) {
                     setWishedRetirementDate(retirementData.retirementLegalDate || '');
                 }
@@ -125,6 +141,14 @@ const RetirementParameters = () => {
             console.log('projectedLPPCapital:', projectedLPPCapital);
             console.log('effectiveRetirementDate:', effectiveRetirementDate);
 
+            // Convert preRetirementData object to array format for storage
+            const preRetirementRows = Object.entries(preRetirementData).map(([age, data]) => ({
+                age: parseInt(age),
+                pension: data.pension || '',
+                capital: data.capital || '',
+                frequency: data.frequency || 'Monthly'
+            }));
+
             const updatedScenarioData = {
                 ...scenarioData,
                 wishedRetirementDate: effectiveRetirementDate,
@@ -133,14 +157,15 @@ const RetirementParameters = () => {
                 yearlyReturn,
                 earlyRetirementAge,
                 projectedLPPPension,
-                projectedLPPCapital
+                projectedLPPCapital,
+                option3EarlyAge,
+                preRetirementRows
             };
 
             console.log('updatedScenarioData to save:', JSON.stringify(updatedScenarioData, null, 2));
             console.log('Specifically - retirementOption:', updatedScenarioData.retirementOption);
-            console.log('Specifically - earlyRetirementAge:', updatedScenarioData.earlyRetirementAge);
-            console.log('Specifically - projectedLPPPension:', updatedScenarioData.projectedLPPPension);
-            console.log('Specifically - projectedLPPCapital:', updatedScenarioData.projectedLPPCapital);
+            console.log('Specifically - option3EarlyAge:', updatedScenarioData.option3EarlyAge);
+            console.log('Specifically - preRetirementRows:', updatedScenarioData.preRetirementRows);
 
             await saveScenarioData(userEmail, password, updatedScenarioData);
 
@@ -148,9 +173,8 @@ const RetirementParameters = () => {
             console.log('=== VERIFYING SAVE ===');
             const reloadedData = await getScenarioData(userEmail, password);
             console.log('Reloaded retirementOption:', reloadedData?.retirementOption);
-            console.log('Reloaded earlyRetirementAge:', reloadedData?.earlyRetirementAge);
-            console.log('Reloaded projectedLPPPension:', reloadedData?.projectedLPPPension);
-            console.log('Reloaded projectedLPPCapital:', reloadedData?.projectedLPPCapital);
+            console.log('Reloaded option3EarlyAge:', reloadedData?.option3EarlyAge);
+            console.log('Reloaded preRetirementRows:', reloadedData?.preRetirementRows);
 
             navigate('/data-review');
         } catch (error) {
