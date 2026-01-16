@@ -1265,7 +1265,7 @@ const splitCost = (id) => {
                           </td>
                           <td className="p-3">
                             {income.name === '3a' ? (
-                              <span className="text-muted-foreground">{t('scenario.oneTime')}</span>
+                              null
                             ) : isStandardIncome ? (
                               <Input
                                 data-testid={`income-end-date-${index}`}
@@ -1468,7 +1468,8 @@ const splitCost = (id) => {
                       <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1523,13 +1524,21 @@ const splitCost = (id) => {
                             </Select>
                           </td>
                           <td className="p-3">
-                            <div className="flex gap-2">
-                              <Input
-                                type="date"
-                                value={asset.availabilityDate || ''}
-                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                                className="max-w-[140px]"
-                              />
+                            <Select
+                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
                               <Select
                                 value={asset.availabilityTimeframe || 'Select'}
                                 onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
@@ -1545,7 +1554,14 @@ const splitCost = (id) => {
                                   <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
+                            ) : (
+                              <Input
+                                type="date"
+                                value={asset.availabilityDate || ''}
+                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                className="max-w-[140px]"
+                              />
+                            )}
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
@@ -1600,7 +1616,8 @@ const splitCost = (id) => {
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
                       <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
                       <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1627,16 +1644,24 @@ const splitCost = (id) => {
                             />
                           </td>
                           <td className="p-3">
-                            <div className="flex gap-2">
-                              <Input
-                                type="date"
-                                value={debt.madeAvailableDate || ''}
-                                onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
-                                className="max-w-[140px]"
-                              />
+                            <Select
+                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
                               <Select
-                                value={debt.madeAvailableTimeframe || 'Select'}
-                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                                value={asset.availabilityTimeframe || 'Select'}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
                               >
                                 <SelectTrigger className="max-w-[150px]">
                                   <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
@@ -1649,7 +1674,14 @@ const splitCost = (id) => {
                                   <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
+                            ) : (
+                              <Input
+                                type="date"
+                                value={asset.availabilityDate || ''}
+                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                className="max-w-[140px]"
+                              />
+                            )}
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
