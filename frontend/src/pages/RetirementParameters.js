@@ -143,6 +143,15 @@ const RetirementParameters = () => {
             console.log('Specifically - projectedLPPCapital:', updatedScenarioData.projectedLPPCapital);
 
             await saveScenarioData(userEmail, password, updatedScenarioData);
+
+            // Verify the save worked by immediately reloading
+            console.log('=== VERIFYING SAVE ===');
+            const reloadedData = await getScenarioData(userEmail, password);
+            console.log('Reloaded retirementOption:', reloadedData?.retirementOption);
+            console.log('Reloaded earlyRetirementAge:', reloadedData?.earlyRetirementAge);
+            console.log('Reloaded projectedLPPPension:', reloadedData?.projectedLPPPension);
+            console.log('Reloaded projectedLPPCapital:', reloadedData?.projectedLPPCapital);
+
             navigate('/data-review');
         } catch (error) {
             console.error('Error saving data:', error);
