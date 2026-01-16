@@ -1365,7 +1365,7 @@ const splitCost = (id) => {
                               onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
                               className="max-w-[150px] ml-auto"
                               style={{
-                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? \'rgba(34, 197, 94, 0.1)\' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? \'rgba(239, 68, 68, 0.1)\' : \'transparent\'
+                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.1)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.1)' : 'transparent'
                               }}
                             />
                           </td>
@@ -1424,7 +1424,7 @@ const splitCost = (id) => {
                   className="flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
-                  {language === \'fr\' ? \'+ ajouter une sortie périodique\' : \'+ add periodic outflow\'}
+                  {language === \'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow\'}
                 </Button>
                 <Button
                   onClick={resetCostsToDefaults}
