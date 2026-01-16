@@ -320,7 +320,12 @@ const DataReview = () => {
 
     const saveData = async () => {
       try {
+        // Load existing scenario data to preserve all fields
+        const existingData = await getScenarioData(user.email, password) || {};
+
+        // Merge with updates, preserving retirement option fields
         await saveScenarioData(user.email, password, {
+          ...existingData,  // Preserve all existing fields including retirement options
           liquidAssets,
           nonLiquidAssets,
           futureInflows,
