@@ -255,7 +255,7 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Disponibilité' : 'Availability'}</th>
+                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Période de disponibilité' : 'Availability period'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -376,8 +376,7 @@ const AssetsOverview = () => {
                                             <tr className="border-b">
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Rendu disponible' : 'Made available'}</th>
+                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Période de disponibilité' : 'Availability period'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -400,21 +399,6 @@ const AssetsOverview = () => {
                                                             placeholder="0"
                                                             className="min-w-[120px]"
                                                         />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Select
-                                                            value={row.category}
-                                                            onValueChange={(value) => updateOutflow(row.id, 'category', value)}
-                                                        >
-                                                            <SelectTrigger className="min-w-[120px]">
-                                                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">{language === 'fr' ? 'Aucune' : 'None'}</SelectItem>
-                                                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
-                                                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
                                                     </td>
                                                     <td className="p-2">
                                                         <div className="flex gap-2">
