@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { toast } from 'sonner';
 import { getUserData, getScenarioData, saveScenarioData, getRetirementData } from '../utils/database';
 import WorkflowNavigation from '../components/WorkflowNavigation';
-import { Calendar } from 'lucide-react';
+import { Calendar, Trash2 } from 'lucide-react';
 
 const RetirementParameters = () => {
     const navigate = useNavigate();
@@ -32,11 +32,53 @@ const RetirementParameters = () => {
     const [earlyRetirementAge, setEarlyRetirementAge] = useState('');
     const [projectedLPPPension, setProjectedLPPPension] = useState('');
     const [projectedLPPCapital, setProjectedLPPCapital] = useState('');
+    const [lppPensionFrequency, setLppPensionFrequency] = useState('Monthly');
+    const [showLPPPension, setShowLPPPension] = useState(true);
+    const [showLPPCapital, setShowLPPCapital] = useState(true);
 
     // Option 3 fields - Dynamic multi-age input
     const [option3EarlyAge, setOption3EarlyAge] = useState('');
     // preRetirementData structure: { age: { pension: '', capital: '', frequency: 'Monthly' } }
     const [preRetirementData, setPreRetirementData] = useState({});
+
+    // Option 0 fields (Legal Retirement)
+    const [projectedLegalLPPPension, setProjectedLegalLPPPension] = useState('');
+    const [projectedLegalLPPCapital, setProjectedLegalLPPCapital] = useState('');
+    const [legalLppPensionFrequency, setLegalLppPensionFrequency] = useState('Monthly');
+    const [showLegalLPPPension, setShowLegalLPPPension] = useState(true);
+    const [showLegalLPPCapital, setShowLegalLPPCapital] = useState(true);
+
+    // Pillars selection state
+    const [selectedPillars, setSelectedPillars] = useState({
+        avs: false,
+        lpp: false,
+        lppSup: false,
+        threeA: false
+    });
+
+    // Benefits Table Data State
+    const [benefitsData, setBenefitsData] = useState({
+        avs: { amount: '', frequency: 'Monthly', startDate: '' },
+        threeA: { amount: '', frequency: 'One-time', startDate: '' },
+        lppSup: { amount: '', frequency: 'One-time', startDate: '' }
+    });
+
+    const updateBenefitData = (type, field, value) => {
+        setBenefitsData(prev => ({
+            ...prev,
+            [type]: { ...prev[type], [field]: value }
+        }));
+    };
+
+    // Calculate early retirement date based on age
+    const calculateEarlyRetirementDate = (age) => {
+        if (!retirementLegalDate || !age) return '';
+        const legalDate = new Date(retirementLegalDate);
+        const yearsDifference = 65 - parseInt(age);
+        const earlyDate = new Date(legalDate);
+        earlyDate.setFullYear(earlyDate.getFullYear() - yearsDifference);
+        return earlyDate.toLocaleDateString('de-CH');
+    };
 
     const userEmail = user?.email;
 
@@ -72,13 +114,43 @@ const RetirementParameters = () => {
                     console.log('preRetirementRows:', scenarioData.preRetirementRows);
 
                     setWishedRetirementDate(scenarioData.wishedRetirementDate || retirementData?.retirementLegalDate || '');
+                    console.log('Loading retirementOption:', scenarioData.retirementOption);
                     setRetirementOption(scenarioData.retirementOption || '');
+                    console.log('After setting, retirementOption state should be:', scenarioData.retirementOption || '');
                     setPensionCapital(scenarioData.pensionCapital || '');
                     setYearlyReturn(scenarioData.yearlyReturn || '0');
                     setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
                     setProjectedLPPPension(scenarioData.projectedLPPPension || '');
                     setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
                     setOption3EarlyAge(scenarioData.option3EarlyAge || '');
+                    setProjectedLegalLPPPension(scenarioData.projectedLegalLPPPension || '');
+                    setProjectedLegalLPPCapital(scenarioData.projectedLegalLPPCapital || '');
+
+                    setProjectedLegalLPPPension(scenarioData.projectedLegalLPPPension || '');
+                    setProjectedLegalLPPCapital(scenarioData.projectedLegalLPPCapital || '');
+
+                    if (scenarioData.selectedPillars) setSelectedPillars(scenarioData.selectedPillars);
+                    if (scenarioData.benefitsData) setBenefitsData(scenarioData.benefitsData);
+
+                    // Load Option 2 specific state
+                    if (scenarioData.lppPensionFrequency) setLppPensionFrequency(scenarioData.lppPensionFrequency);
+                    if (scenarioData.showLPPPension !== undefined) setShowLPPPension(scenarioData.showLPPPension);
+                    if (scenarioData.showLPPCapital !== undefined) setShowLPPCapital(scenarioData.showLPPCapital);
+
+                    // Load Option 0 specific state
+                    if (scenarioData.legalLppPensionFrequency) setLegalLppPensionFrequency(scenarioData.legalLppPensionFrequency);
+                    if (scenarioData.showLegalLPPPension !== undefined) setShowLegalLPPPension(scenarioData.showLegalLPPPension);
+                    if (scenarioData.showLegalLPPCapital !== undefined) setShowLegalLPPCapital(scenarioData.showLegalLPPCapital);
+
+                    // Set default start date for benefits if not set
+                    const defaultDate = userData?.retirementLegalDate ? new Date(userData.retirementLegalDate).toLocaleDateString('de-CH') : '01.12.2045'; // Default formatted date
+                    if (!scenarioData.benefitsData) {
+                        setBenefitsData(prev => ({
+                            avs: { ...prev.avs, startDate: defaultDate },
+                            threeA: { ...prev.threeA, startDate: defaultDate },
+                            lppSup: { ...prev.lppSup, startDate: defaultDate }
+                        }));
+                    }
 
                     // Convert preRetirementRows array back to preRetirementData object
                     if (scenarioData.preRetirementRows && Array.isArray(scenarioData.preRetirementRows)) {
@@ -124,6 +196,10 @@ const RetirementParameters = () => {
             } catch (error) {
                 console.error('Error calculating retirement date:', error);
             }
+        } else if (retirementOption === 'option0') {
+            // Option 0: Legal Retirement Date (65y roughly)
+            effectiveRetirementDate = retirementLegalDate;
+            setWishedRetirementDate(effectiveRetirementDate);
         }
 
         // Validate retirement date
@@ -164,7 +240,18 @@ const RetirementParameters = () => {
                 projectedLPPPension,
                 projectedLPPCapital,
                 option3EarlyAge,
-                preRetirementRows
+                preRetirementRows,
+                projectedLegalLPPPension,
+                projectedLegalLPPPension,
+                projectedLegalLPPCapital,
+                selectedPillars,
+                benefitsData,
+                lppPensionFrequency,
+                showLPPPension,
+                showLPPCapital,
+                legalLppPensionFrequency,
+                showLegalLPPPension,
+                showLegalLPPCapital
             };
 
             console.log('updatedScenarioData to save:', JSON.stringify(updatedScenarioData, null, 2));
@@ -203,24 +290,67 @@ const RetirementParameters = () => {
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">
-                            {language === 'fr' ? 'Paramètres de simulation de retraite' : 'Retirement simulation parameters'}
+                            {language === 'fr' ? 'Options de simulation et saisie des prestations de retraite' : 'Simulation options and retirement benefits inputs'}
                         </h1>
-                        <p className="text-muted-foreground" data-testid="page-subtitle">
-                            {language === 'fr'
-                                ? 'Choisissez le type de simulation que vous souhaitez effectuer et fournissez les données supplémentaires nécessaires'
-                                : 'Choose the type of simulation you wish to perform and provide the additional necessary data'}
-                        </p>
                     </div>
                 </div>
 
                 <div className="space-y-6">
+                    {/* Pillars Selection */}
+                    <div className="flex items-center gap-4 text-white">
+                        <span className="font-medium whitespace-nowrap">
+                            {language === 'fr'
+                                ? 'Sélectionnez les piliers de retraite dont vous bénéficierez :'
+                                : 'Select the retirements pilars that you will benefit from'}
+                        </span>
+                        <div className="flex flex-1 justify-between gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPillars.avs}
+                                    onChange={(e) => setSelectedPillars(prev => ({ ...prev, avs: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span>AVS</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPillars.lpp}
+                                    onChange={(e) => setSelectedPillars(prev => ({ ...prev, lpp: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span>{language === 'fr' ? 'LPP' : 'LPP Pension plan'}</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPillars.lppSup}
+                                    onChange={(e) => setSelectedPillars(prev => ({ ...prev, lppSup: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span>{language === 'fr' ? 'Capital de pension supplémentaire' : 'Supplementary Pension capital'}</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPillars.threeA}
+                                    onChange={(e) => setSelectedPillars(prev => ({ ...prev, threeA: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span>3a</span>
+                            </label>
+                        </div>
+                    </div>
+
                     {/* Retirement Date Selector - Only Radio Buttons */}
                     <Card className="bg-blue-600 border-blue-600">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle className="flex items-center gap-2 text-white">
-                                    <Calendar className="h-5 w-5" />
-                                    {language === 'fr' ? 'Date de retraite' : 'Retirement Date'}
+                                    {language === 'fr'
+                                        ? 'Choisissez le type de simulation que vous souhaitez effectuer et fournissez les données supplémentaires nécessaires'
+                                        : 'Choose the type of simulation you wish to perform and provide the additional necessary data'}
                                 </CardTitle>
                                 <p className="text-sm text-white/80">
                                     {language === 'fr' ? 'Date de retraite légale' : 'Legal retirement date'}: {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : '-'}
@@ -228,19 +358,19 @@ const RetirementParameters = () => {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Option 1: Manual Date Selection */}
+                            {/* Option 0: Legal Retirement */}
                             <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                                 <input
                                     type="radio"
                                     name="retirementOption"
-                                    checked={retirementOption === 'option1'}
-                                    onChange={() => setRetirementOption('option1')}
+                                    checked={retirementOption === 'option0'}
+                                    onChange={() => setRetirementOption('option0')}
                                     className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
                                 />
                                 <span className="text-white font-medium">
                                     {language === 'fr'
-                                        ? 'Choisir une date de retraite indépendamment de vos plans de retraite anticipée possibles'
-                                        : 'Pick a retirement date regardless of your possible early retirement plans'}
+                                        ? `Simuler mon équilibre financier en prenant ma retraite à la date légale (${retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : ''}) (65 ans)`
+                                        : `Simulate my Financial balance when retiring at the legal retirement date ${retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : ''} (65 years old)`}
                                 </span>
                             </label>
 
@@ -257,6 +387,22 @@ const RetirementParameters = () => {
                                     {language === 'fr'
                                         ? 'Choisir une date de retraite correspondant à l\'une des dates de retraite anticipée possibles de votre plan de pension'
                                         : 'Choose a retirement date matching one of the possible early retirement dates of your pension plan'}
+                                </span>
+                            </label>
+
+                            {/* Option 1: Manual Date Selection */}
+                            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="retirementOption"
+                                    checked={retirementOption === 'option1'}
+                                    onChange={() => setRetirementOption('option1')}
+                                    className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
+                                />
+                                <span className="text-white font-medium">
+                                    {language === 'fr'
+                                        ? 'Choisir une date de retraite indépendamment de vos plans de retraite anticipée possibles'
+                                        : 'Pick a retirement date regardless of your possible early retirement plans'}
                                 </span>
                             </label>
 
@@ -289,7 +435,10 @@ const RetirementParameters = () => {
                                         setProjectedLPPPension('');
                                         setProjectedLPPCapital('');
                                         setOption3EarlyAge('');
+                                        setOption3EarlyAge('');
                                         setPreRetirementData({});
+                                        setProjectedLegalLPPPension('');
+                                        setProjectedLegalLPPCapital('');
                                         toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
                                     }}
                                     className="bg-blue-800 hover:bg-blue-900 text-white px-6"
@@ -300,38 +449,613 @@ const RetirementParameters = () => {
                         </CardContent>
                     </Card>
 
+                    {/* Option 2: Selector and Message (Moved here) */}
+                    {retirementOption === 'option2' && (
+                        <div className="flex gap-4 items-start text-white">
+                            {/* Desired Retirement Age */}
+                            <div>
+                                <Label htmlFor="earlyRetirementAge" className="mb-2 block font-medium">
+                                    {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
+                                </Label>
+                                <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
+                                    <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
+                                        <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="58">58</SelectItem>
+                                        <SelectItem value="59">59</SelectItem>
+                                        <SelectItem value="60">60</SelectItem>
+                                        <SelectItem value="61">61</SelectItem>
+                                        <SelectItem value="62">62</SelectItem>
+                                        <SelectItem value="63">63</SelectItem>
+                                        <SelectItem value="64">64</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Message */}
+                            <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-6">
+                                <p className="text-sm">
+                                    {language === 'fr'
+                                        ? "Veuillez fournir les détails des options de retraite anticipée de votre plan de pension. Choisissez l'âge de retraite souhaité puis saisissez la pension LPP projetée et le capital LPP projeté pour cet âge choisi."
+                                        : "Please provide the details of your pension plan's early retirement options. Choose the desired retirement age before then input the projected LPP Pension and the projected LPP Capital for that chosen age."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Option 3: Selector and Message (Moved here) */}
+                    {retirementOption === 'option3' && (
+                        <div className="flex gap-4 items-start text-white">
+                            {/* Earliest Retirement Age */}
+                            <div>
+                                <Label htmlFor="option3EarlyAge" className="mb-2 block font-medium">
+                                    {language === 'fr' ? 'Quel est l\'âge de retraite le plus bas dans votre plan de pension ?' : 'What is the earliest retirement age in your pension plan ?'}
+                                </Label>
+                                <Select value={option3EarlyAge} onValueChange={setOption3EarlyAge}>
+                                    <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
+                                        <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="64">64</SelectItem>
+                                        <SelectItem value="63">63</SelectItem>
+                                        <SelectItem value="62">62</SelectItem>
+                                        <SelectItem value="61">61</SelectItem>
+                                        <SelectItem value="60">60</SelectItem>
+                                        <SelectItem value="59">59</SelectItem>
+                                        <SelectItem value="58">58</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Message */}
+                            <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-6">
+                                <p className="text-sm">
+                                    {language === 'fr'
+                                        ? "Sélectionnez l'âge de retraite anticipée le plus précoce autorisé par votre plan de pension, puis saisissez la rente LPP projetée et le capital LPP projeté pour chaque année. Cela permettra d'exécuter une simulation d'optimisation."
+                                        : "Select the earliest retirement age allowed by your pension plan, then input the projected LPP Pension and the projected LPP Capital for each year. This will allow runining an optimisation simulation"}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Dynamic Benefits Table - Visible if pillars selected OR Option 2/0/3 is active (for LPP rows) */}
+                    {(selectedPillars.avs || selectedPillars.threeA || selectedPillars.lppSup || (retirementOption === 'option2' && earlyRetirementAge) || retirementOption === 'option0' || (retirementOption === 'option3' && option3EarlyAge)) && (
+                        <Card className="bg-slate-900 border-slate-800">
+                            <div className="p-4 overflow-x-auto">
+                                <table className="w-full text-sm text-left text-gray-400">
+                                    <thead className="text-xs text-gray-200 uppercase bg-slate-800">
+                                        <tr>
+                                            <th scope="col" className="px-4 py-3 rounded-l-lg">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                                            <th scope="col" className="px-4 py-3">{language === 'fr' ? 'Date de début' : 'Start Date'}</th>
+                                            <th scope="col" className="px-4 py-3">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
+                                            <th scope="col" className="px-4 py-3">{language === 'fr' ? 'Fréquence' : 'Frequency'}</th>
+                                            <th scope="col" className="px-4 py-3 rounded-r-lg text-right">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {/* AVS Row */}
+                                        {selectedPillars.avs && (
+                                            <tr className="bg-slate-900 border-b border-slate-800 hover:bg-slate-800/50">
+                                                <td className="px-4 py-3 font-medium text-white">AVS</td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={benefitsData.avs.startDate}
+                                                        onChange={(e) => updateBenefitData('avs', 'startDate', e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        type="number"
+                                                        value={benefitsData.avs.amount}
+                                                        onChange={(e) => updateBenefitData('avs', 'amount', e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        placeholder="0"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-4 items-center">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${benefitsData.avs.frequency === 'Monthly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                {benefitsData.avs.frequency === 'Monthly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                            </div>
+                                                            <input type="radio" className="hidden" checked={benefitsData.avs.frequency === 'Monthly'} onChange={() => updateBenefitData('avs', 'frequency', 'Monthly')} />
+                                                            <span>Monthly</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${benefitsData.avs.frequency === 'Yearly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                {benefitsData.avs.frequency === 'Yearly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                            </div>
+                                                            <input type="radio" className="hidden" checked={benefitsData.avs.frequency === 'Yearly'} onChange={() => updateBenefitData('avs', 'frequency', 'Yearly')} />
+                                                            <span>Yearly</span>
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20" onClick={() => setSelectedPillars(prev => ({ ...prev, avs: false }))}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {/* 3a Row */}
+                                        {selectedPillars.threeA && (
+                                            <tr className="bg-slate-900 border-b border-slate-800 hover:bg-slate-800/50">
+                                                <td className="px-4 py-3 font-medium text-white">3a</td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={benefitsData.threeA.startDate}
+                                                        onChange={(e) => updateBenefitData('threeA', 'startDate', e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        type="number"
+                                                        value={benefitsData.threeA.amount}
+                                                        onChange={(e) => updateBenefitData('threeA', 'amount', e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        placeholder="0"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-4 items-center">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${benefitsData.threeA.frequency === 'One-time' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                {benefitsData.threeA.frequency === 'One-time' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                            </div>
+                                                            <input type="radio" className="hidden" checked={benefitsData.threeA.frequency === 'One-time'} onChange={() => updateBenefitData('threeA', 'frequency', 'One-time')} />
+                                                            <span>One-time</span>
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20" onClick={() => setSelectedPillars(prev => ({ ...prev, threeA: false }))}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {/* Option 2 LPP Rows (Pension and Capital) */}
+                                        {retirementOption === 'option2' && earlyRetirementAge && (
+                                            <>
+                                                {showLPPPension && (
+                                                    <tr className="bg-slate-900 border-b border-slate-800 hover:bg-slate-800/50">
+                                                        <td className="px-4 py-3 font-medium text-white">
+                                                            {language === 'fr'
+                                                                ? `Pension LPP projetée à ${earlyRetirementAge} ans`
+                                                                : `Projected LPP Pension at ${earlyRetirementAge}y`}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-8 flex items-center text-gray-400">
+                                                                {calculateEarlyRetirementDate(earlyRetirementAge) || '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                type="number"
+                                                                value={projectedLPPPension}
+                                                                onChange={(e) => setProjectedLPPPension(e.target.value)}
+                                                                className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                placeholder="0"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex gap-4 items-center">
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${lppPensionFrequency === 'Monthly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                        {lppPensionFrequency === 'Monthly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                    </div>
+                                                                    <input type="radio" className="hidden" checked={lppPensionFrequency === 'Monthly'} onChange={() => setLppPensionFrequency('Monthly')} />
+                                                                    <span>Monthly</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${lppPensionFrequency === 'Yearly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                        {lppPensionFrequency === 'Yearly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                    </div>
+                                                                    <input type="radio" className="hidden" checked={lppPensionFrequency === 'Yearly'} onChange={() => setLppPensionFrequency('Yearly')} />
+                                                                    <span>Yearly</span>
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20"
+                                                                onClick={() => {
+                                                                    if (!showLPPCapital) {
+                                                                        toast.error(language === 'fr'
+                                                                            ? 'Au moins un élément de projection LPP est nécessaire pour la simulation'
+                                                                            : 'At least one LPP projection element is necessary for the simulation');
+                                                                    } else {
+                                                                        setShowLPPPension(false);
+                                                                        setProjectedLPPPension('');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                                {showLPPCapital && (
+                                                    <tr className="bg-slate-900 hover:bg-slate-800/50">
+                                                        <td className="px-4 py-3 font-medium text-white">
+                                                            {language === 'fr'
+                                                                ? `Capital LPP projeté à ${earlyRetirementAge} ans`
+                                                                : `Projected LPP Capital at ${earlyRetirementAge}y`}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-8 flex items-center text-gray-400">
+                                                                {calculateEarlyRetirementDate(earlyRetirementAge) || '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                type="number"
+                                                                value={projectedLPPCapital}
+                                                                onChange={(e) => setProjectedLPPCapital(e.target.value)}
+                                                                className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                placeholder="0"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex gap-4 items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
+                                                                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                                    </div>
+                                                                    <span>One-time</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20"
+                                                                onClick={() => {
+                                                                    if (!showLPPPension) {
+                                                                        toast.error(language === 'fr'
+                                                                            ? 'Au moins un élément de projection LPP est nécessaire pour la simulation'
+                                                                            : 'At least one LPP projection element is necessary for the simulation');
+                                                                    } else {
+                                                                        setShowLPPCapital(false);
+                                                                        setProjectedLPPCapital('');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        )}
+                                        {/* Option 0 LPP Rows (Pension and Capital at 65) */}
+                                        {retirementOption === 'option0' && (
+                                            <>
+                                                {showLegalLPPPension && (
+                                                    <tr className="bg-slate-900 border-b border-slate-800 hover:bg-slate-800/50">
+                                                        <td className="px-4 py-3 font-medium text-white">
+                                                            {language === 'fr'
+                                                                ? 'Pension LPP projetée à 65 ans'
+                                                                : 'Projected LPP Pension at 65y'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-8 flex items-center text-gray-400">
+                                                                {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString('de-CH') : '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                type="number"
+                                                                value={projectedLegalLPPPension}
+                                                                onChange={(e) => setProjectedLegalLPPPension(e.target.value)}
+                                                                className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                placeholder="0"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex gap-4 items-center">
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${legalLppPensionFrequency === 'Monthly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                        {legalLppPensionFrequency === 'Monthly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                    </div>
+                                                                    <input type="radio" className="hidden" checked={legalLppPensionFrequency === 'Monthly'} onChange={() => setLegalLppPensionFrequency('Monthly')} />
+                                                                    <span>Monthly</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${legalLppPensionFrequency === 'Yearly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                        {legalLppPensionFrequency === 'Yearly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                    </div>
+                                                                    <input type="radio" className="hidden" checked={legalLppPensionFrequency === 'Yearly'} onChange={() => setLegalLppPensionFrequency('Yearly')} />
+                                                                    <span>Yearly</span>
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20"
+                                                                onClick={() => {
+                                                                    if (!showLegalLPPCapital) {
+                                                                        toast.error(language === 'fr'
+                                                                            ? 'Au moins un élément de projection LPP est nécessaire pour la simulation'
+                                                                            : 'At least one LPP projection element is necessary for the simulation');
+                                                                    } else {
+                                                                        setShowLegalLPPPension(false);
+                                                                        setProjectedLegalLPPPension('');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                                {showLegalLPPCapital && (
+                                                    <tr className="bg-slate-900 hover:bg-slate-800/50">
+                                                        <td className="px-4 py-3 font-medium text-white">
+                                                            {language === 'fr'
+                                                                ? 'Capital LPP projeté à 65 ans'
+                                                                : 'Projected LPP Capital at 65y'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-8 flex items-center text-gray-400">
+                                                                {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString('de-CH') : '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                type="number"
+                                                                value={projectedLegalLPPCapital}
+                                                                onChange={(e) => setProjectedLegalLPPCapital(e.target.value)}
+                                                                className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                placeholder="0"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex gap-4 items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
+                                                                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                                    </div>
+                                                                    <span>One-time</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20"
+                                                                onClick={() => {
+                                                                    if (!showLegalLPPPension) {
+                                                                        toast.error(language === 'fr'
+                                                                            ? 'Au moins un élément de projection LPP est nécessaire pour la simulation'
+                                                                            : 'At least one LPP projection element is necessary for the simulation');
+                                                                    } else {
+                                                                        setShowLegalLPPCapital(false);
+                                                                        setProjectedLegalLPPCapital('');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        )}
+                                        {/* Supp LPP Row */}
+                                        {selectedPillars.lppSup && (
+                                            <tr className="bg-slate-900 hover:bg-slate-800/50">
+                                                <td className="px-4 py-3 font-medium text-white">{language === 'fr' ? 'Capital de pension supplémentaire' : 'Supplementary Pension capital'}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="h-8 flex items-center text-gray-400">
+                                                        {retirementOption === 'option2' && earlyRetirementAge
+                                                            ? calculateEarlyRetirementDate(earlyRetirementAge) || '-'
+                                                            : (benefitsData.lppSup.startDate || '-')}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        type="number"
+                                                        value={benefitsData.lppSup.amount}
+                                                        onChange={(e) => updateBenefitData('lppSup', 'amount', e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        placeholder="0"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-4 items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
+                                                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                            </div>
+                                                            <span>One-time</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-950/20" onClick={() => setSelectedPillars(prev => ({ ...prev, lppSup: false }))}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {/* Option 3 LPP Rows (Dynamic - one pair per year from selected age to 65) */}
+                                        {retirementOption === 'option3' && option3EarlyAge && (() => {
+                                            const maxYearsEarlier = 65 - parseInt(option3EarlyAge);
+                                            const yearsToShow = Array.from({ length: maxYearsEarlier + 1 }, (_, i) => i);
+
+                                            const updatePreRetirementData = (age, field, value) => {
+                                                setPreRetirementData(prev => ({
+                                                    ...prev,
+                                                    [age]: {
+                                                        ...prev[age],
+                                                        [field]: value
+                                                    }
+                                                }));
+                                            };
+
+                                            const calculateRetirementDateForAge = (age) => {
+                                                if (!retirementLegalDate) return '-';
+                                                const legalDate = new Date(retirementLegalDate);
+                                                const yearsDifference = 65 - parseInt(age);
+                                                const earlyDate = new Date(legalDate);
+                                                earlyDate.setFullYear(earlyDate.getFullYear() - yearsDifference);
+                                                return earlyDate.toLocaleDateString('de-CH');
+                                            };
+
+                                            return yearsToShow.map(year => {
+                                                const age = 65 - year;
+                                                const ageData = preRetirementData[age] || { pension: '', capital: '', frequency: 'Monthly' };
+
+                                                return (
+                                                    <React.Fragment key={age}>
+                                                        {/* LPP Pension Row */}
+                                                        <tr className="bg-slate-900 border-b border-slate-800 hover:bg-slate-800/50">
+                                                            <td className="px-4 py-3 font-medium text-white">
+                                                                {language === 'fr'
+                                                                    ? `Pension LPP projetée à ${age} ans`
+                                                                    : `Projected LPP Pension at ${age}y`}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="h-8 flex items-center text-gray-400">
+                                                                    {calculateRetirementDateForAge(age)}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={ageData.pension}
+                                                                    onChange={(e) => updatePreRetirementData(age, 'pension', e.target.value)}
+                                                                    className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                    placeholder="0"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex gap-4 items-center">
+                                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${(ageData.frequency || 'Monthly') === 'Monthly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                            {(ageData.frequency || 'Monthly') === 'Monthly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                        </div>
+                                                                        <input type="radio" className="hidden" checked={(ageData.frequency || 'Monthly') === 'Monthly'} onChange={() => updatePreRetirementData(age, 'frequency', 'Monthly')} />
+                                                                        <span>Monthly</span>
+                                                                    </label>
+                                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${ageData.frequency === 'Yearly' ? 'border-red-500' : 'border-gray-500'}`}>
+                                                                            {ageData.frequency === 'Yearly' && <div className="w-2 h-2 rounded-full bg-red-500" />}
+                                                                        </div>
+                                                                        <input type="radio" className="hidden" checked={ageData.frequency === 'Yearly'} onChange={() => updatePreRetirementData(age, 'frequency', 'Yearly')} />
+                                                                        <span>Yearly</span>
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-gray-600 cursor-not-allowed"
+                                                                    disabled
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                        {/* LPP Capital Row */}
+                                                        <tr className="bg-slate-900 hover:bg-slate-800/50">
+                                                            <td className="px-4 py-3 font-medium text-white">
+                                                                {language === 'fr'
+                                                                    ? `Capital LPP projeté à ${age} ans`
+                                                                    : `Projected LPP Capital at ${age}y`}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="h-8 flex items-center text-gray-400">
+                                                                    {calculateRetirementDateForAge(age)}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={ageData.capital}
+                                                                    onChange={(e) => updatePreRetirementData(age, 'capital', e.target.value)}
+                                                                    className="h-8 bg-black/20 border-slate-700 w-32"
+                                                                    placeholder="0"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex gap-4 items-center">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
+                                                                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                                        </div>
+                                                                        <span>One-time</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-gray-600 cursor-not-allowed"
+                                                                    disabled
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    </React.Fragment>
+                                                );
+                                            });
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Option 0 Card Removed (Unified into Table) */}
+
                     {/* Conditional Fields Card - Appears below blue card when option is selected */}
                     {retirementOption === 'option1' && (
                         <Card>
                             <CardContent className="pt-6 space-y-4">
-                                {/* Date Picker */}
-                                <div>
-                                    <Label htmlFor="wishedRetirementDate" className="mb-2 block">
-                                        {language === 'fr' ? 'Date de retraite souhaitée' : 'Desired retirement date'}
-                                    </Label>
-                                    <Input
-                                        id="wishedRetirementDate"
-                                        type="date"
-                                        value={wishedRetirementDate}
-                                        onChange={(e) => setWishedRetirementDate(e.target.value)}
-                                        className="max-w-xs"
-                                    />
-                                </div>
-
-                                {/* Message */}
-                                {wishedRetirementDate && (
-                                    <div className="bg-muted p-3 rounded-lg">
-                                        <p className="text-sm">
-                                            {new Date(wishedRetirementDate) < new Date(retirementLegalDate)
-                                                ? (language === 'fr'
-                                                    ? "Vous avez choisi une date antérieure à votre date de retraite légale. Si votre plan de pension offre des options de retraite anticipée et que vous disposez de ces détails, utilisez l'option 2 ci-dessous. Sinon, cette option vous demandera simplement le statut actuel de votre capital de prévoyance et le considérera comme un actif de \"libre passage\" avec un rendement annuel défini jusqu'à votre date de retraite légale, date à laquelle il deviendra un actif disponible."
-                                                    : "You have picked a date prior to your legal retirement date. If your pension plan offers early retirement options and you are in possession of these details, use option 2 below. If not this option will simply ask you for your current pension plan capital status and consider it as a \"libre passage\" asset with a defined yearly return until your legal retirement date when it will become an available asset.")
-                                                : (language === 'fr'
-                                                    ? "Vous avez choisi une date postérieure à votre date de retraite légale. Cette option vous demandera simplement le statut actuel de votre capital de prévoyance et le considérera comme un actif de \"libre passage\" avec un rendement annuel défini."
-                                                    : "You have picked a date after to your legal retirement date. This option will simply ask you for your current pension plan capital status and consider it as a \"libre passage\" asset with a defined yearly return")}
-                                        </p>
+                                {/* Date Picker and Message side by side */}
+                                <div className="flex gap-4 items-start">
+                                    <div>
+                                        <Label htmlFor="wishedRetirementDate" className="mb-2 block">
+                                            {language === 'fr' ? 'Date de retraite souhaitée' : 'Desired retirement date'}
+                                        </Label>
+                                        <Input
+                                            id="wishedRetirementDate"
+                                            type="date"
+                                            value={wishedRetirementDate}
+                                            onChange={(e) => setWishedRetirementDate(e.target.value)}
+                                            className="max-w-xs"
+                                        />
                                     </div>
-                                )}
+
+                                    {/* Message */}
+                                    {wishedRetirementDate && (
+                                        <div className="bg-muted p-3 rounded-lg flex-1 mt-1">
+                                            <p className="text-sm">
+                                                {new Date(wishedRetirementDate) < new Date(retirementLegalDate)
+                                                    ? (language === 'fr'
+                                                        ? "La date sélectionnée est antérieure à votre date de retraite légale. Veuillez fournir le statut actuel de votre capital de prévoyance car il sera considéré dans la simulation comme un compte de libre passage avec un rendement annuel défini."
+                                                        : "The selected date is prior to your legal retirement date. Please provide your current pension plan capital status as it will be considered in the simulation as a vested benefits account with a defined yearly return")
+                                                    : (language === 'fr'
+                                                        ? "Vous avez choisi une date postérieure à votre date de retraite légale. Cette option vous demandera simplement le statut actuel de votre capital de prévoyance et le considérera comme un actif de \"libre passage\" avec un rendement annuel défini."
+                                                        : "You have picked a date after to your legal retirement date. This option will simply ask you for your current pension plan capital status and consider it as a \"libre passage\" asset with a defined yearly return")}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* Pension Capital and Yearly Return - Side by Side */}
                                 <div className="flex gap-4">
@@ -369,108 +1093,43 @@ const RetirementParameters = () => {
                         </Card>
                     )}
 
-                    {retirementOption === 'option2' && (
+                    {/* Option 2 Card Removed (Unified into Table) */}
+
+                    {/* Option 3 Card Removed (Unified into Table) - was here from line 1096-1229 */}
+                    {false && retirementOption === 'option3' && (
                         <Card>
                             <CardContent className="pt-6 space-y-4">
-                                {/* Message */}
-                                <div className="bg-muted p-3 rounded-lg">
-                                    <p className="text-sm">
-                                        {language === 'fr'
-                                            ? "Choisir cette option nécessite de saisir les détails des options de retraite anticipée de votre plan de pension. Il vous sera demandé de choisir l'âge de retraite souhaité avant de saisir la pension LPP projetée et le capital LPP projeté pour cet âge choisi."
-                                            : "Choosing this option requires you to input the details of your pension plan's early retirement options. You will be asked to choose the desired retirement age before inputting the projected LPP Pension and the projected LPP Capital for that chosen age."}
-                                    </p>
-                                </div>
-
-                                {/* Desired Retirement Age */}
-                                <div>
-                                    <Label htmlFor="earlyRetirementAge" className="mb-2 block">
-                                        {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
-                                    </Label>
-                                    <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
-                                        <SelectTrigger className="max-w-xs">
-                                            <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="58">58</SelectItem>
-                                            <SelectItem value="59">59</SelectItem>
-                                            <SelectItem value="60">60</SelectItem>
-                                            <SelectItem value="61">61</SelectItem>
-                                            <SelectItem value="62">62</SelectItem>
-                                            <SelectItem value="63">63</SelectItem>
-                                            <SelectItem value="64">64</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Two fields side by side - Only show when age is selected */}
-                                {earlyRetirementAge && (
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <Label htmlFor="projectedLPPPension" className="mb-2 block">
-                                                {language === 'fr'
-                                                    ? `Pension LPP projetée (en CHF) à ${earlyRetirementAge} ans`
-                                                    : `Projected LPP Pension (in CHF) at ${earlyRetirementAge} years old`}
-                                            </Label>
-                                            <Input
-                                                id="projectedLPPPension"
-                                                type="number"
-                                                value={projectedLPPPension}
-                                                onChange={(e) => setProjectedLPPPension(e.target.value)}
-                                                placeholder="0"
-                                            />
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <Label htmlFor="projectedLPPCapital" className="mb-2 block">
-                                                {language === 'fr'
-                                                    ? `Capital de pension LPP projeté (en CHF) à ${earlyRetirementAge} ans`
-                                                    : `Projected LPP Pension capital (in CHF) at ${earlyRetirementAge} years old`}
-                                            </Label>
-                                            <Input
-                                                id="projectedLPPCapital"
-                                                type="number"
-                                                value={projectedLPPCapital}
-                                                onChange={(e) => setProjectedLPPCapital(e.target.value)}
-                                                placeholder="0"
-                                            />
-                                        </div>
+                                {/* Age Selection and Message side by side */}
+                                <div className="flex gap-4 items-start">
+                                    {/* Early Retirement Age Dropdown */}
+                                    <div>
+                                        <Label htmlFor="option3EarlyAge" className="mb-2 block">
+                                            {language === 'fr' ? 'Quel est l\'âge de retraite le plus bas dans votre plan de pension ?' : 'What is the earliest retirement age in your pension plan ?'}
+                                        </Label>
+                                        <Select value={option3EarlyAge} onValueChange={setOption3EarlyAge}>
+                                            <SelectTrigger className="max-w-xs">
+                                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="64">64</SelectItem>
+                                                <SelectItem value="63">63</SelectItem>
+                                                <SelectItem value="62">62</SelectItem>
+                                                <SelectItem value="61">61</SelectItem>
+                                                <SelectItem value="60">60</SelectItem>
+                                                <SelectItem value="59">59</SelectItem>
+                                                <SelectItem value="58">58</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
 
-                    {retirementOption === 'option3' && (
-                        <Card>
-                            <CardContent className="pt-6 space-y-4">
-                                {/* Message */}
-                                <div className="bg-muted p-3 rounded-lg">
-                                    <p className="text-sm">
-                                        {language === 'fr'
-                                            ? "Choisir cette option nécessite de saisir les détails des options de retraite anticipée de votre plan de pension. Il vous sera demandé de choisir l'âge de retraite souhaité avant de saisir la pension LPP projetée et le capital LPP projeté pour cet âge choisi."
-                                            : "Choosing this option requires you to input the details of your pension plan's early retirement options. You will be asked to choose the desired retirement age before inputting the projected LPP Pension and the projected LPP Capital for that chosen age."}
-                                    </p>
-                                </div>
-
-                                {/* Early Retirement Age Dropdown */}
-                                <div>
-                                    <Label htmlFor="option3EarlyAge" className="mb-2 block">
-                                        {language === 'fr' ? 'À quel âge votre caisse de pension vous permet-elle de prendre une retraite anticipée ?' : 'At what age does your pension fund allow you to take early retirement?'}
-                                    </Label>
-                                    <Select value={option3EarlyAge} onValueChange={setOption3EarlyAge}>
-                                        <SelectTrigger className="max-w-xs">
-                                            <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="64">64</SelectItem>
-                                            <SelectItem value="63">63</SelectItem>
-                                            <SelectItem value="62">62</SelectItem>
-                                            <SelectItem value="61">61</SelectItem>
-                                            <SelectItem value="60">60</SelectItem>
-                                            <SelectItem value="59">59</SelectItem>
-                                            <SelectItem value="58">58</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    {/* Message */}
+                                    <div className="bg-muted p-3 rounded-lg flex-1 mt-1">
+                                        <p className="text-sm">
+                                            {language === 'fr'
+                                                ? "Sélectionnez l'âge de retraite anticipée le plus précoce autorisé par votre plan de pension, puis saisissez la rente LPP projetée et le capital LPP projeté pour chaque année. Cela permettra d'exécuter une simulation d'optimisation."
+                                                : "Select the earliest retirement age allowed by your pension plan, then input the projected LPP Pension and the projected LPP Capital for each year. This will allow runining an optimisation simulation"}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {/* Dynamic sections based on selected age */}

@@ -62,8 +62,6 @@ const RetirementInputs = () => {
                     // Green Block Defaults
                     const initialRows = [
                         { id: 'avs', name: 'AVS', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
-                        { id: 'lpp_pension', name: 'Projected LPP Pension at 65y age', startDate: legalDateStr, amount: '', frequency: 'Monthly', locked: true },
-                        { id: 'lpp_capital', name: 'Projected LPP Capital at 65y age', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true },
                         { id: '3a', name: '3a', startDate: legalDateStr, amount: '', frequency: 'One-time', locked: true }
                     ];
                     setRows(initialRows);
@@ -136,8 +134,6 @@ const RetirementInputs = () => {
     const resetRows = () => {
         const initialRows = [
             { id: 'avs', name: 'AVS', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
-            { id: 'lpp_pension', name: 'Projected LPP Pension at 65y age', startDate: legalRetirementDate, amount: '', frequency: 'Monthly', locked: true },
-            { id: 'lpp_capital', name: 'Projected LPP Capital at 65y age', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true },
             { id: '3a', name: '3a', startDate: legalRetirementDate, amount: '', frequency: 'One-time', locked: true }
         ];
         setRows(initialRows);

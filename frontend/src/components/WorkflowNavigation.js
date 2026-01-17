@@ -15,10 +15,10 @@ const WorkflowNavigation = () => {
         { path: '/costs', icon: PiggyBank, id: 4 },
         { path: '/financial-balance', icon: LineChart, id: 5 },
         { path: '/assets-savings', icon: Landmark, id: 6 },
-        { path: '/retirement-inputs', icon: Sliders, id: 7 },
-        { path: '/retirement-parameters', icon: Target, id: 8 },
-        { path: '/data-review', icon: ClipboardCheck, id: 9 },
-        { path: '/result', icon: FileText, id: 10 },
+        // Retirement-inputs step removed - data now collected in retirement-parameters
+        { path: '/retirement-parameters', icon: Target, id: 7 },
+        { path: '/data-review', icon: ClipboardCheck, id: 8 },
+        { path: '/result', icon: FileText, id: 9 },
     ];
 
     // Find current step index

@@ -200,7 +200,7 @@ const AssetsOverview = () => {
             };
 
             await saveAssetsData(user.email, password, dataToSave);
-            navigate('/retirement-inputs');
+            navigate('/retirement-parameters'); // Updated: skip removed retirement-inputs page
         } catch (error) {
             console.error('Error saving assets data:', error);
             toast.error(t('common.saveFailed'));
@@ -255,7 +255,8 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                                                <th className="text-left p-2 font-semibold">{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -311,13 +312,21 @@ const AssetsOverview = () => {
                                                         </RadioGroup>
                                                     </td>
                                                     <td className="p-2">
-                                                        <div className="flex gap-2">
-                                                            <Input
-                                                                type="date"
-                                                                value={row.availabilityDate}
-                                                                onChange={(e) => updateAsset(row.id, 'availabilityDate', e.target.value)}
-                                                                className="min-w-[140px]"
-                                                            />
+                                                        <Select
+                                                            value={row.availabilityType || (row.availabilityTimeframe ? 'Period' : 'Date')}
+                                                            onValueChange={(value) => updateAsset(row.id, 'availabilityType', value)}
+                                                        >
+                                                            <SelectTrigger className="min-w-[120px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {(row.availabilityType === 'Period' || (!row.availabilityType && row.availabilityTimeframe)) ? (
                                                             <Select
                                                                 value={row.availabilityTimeframe}
                                                                 onValueChange={(value) => updateAsset(row.id, 'availabilityTimeframe', value)}
@@ -331,7 +340,14 @@ const AssetsOverview = () => {
                                                                     ))}
                                                                 </SelectContent>
                                                             </Select>
-                                                        </div>
+                                                        ) : (
+                                                            <Input
+                                                                type="date"
+                                                                value={row.availabilityDate}
+                                                                onChange={(e) => updateAsset(row.id, 'availabilityDate', e.target.value)}
+                                                                className="min-w-[140px]"
+                                                            />
+                                                        )}
                                                     </td>
                                                     <td className="p-2 text-center">
                                                         <Button
@@ -376,7 +392,8 @@ const AssetsOverview = () => {
                                             <tr className="border-b">
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '400px' }}>{language === 'fr' ? 'Date de disponibilité (ponctuelle) ou période (distribution linéaire)' : 'Availability date (one-shot) or period (linear distribution)'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -401,13 +418,21 @@ const AssetsOverview = () => {
                                                         />
                                                     </td>
                                                     <td className="p-2">
-                                                        <div className="flex gap-2">
-                                                            <Input
-                                                                type="date"
-                                                                value={row.madeAvailableDate}
-                                                                onChange={(e) => updateOutflow(row.id, 'madeAvailableDate', e.target.value)}
-                                                                className="min-w-[140px]"
-                                                            />
+                                                        <Select
+                                                            value={row.madeAvailableType || (row.madeAvailableTimeframe ? 'Period' : 'Date')}
+                                                            onValueChange={(value) => updateOutflow(row.id, 'madeAvailableType', value)}
+                                                        >
+                                                            <SelectTrigger className="min-w-[120px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {(row.madeAvailableType === 'Period' || (!row.madeAvailableType && row.madeAvailableTimeframe)) ? (
                                                             <Select
                                                                 value={row.madeAvailableTimeframe}
                                                                 onValueChange={(value) => updateOutflow(row.id, 'madeAvailableTimeframe', value)}
@@ -421,7 +446,14 @@ const AssetsOverview = () => {
                                                                     ))}
                                                                 </SelectContent>
                                                             </Select>
-                                                        </div>
+                                                        ) : (
+                                                            <Input
+                                                                type="date"
+                                                                value={row.madeAvailableDate}
+                                                                onChange={(e) => updateOutflow(row.id, 'madeAvailableDate', e.target.value)}
+                                                                className="min-w-[140px]"
+                                                            />
+                                                        )}
                                                     </td>
                                                     <td className="p-2 text-center">
                                                         <Button
@@ -455,7 +487,7 @@ const AssetsOverview = () => {
                         {/* Continue Button */}
                         <div className="flex justify-center mt-6">
                             <Button type="submit" size="lg" className="px-12 text-lg" disabled={loading}>
-                                {language === 'fr' ? 'Continuer vers les paramètres de retraite' : 'Continue to Retirement Inputs'}
+                                {language === 'fr' ? 'Continuer vers les options de simulation et saisie des prestations de retraite' : 'Continue to simulation options and retirement benefits inputs'}
                             </Button>
                         </div>
                     </form>

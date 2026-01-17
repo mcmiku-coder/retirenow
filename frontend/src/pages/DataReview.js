@@ -163,59 +163,185 @@ const DataReview = () => {
           setFutureInflows(assetsData.futureInflows || []);
 
           // Load current assets and desired outflows for display
-          setCurrentAssets(assetsData.currentAssets || []);
-          setDesiredOutflows(assetsData.desiredOutflows || []);
+          // Load current assets and desired outflows for display
+          // Prioritize scenarioData overrides if they exist
+          let loadedCurrentAssets = (scenarioData && scenarioData.currentAssets && scenarioData.currentAssets.length > 0)
+            ? scenarioData.currentAssets
+            : (assetsData.currentAssets || []);
+
+          // Option 1: Inject LPP Pension Capital as an asset if selected
+          const option = scenarioData.retirementOption || 'option1';
+          if (option === 'option1' && scenarioData.pensionCapital) {
+            // Check if already exists
+            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'lpp_pension_capital');
+
+            const lppAsset = {
+              id: 'lpp_pension_capital',
+              name: 'LPP Pension Capital',
+              amount: scenarioData.pensionCapital,
+              // If it exists, preserve user's adjusted amount, otherwise default to original
+              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.pensionCapital,
+              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
+              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
+              isOption1: true
+            };
+
+            if (existingIndex >= 0) {
+              // Update existing item (keep position or move to top? user said "added at the top")
+              // Let's remove it and unshift it to ensure top position
+              const newAssets = [...loadedCurrentAssets];
+              newAssets.splice(existingIndex, 1);
+              loadedCurrentAssets = [lppAsset, ...newAssets];
+            } else {
+              // Add to top
+              loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
+            }
+          }
+
+          // Option 0: Inject Legal LPP Capital as an asset (One-time) if selected
+          if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
+            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'projected_legal_lpp_capital');
+
+            const legalAsset = {
+              id: 'projected_legal_lpp_capital',
+              name: 'Projected LPP Capital at 65y',
+              amount: scenarioData.projectedLegalLPPCapital,
+              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.projectedLegalLPPCapital,
+              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
+              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
+              isOption0: true
+            };
+
+            if (existingIndex >= 0) {
+              const newAssets = [...loadedCurrentAssets];
+              newAssets.splice(existingIndex, 1);
+              loadedCurrentAssets = [legalAsset, ...newAssets];
+            } else {
+              loadedCurrentAssets = [legalAsset, ...loadedCurrentAssets];
+            }
+          }
+
+          // Move 3a and Supplementary Pension capital from scenarioData.benefitsData to Assets
+          if (scenarioData && scenarioData.benefitsData) {
+            const oneTimeItems = [];
+
+            // 1. Check for 3a from benefitsData
+            if (scenarioData.benefitsData.threeA && scenarioData.benefitsData.threeA.amount) {
+              oneTimeItems.push({
+                id: '3a',
+                name: '3a',
+                amount: scenarioData.benefitsData.threeA.amount,
+                startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
+            // 2. Check for Supplementary Pension capital from benefitsData
+            if (scenarioData.benefitsData.lppSup && scenarioData.benefitsData.lppSup.amount) {
+              oneTimeItems.push({
+                id: 'lppSup',
+                name: 'Supplementary Pension capital',
+                amount: scenarioData.benefitsData.lppSup.amount,
+                startDate: scenarioData.benefitsData.lppSup.startDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
+            // Process and inject them
+            oneTimeItems.forEach(item => {
+              const existingIndex = loadedCurrentAssets.findIndex(a => a.id === item.id);
+
+              const assetItem = {
+                id: item.id,
+                name: item.name,
+                amount: item.amount,
+                // If it exists, preserve user's adjusted amount, otherwise default to original
+                adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : item.amount,
+                category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid', // Default to Illiquid for retirement savings
+                preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
+                availabilityType: 'Date',
+                availabilityDate: item.startDate || wishedRetirementDate, // Default to start date (usually retirement date)
+                strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
+                isRetirement: true // Mark as coming from retirement inputs
+              };
+
+              if (existingIndex >= 0) {
+                // Remove existing and add to top 
+                const newAssets = [...loadedCurrentAssets];
+                newAssets.splice(existingIndex, 1);
+                loadedCurrentAssets = [assetItem, ...newAssets];
+              } else {
+                // Add to top
+                loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
+              }
+            });
+          }
+
+          const loadedDesiredOutflows = (scenarioData && scenarioData.desiredOutflows && scenarioData.desiredOutflows.length > 0)
+            ? scenarioData.desiredOutflows
+            : (assetsData.desiredOutflows || []);
+
+          setCurrentAssets(loadedCurrentAssets);
+          setDesiredOutflows(loadedDesiredOutflows);
         }
 
-        // Process retirement income based on selected option
+        // Process retirement income from scenarioData.benefitsData
         const processedRetirementIncome = [];
-        if (rData && scenarioData) {
-          // Always include AVS and 3a
-          const avsRow = rData.rows?.find(r => r.id === 'avs');
-          const threeARow = rData.rows?.find(r => r.id === '3a');
-          if (avsRow) processedRetirementIncome.push({ ...avsRow, adjustedAmount: avsRow.amount, isRetirement: true });
-          if (threeARow) processedRetirementIncome.push({ ...threeARow, adjustedAmount: threeARow.amount, isRetirement: true });
-
-          // Add custom retirement incomes
-          const customRows = rData.rows?.filter(r => r.id.startsWith('custom_')) || [];
-          customRows.forEach(row => {
-            processedRetirementIncome.push({ ...row, adjustedAmount: row.amount, isRetirement: true });
-          });
+        if (scenarioData) {
+          // Add AVS from benefitsData if it exists
+          if (scenarioData.benefitsData && scenarioData.benefitsData.avs && scenarioData.benefitsData.avs.amount) {
+            processedRetirementIncome.push({
+              id: 'avs',
+              name: 'AVS',
+              amount: scenarioData.benefitsData.avs.amount,
+              adjustedAmount: scenarioData.benefitsData.avs.amount,
+              frequency: scenarioData.benefitsData.avs.frequency || 'Monthly',
+              startDate: scenarioData.benefitsData.avs.startDate || retirementDateStr,
+              endDate: deathDateStr,
+              isRetirement: true
+            });
+          }
 
           // Handle LPP based on selected option
           const option = scenarioData.retirementOption || 'option1';
-          setRetirementOption(option);
+          // Read data from scenarioData, no need to set state here
 
           if (option === 'option1') {
             // Option 1: Pension capital investment
-            setPensionCapital(scenarioData.pensionCapital || '');
-            setYearlyReturn(scenarioData.yearlyReturn || '0');
 
             if (scenarioData.pensionCapital) {
+              // Now handled as an asset in loadedCurrentAssets
+            }
+          } else if (option === 'option0') {
+            // Option 0: Legal Retirement (65y)
+            // Read data from scenarioData, no need to set state here
+
+            if (scenarioData.projectedLegalLPPPension !== undefined && scenarioData.projectedLegalLPPPension !== null && scenarioData.projectedLegalLPPPension !== '') {
               processedRetirementIncome.push({
-                id: 'pension_capital_investment',
-                name: 'Pension Capital Investment',
-                amount: scenarioData.pensionCapital,
-                adjustedAmount: scenarioData.pensionCapital,
-                pensionCapital: scenarioData.pensionCapital,
-                yearlyReturn: scenarioData.yearlyReturn || '0',
-                frequency: 'Investment',
+                id: 'projected_legal_lpp_pension',
+                name: 'Projected LPP Pension at 65y',
+                amount: scenarioData.projectedLegalLPPPension,
+                adjustedAmount: scenarioData.projectedLegalLPPPension,
+                frequency: 'Monthly',
                 startDate: retirementDateStr,
                 endDate: deathDateStr,
-                isRetirement: true,
-                isOption1: true
+                isRetirement: true
               });
             }
+            // Capital handled in Assets above
           } else if (option === 'option2') {
             // Option 2: Early retirement with projected values
             console.log('Option 2 detected, scenarioData:', scenarioData);
             console.log('projectedLPPPension:', scenarioData.projectedLPPPension);
             console.log('projectedLPPCapital:', scenarioData.projectedLPPCapital);
             console.log('earlyRetirementAge:', scenarioData.earlyRetirementAge);
-
-            setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
-            setProjectedLPPPension(scenarioData.projectedLPPPension || '');
-            setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
+            // Read data from scenarioData, no need to set state here
 
             // Check if fields exist (not just truthy) to handle zero values
             if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
@@ -283,49 +409,40 @@ const DataReview = () => {
           }
         }
 
-        // Load saved scenario data if available
-        if (scenarioData) {
+        // STEP 1: Always load ORIGINAL income data from incomeData
+        const originalRegularIncomes = incomeData.filter(i => i.amount).map(i => ({
+          ...i,
+          adjustedAmount: i.amount  // Default adjusted = original
+        }));
 
-          // Always merge retirement income with regular income
-          // Filter out any old retirement income from saved adjustedIncomes
-          let regularIncomes = [];
-          if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
-            // Use saved adjusted incomes but remove old retirement income rows
-            regularIncomes = scenarioData.adjustedIncomes.filter(inc => !inc.isRetirement);
-          } else {
-            // Use fresh income data
-            regularIncomes = incomeData.filter(i => i.amount).map(i => ({
-              ...i,
-              adjustedAmount: i.amount
-            }));
-          }
+        // STEP 2: Merge with ORIGINAL retirement income from scenarioData
+        const allOriginalIncomes = [...originalRegularIncomes, ...processedRetirementIncome];
 
-          // Always merge with fresh retirement income
-          console.log('Merging regular incomes:', regularIncomes.length, 'with retirement incomes:', processedRetirementIncome.length);
-          setIncomes([...regularIncomes, ...processedRetirementIncome]);
-
-          // Use saved adjusted costs if available, otherwise use original data
-          if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
-            setCosts(scenarioData.adjustedCosts);
-          } else {
-            setCosts(costData.filter(c => c.amount).map(c => ({
-              ...c,
-              adjustedAmount: c.amount
-            })));
-          }
+        // STEP 3: Apply adjusted versions if they exist
+        let finalIncomes;
+        if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
+          // Use adjusted versions, but ensure retirement income is current
+          // Remove old retirement income from adjusted, add fresh retirement income
+          const adjustedRegularIncomes = scenarioData.adjustedIncomes.filter(inc => !inc.isRetirement);
+          finalIncomes = [...adjustedRegularIncomes, ...processedRetirementIncome];
         } else {
-          // Set incomes with adjusted values + retirement
-          const regularIncomes = incomeData.filter(i => i.amount).map(i => ({
-            ...i,
-            adjustedAmount: i.amount
-          }));
-          setIncomes([...regularIncomes, ...processedRetirementIncome]);
+          // No adjustments yet, use original data
+          finalIncomes = allOriginalIncomes;
+        }
 
-          // Set costs with adjusted values
-          setCosts(costData.filter(c => c.amount).map(c => ({
-            ...c,
-            adjustedAmount: c.amount
-          })));
+        console.log('Final incomes:', finalIncomes.length, '(original:', allOriginalIncomes.length, ')');
+        setIncomes(finalIncomes);
+
+        // STEP 4: Load costs - same pattern
+        const originalCosts = costData.filter(c => c.amount).map(c => ({
+          ...c,
+          adjustedAmount: c.amount
+        }));
+
+        if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
+          setCosts(scenarioData.adjustedCosts);
+        } else {
+          setCosts(originalCosts);
         }
 
       } catch (error) {
@@ -356,7 +473,9 @@ const DataReview = () => {
           futureInflows,
           wishedRetirementDate,
           adjustedIncomes: incomes,
-          adjustedCosts: costs
+          adjustedCosts: costs,
+          currentAssets: currentAssets,
+          desiredOutflows: desiredOutflows
         });
       } catch (error) {
         console.error('Failed to auto-save scenario data:', error);
@@ -366,7 +485,21 @@ const DataReview = () => {
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
-  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, user, password, loading]);
+  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, desiredOutflows, user, password, loading]);
+
+  // Recalculate totals when currentAssets changes
+  useEffect(() => {
+    const liquidTotal = currentAssets
+      .filter(row => row.category === 'Liquid')
+      .reduce((sum, row) => sum + (parseFloat(row.adjustedAmount || row.amount) || 0), 0);
+
+    const illiquidTotal = currentAssets
+      .filter(row => row.category === 'Illiquid')
+      .reduce((sum, row) => sum + (parseFloat(row.adjustedAmount || row.amount) || 0), 0);
+
+    setLiquidAssets(liquidTotal.toString());
+    setNonLiquidAssets(illiquidTotal.toString());
+  }, [currentAssets]);
 
   const adjustDate = (months) => {
     const currentDate = new Date(wishedRetirementDate);
@@ -377,6 +510,12 @@ const DataReview = () => {
   const updateIncomeAdjusted = (id, value) => {
     setIncomes(incomes.map(inc =>
       inc.id === id ? { ...inc, adjustedAmount: value } : inc
+    ));
+  };
+
+  const updateIncomeField = (id, field, value) => {
+    setIncomes(incomes.map(inc =>
+      inc.id === id ? { ...inc, [field]: value } : inc
     ));
   };
 
@@ -453,7 +592,6 @@ const DataReview = () => {
       // Reload income data from database
       const incomeData = await getIncomeData(user.email, password) || [];
       const scenarioData = await getScenarioData(user.email, password);
-      const rData = await getRetirementData(user.email, password);
 
       // Process regular incomes
       const processedIncomes = incomeData.map(inc => {
@@ -464,18 +602,22 @@ const DataReview = () => {
         };
       });
 
-      // Reprocess retirement income based on current option
+      // Reprocess retirement income from scenarioData.benefitsData
       const processedRetirementIncome = [];
-      if (rData && scenarioData) {
-        const avsRow = rData.rows?.find(r => r.id === 'avs');
-        const threeARow = rData.rows?.find(r => r.id === '3a');
-        if (avsRow) processedRetirementIncome.push({ ...avsRow, adjustedAmount: avsRow.amount, isRetirement: true });
-        if (threeARow) processedRetirementIncome.push({ ...threeARow, adjustedAmount: threeARow.amount, isRetirement: true });
-
-        const customRows = rData.rows?.filter(r => r.id.startsWith('custom_')) || [];
-        customRows.forEach(row => {
-          processedRetirementIncome.push({ ...row, adjustedAmount: row.amount, isRetirement: true });
-        });
+      if (scenarioData) {
+        // Add AVS from benefitsData
+        if (scenarioData.benefitsData && scenarioData.benefitsData.avs && scenarioData.benefitsData.avs.amount) {
+          processedRetirementIncome.push({
+            id: 'avs',
+            name: 'AVS',
+            amount: scenarioData.benefitsData.avs.amount,
+            adjustedAmount: scenarioData.benefitsData.avs.amount,
+            frequency: scenarioData.benefitsData.avs.frequency || 'Monthly',
+            startDate: scenarioData.benefitsData.avs.startDate || retirementLegalDate,
+            endDate: deathDate,
+            isRetirement: true
+          });
+        }
 
         const option = scenarioData.retirementOption || 'option1';
         if (option === 'option1' && scenarioData.pensionCapital) {
@@ -492,6 +634,20 @@ const DataReview = () => {
             isRetirement: true,
             isOption1: true
           });
+        } else if (option === 'option0') {
+          // Option 0: Legal Retirement (65y)
+          if (scenarioData.projectedLegalLPPPension) {
+            processedRetirementIncome.push({
+              id: 'projected_legal_lpp_pension',
+              name: 'Projected LPP Pension at 65y',
+              amount: scenarioData.projectedLegalLPPPension,
+              adjustedAmount: scenarioData.projectedLegalLPPPension,
+              frequency: scenarioData.legalLppPensionFrequency || 'Monthly',
+              startDate: retirementLegalDate,
+              endDate: deathDate,
+              isRetirement: true
+            });
+          }
         } else if (option === 'option2') {
           if (scenarioData.projectedLPPPension) {
             processedRetirementIncome.push({
@@ -499,45 +655,45 @@ const DataReview = () => {
               name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
               amount: scenarioData.projectedLPPPension,
               adjustedAmount: scenarioData.projectedLPPPension,
-              frequency: 'Monthly',
+              frequency: scenarioData.lppPensionFrequency || 'Monthly',
               startDate: retirementLegalDate,
               endDate: deathDate,
               isRetirement: true
             });
           }
-          if (scenarioData.projectedLPPCapital) {
-            processedRetirementIncome.push({
-              id: 'projected_lpp_capital',
-              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
-              amount: scenarioData.projectedLPPCapital,
-              adjustedAmount: scenarioData.projectedLPPCapital,
-              frequency: 'One-time',
-              startDate: retirementLegalDate,
-              endDate: retirementLegalDate,
-              isRetirement: true
+        } else if (option === 'option3') {
+          // Option 3: Process preRetirementData
+          if (scenarioData.preRetirementData) {
+            Object.keys(scenarioData.preRetirementData).forEach(age => {
+              const ageData = scenarioData.preRetirementData[age];
+              if (ageData.pension) {
+                processedRetirementIncome.push({
+                  id: `pre_retirement_pension_${age}`,
+                  name: `Projected LPP Pension at ${age}y`,
+                  amount: ageData.pension,
+                  adjustedAmount: ageData.pension,
+                  frequency: ageData.frequency || 'Monthly',
+                  startDate: retirementLegalDate,
+                  endDate: deathDate,
+                  isRetirement: true
+                });
+              }
             });
           }
-        } else if (option === 'option3') {
-          const preRetirementRows = scenarioData.preRetirementRows || [];
-          preRetirementRows.forEach(row => {
-            processedRetirementIncome.push({
-              ...row,
-              adjustedAmount: row.amount,
-              isRetirement: true
-            });
-          });
         }
       }
 
       const allIncomes = [...processedIncomes, ...processedRetirementIncome];
       setIncomes(allIncomes);
 
+      // IMPORTANT: Spread scenarioData to preserve ALL fields (retirementOption, benefitsData, etc.)
       await saveScenarioData(user.email, password, {
+        ...scenarioData,  // Preserve all existing fields
         liquidAssets,
         nonLiquidAssets,
         futureInflows,
         wishedRetirementDate,
-        adjustedIncomes: allIncomes,
+        adjustedIncomes: [],  // Clear adjusted versions to reset to originals
         adjustedCosts: costs
       });
 
@@ -563,13 +719,16 @@ const DataReview = () => {
 
       setCosts(processedCosts);
 
+      const scenarioData = await getScenarioData(user.email, password);
+      // IMPORTANT: Spread scenarioData to preserve ALL fields
       await saveScenarioData(user.email, password, {
+        ...scenarioData,  // Preserve all existing fields
         liquidAssets,
         nonLiquidAssets,
         futureInflows,
         wishedRetirementDate,
         adjustedIncomes: incomes,
-        adjustedCosts: processedCosts
+        adjustedCosts: []  // Clear adjusted versions to reset to originals
       });
 
       toast.success(language === 'fr' ? 'Coûts réinitialisés aux valeurs par défaut' : 'Costs reset to default values');
@@ -741,7 +900,7 @@ const DataReview = () => {
     setFutureInflows(futureInflows.filter(inflow => inflow.id !== id));
   };
 
-  
+
   const addCost = () => {
     const newId = Date.now();
     const newCost = {
@@ -772,7 +931,7 @@ const DataReview = () => {
   };
 
 
-const splitCost = (id) => {
+  const splitCost = (id) => {
     const costIndex = costs.findIndex(cost => cost.id === id);
     if (costIndex === -1) return;
 
@@ -1171,6 +1330,7 @@ const splitCost = (id) => {
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
                       <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
@@ -1279,6 +1439,22 @@ const splitCost = (id) => {
                             )}
                           </td>
                           <td className="p-3">
+                            {(income.frequency === 'One-time' || income.frequency === 'Ponctuel') && (
+                              <Select
+                                value={income.strategy || 'Cash'}
+                                onValueChange={(value) => updateIncomeField(income.id, 'strategy', value)}
+                              >
+                                <SelectTrigger className="max-w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
+                                  <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </td>
+                          <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
                                 onClick={() => splitIncome(income.id)}
@@ -1319,6 +1495,175 @@ const splitCost = (id) => {
                 </Button>
                 <Button
                   onClick={resetIncomesToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assets Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentAssets.map((asset) => {
+                      const originalAmount = parseFloat(asset.amount) || 0;
+                      const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
+                      const isDecreased = adjustedAmount < originalAmount;
+                      const isIncreased = adjustedAmount > originalAmount;
+
+                      return (
+                        <tr key={asset.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3 font-medium">{asset.name}</td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {originalAmount.toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              type="number"
+                              value={asset.adjustedAmount || asset.amount}
+                              onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
+                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
+                                }`}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.category}
+                              onValueChange={(value) => updateAsset(asset.id, 'category', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
+                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.preserve}
+                              onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
+                            >
+                              <SelectTrigger className="max-w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
+                                <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
+                              <Select
+                                value={asset.availabilityTimeframe || 'Select'}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                              >
+                                <SelectTrigger className="max-w-[150px]">
+                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                type="date"
+                                value={asset.availabilityDate || ''}
+                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                className="max-w-[140px]"
+                              />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {(asset.availabilityType !== 'Period') && (
+                              <Select
+                                value={asset.strategy || 'Cash'}
+                                onValueChange={(value) => updateAsset(asset.id, 'strategy', value)}
+                              >
+                                <SelectTrigger className="max-w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
+                                  <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => deleteAsset(asset.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this asset"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addAsset}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
+                </Button>
+                <Button
+                  onClick={resetAssetsToDefaults}
                   variant="outline"
                   size="sm"
                 >
@@ -1453,155 +1798,9 @@ const splitCost = (id) => {
             </CardContent>
           </Card>
 
-          {/* Assets Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
-                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentAssets.map((asset) => {
-                      const originalAmount = parseFloat(asset.amount) || 0;
-                      const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
-                      const isDecreased = adjustedAmount < originalAmount;
-                      const isIncreased = adjustedAmount > originalAmount;
 
-                      return (
-                        <tr key={asset.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium">{asset.name}</td>
-                          <td className="text-right p-3 text-muted-foreground">
-                            CHF {originalAmount.toLocaleString()}
-                          </td>
-                          <td className="text-right p-3">
-                            <Input
-                              type="number"
-                              value={asset.adjustedAmount || asset.amount}
-                              onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
-                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
-                                }`}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.category}
-                              onValueChange={(value) => updateAsset(asset.id, 'category', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
-                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.preserve}
-                              onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
-                            >
-                              <SelectTrigger className="max-w-[100px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
-                                <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
-                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
-                              <Select
-                                value={asset.availabilityTimeframe || 'Select'}
-                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
-                              >
-                                <SelectTrigger className="max-w-[150px]">
-                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                  <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                  <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                  <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                  <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type="date"
-                                value={asset.availabilityDate || ''}
-                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                                className="max-w-[140px]"
-                              />
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                onClick={() => deleteAsset(asset.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                title="Delete this asset"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={addAsset}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
-                </Button>
-                <Button
-                  onClick={resetAssetsToDefaults}
-                  variant="outline"
-                  size="sm"
-                >
-                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
+
 
           {/* Debts Table */}
           <Card>
@@ -1645,8 +1844,8 @@ const splitCost = (id) => {
                           </td>
                           <td className="p-3">
                             <Select
-                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
-                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                              value={debt.madeAvailableType || (debt.madeAvailableTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateDebt(debt.id, 'madeAvailableType', value)}
                             >
                               <SelectTrigger className="max-w-[120px]">
                                 <SelectValue />
@@ -1658,27 +1857,29 @@ const splitCost = (id) => {
                             </Select>
                           </td>
                           <td className="p-3">
-                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
+                            {(debt.madeAvailableType === 'Period' || (!debt.madeAvailableType && debt.madeAvailableTimeframe)) ? (
                               <Select
-                                value={asset.availabilityTimeframe || 'Select'}
-                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                                value={debt.madeAvailableTimeframe || 'Select'}
+                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
                               >
                                 <SelectTrigger className="max-w-[150px]">
                                   <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                  <SelectItem value="within_20_to_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                  <SelectItem value="within_15_to_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                  <SelectItem value="within_10_to_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                  <SelectItem value="within_5_to_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
                                 </SelectContent>
                               </Select>
                             ) : (
                               <Input
                                 type="date"
-                                value={asset.availabilityDate || ''}
-                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                value={debt.madeAvailableDate || ''}
+                                onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
                                 className="max-w-[140px]"
                               />
                             )}

@@ -12,7 +12,7 @@ import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
 import Costs from './pages/Costs';
 import FinancialBalance from './pages/FinancialBalance';
-import RetirementInputs from './pages/RetirementInputs';
+// RetirementInputs page removed - data now collected in RetirementParameters
 import AssetsAndSavings from './pages/AssetsAndSavings';
 import RetirementParameters from './pages/RetirementParameters';
 import DataReview from './pages/DataReview';
@@ -93,11 +93,6 @@ function AppRoutes() {
         <Route path="/financial-balance" element={
           <ProtectedRoute>
             <FinancialBalance />
-          </ProtectedRoute>
-        } />
-        <Route path="/retirement-inputs" element={
-          <ProtectedRoute>
-            <RetirementInputs />
           </ProtectedRoute>
         } />
         <Route path="/assets-savings" element={
