@@ -1,979 +1,689 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
+import { Label } from '../components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import WorkflowNavigation from '../components/WorkflowNavigation';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { saveAs } from 'file-saver';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal } from 'lucide-react';
+
 
 const ScenarioResult = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, password, logout } = useAuth();
+  const { user, password } = useAuth();
   const { t, language } = useLanguage();
-  const [result, setResult] = useState(null);
-  const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
-  const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [pdfDataUrl, setPdfDataUrl] = useState(null);
-  const [pdfBlob, setPdfBlob] = useState(null);
-  const [pdfFileName, setPdfFileName] = useState('');
+
+  // Data State
   const [userData, setUserData] = useState(null);
+  const [incomes, setIncomes] = useState([]);
+  const [costs, setCosts] = useState([]);
+  const [assets, setAssets] = useState([]); // from currentAssets
+  const [debts, setDebts] = useState([]); // from desiredOutflows
+  // Retirement data pillars are merged into incomes for unified processing usually, but kept separate here for filtering
+  const [retirementData, setRetirementData] = useState(null);
   const [scenarioData, setScenarioData] = useState(null);
 
-  // Scroll to top when component mounts
+  // UI State
+  const [isTableOpen, setIsTableOpen] = useState(false);
+
+  // Filter State - Track which items are enabled for calculation
+  const [activeFilters, setActiveFilters] = useState({});
+
+  // Result State
+  const [projection, setProjection] = useState({
+    yearlyBreakdown: [],
+    finalBalance: 0,
+    canQuit: false,
+    balanceBeforeTransmission: 0,
+    transmissionAmount: 0
+  });
+
+  // Scroll to top
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Load Data
   useEffect(() => {
     if (!user || !password) {
       navigate('/');
       return;
     }
 
-    const loadAdditionalData = async () => {
-      const uData = await getUserData(user.email, password);
-      const sData = await getScenarioData(user.email, password);
-      setUserData(uData);
-      setScenarioData(sData);
-    };
-    loadAdditionalData();
-  }, [user, password, navigate]);
-
-  useEffect(() => {
-    if (!user || !password) {
-      navigate('/');
-      return;
-    }
-
-    const determineResult = async () => {
+    const loadAllData = async () => {
       try {
-        // Check if we have simulation data from Scenario page
-        if (location.state && location.state.yearlyBreakdown) {
-          // Use the breakdown data directly from simulation
-          setYearlyBreakdown(location.state.yearlyBreakdown);
+        const [uData, iData, cData, rData, sData] = await Promise.all([
+          getUserData(user.email, password),
+          getIncomeData(user.email, password),
+          getCostData(user.email, password),
+          getRetirementData(user.email, password),
+          getScenarioData(user.email, password)
+        ]);
 
-          // Determine if user can quit based on option chosen
-          const retirementOption = location.state.retirementOption || 'choose';
-          const calculatedEarliestDate = location.state.calculatedEarliestDate;
-          const retirementLegalDate = location.state.retirementLegalDate;
+        // Use provided data from location state (simulation adjusted) or fallback to DB
+        // Note: DataReview passes 'adjustedIncomes', 'adjustedCosts', 'adjustedAssets', 'adjustedDebts' if modified
+        // However, standard flow might access /result directly.
+        // We must be robust.
 
-          let canQuit = location.state.finalBalance >= 0;
+        const finalIncomes = location.state?.adjustedIncomes || iData || [];
+        const finalCosts = location.state?.adjustedCosts || cData || [];
 
-          // For "calculate" option, check if an early retirement date was found
-          if (retirementOption === 'calculate') {
-            if (calculatedEarliestDate && new Date(calculatedEarliestDate) < new Date(retirementLegalDate)) {
-              canQuit = true;
-            } else {
-              canQuit = false;
-            }
-          }
+        // Scenario Data contains currentAssets and desiredOutflows arrays usually
+        // But DataReview might have passed modified versions.
+        const finalAssets = location.state?.adjustedAssets || sData?.currentAssets || [];
+        const finalDebts = location.state?.adjustedDebts || sData?.desiredOutflows || [];
 
-          setResult({
-            canQuit,
-            balance: location.state.finalBalance,
-            balanceBeforeTransmission: location.state.balanceBeforeTransmission,
-            transmissionAmount: location.state.transmissionAmount || 0,
-            wishedRetirementDate: location.state.wishedRetirementDate,
-            retirementLegalDate: location.state.retirementLegalDate,
-            calculatedEarliestDate: location.state.calculatedEarliestDate,
-            retirementOption: location.state.retirementOption,
-            fromSimulation: true
+        // Filter Retirement Pillars: Exclude 'One-time' items (3a, LPP Capital) handled in Assets
+        if (rData?.rows) {
+          rData.rows = rData.rows.filter(r => r.frequency !== 'One-time' && parseFloat(r.amount) > 0);
+        }
+
+        setUserData(uData);
+        setIncomes(finalIncomes);
+        setCosts(finalCosts);
+        setAssets(finalAssets);
+        setDebts(finalDebts);
+        setRetirementData(rData);
+        setScenarioData(sData);
+
+        // Initialize filters with prefixed keys to avoid ID collisions
+        const filters = {};
+
+        const addToFilters = (list, prefix) => {
+          list.forEach(item => {
+            const id = item.id || item.name;
+            filters[`${prefix}-${id}`] = true;
           });
-        } else {
-          // Fallback: calculate from original data if accessed directly
-          const userData = await getUserData(user.email, password);
-          const incomeData = await getIncomeData(user.email, password) || [];
+        };
 
-          const costData = await getCostData(user.email, password) || [];
-          const retirementData = await getRetirementData(user.email, password);
+        addToFilters(finalIncomes, 'income');
+        addToFilters(finalCosts, 'cost');
+        addToFilters(finalAssets, 'asset');
+        addToFilters(finalDebts, 'debt');
 
-          if (!userData) {
-            navigate('/personal-info');
-            return;
-          }
-
-          const currentYear = new Date().getFullYear();
-          const birthDate = new Date(userData.birthDate);
-
-          // Use the theoretical death date from API
-          let deathYear;
-          if (userData.theoreticalDeathDate) {
-            deathYear = new Date(userData.theoreticalDeathDate).getFullYear();
-          } else {
-            // Fallback to approximation if not available
-            const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-            deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
-          }
-
-          const breakdown = [];
-          let cumulativeBalance = 0;
-
-          for (let year = currentYear; year <= deathYear; year++) {
-            let yearIncome = 0;
-            let yearCosts = 0;
-            const incomeBreakdown = {};
-            const costBreakdown = {};
-
-            incomeData.filter(row => row.amount).forEach(row => {
-              const amount = parseFloat(row.amount) || 0;
-              const yearlyAmount = calculateYearlyAmount(
-                amount,
-                row.frequency,
-                row.startDate,
-                row.endDate,
-                year
-              );
-
-              if (yearlyAmount > 0) {
-                yearIncome += yearlyAmount;
-                incomeBreakdown[row.name] = yearlyAmount;
-              }
-            });
-
-            // Add Retirement Data
-            if (retirementData && retirementData.rows) {
-              retirementData.rows.forEach(row => {
-                const amount = parseFloat(row.amount) || 0;
-                if (amount > 0) {
-                  // Calculate approximate death date string for calculateYearlyAmount
-                  const deathDateStr = `${deathYear}-12-31`; // Approx
-
-                  let frequency = row.frequency;
-                  let startDate = row.startDate;
-                  let endDateStr = deathDateStr;
-
-                  if (frequency === 'One-time') {
-                    endDateStr = startDate;
-                  }
-
-                  const yearlyAmount = calculateYearlyAmount(
-                    amount,
-                    frequency,
-                    startDate,
-                    endDateStr,
-                    year
-                  );
-
-                  if (yearlyAmount > 0) {
-                    yearIncome += yearlyAmount;
-                    incomeBreakdown[row.name] = yearlyAmount;
-                  }
-                }
-              });
-            }
-
-            costData.filter(row => row.amount).forEach(row => {
-              const amount = parseFloat(row.amount) || 0;
-              const yearlyAmount = calculateYearlyAmount(
-                amount,
-                row.frequency,
-                row.startDate,
-                row.endDate,
-                year
-              );
-
-              if (yearlyAmount > 0) {
-                yearCosts += yearlyAmount;
-                const category = row.category || row.name || 'Other';
-                costBreakdown[category] = (costBreakdown[category] || 0) + yearlyAmount;
-              }
-            });
-
-            const annualBalance = yearIncome - yearCosts;
-            cumulativeBalance += annualBalance;
-
-            breakdown.push({
-              year,
-              income: yearIncome,
-              costs: yearCosts,
-              annualBalance,
-              cumulativeBalance,
-              incomeBreakdown,
-              costBreakdown
-            });
-          }
-
-          setYearlyBreakdown(breakdown);
-
-          setResult({
-            canQuit: cumulativeBalance >= 0,
-            balance: cumulativeBalance,
-            fromSimulation: false
+        if (rData?.rows) {
+          rData.rows.forEach(r => {
+            const id = r.id || r.name;
+            filters[`pillar-${id}`] = true;
           });
         }
+
+        setActiveFilters(filters);
+        setLoading(false);
+
       } catch (error) {
+        console.error("Error loading data:", error);
         toast.error(t('common.error'));
-        console.error(error);
-      } finally {
         setLoading(false);
       }
     };
 
-    determineResult();
-  }, [user, password, navigate, location, t]);
+    loadAllData();
+  }, [user, password, navigate, location]);
 
-  const handleReset = () => {
-    // Navigate to personal info to start over (keep user logged in)
-    navigate('/personal-info');
-  };
+  // Calculate Projection whenever filters or data changes
+  useEffect(() => {
+    if (loading || !userData) return;
 
-  // PDF Generation Function - Light/Clear Mode
-  const generatePDF = async () => {
-    setGeneratingPdf(true);
-    toast.info(language === 'fr' ? 'Génération du PDF...' : 'Generating PDF...');
+    const calculateProjection = () => {
+      const currentYear = new Date().getFullYear();
+      const birthDate = new Date(userData.birthDate);
 
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 14;
-      let yPos = 20;
-
-      // Helper function for formatting currency - avoid toLocaleString to prevent special chars
-      const formatCurrency = (val) => {
-        const num = Math.round(val || 0);
-        const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
-        return `CHF ${formatted}`;
-      };
-
-      // Helper function for formatting numbers without currency
-      const formatNumber = (val) => {
-        const num = Math.round(val || 0);
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
-      };
-
-      // Helper function to check page break
-      const checkPageBreak = (needed = 30) => {
-        if (yPos + needed > pageHeight - 20) {
-          doc.addPage();
-          yPos = 20;
-        }
-      };
-
-      // ============================
-      // PAGE 1: Title & Personal Info
-      // ============================
-
-      // Title
-      doc.setFontSize(28);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text('quit?', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 12;
-
-      doc.setFontSize(14);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont('helvetica', 'normal');
-      doc.text(language === 'fr' ? 'Rapport de planification de retraite' : 'Retirement Planning Report', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
-
-      doc.setFontSize(10);
-      doc.text(`${language === 'fr' ? 'Généré le' : 'Generated on'}: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 18;
-
-      // Personal Information Section
-      doc.setFontSize(16);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Informations personnelles' : 'Personal Information', margin, yPos);
-      yPos += 10;
-
-      doc.setFontSize(11);
-      doc.setTextColor(33, 33, 33);
-      doc.setFont('helvetica', 'normal');
-      if (userData) {
-        doc.text(`${language === 'fr' ? 'Date de naissance' : 'Birth Date'}: ${userData.birthDate || 'N/A'}`, margin, yPos);
-        yPos += 6;
-        doc.text(`${language === 'fr' ? 'Genre' : 'Gender'}: ${userData.gender === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female')}`, margin, yPos);
-        yPos += 6;
-        doc.text(`${language === 'fr' ? 'Pays' : 'Country'}: ${userData.residence || 'N/A'}`, margin, yPos);
-        yPos += 14;
-      }
-
-      // Retirement Overview Section
-      doc.setFontSize(16);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Aperçu de la retraite' : 'Retirement Overview', margin, yPos);
-      yPos += 10;
-
-      doc.setFontSize(11);
-      doc.setTextColor(33, 33, 33);
-      doc.setFont('helvetica', 'normal');
-      if (userData) {
-        doc.text(`${language === 'fr' ? 'Date de retraite légale' : 'Legal Retirement Date'}: ${userData.retirementLegalDate || 'N/A'}`, margin, yPos);
-        yPos += 6;
-        doc.text(`${language === 'fr' ? 'Espérance de vie' : 'Life Expectancy'}: ${userData.lifeExpectancyYears ? Math.round(userData.lifeExpectancyYears) + (language === 'fr' ? ' ans' : ' years') : 'N/A'}`, margin, yPos);
-        yPos += 6;
-        doc.text(`${language === 'fr' ? 'Date de fin théorique' : 'Theoretical End Date'}: ${userData.theoreticalDeathDate || 'N/A'}`, margin, yPos);
-        yPos += 14;
-      }
-
-      // Scenario Parameters Section
-      doc.setFontSize(16);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Paramètres du scénario' : 'Scenario Parameters', margin, yPos);
-      yPos += 10;
-
-      doc.setFontSize(11);
-      doc.setTextColor(33, 33, 33);
-      doc.setFont('helvetica', 'normal');
-      const wishedDate = scenarioData?.wishedRetirementDate || result?.wishedRetirementDate;
-      const liquidAssets = scenarioData?.liquidAssets || location.state?.liquidAssets || 0;
-      const nonLiquidAssets = scenarioData?.nonLiquidAssets || location.state?.nonLiquidAssets || 0;
-      const transmissionAmt = scenarioData?.transmissionAmount || result?.transmissionAmount || 0;
-
-      doc.text(`${language === 'fr' ? 'Date de retraite souhaitée' : 'Wished Retirement Date'}: ${wishedDate || 'N/A'}`, margin, yPos);
-      yPos += 6;
-      doc.text(`${language === 'fr' ? 'Actifs liquides' : 'Liquid Assets'}: ${formatCurrency(liquidAssets)}`, margin, yPos);
-      yPos += 6;
-      doc.text(`${language === 'fr' ? 'Actifs non liquides' : 'Non-Liquid Assets'}: ${formatCurrency(nonLiquidAssets)}`, margin, yPos);
-      yPos += 6;
-      doc.text(`${language === 'fr' ? 'Transmission/Héritage' : 'Transmission/Inheritance'}: ${formatCurrency(transmissionAmt)}`, margin, yPos);
-      yPos += 14;
-
-      // Income Sources Table
-      checkPageBreak(50);
-      doc.setFontSize(14);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Sources de revenus' : 'Income Sources', margin, yPos);
-      yPos += 8;
-
-      const adjustedIncomes = location.state?.adjustedIncomes || [];
-      if (adjustedIncomes.length > 0) {
-        const incomeHeaders = [
-          language === 'fr' ? 'Nom' : 'Name',
-          language === 'fr' ? 'Montant' : 'Amount',
-          language === 'fr' ? 'Fréquence' : 'Frequency'
-        ];
-        const incomeRows = adjustedIncomes.map(inc => [
-          inc.name || '-',
-          formatCurrency(inc.adjustedAmount || inc.amount),
-          inc.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
-            inc.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
-              (language === 'fr' ? 'Unique' : 'One-time')
-        ]);
-
-        autoTable(doc, {
-          head: [incomeHeaders],
-          body: incomeRows,
-          startY: yPos,
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
-          alternateRowStyles: { fillColor: [248, 249, 250] }
-        });
-        if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
-          yPos = doc.lastAutoTable.finalY + 12;
-        } else {
-          yPos += 50;
-        }
+      // Death date logic
+      let deathYear;
+      if (userData.theoreticalDeathDate) {
+        deathYear = new Date(userData.theoreticalDeathDate).getFullYear();
       } else {
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        doc.text(language === 'fr' ? 'Aucune donnée de revenus' : 'No income data available', margin, yPos);
-        yPos += 15;
+        const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
+        deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
       }
 
-      // Costs Table
-      checkPageBreak(50);
-      doc.setFontSize(14);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Dépenses' : 'Costs', margin, yPos);
-      yPos += 8;
+      const breakdown = [];
+      // Initial Balance (starts at 0, accumulating flows)
+      let cumulativeBalance = 0;
 
-      const adjustedCosts = location.state?.adjustedCosts || [];
-      if (adjustedCosts.length > 0) {
-        const costHeaders = [
-          language === 'fr' ? 'Nom' : 'Name',
-          language === 'fr' ? 'Catégorie' : 'Category',
-          language === 'fr' ? 'Montant' : 'Amount',
-          language === 'fr' ? 'Fréquence' : 'Frequency'
-        ];
-        const costRows = adjustedCosts.map(cost => [
-          cost.name || '-',
-          cost.category || '-',
-          formatCurrency(cost.adjustedAmount || cost.amount),
-          cost.frequency === 'Monthly' ? (language === 'fr' ? 'Mensuel' : 'Monthly') :
-            cost.frequency === 'Yearly' ? (language === 'fr' ? 'Annuel' : 'Yearly') :
-              (language === 'fr' ? 'Unique' : 'One-time')
-        ]);
+      // Transmission logic
+      const transmissionAmt = location.state?.transmissionAmount || scenarioData?.transmissionAmount || 0;
+      let balanceBeforeTransmission = 0;
+      const wishedRetirementYear = new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate || new Date()).getFullYear();
 
-        autoTable(doc, {
-          head: [costHeaders],
-          body: costRows,
-          startY: yPos,
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { textColor: [33, 33, 33], fontSize: 9 },
-          alternateRowStyles: { fillColor: [248, 249, 250] }
-        });
-        if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
-          yPos = doc.lastAutoTable.finalY + 12;
-        } else {
-          yPos += 50;
-        }
-      } else {
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        doc.text(language === 'fr' ? 'Aucune donnée de dépenses' : 'No cost data available', margin, yPos);
-        yPos += 15;
-      }
+      for (let year = currentYear; year <= deathYear; year++) {
+        let yearIncome = 0;
+        let yearCosts = 0;
+        const incomeBreakdown = {};
+        const costBreakdown = {};
 
-      // ============================
-      // VERDICT PAGE
-      // ============================
-      doc.addPage();
-      yPos = 25;
+        // --- INCOMES ---
+        incomes.forEach(row => {
+          const id = row.id || row.name;
+          if (!activeFilters[`income-${id}`]) return;
 
-      doc.setFontSize(18);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Verdict' : 'Verdict', margin, yPos);
-      yPos += 15;
-
-      // Verdict box
-      const canQuit = result?.canQuit;
-      doc.setFillColor(canQuit ? 40 : 220, canQuit ? 167 : 53, canQuit ? 69 : 69);
-      doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 25, 3, 3, 'F');
-
-      doc.setFontSize(16);
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      const verdictText = canQuit
-        ? (language === 'fr' ? 'OUI VOUS POUVEZ ! PARTEZ !' : 'YES YOU CAN! QUIT!')
-        : (language === 'fr' ? 'NON VOUS NE POUVEZ PAS ENCORE PARTIR !' : 'NO YOU CANNOT QUIT YET!');
-      doc.text(verdictText, pageWidth / 2, yPos + 10, { align: 'center' });
-
-      doc.setFontSize(12);
-      doc.text(`${language === 'fr' ? 'Solde final' : 'Final Balance'}: ${formatCurrency(result?.balance)}`, pageWidth / 2, yPos + 18, { align: 'center' });
-      yPos += 40;
-
-      // Transmission info
-      if (result?.transmissionAmount > 0) {
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${language === 'fr' ? 'Solde avant transmission' : 'Balance before transmission'}: ${formatCurrency(result.balanceBeforeTransmission)}`, margin, yPos);
-        yPos += 6;
-        doc.text(`${language === 'fr' ? 'Montant à transmettre' : 'Amount to transmit'}: ${formatCurrency(result.transmissionAmount)}`, margin, yPos);
-        yPos += 12;
-      }
-
-      doc.setFontSize(11);
-      doc.setTextColor(33, 33, 33);
-      doc.setFont('helvetica', 'normal');
-      const message = canQuit
-        ? (language === 'fr' ? 'Votre solde projeté est positif ! Vous avez les bases financières pour envisager la retraite.' : 'Your projected balance is positive! You have the financial foundation to consider retirement.')
-        : (language === 'fr' ? 'Votre solde projeté est négatif. Envisagez d\'ajuster votre plan financier ou votre date de retraite.' : 'Your projected balance is negative. Consider adjusting your financial plan or retirement date.');
-      const splitMessage = doc.splitTextToSize(message, pageWidth - 2 * margin);
-      doc.text(splitMessage, margin, yPos);
-
-      // ============================
-      // ANNEX PAGE: Landscape Year-by-Year Table
-      // ============================
-      doc.addPage('a4', 'landscape');
-      const landscapeWidth = doc.internal.pageSize.getWidth();
-
-      doc.setFontSize(16);
-      doc.setTextColor(220, 53, 69);
-      doc.setFont('helvetica', 'bold');
-      doc.text(language === 'fr' ? 'Annexe: Projection financière détaillée' : 'Annex: Detailed Financial Projection', margin, 20);
-
-      // Collect all unique income and cost categories
-      const allIncomeCategories = new Set();
-      const allCostCategories = new Set();
-
-      yearlyBreakdown.forEach(year => {
-        Object.keys(year.incomeBreakdown || {}).forEach(cat => allIncomeCategories.add(cat));
-        Object.keys(year.costBreakdown || {}).forEach(cat => allCostCategories.add(cat));
-      });
-
-      const incomeColumns = Array.from(allIncomeCategories);
-      const costColumns = Array.from(allCostCategories);
-
-      // Build table headers with categories - Year first
-      const headers = [
-        language === 'fr' ? 'Année' : 'Year',
-        ...incomeColumns.map(c => (language === 'fr' ? 'Rev. ' : 'Inc. ') + c.substring(0, 8)),
-        ...costColumns.map(c => (language === 'fr' ? 'Dép. ' : 'Cost ') + c.substring(0, 8)),
-        language === 'fr' ? 'Solde cumulé' : 'Running Balance'
-      ];
-
-      // Build table rows - Year first
-      const tableData = yearlyBreakdown.map(year => {
-        const row = [
-          year.year,
-          ...incomeColumns.map(cat => {
-            const val = year.incomeBreakdown?.[cat];
-            return val ? formatNumber(val) : '-';
-          }),
-          ...costColumns.map(cat => {
-            const val = year.costBreakdown?.[cat];
-            return val ? formatNumber(val) : '-';
-          }),
-          formatNumber(year.cumulativeBalance)
-        ];
-        return row;
-      });
-
-      // Add table using autoTable (only if we have data)
-      if (tableData.length > 0 && headers.length > 0) {
-        autoTable(doc, {
-          head: [headers],
-          body: tableData,
-          startY: 30,
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 2 },
-          headStyles: { fillColor: [220, 53, 69], textColor: 255, fontSize: 6, fontStyle: 'bold' },
-          bodyStyles: { textColor: [33, 33, 33] },
-          alternateRowStyles: { fillColor: [248, 249, 250] },
-          columnStyles: {
-            0: { cellWidth: 12, fontStyle: 'bold' }, // Year column (now first)
-            [headers.length - 1]: { cellWidth: 25, fontStyle: 'bold' }  // Running balance column (last)
-          },
-          didParseCell: function (data) {
-            // Color negative running balance red
-            if (data.section === 'body' && data.column.index === headers.length - 1) {
-              const cellText = String(data.cell.raw);
-              if (cellText.startsWith('-')) {
-                data.cell.styles.textColor = [220, 53, 69];
-              }
-            }
-          },
-          didDrawPage: function (data) {
-            // Footer with page number
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Page ${doc.internal.getNumberOfPages()}`, landscapeWidth - 20, doc.internal.pageSize.getHeight() - 10);
+          const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
+          // Note: 'Net Salary' usually monthly
+          const val = calculateYearlyAmount(amount, row.frequency, row.startDate, row.endDate, year);
+          if (val > 0) {
+            yearIncome += val;
+            incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
           }
         });
-      } else {
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
-        doc.text(language === 'fr' ? 'Aucune donnée de projection disponible' : 'No projection data available', margin, 40);
+
+        // --- RETIREMENT PILLARS ---
+        if (retirementData?.rows) {
+          retirementData.rows.forEach(row => {
+            const id = row.id || row.name;
+            if (!activeFilters[`pillar-${id}`]) return;
+
+            const amount = parseFloat(row.amount) || 0;
+            if (amount > 0) {
+              const deathDateStr = `${deathYear}-12-31`;
+              let endDateStr = deathDateStr;
+              if (row.frequency === 'One-time') endDateStr = row.startDate;
+              if (row.endDate) endDateStr = row.endDate; // Respect explicit end date if present
+
+              const val = calculateYearlyAmount(amount, row.frequency, row.startDate, endDateStr, year);
+              if (val > 0) {
+                yearIncome += val;
+                incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
+              }
+            }
+          });
+        }
+
+        // Helper to determine period range
+        const getPeriodRange = (timeframe) => {
+          let startOffset = 0;
+          let endOffset = 0;
+          switch (timeframe) {
+            case 'within_5y': startOffset = 0; endOffset = 5; break;
+            case 'within_5_10y': startOffset = 5; endOffset = 10; break;
+            case 'within_10_15y': startOffset = 10; endOffset = 15; break;
+            case 'within_15_20y': startOffset = 15; endOffset = 20; break;
+            case 'within_20_25y': startOffset = 20; endOffset = 25; break;
+            case 'within_25_30y': startOffset = 25; endOffset = 30; break;
+            default: return null;
+          }
+          return {
+            startYear: currentYear + startOffset,
+            endYear: currentYear + endOffset,
+            duration: endOffset - startOffset
+          };
+        };
+
+        // --- ASSETS (as Inflows) ---
+        assets.forEach(asset => {
+          const id = asset.id || asset.name;
+          if (!activeFilters[`asset-${id}`]) return;
+
+          const amount = Math.abs(parseFloat(asset.adjustedAmount || asset.amount) || 0);
+
+          // Check for Period Availability
+          // DataReview sets availabilityType='Period' and availabilityTimeframe='within_...'
+          if (asset.availabilityType === 'Period' || (!asset.availabilityDate && asset.availabilityTimeframe)) {
+            const period = getPeriodRange(asset.availabilityTimeframe);
+            if (period && year >= period.startYear && year < period.endYear) {
+              const yearlyVal = amount / period.duration;
+              yearIncome += yearlyVal;
+              incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + yearlyVal;
+            }
+          }
+          // Check for specific Date Availability
+          else if (asset.availabilityDate) {
+            const val = calculateYearlyAmount(amount, 'One-time', asset.availabilityDate, null, year);
+            if (val > 0) {
+              yearIncome += val;
+              incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + val;
+            }
+          }
+          // No date/period = Available NOW (Initial Capital)
+          else {
+            if (year === currentYear) {
+              yearIncome += amount;
+              incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + amount;
+            }
+          }
+        });
+
+        // --- COSTS ---
+        costs.forEach(row => {
+          const id = row.id || row.name;
+          if (!activeFilters[`cost-${id}`]) return;
+
+          const amount = Math.abs(parseFloat(row.adjustedAmount || row.amount) || 0);
+          const val = calculateYearlyAmount(amount, row.frequency, row.startDate, row.endDate, year);
+          if (val > 0) {
+            yearCosts += val;
+            const cat = row.category || row.name || 'Other';
+            costBreakdown[cat] = (costBreakdown[cat] || 0) + val;
+          }
+        });
+
+        // --- DEBTS (as Outflows) ---
+        debts.forEach(debt => {
+          const id = debt.id || debt.name;
+          if (!activeFilters[`debt-${id}`]) return;
+
+          const amount = Math.abs(parseFloat(debt.adjustedAmount || debt.amount) || 0);
+
+          // Check for Period Availability (Debts use madeAvailableType/Timeframe)
+          if (debt.madeAvailableType === 'Period' || (!debt.madeAvailableDate && debt.madeAvailableTimeframe)) {
+            const period = getPeriodRange(debt.madeAvailableTimeframe);
+            if (period && year >= period.startYear && year < period.endYear) {
+              const yearlyVal = amount / period.duration;
+              yearCosts += yearlyVal;
+              costBreakdown[debt.name] = (costBreakdown[debt.name] || 0) + yearlyVal;
+            }
+          }
+          // Check for specific Date 
+          else {
+            // Debts usually One-time payoff at date?
+            const date = debt.madeAvailableDate || debt.startDate || debt.date || currentYear + '-01-01';
+            const val = calculateYearlyAmount(amount, 'One-time', date, null, year);
+            if (val > 0) {
+              yearCosts += val;
+              costBreakdown[debt.name] = (costBreakdown[debt.name] || 0) + val;
+            }
+          }
+        });
+
+
+        // Subtract transmission at death
+        if (year === deathYear && transmissionAmt > 0) {
+          balanceBeforeTransmission = cumulativeBalance + (yearIncome - yearCosts);
+          cumulativeBalance -= transmissionAmt;
+        }
+
+        const annualBalance = yearIncome - yearCosts;
+        cumulativeBalance += annualBalance;
+
+        breakdown.push({
+          year,
+          income: yearIncome,
+          costs: yearCosts,
+          // Force negative for graph, ensure it goes DOWN
+          negCosts: -Math.abs(yearCosts),
+          annualBalance,
+          cumulativeBalance,
+          incomeBreakdown,
+          costBreakdown
+        });
       }
 
-      // Generate PDF blob and data URL
-      const fileName = language === 'fr' ? `rapport_retraite_quit_${new Date().toISOString().split('T')[0]}.pdf` : `retirement_report_quit_${new Date().toISOString().split('T')[0]}.pdf`;
+      setProjection({
+        yearlyBreakdown: breakdown,
+        finalBalance: cumulativeBalance,
+        canQuit: cumulativeBalance >= 0,
+        balanceBeforeTransmission,
+        transmissionAmount: transmissionAmt
+      });
+    };
 
-      // Store blob for download
-      const blob = doc.output('blob');
-      setPdfBlob(blob);
-      setPdfFileName(fileName);
+    calculateProjection();
 
-      // Get data URL to display in iframe (for preview only)
-      const dataUrl = doc.output('dataurlstring');
-      setPdfDataUrl(dataUrl);
+  }, [loading, userData, incomes, costs, assets, debts, retirementData, activeFilters, location.state]);
 
-      toast.success(language === 'fr'
-        ? 'PDF généré! Cliquez sur "Télécharger" pour sauvegarder.'
-        : 'PDF generated! Click "Download" to save.');
-
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast.error(language === 'fr' ? 'Erreur lors de la génération du PDF' : 'Error generating PDF');
-    } finally {
-      setGeneratingPdf(false);
-    }
+  const handleFilterChange = (key, checked) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      [key]: checked
+    }));
   };
 
-  // Download PDF function - creates fresh object URL and triggers download
-  const downloadPdf = () => {
-    if (!pdfBlob) return;
+  const toggleAll = (items, prefix, checked) => {
+    const newFilters = { ...activeFilters };
+    items.forEach(item => {
+      const id = item.id || item.name;
+      newFilters[`${prefix}-${id}`] = checked;
+    });
+    setActiveFilters(newFilters);
+  };
 
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = pdfFileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  // Helper to format item label with details
+  const formatItemLabel = (item, type = 'standard') => {
+    const amount = parseFloat(item.adjustedAmount || item.amount || 0).toLocaleString();
+    const freq = item.frequency ? item.frequency.charAt(0) : (type === 'asset' || type === 'debt' ? '1x' : '?');
+
+    let dateInfo = '';
+    if (item.startDate) {
+      dateInfo = `${new Date(item.startDate).toLocaleDateString()}`;
+      if (item.endDate) dateInfo += ` -> ${new Date(item.endDate).toLocaleDateString()}`;
+      else if (freq !== '1x') dateInfo += ' -> ...';
+    } else if (item.availabilityDate) {
+      dateInfo = `${new Date(item.availabilityDate).toLocaleDateString()}`;
+    }
+
+    return (
+      <div className="flex flex-col leading-tight">
+        <span className="font-medium truncate">{item.name}</span>
+        <span className="text-xs text-muted-foreground truncate">
+          CHF {amount} ({freq}) • {dateInfo}
+        </span>
+      </div>
+    );
+  };
+
+  // Custom Tooltip Component
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs">
+          <p className="font-bold mb-2 text-sm">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
+
+          <div className="mb-2">
+            <p className="font-semibold text-green-400 mb-1">{language === 'fr' ? 'Revenus' : 'Income'}</p>
+            {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
+              <div key={name} className="flex justify-between gap-4">
+                <span>{name}</span>
+                <span>CHF {Math.round(val).toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
+              <span>Total</span>
+              <span>CHF {Math.round(data.income).toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="font-semibold text-red-400 mb-1">{language === 'fr' ? 'Dépenses' : 'Costs'}</p>
+            {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
+              <div key={name} className="flex justify-between gap-4">
+                <span>{name}</span>
+                <span>CHF {Math.round(val).toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
+              <span>Total</span>
+              <span>CHF {Math.round(data.costs).toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div className="mt-2 text-blue-300 pt-2 border-t border-gray-500 font-bold flex justify-between">
+            <span>{language === 'fr' ? 'Solde cumulé' : 'Cumulative'}</span>
+            <span>CHF {Math.round(data.cumulativeBalance).toLocaleString()}</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">{t('common.loading')}</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="scenario-result-page">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen flex flex-col px-4 py-8 bg-background text-foreground" data-testid="scenario-result-page">
+      <div className="max-w-[1600px] w-full mx-auto">
         <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('result.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('result.subtitle')}
-            </p>
-          </div>
-        </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
 
-        {result && (
-          <div className="space-y-6">
-            <Card className="mb-8 overflow-hidden">
-              <div className="max-w-[200px] mx-auto p-4">
-                <img
-                  src={result.canQuit ? '/yes_quit.png' : '/no_quit.png'}
-                  alt={result.canQuit ? 'Yes you can quit!' : 'No you cannot quit yet!'}
-                  className="w-full h-auto object-cover rounded-lg"
-                  data-testid="result-image"
-                />
-              </div>
-              <div className="p-8 text-center">
-                <p className={`text-xl mb-4 ${result.canQuit ? 'text-green-500 font-bold text-3xl' : 'text-muted-foreground'}`} data-testid="result-message">
-                  {result.canQuit ? t('result.yesCanQuit') : t('result.noCannotQuit')}
-                </p>
-                <p className="text-xl text-muted-foreground mb-2">
-                  {result.fromSimulation ? t('result.projectedBalance') : t('result.annualBalance')}
-                  <span className={`font-bold ml-2 ${result.balance >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="result-balance">
-                    {result.balance >= 0 ? '+' : ''}
-                    CHF {result.balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  </span>
-                </p>
-                {result.transmissionAmount > 0 && (
-                  <div className="mt-4 p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
-                    <p className="text-amber-400 text-sm font-medium">
-                      {t('result.transmissionPlanned')}
+          {/* LEFT COLUMN: Controls & Verdict */}
+          <div className="xl:col-span-1 space-y-6">
+
+            {/* Verdict Card */}
+            <Card className="overflow-hidden border-2 shadow-sm">
+              <div className={`h-3 w-full ${projection.canQuit ? 'bg-green-500' : 'bg-red-500'}`} />
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between gap-4">
+                  {/* Image on left */}
+                  <img
+                    src={projection.canQuit ? '/yes_quit.png' : '/no_quit.png'}
+                    alt="Verdict"
+                    className="w-24 h-24 object-contain"
+                  />
+
+                  {/* Balance on right */}
+                  <div className="text-right">
+                    <p className={`text-2xl font-bold ${projection.canQuit ? 'text-green-500' : 'text-red-500'}`}>
+                      CHF {Math.round(projection.finalBalance).toLocaleString()}
                     </p>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      {t('result.balanceBeforeTransmission')}: CHF {result.balanceBeforeTransmission?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance'}
                     </p>
-                    <p className="text-amber-400 text-sm">
-                      {t('result.amountToTransmit')}: CHF {result.transmissionAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Interactive Toggles */}
+            <Card className="max-h-[600px] overflow-y-auto">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <SlidersHorizontal className="h-5 w-5" />
+                  {language === 'fr' ? 'Contributeurs actifs' : 'Active Contributors'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Incomes */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Revenus' : 'Incomes'}</h4>
+                    <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', true); toggleAll(retirementData?.rows || [], 'pillar', true); }} className="h-6 text-xs px-2">All</Button>
+                  </div>
+                  <div className="space-y-3">
+                    {incomes.map(item => (
+                      <div key={item.id || item.name} className="flex items-start space-x-2">
+                        <Checkbox
+                          id={`filter-income-${item.id || item.name}`}
+                          checked={!!activeFilters[`income-${item.id || item.name}`]}
+                          onCheckedChange={(checked) => handleFilterChange(`income-${item.id || item.name}`, checked)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor={`filter-income-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
+                          {formatItemLabel(item)}
+                        </Label>
+                      </div>
+                    ))}
+                    {retirementData?.rows?.map(item => (
+                      <div key={item.id || item.name} className="flex items-start space-x-2">
+                        <Checkbox
+                          id={`filter-pillar-${item.id || item.name}`}
+                          checked={!!activeFilters[`pillar-${item.id || item.name}`]}
+                          onCheckedChange={(checked) => handleFilterChange(`pillar-${item.id || item.name}`, checked)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor={`filter-pillar-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
+                          {formatItemLabel(item)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assets */}
+                {assets.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Actifs' : 'Assets'}</h4>
+                      <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', true)} className="h-6 text-xs px-2">All</Button>
+                    </div>
+                    <div className="space-y-3">
+                      {assets.map(item => (
+                        <div key={item.id || item.name} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={`filter-asset-${item.id || item.name}`}
+                            checked={!!activeFilters[`asset-${item.id || item.name}`]}
+                            onCheckedChange={(checked) => handleFilterChange(`asset-${item.id || item.name}`, checked)}
+                            className="mt-1"
+                          />
+                          <Label htmlFor={`filter-asset-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
+                            {formatItemLabel(item, 'asset')}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Retirement Date Display - Different messages based on option and outcome */}
-                {result.retirementOption === 'calculate' ? (
-                  // Option 2: Calculate earliest retirement date
-                  result.calculatedEarliestDate && new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) ? (
-                    // Early retirement IS possible
-                    <p className="text-lg font-semibold text-green-500 mt-4" data-testid="early-retirement-message">
-                      {language === 'fr'
-                        ? `Vous pouvez prendre une retraite anticipée le : ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`
-                        : `You can take an early retirement on: ${new Date(result.calculatedEarliestDate).toLocaleDateString()}`}
-                    </p>
-                  ) : (
-                    // Early retirement is NOT possible
-                    <p className="text-lg font-semibold text-red-500 mt-4" data-testid="no-early-retirement-message">
-                      {language === 'fr'
-                        ? `Vous ne pouvez pas prendre de retraite anticipée. Votre date de retraite légale reste : ${new Date(result.retirementLegalDate).toLocaleDateString()}`
-                        : `You cannot take an early retirement. Your legal retirement date remains: ${new Date(result.retirementLegalDate).toLocaleDateString()}`}
-                    </p>
-                  )
-                ) : (
-                  // Option 1: Manual date selection - show existing message
-                  result.wishedRetirementDate && (
-                    <p className="text-sm text-muted-foreground mt-4">
-                      {t('result.basedOnRetirement')}: {new Date(result.wishedRetirementDate).toLocaleDateString()}
-                    </p>
-                  )
+                {/* Costs */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dépenses' : 'Costs'}</h4>
+                    <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', true)} className="h-6 text-xs px-2">All</Button>
+                  </div>
+                  <div className="space-y-3">
+                    {costs.map(item => (
+                      <div key={item.id || item.name} className="flex items-start space-x-2">
+                        <Checkbox
+                          id={`filter-cost-${item.id || item.name}`}
+                          checked={!!activeFilters[`cost-${item.id || item.name}`]}
+                          onCheckedChange={(checked) => handleFilterChange(`cost-${item.id || item.name}`, checked)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor={`filter-cost-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
+                          {formatItemLabel(item)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Debts */}
+                {debts.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dettes / Sorties' : 'Debts / Outflows'}</h4>
+                      <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', true)} className="h-6 text-xs px-2">All</Button>
+                    </div>
+                    <div className="space-y-3">
+                      {debts.map(item => (
+                        <div key={item.id || item.name} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={`filter-debt-${item.id || item.name}`}
+                            checked={!!activeFilters[`debt-${item.id || item.name}`]}
+                            onCheckedChange={(checked) => handleFilterChange(`debt-${item.id || item.name}`, checked)}
+                            className="mt-1"
+                          />
+                          <Label htmlFor={`filter-debt-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
+                            {formatItemLabel(item, 'debt')}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                <p className="text-sm text-muted-foreground mt-6">
-                  {result.canQuit
-                    ? t('result.positiveMessage')
-                    : t('result.negativeMessage')}
-                </p>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RIGHT COLUMN: Graph & Table */}
+          <div className="xl:col-span-3 space-y-6">
+
+            {/* Graph */}
+            <Card className="h-[500px]">
+              <CardHeader>
+                <CardTitle>{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[430px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={projection.yearlyBreakdown} margin={{ top: 10, right: 30, left: 20, bottom: 0 }} stackOffset="sign">
+                    <defs>
+                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorNegative" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="year" />
+                    <YAxis tickFormatter={(val) => `${val / 1000}k`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="cumulativeBalance"
+                      stroke={projection.finalBalance >= 0 ? "#10b981" : "#ef4444"}
+                      fill={projection.finalBalance >= 0 ? "url(#colorBalance)" : "url(#colorNegative)"}
+                      name={language === 'fr' ? 'Solde cumulé' : 'Cumulative Balance'}
+                      stackId="area"
+                    />
+                    <Bar dataKey="income" barSize={10} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" />
+                    <Bar dataKey="negCosts" barSize={10} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" />
+
+                    <ReferenceLine
+                      x={new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate).getFullYear()}
+                      stroke="#f59042"
+                      label={{
+                        position: 'insideTopLeft',
+                        value: `${language === 'fr' ? 'Retraite' : 'Retirement'}: ${new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate).toLocaleDateString()}`,
+                        fill: '#f59042',
+                        fontSize: 12
+                      }}
+                      strokeDasharray="3 3"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
             </Card>
 
-            {yearlyBreakdown.length > 0 && (
-              <>
-                {/* Financial Projection Graph */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('result.projectionGraph')}</CardTitle>
-                  </CardHeader>
+            {/* Collapsible Table */}
+            <Card>
+              <Collapsible open={isTableOpen} onOpenChange={setIsTableOpen}>
+                <div className="flex items-center justify-between p-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    {language === 'fr' ? 'Détail année par année' : 'Year-by-Year Financial Breakdown'}
+                  </h3>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {isTableOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      <span className="sr-only">Toggle</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <AreaChart data={yearlyBreakdown}>
-                        <defs>
-                          <linearGradient id="colorCumulativeResultPositive" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="colorCumulativeResultNegative" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis
-                          dataKey="year"
-                          stroke="#9ca3af"
-                          tick={{ fill: '#9ca3af' }}
-                        />
-                        <YAxis
-                          stroke="#9ca3af"
-                          tick={{ fill: '#9ca3af' }}
-                          tickFormatter={(value) => `CHF ${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}
-                          labelStyle={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length > 0) {
-                              const data = payload[0].payload;
-                              return (
-                                <div style={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', padding: '12px' }}>
-                                  <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {data.year}</div>
-
-                                  <div style={{ marginBottom: '8px' }}>
-                                    <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
-                                      Annual Balance: CHF {data.annualBalance.toLocaleString()}
-                                    </div>
-                                    <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                      Cumulative Balance: CHF {Math.round(data.cumulativeBalance).toLocaleString()}
-                                    </div>
-                                  </div>
-
-                                  <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
-                                    <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
-                                      Income: CHF {data.income.toLocaleString()}
-                                    </div>
-                                    {data.incomeBreakdown && Object.entries(data.incomeBreakdown).map(([name, value]) => (
-                                      <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                        • {name}: CHF {value.toLocaleString()}
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
-                                    <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
-                                      Costs: CHF {data.costs.toLocaleString()}
-                                    </div>
-                                    {data.costBreakdown && Object.entries(data.costBreakdown).map(([name, value]) => (
-                                      <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                        • {name}: CHF {value.toLocaleString()}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend />
-                        {/* Vertical line for calculated earliest retirement date - only shown when early retirement IS possible */}
-                        {result?.retirementOption === 'calculate' &&
-                          result?.calculatedEarliestDate &&
-                          new Date(result.calculatedEarliestDate) < new Date(result.retirementLegalDate) && (
-                            <ReferenceLine
-                              x={new Date(result.calculatedEarliestDate).getFullYear()}
-                              stroke="#22c55e"
-                              strokeWidth={3}
-                              strokeDasharray="8 4"
-                              label={{
-                                value: language === 'fr' ? 'Date de retraite anticipée la plus précoce' : 'Earliest retirement date',
-                                fill: '#22c55e',
-                                position: 'top',
-                                fontSize: 14,
-                                fontWeight: 'bold'
-                              }}
-                            />
-                          )}
-                        <Area
-                          type="monotone"
-                          dataKey="cumulativeBalance"
-                          stroke={result.canQuit ? "#10b981" : "#ef4444"}
-                          fillOpacity={1}
-                          fill={result.canQuit ? "url(#colorCumulativeResultPositive)" : "url(#colorCumulativeResultNegative)"}
-                          name="Cumulative Balance"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="annualBalance"
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                          name="Annual Balance"
-                          dot={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Year-by-Year Breakdown Table */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('result.yearlyBreakdown')}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                      <table className="w-full">
-                        <thead className="bg-muted/50 sticky top-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
                           <tr>
-                            <th className="text-left p-3 font-semibold">{t('result.year')}</th>
-                            <th className="text-right p-3 font-semibold">{t('result.income')}</th>
-                            <th className="text-right p-3 font-semibold">{t('result.costs')}</th>
-                            <th className="text-right p-3 font-semibold">{t('result.annualBalance')}</th>
-                            <th className="text-right p-3 font-semibold">{t('result.cumulativeBalance')}</th>
+                            <th className="p-3 text-left">{language === 'fr' ? 'Année' : 'Year'}</th>
+                            <th className="p-3 text-right">{language === 'fr' ? 'Revenus' : 'Income'}</th>
+                            <th className="p-3 text-right">{language === 'fr' ? 'Coûts' : 'Costs'}</th>
+                            <th className="p-3 text-right">{language === 'fr' ? 'Balance Annuelle' : 'Annual Balance'}</th>
+                            <th className="p-3 text-right">{language === 'fr' ? 'Solde Cumulé' : 'Cumulative Balance'}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {yearlyBreakdown.map((row, index) => (
-                            <tr
-                              key={row.year}
-                              className={`border-b ${row.annualBalance < 0 ? 'bg-red-500/5' : ''} hover:bg-muted/30 cursor-pointer relative`}
-                              onMouseEnter={() => setHoveredRow(index)}
-                              onMouseLeave={() => setHoveredRow(null)}
-                            >
+                          {projection.yearlyBreakdown.map((row) => (
+                            <tr key={row.year} className="border-b hover:bg-muted/30">
                               <td className="p-3 font-medium">{row.year}</td>
-                              <td className="text-right p-3 text-green-500">
-                                CHF {row.income.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              <td className="p-3 text-right text-green-600">+{Math.round(row.income).toLocaleString()}</td>
+                              <td className="p-3 text-right text-red-600">-{Math.round(row.costs).toLocaleString()}</td>
+                              <td className={`p-3 text-right font-medium ${row.annualBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {Math.round(row.annualBalance).toLocaleString()}
                               </td>
-                              <td className="text-right p-3 text-red-500">
-                                CHF {row.costs.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              <td className={`p-3 text-right font-bold ${row.cumulativeBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {Math.round(row.cumulativeBalance).toLocaleString()}
                               </td>
-                              <td className={`text-right p-3 font-semibold ${row.annualBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                {row.annualBalance >= 0 ? '+' : ''}CHF {row.annualBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                              </td>
-                              <td className={`text-right p-3 font-bold ${row.cumulativeBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                {row.cumulativeBalance >= 0 ? '+' : ''}CHF {row.cumulativeBalance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                              </td>
-
-                              {/* Hover Tooltip */}
-                              {hoveredRow === index && (
-                                <td className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50">
-                                  <div style={{
-                                    backgroundColor: '#1f2937',
-                                    border: '1px solid #374151',
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    minWidth: '300px',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                                  }}>
-                                    <div style={{ color: '#f3f4f6', fontWeight: 'bold', marginBottom: '8px' }}>Year {row.year}</div>
-
-                                    <div style={{ marginBottom: '8px' }}>
-                                      <div style={{ color: '#3b82f6', fontWeight: '600', marginBottom: '4px' }}>
-                                        Annual Balance: CHF {row.annualBalance.toLocaleString()}
-                                      </div>
-                                      <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                        Cumulative Balance: CHF {Math.round(row.cumulativeBalance).toLocaleString()}
-                                      </div>
-                                    </div>
-
-                                    <div style={{ marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
-                                      <div style={{ color: '#10b981', fontWeight: '600', marginBottom: '4px' }}>
-                                        Income: CHF {row.income.toLocaleString()}
-                                      </div>
-                                      {row.incomeBreakdown && Object.entries(row.incomeBreakdown).map(([name, value]) => (
-                                        <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                          • {name}: CHF {value.toLocaleString()}
-                                        </div>
-                                      ))}
-                                    </div>
-
-                                    <div style={{ paddingTop: '6px', borderTop: '1px solid #374151' }}>
-                                      <div style={{ color: '#ef4444', fontWeight: '600', marginBottom: '4px' }}>
-                                        Costs: CHF {row.costs.toLocaleString()}
-                                      </div>
-                                      {row.costBreakdown && Object.entries(row.costBreakdown).map(([name, value]) => (
-                                        <div key={name} style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px' }}>
-                                          • {name}: CHF {value.toLocaleString()}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </td>
-                              )}
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   </CardContent>
-                </Card>
-              </>
-            )}
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+
           </div>
-        )}
-
-        <div className="flex gap-4 mt-8">
-          <Button
-            data-testid="generate-pdf-btn"
-            onClick={generatePDF}
-            variant="outline"
-            className="flex-1"
-            disabled={generatingPdf}
-          >
-            {generatingPdf
-              ? (language === 'fr' ? 'Génération en cours...' : 'Generating...')
-              : (language === 'fr' ? 'Générer le rapport PDF' : 'Generate PDF Report')}
-          </Button>
-          <Button
-            data-testid="start-over-btn"
-            onClick={handleReset}
-            className="flex-1"
-          >
-            {t('result.startOver')}
-          </Button>
         </div>
-
-        {/* PDF Preview and Download Section */}
-        {pdfDataUrl && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>{language === 'fr' ? 'Votre rapport PDF' : 'Your PDF Report'}</span>
-                <Button
-                  onClick={downloadPdf}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {language === 'fr' ? '⬇️ Télécharger le PDF' : '⬇️ Download PDF'}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <iframe
-                src={pdfDataUrl}
-                width="100%"
-                height="600px"
-                title="PDF Preview"
-                className="border rounded-lg"
-              />
-              <p className="text-sm text-muted-foreground mt-4">
-                {language === 'fr'
-                  ? 'Cliquez sur le bouton vert "Télécharger le PDF" ci-dessus pour sauvegarder le fichier.'
-                  : 'Click the green "Download PDF" button above to save the file.'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
-      )
-}
     </div>
   );
 };

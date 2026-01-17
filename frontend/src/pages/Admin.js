@@ -37,7 +37,7 @@ const formatPageName = (path) => {
     '/retirement-overview': 'Retirement',
     '/income': 'Income',
     '/costs': 'Costs',
-    '/financial-balance': 'Balance',
+
     '/scenario': 'Scenario',
     '/result': 'Result',
     '/scenario-result': 'Result'
@@ -66,7 +66,7 @@ const Admin = () => {
       const response = await axios.post(`${BACKEND_URL}/api/admin/login`, {
         admin_key: adminKey
       });
-      
+
       if (response.data.success) {
         setIsAuthenticated(true);
         toast.success('Admin access granted');
@@ -88,7 +88,7 @@ const Admin = () => {
         admin_key: adminKey
       });
       setUsers(usersResponse.data.users || []);
-      
+
       // Get stats
       const statsResponse = await axios.post(`${BACKEND_URL}/api/admin/stats`, {
         admin_key: adminKey
@@ -266,9 +266,9 @@ const Admin = () => {
         {/* Security Notice */}
         <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            <strong>🔒 Security Note:</strong> User financial data (income, costs, savings) is encrypted 
-            client-side with each user's password. As administrator, you can only see email addresses - 
-            the actual financial data remains private and inaccessible (zero-knowledge encryption).
+            <strong>🔒 Security Note:</strong> User financial data (income, costs, savings) is encrypted
+            client-side with each user's password. As administrator, you can only see email addresses -
+            mains private and inaccessible (zero-knowledge encryption).
           </p>
         </div>
       </div>

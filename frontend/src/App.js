@@ -11,11 +11,12 @@ import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
 import Costs from './pages/Costs';
-import FinancialBalance from './pages/FinancialBalance';
+
 // RetirementInputs page removed - data now collected in RetirementParameters
 import AssetsAndSavings from './pages/AssetsAndSavings';
 import RetirementParameters from './pages/RetirementParameters';
 import DataReview from './pages/DataReview';
+import CapitalManagementSetup from './pages/CapitalManagementSetup';
 import ScenarioResult from './pages/ScenarioResult';
 
 import { trackPageVisit } from './utils/analytics';
@@ -90,11 +91,12 @@ function AppRoutes() {
             <Costs />
           </ProtectedRoute>
         } />
-        <Route path="/financial-balance" element={
+        {/* Current Financial Balance page hidden as requested */}
+        {/* <Route path="/financial-balance" element={
           <ProtectedRoute>
             <FinancialBalance />
           </ProtectedRoute>
-        } />
+        } /> */}
         <Route path="/assets-savings" element={
           <ProtectedRoute>
             <AssetsAndSavings />
@@ -108,6 +110,11 @@ function AppRoutes() {
         <Route path="/data-review" element={
           <ProtectedRoute>
             <DataReview />
+          </ProtectedRoute>
+        } />
+        <Route path="/capital-setup" element={
+          <ProtectedRoute>
+            <CapitalManagementSetup />
           </ProtectedRoute>
         } />
         <Route path="/result" element={

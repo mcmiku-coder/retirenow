@@ -142,13 +142,50 @@ const RetirementParameters = () => {
                     if (scenarioData.showLegalLPPPension !== undefined) setShowLegalLPPPension(scenarioData.showLegalLPPPension);
                     if (scenarioData.showLegalLPPCapital !== undefined) setShowLegalLPPCapital(scenarioData.showLegalLPPCapital);
 
+                    if (scenarioData.showLegalLPPCapital !== undefined) setShowLegalLPPCapital(scenarioData.showLegalLPPCapital);
+
+                    // Helper to ensure YYYY-MM-DD format for Input type="date"
+                    const toYYYYMMDD = (dateStr) => {
+                        if (!dateStr) return '';
+                        // Handle DD.MM.YYYY
+                        if (dateStr.includes('.')) {
+                            const [day, month, year] = dateStr.split('.');
+                            return `${year}-${month}-${day}`;
+                        }
+                        // Handle ISO date with time
+                        if (dateStr.includes('T')) {
+                            return dateStr.split('T')[0];
+                        }
+                        return dateStr;
+                    };
+
                     // Set default start date for benefits if not set
-                    const defaultDate = userData?.retirementLegalDate ? new Date(userData.retirementLegalDate).toLocaleDateString('de-CH') : '01.12.2045'; // Default formatted date
+                    // Use YYYY-MM-DD format for date inputs
+                    const legalDateObj = userData?.retirementLegalDate ? new Date(userData.retirementLegalDate) : new Date('2045-12-01');
+                    const defaultDateYMD = legalDateObj.toISOString().split('T')[0];
+
                     if (!scenarioData.benefitsData) {
                         setBenefitsData(prev => ({
-                            avs: { ...prev.avs, startDate: defaultDate },
-                            threeA: { ...prev.threeA, startDate: defaultDate },
-                            lppSup: { ...prev.lppSup, startDate: defaultDate }
+                            avs: { ...prev.avs, startDate: defaultDateYMD },
+                            threeA: { ...prev.threeA, startDate: defaultDateYMD },
+                            lppSup: { ...prev.lppSup, startDate: defaultDateYMD }
+                        }));
+                    } else {
+                        // Ensure defaults if specific fields are missing in existing data and valid format
+                        setBenefitsData(prev => ({
+                            ...prev,
+                            avs: {
+                                ...prev.avs,
+                                startDate: toYYYYMMDD(prev.avs?.startDate || defaultDateYMD)
+                            },
+                            threeA: {
+                                ...prev.threeA,
+                                startDate: toYYYYMMDD(prev.threeA?.startDate || defaultDateYMD)
+                            },
+                            lppSup: {
+                                ...prev.lppSup,
+                                startDate: toYYYYMMDD(prev.lppSup?.startDate || defaultDateYMD)
+                            }
                         }));
                     }
 
@@ -435,10 +472,18 @@ const RetirementParameters = () => {
                                         setProjectedLPPPension('');
                                         setProjectedLPPCapital('');
                                         setOption3EarlyAge('');
-                                        setOption3EarlyAge('');
                                         setPreRetirementData({});
                                         setProjectedLegalLPPPension('');
                                         setProjectedLegalLPPCapital('');
+
+                                        // Reset benefits data with default dates
+                                        const defaultDate = retirementLegalDate ? new Date(retirementLegalDate).toISOString().split('T')[0] : '2045-12-01';
+                                        setBenefitsData({
+                                            avs: { amount: '', frequency: 'Monthly', startDate: defaultDate },
+                                            threeA: { amount: '', frequency: 'One-time', startDate: defaultDate },
+                                            lppSup: { amount: '', frequency: 'One-time', startDate: defaultDate }
+                                        });
+
                                         toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
                                     }}
                                     className="bg-blue-800 hover:bg-blue-900 text-white px-6"
@@ -540,9 +585,11 @@ const RetirementParameters = () => {
                                                 <td className="px-4 py-3 font-medium text-white">AVS</td>
                                                 <td className="px-4 py-3">
                                                     <Input
+                                                        type="date"
                                                         value={benefitsData.avs.startDate}
                                                         onChange={(e) => updateBenefitData('avs', 'startDate', e.target.value)}
-                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                        disabled={true}
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -585,9 +632,10 @@ const RetirementParameters = () => {
                                                 <td className="px-4 py-3 font-medium text-white">3a</td>
                                                 <td className="px-4 py-3">
                                                     <Input
+                                                        type="date"
                                                         value={benefitsData.threeA.startDate}
                                                         onChange={(e) => updateBenefitData('threeA', 'startDate', e.target.value)}
-                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        className="h-8 bg-black/20 border-slate-700 w-[140px] text-white"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -859,7 +907,7 @@ const RetirementParameters = () => {
                                                     <div className="h-8 flex items-center text-gray-400">
                                                         {retirementOption === 'option2' && earlyRetirementAge
                                                             ? calculateEarlyRetirementDate(earlyRetirementAge) || '-'
-                                                            : (benefitsData.lppSup.startDate || '-')}
+                                                            : (benefitsData.lppSup.startDate ? new Date(benefitsData.lppSup.startDate).toLocaleDateString('de-CH') : '-')}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">

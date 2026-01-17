@@ -537,6 +537,12 @@ const DataReview = () => {
     ));
   };
 
+  const updateCostField = (id, field, value) => {
+    setCosts(costs.map(cost =>
+      cost.id === id ? { ...cost, [field]: value } : cost
+    ));
+  };
+
   // Update date overrides for standard income sources (Salary, AVS, LPP, 3a)
   const updateIncomeDateOverride = (incomeName, field, value) => {
     setIncomeDateOverrides(prev => ({
@@ -741,8 +747,105 @@ const DataReview = () => {
   const resetAssetsToDefaults = async () => {
     try {
       const assetsData = await getAssetsData(user.email, password);
+      const scenarioData = await getScenarioData(user.email, password);
+
       if (assetsData) {
-        setCurrentAssets(assetsData.currentAssets || []);
+        let loadedCurrentAssets = assetsData.currentAssets || [];
+
+        // Use the same logic as loadData to inject retirement assets, but reset their values
+        if (scenarioData) {
+          const retirementDateStr = scenarioData.wishedRetirementDate || retirementLegalDate;
+
+          // Option 1: Inject LPP Pension Capital
+          const option = scenarioData.retirementOption || 'option1';
+          if (option === 'option1' && scenarioData.pensionCapital) {
+            const lppAsset = {
+              id: 'lpp_pension_capital',
+              name: 'LPP Pension Capital',
+              amount: scenarioData.pensionCapital,
+              adjustedAmount: scenarioData.pensionCapital, // Reset adjusted to original
+              category: 'Illiquid', // Default
+              preserve: 'No', // Default
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: 'Cash', // Default
+              isOption1: true
+            };
+            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
+          }
+
+          // Option 0: Inject Legal LPP Capital
+          if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
+            const legalAsset = {
+              id: 'projected_legal_lpp_capital',
+              name: 'Projected LPP Capital at 65y',
+              amount: scenarioData.projectedLegalLPPCapital,
+              adjustedAmount: scenarioData.projectedLegalLPPCapital, // Reset adjusted to original
+              category: 'Illiquid', // Default
+              preserve: 'No', // Default
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: 'Cash', // Default
+              isOption0: true
+            };
+            loadedCurrentAssets = [legalAsset, ...loadedCurrentAssets];
+          }
+
+          // Move 3a and Supplementary Pension capital from scenarioData.benefitsData to Assets
+          if (scenarioData.benefitsData) {
+            const oneTimeItems = [];
+
+            // 1. Check for 3a
+            if (scenarioData.benefitsData.threeA && scenarioData.benefitsData.threeA.amount) {
+              oneTimeItems.push({
+                id: '3a',
+                name: '3a',
+                amount: scenarioData.benefitsData.threeA.amount,
+                startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
+            // 2. Check for Supplementary Pension capital
+            if (scenarioData.benefitsData.lppSup && scenarioData.benefitsData.lppSup.amount) {
+              oneTimeItems.push({
+                id: 'lppSup',
+                name: 'Supplementary Pension capital',
+                amount: scenarioData.benefitsData.lppSup.amount,
+                startDate: scenarioData.benefitsData.lppSup.startDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
+            // Process and inject them
+            oneTimeItems.forEach(item => {
+              const assetItem = {
+                id: item.id,
+                name: item.name,
+                amount: item.amount,
+                adjustedAmount: item.amount, // Reset adjusted to original
+                category: 'Illiquid', // Default
+                preserve: 'No', // Default
+                availabilityType: 'Date',
+                availabilityDate: item.startDate || wishedRetirementDate,
+                strategy: 'Cash', // Default
+                isRetirement: true
+              };
+              loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
+            });
+          }
+        }
+
+        setCurrentAssets(loadedCurrentAssets);
+
+        // Autosave the reset state
+        await saveScenarioData(user.email, password, {
+          ...scenarioData,
+          currentAssets: loadedCurrentAssets, // Save the reset assets list
+          liquidAssets, // These will update via useEffect but good to keep consistency if possible, though state update might lag slightly
+          nonLiquidAssets
+        });
+
         toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
       }
     } catch (error) {
@@ -1296,7 +1399,7 @@ const DataReview = () => {
 
   return (
     <div className="min-h-screen py-12 px-4" data-testid="scenario-page">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         <WorkflowNavigation />
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -1310,6 +1413,24 @@ const DataReview = () => {
             </p>
           </div>
         </div>
+
+        {/* Dynamic Datalist for Cluster Tags */}
+        <datalist id="cluster-options">
+          <option value="Cluster A" />
+          <option value="Cluster B" />
+          <option value="Cluster C" />
+          {/* Dynamically add unique tags from all data sources */}
+          {[
+            ...new Set([
+              ...incomes.map(i => i.clusterTag),
+              ...costs.map(c => c.clusterTag),
+              ...currentAssets.map(a => a.clusterTag),
+              ...desiredOutflows.map(d => d.clusterTag)
+            ])
+          ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
+            <option key={tag} value={tag} />
+          ))}
+        </datalist>
 
         <div className="space-y-6">
 
@@ -1330,7 +1451,7 @@ const DataReview = () => {
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
@@ -1438,21 +1559,16 @@ const DataReview = () => {
                               (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null : <Input type="date" value={income.endDate || ""} onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)} className="max-w-[150px]" />
                             )}
                           </td>
+
                           <td className="p-3">
-                            {(income.frequency === 'One-time' || income.frequency === 'Ponctuel') && (
-                              <Select
-                                value={income.strategy || 'Cash'}
-                                onValueChange={(value) => updateIncomeField(income.id, 'strategy', value)}
-                              >
-                                <SelectTrigger className="max-w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
-                                  <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={income.clusterTag || ''}
+                              onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
@@ -1522,6 +1638,7 @@ const DataReview = () => {
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1634,6 +1751,16 @@ const DataReview = () => {
                             )}
                           </td>
                           <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={asset.clusterTag || ''}
+                              onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
                                 onClick={() => deleteAsset(asset.id)}
@@ -1690,6 +1817,7 @@ const DataReview = () => {
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
@@ -1748,6 +1876,16 @@ const DataReview = () => {
                           </td>
                           <td className="p-3">
                             {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost-end-date-${index}`} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={cost.clusterTag || ''}
+                              onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
@@ -1817,6 +1955,7 @@ const DataReview = () => {
                       <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1883,6 +2022,16 @@ const DataReview = () => {
                                 className="max-w-[140px]"
                               />
                             )}
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={debt.clusterTag || ''}
+                              onChange={(e) => updateDebt(debt.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">

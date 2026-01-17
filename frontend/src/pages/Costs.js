@@ -184,7 +184,7 @@ const Costs = () => {
     setLoading(true);
     try {
       await saveCostData(user.email, password, rows);
-      navigate('/financial-balance');
+      navigate('/assets-savings');
     } catch (error) {
       toast.error(t('costs.saveFailed'));
     } finally {

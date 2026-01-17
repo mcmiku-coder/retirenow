@@ -13,11 +13,13 @@ const WorkflowNavigation = () => {
         { path: '/retirement-overview', icon: Calendar, id: 2 },
         { path: '/income', icon: Wallet, id: 3 },
         { path: '/costs', icon: PiggyBank, id: 4 },
-        { path: '/financial-balance', icon: LineChart, id: 5 },
-        { path: '/assets-savings', icon: Landmark, id: 6 },
+        // Financial Balance page hidden as requested
+        // { path: '/financial-balance', icon: LineChart, id: 5 },
+        { path: '/assets-savings', icon: Landmark, id: 5 },
         // Retirement-inputs step removed - data now collected in retirement-parameters
-        { path: '/retirement-parameters', icon: Target, id: 7 },
-        { path: '/data-review', icon: ClipboardCheck, id: 8 },
+        { path: '/retirement-parameters', icon: Target, id: 6 },
+        { path: '/data-review', icon: ClipboardCheck, id: 7 },
+        { path: '/capital-setup', icon: LineChart, id: 8 },
         { path: '/result', icon: FileText, id: 9 },
     ];
 
