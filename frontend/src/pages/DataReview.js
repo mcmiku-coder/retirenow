@@ -57,6 +57,7 @@ const DataReview = () => {
   const [wishedRetirementDate, setWishedRetirementDate] = useState('');
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [incomes, setIncomes] = useState([]);
   const [costs, setCosts] = useState([]);
   const [retirementData, setRetirementData] = useState(null);
@@ -122,6 +123,7 @@ const DataReview = () => {
 
         // Calculate dates
         const birthDate = new Date(userData.birthDate);
+        setBirthDate(userData.birthDate);
         const retirementDate = new Date(birthDate);
         retirementDate.setFullYear(retirementDate.getFullYear() + 65);
         retirementDate.setMonth(retirementDate.getMonth() + 1);
@@ -224,6 +226,43 @@ const DataReview = () => {
               loadedCurrentAssets = [legalAsset, ...newAssets];
             } else {
               loadedCurrentAssets = [legalAsset, ...loadedCurrentAssets];
+            }
+          }
+
+          // Option 2: Inject Projected Early LPP Capital as an asset if selected
+          if (option === 'option2' && scenarioData.projectedLPPCapital) {
+            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'projected_lpp_capital');
+
+            // Recalculate date for asset as well
+            let earlyRetirementDateStr = retirementDateStr;
+            if (scenarioData.earlyRetirementAge && userData.birthDate) {
+              const bDate = new Date(userData.birthDate);
+              const earlyRetDate = new Date(bDate);
+              earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
+              earlyRetDate.setDate(1);
+              earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+              earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
+            }
+
+            const option2Asset = {
+              id: 'projected_lpp_capital',
+              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
+              amount: scenarioData.projectedLPPCapital,
+              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.projectedLPPCapital,
+              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
+              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
+              availabilityType: 'Date',
+              availabilityDate: earlyRetirementDateStr, // Use Calculated Early Date
+              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
+              isOption2: true
+            };
+
+            if (existingIndex >= 0) {
+              const newAssets = [...loadedCurrentAssets];
+              newAssets.splice(existingIndex, 1);
+              loadedCurrentAssets = [option2Asset, ...newAssets];
+            } else {
+              loadedCurrentAssets = [option2Asset, ...loadedCurrentAssets];
             }
           }
 
@@ -337,40 +376,40 @@ const DataReview = () => {
             // Capital handled in Assets above
           } else if (option === 'option2') {
             // Option 2: Early retirement with projected values
-            console.log('Option 2 detected, scenarioData:', scenarioData);
-            console.log('projectedLPPPension:', scenarioData.projectedLPPPension);
-            console.log('projectedLPPCapital:', scenarioData.projectedLPPCapital);
-            console.log('earlyRetirementAge:', scenarioData.earlyRetirementAge);
-            // Read data from scenarioData, no need to set state here
+
+            // Calculate correct start date based on early retirement age
+            let earlyRetirementDateStr = retirementDateStr;
+            if (scenarioData.earlyRetirementAge && userData.birthDate) {
+              const bDate = new Date(userData.birthDate);
+              const earlyRetDate = new Date(bDate);
+              earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
+              // Set to same day/month as birthdate or specific logic? 
+              // Usually retirement is 1st of month after birthday? 
+              // Let's use the explicit selected date from previous step?
+              // Actually user inputs age.
+              // Let's rely on age calculation.
+              // User image shows "1.12.2040" for 60y. 
+              // Standard logic: 1st of month after age reached.
+              earlyRetDate.setDate(1);
+              earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+              earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
+            }
 
             // Check if fields exist (not just truthy) to handle zero values
             if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
-              console.log('Adding projected LPP Pension row');
               processedRetirementIncome.push({
                 id: 'projected_lpp_pension',
                 name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
                 amount: scenarioData.projectedLPPPension,
                 adjustedAmount: scenarioData.projectedLPPPension,
                 frequency: 'Monthly',
-                startDate: retirementDateStr,
+                startDate: earlyRetirementDateStr, // Use Calculated Early Date
                 endDate: deathDateStr,
                 isRetirement: true
               });
             }
-            if (scenarioData.projectedLPPCapital !== undefined && scenarioData.projectedLPPCapital !== null && scenarioData.projectedLPPCapital !== '') {
-              console.log('Adding projected LPP Capital row');
-              processedRetirementIncome.push({
-                id: 'projected_lpp_capital',
-                name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
-                amount: scenarioData.projectedLPPCapital,
-                adjustedAmount: scenarioData.projectedLPPCapital,
-                frequency: 'One-time',
-                startDate: retirementDateStr,
-                endDate: retirementDateStr,
-                isRetirement: true
-              });
-            }
-            console.log('Processed retirement income for Option 2:', processedRetirementIncome);
+            // Capital has been moved to Assets section
+
           } else if (option === 'option3') {
             // Option 3: Flexible pre-retirement
             const preRetirementRows = scenarioData.preRetirementRows || [];
@@ -409,11 +448,30 @@ const DataReview = () => {
           }
         }
 
+        // Calculate Option 2 Date for Salary override
+        let opt2EarlyDateStr = null;
+        const opt = scenarioData.retirementOption || 'option1';
+        if (opt === 'option2' && scenarioData.earlyRetirementAge && userData.birthDate) {
+          const bDate = new Date(userData.birthDate);
+          const earlyRetDate = new Date(bDate);
+          earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
+          earlyRetDate.setDate(1);
+          earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+          opt2EarlyDateStr = earlyRetDate.toISOString().split('T')[0];
+        }
+
         // STEP 1: Always load ORIGINAL income data from incomeData
-        const originalRegularIncomes = incomeData.filter(i => i.amount).map(i => ({
-          ...i,
-          adjustedAmount: i.amount  // Default adjusted = original
-        }));
+        const originalRegularIncomes = incomeData.filter(i => i.amount).map(i => {
+          let endDate = i.endDate;
+          if (opt2EarlyDateStr && (i.name === 'Net Salary' || i.name === 'Salary')) {
+            endDate = opt2EarlyDateStr;
+          }
+          return {
+            ...i,
+            endDate,
+            adjustedAmount: i.amount  // Default adjusted = original
+          };
+        });
 
         // STEP 2: Merge with ORIGINAL retirement income from scenarioData
         const allOriginalIncomes = [...originalRegularIncomes, ...processedRetirementIncome];
@@ -428,6 +486,28 @@ const DataReview = () => {
         } else {
           // No adjustments yet, use original data
           finalIncomes = allOriginalIncomes;
+        }
+
+        // FORCE OVERRIDE: If Option 2 is selected, ensure dates are aligned
+        if (opt2EarlyDateStr) {
+          // 1. Update the global Wished Retirement Date specific for this session
+          setWishedRetirementDate(opt2EarlyDateStr);
+
+          // 2. Force override the Salary End Date using the Overrides mechanism 
+          // (which takes precedence over render defaults)
+          setIncomeDateOverrides(prev => ({
+            ...prev,
+            'Salary': { ...prev['Salary'], endDate: opt2EarlyDateStr },
+            'Net Salary': { ...prev['Net Salary'], endDate: opt2EarlyDateStr }
+          }));
+
+          // 3. Also update the specific items in finalIncomes as a fallback
+          finalIncomes = finalIncomes.map(item => {
+            if (item.name === 'Net Salary' || item.name === 'Salary') {
+              return { ...item, endDate: opt2EarlyDateStr };
+            }
+            return item;
+          });
         }
 
         console.log('Final incomes:', finalIncomes.length, '(original:', allOriginalIncomes.length, ')');
@@ -1121,6 +1201,16 @@ const DataReview = () => {
           // No valid date found - use legal retirement date and show "no" verdict
           simulationRetirementDate = retirementLegalDate;
           calculatedEarliestDate = null; // Signal that no early retirement is possible
+        }
+      } else if (retirementOption === 'option2') {
+        // Option 2: Calculate date based on specific early retirement age
+        if (earlyRetirementAge && birthDate) {
+          const bDate = new Date(birthDate);
+          const earlyRetDate = new Date(bDate);
+          earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(earlyRetirementAge));
+          earlyRetDate.setDate(1);
+          earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+          simulationRetirementDate = earlyRetDate.toISOString().split('T')[0];
         }
       }
 

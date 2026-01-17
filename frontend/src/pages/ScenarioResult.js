@@ -409,7 +409,12 @@ const ScenarioResult = () => {
             </div>
           </div>
 
-          <div className="mt-2 text-blue-300 pt-2 border-t border-gray-500 font-bold flex justify-between">
+          <div className={`mt-2 pt-2 border-t border-gray-600 font-bold flex justify-between ${data.annualBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span>{language === 'fr' ? 'Solde annuel' : 'Annual Balance'}</span>
+            <span>CHF {Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
+          </div>
+
+          <div className="mt-1 flex justify-between text-blue-300 font-bold">
             <span>{language === 'fr' ? 'Solde cumulé' : 'Cumulative'}</span>
             <span>CHF {Math.round(data.cumulativeBalance).toLocaleString()}</span>
           </div>
@@ -459,7 +464,7 @@ const ScenarioResult = () => {
             </Card>
 
             {/* Interactive Toggles */}
-            <Card className="max-h-[600px] overflow-y-auto">
+            <Card className="max-h-[520px] overflow-y-auto">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <SlidersHorizontal className="h-5 w-5" />
@@ -583,11 +588,11 @@ const ScenarioResult = () => {
           <div className="xl:col-span-3 space-y-6">
 
             {/* Graph */}
-            <Card className="h-[500px]">
+            <Card className="h-[600px]">
               <CardHeader>
                 <CardTitle>{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
               </CardHeader>
-              <CardContent className="h-[430px]">
+              <CardContent className="h-[530px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={projection.yearlyBreakdown} margin={{ top: 10, right: 30, left: 20, bottom: 0 }} stackOffset="sign">
                     <defs>
@@ -632,54 +637,7 @@ const ScenarioResult = () => {
               </CardContent>
             </Card>
 
-            {/* Collapsible Table */}
-            <Card>
-              <Collapsible open={isTableOpen} onOpenChange={setIsTableOpen}>
-                <div className="flex items-center justify-between p-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    {language === 'fr' ? 'Détail année par année' : 'Year-by-Year Financial Breakdown'}
-                  </h3>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {isTableOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      <span className="sr-only">Toggle</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="p-3 text-left">{language === 'fr' ? 'Année' : 'Year'}</th>
-                            <th className="p-3 text-right">{language === 'fr' ? 'Revenus' : 'Income'}</th>
-                            <th className="p-3 text-right">{language === 'fr' ? 'Coûts' : 'Costs'}</th>
-                            <th className="p-3 text-right">{language === 'fr' ? 'Balance Annuelle' : 'Annual Balance'}</th>
-                            <th className="p-3 text-right">{language === 'fr' ? 'Solde Cumulé' : 'Cumulative Balance'}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {projection.yearlyBreakdown.map((row) => (
-                            <tr key={row.year} className="border-b hover:bg-muted/30">
-                              <td className="p-3 font-medium">{row.year}</td>
-                              <td className="p-3 text-right text-green-600">+{Math.round(row.income).toLocaleString()}</td>
-                              <td className="p-3 text-right text-red-600">-{Math.round(row.costs).toLocaleString()}</td>
-                              <td className={`p-3 text-right font-medium ${row.annualBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {Math.round(row.annualBalance).toLocaleString()}
-                              </td>
-                              <td className={`p-3 text-right font-bold ${row.cumulativeBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {Math.round(row.cumulativeBalance).toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
+
 
           </div>
         </div>

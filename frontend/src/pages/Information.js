@@ -39,44 +39,37 @@ const Information = () => {
       color: 'text-orange-500'
     },
     {
-      icon: LineChart,
+      icon: Landmark,
       titleKey: 'step5Title',
       descKey: 'step5Desc',
-      image: '/screenshots/financial-balance.png',
-      color: 'text-purple-500'
-    },
-    {
-      icon: Landmark,
-      titleKey: 'step6Title',
-      descKey: 'step6Desc',
       image: '/screenshots/assets-savings.png',
       color: 'text-teal-500'
     },
     {
       icon: Sliders,
-      titleKey: 'step7Title',
-      descKey: 'step7Desc',
+      titleKey: 'step6Title',
+      descKey: 'step6Desc',
       image: '/screenshots/retirement-inputs.png',
       color: 'text-indigo-500'
     },
     {
-      icon: Target,
-      titleKey: 'step8Title',
-      descKey: 'step8Desc',
-      image: '/screenshots/scenario.png',
-      color: 'text-pink-500'
-    },
-    {
       icon: ClipboardCheck,
-      titleKey: 'step9Title',
-      descKey: 'step9Desc',
+      titleKey: 'step7Title',
+      descKey: 'step7Desc',
       image: '/screenshots/data-review.png',
       color: 'text-cyan-500'
     },
     {
+      icon: LineChart, // Reusing LineChart for Capital Setup
+      titleKey: 'step8Title',
+      descKey: 'step8Desc',
+      image: '/screenshots/scenario.png', // Using scenario image as placeholder
+      color: 'text-purple-500'
+    },
+    {
       icon: FileText,
-      titleKey: 'step10Title',
-      descKey: 'step10Desc',
+      titleKey: 'step9Title',
+      descKey: 'step9Desc',
       image: '/screenshots/result.png',
       color: 'text-red-500'
     }
