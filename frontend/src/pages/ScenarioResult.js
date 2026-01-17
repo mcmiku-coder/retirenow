@@ -381,31 +381,33 @@ const ScenarioResult = () => {
         <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs">
           <p className="font-bold mb-2 text-sm">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
 
-          <div className="mb-2">
-            <p className="font-semibold text-green-400 mb-1">{language === 'fr' ? 'Revenus' : 'Income'}</p>
-            {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
-              <div key={name} className="flex justify-between gap-4">
-                <span>{name}</span>
-                <span>CHF {Math.round(val).toLocaleString()}</span>
+          <div className="flex gap-6 mb-2">
+            <div className="flex-1">
+              <p className="font-semibold text-green-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Revenus' : 'Income'}</p>
+              {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
+                <div key={name} className="flex justify-between gap-4">
+                  <span>{name}</span>
+                  <span>CHF {Math.round(val).toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
+                <span>Total</span>
+                <span>CHF {Math.round(data.income).toLocaleString()}</span>
               </div>
-            ))}
-            <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
-              <span>Total</span>
-              <span>CHF {Math.round(data.income).toLocaleString()}</span>
             </div>
-          </div>
 
-          <div>
-            <p className="font-semibold text-red-400 mb-1">{language === 'fr' ? 'Dépenses' : 'Costs'}</p>
-            {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
-              <div key={name} className="flex justify-between gap-4">
-                <span>{name}</span>
-                <span>CHF {Math.round(val).toLocaleString()}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-red-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Dépenses' : 'Costs'}</p>
+              {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
+                <div key={name} className="flex justify-between gap-4">
+                  <span>{name}</span>
+                  <span>CHF {Math.round(val).toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
+                <span>Total</span>
+                <span>CHF {Math.round(data.costs).toLocaleString()}</span>
               </div>
-            ))}
-            <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
-              <span>Total</span>
-              <span>CHF {Math.round(data.costs).toLocaleString()}</span>
             </div>
           </div>
 
