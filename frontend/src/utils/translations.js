@@ -292,6 +292,7 @@ export const translations = {
       amountToTransmit: "Amount to Transmit (CHF)",
       transmissionWarning: "If your balance after transmission goes negative, you cannot quit!",
       runSimulation: "Can I Quit? - Run Simulation",
+      costTuningAdvice: "Give me cost tuning advice",
       splitSuccess: "Cost line split - adjust dates as needed",
       costDeleted: "Cost line deleted",
       // Future inflows
@@ -686,6 +687,7 @@ export const translations = {
       amountToTransmit: "Montant à transmettre (CHF)",
       transmissionWarning: "Si votre solde après transmission devient négatif, vous ne pouvez pas partir !",
       runSimulation: "Puis-je partir ? - Lancer la simulation",
+      costTuningAdvice: "Suggère moi des ajustement pertinents",
       splitSuccess: "Ligne de dépense divisée - ajustez les dates si nécessaire",
       costDeleted: "Ligne de dépense supprimée",
       // Future inflows

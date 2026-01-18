@@ -119,6 +119,9 @@ class AdminUserResponse(BaseModel):
     last_login: Optional[str] = None
     last_page_visited: Optional[str] = None
     deepest_page: Optional[str] = None
+    last_ip: Optional[str] = None
+    last_device_type: Optional[str] = None
+    total_pages_viewed: int = 0
 
 class AdminStatsResponse(BaseModel):
     total_users: int
@@ -137,9 +140,11 @@ PAGE_DEPTH_ORDER = [
     '/retirement-overview',
     '/income',
     '/costs',
-    '/financial-balance',
-    '/scenario',
-    '/scenario-result'
+    '/assets-savings',
+    '/retirement-parameters',
+    '/data-review',
+    '/capital-setup',
+    '/result'
 ]
 
 def get_page_depth(page_path: str) -> int:
@@ -209,7 +214,10 @@ async def get_all_users(request: AdminLoginRequest):
                 login_count=user.get("login_count", 0),
                 last_login=user.get("last_login", None),
                 last_page_visited=user.get("last_page_visited", None),
-                deepest_page=user.get("deepest_page", None)
+                deepest_page=user.get("deepest_page", None),
+                last_ip=user.get("last_ip", None),
+                last_device_type=user.get("last_device_type", None),
+                total_pages_viewed=user.get("total_pages_viewed", 0)
             )
             for user in users
         ]
@@ -241,7 +249,7 @@ async def get_admin_stats(request: AdminLoginRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/auth/register", response_model=TokenResponse)
-async def register(user: UserRegister):
+async def register(user: UserRegister, request: Request):
     logger.info(f"Registration attempt for email: {user.email}")
     
     # Check if user exists
@@ -252,11 +260,18 @@ async def register(user: UserRegister):
     
     # Create user
     hashed_pw = hash_password(user.password)
+    current_time = datetime.now(timezone.utc).isoformat()
+    
     user_doc = {
         "user_id": str(uuid.uuid4()),
         "email": user.email,
         "password": hashed_pw,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": current_time,
+        "last_login": current_time,
+        "login_count": 1,
+        "last_ip": request.client.host,
+        "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop",
+        "total_pages_viewed": 0
     }
     
     try:
@@ -272,7 +287,7 @@ async def register(user: UserRegister):
     return TokenResponse(token=token, email=user.email)
 
 @api_router.post("/auth/login", response_model=TokenResponse)
-async def login(user: UserLogin):
+async def login(user: UserLogin, request: Request):
     # Find user
     user_doc = await db.access.find_one({"email": user.email}, {"_id": 0})
     if not user_doc:
@@ -288,7 +303,11 @@ async def login(user: UserLogin):
         {"email": user.email},
         {
             "$inc": {"login_count": 1},
-            "$set": {"last_login": current_time}
+            "$set": {
+                "last_login": current_time,
+                "last_ip": request.client.host,
+                "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop"
+            }
         }
     )
     
@@ -331,7 +350,10 @@ async def track_page_visit(request: PageVisitRequest, email: str = Depends(verif
         
         await db.access.update_one(
             {"email": email},
-            {"$set": update_data}
+            {
+                "$set": update_data,
+                "$inc": {"total_pages_viewed": 1}
+            }
         )
         
         # Log the page visit in analytics collection

@@ -164,7 +164,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full max-w-[95%] mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
@@ -221,8 +221,11 @@ const Admin = () => {
                     <tr>
                       <th className="text-left p-3 font-semibold">#</th>
                       <th className="text-left p-3 font-semibold">Email</th>
+                      <th className="text-left p-3 font-semibold">Created</th>
                       <th className="text-center p-3 font-semibold">Logins</th>
                       <th className="text-left p-3 font-semibold">Last Login</th>
+                      <th className="text-left p-3 font-semibold">Info</th>
+                      <th className="text-center p-3 font-semibold">Pages</th>
                       <th className="text-left p-3 font-semibold">Last Page</th>
                       <th className="text-left p-3 font-semibold">Deepest Page</th>
                     </tr>
@@ -232,6 +235,9 @@ const Admin = () => {
                       <tr key={user.user_id} className="border-b hover:bg-muted/30">
                         <td className="p-3 text-muted-foreground">{index + 1}</td>
                         <td className="p-3 font-medium">{user.email}</td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          {user.created_at ? formatDateTime(user.created_at) : '-'}
+                        </td>
                         <td className="p-3 text-center">
                           <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full">
                             {user.login_count || 0}
@@ -239,6 +245,20 @@ const Admin = () => {
                         </td>
                         <td className="p-3 text-muted-foreground text-xs">
                           {user.last_login ? formatDateTime(user.last_login) : '-'}
+                        </td>
+                        <td className="p-3 text-xs">
+                          <div className="flex flex-col gap-1">
+                            {user.last_ip && <span className="text-muted-foreground">IP: {user.last_ip}</span>}
+                            {user.last_device_type && (
+                              <span className={`inline-flex w-fit items-center px-1.5 py-0.5 rounded ${user.last_device_type === 'Mobile' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-700 text-slate-300'
+                                }`}>
+                                {user.last_device_type}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center font-mono text-xs">
+                          {user.total_pages_viewed || 0}
                         </td>
                         <td className="p-3">
                           {user.last_page_visited ? (

@@ -7,18 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
-import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon } from 'lucide-react';
 
 
 const ScenarioResult = () => {
+  console.log('Rendering ScenarioResult Component - Force Refresh');
   const navigate = useNavigate();
+
   const location = useLocation();
   const { user, password } = useAuth();
   const { t, language } = useLanguage();
@@ -77,8 +79,8 @@ const ScenarioResult = () => {
         // However, standard flow might access /result directly.
         // We must be robust.
 
-        const finalIncomes = location.state?.adjustedIncomes || iData || [];
-        const finalCosts = location.state?.adjustedCosts || cData || [];
+        const finalIncomes = location.state?.adjustedIncomes || sData?.adjustedIncomes || iData || [];
+        const finalCosts = location.state?.adjustedCosts || sData?.adjustedCosts || cData || [];
 
         // Scenario Data contains currentAssets and desiredOutflows arrays usually
         // But DataReview might have passed modified versions.
@@ -99,12 +101,20 @@ const ScenarioResult = () => {
         setScenarioData(sData);
 
         // Initialize filters with prefixed keys to avoid ID collisions
+        // Restore from saved filters if available, otherwise default to true
+        const savedFilters = sData?.activeFilters || {};
         const filters = {};
 
         const addToFilters = (list, prefix) => {
           list.forEach(item => {
             const id = item.id || item.name;
-            filters[`${prefix}-${id}`] = true;
+            const key = `${prefix}-${id}`;
+            // If saved state exists, use it. Else default to true.
+            if (savedFilters.hasOwnProperty(key)) {
+              filters[key] = savedFilters[key];
+            } else {
+              filters[key] = true;
+            }
           });
         };
 
@@ -116,7 +126,12 @@ const ScenarioResult = () => {
         if (rData?.rows) {
           rData.rows.forEach(r => {
             const id = r.id || r.name;
-            filters[`pillar-${id}`] = true;
+            const key = `pillar-${id}`;
+            if (savedFilters.hasOwnProperty(key)) {
+              filters[key] = savedFilters[key];
+            } else {
+              filters[key] = true;
+            }
           });
         }
 
@@ -341,13 +356,36 @@ const ScenarioResult = () => {
   };
 
   const toggleAll = (items, prefix, checked) => {
-    const newFilters = { ...activeFilters };
-    items.forEach(item => {
-      const id = item.id || item.name;
-      newFilters[`${prefix}-${id}`] = checked;
+    setActiveFilters(prev => {
+      const newFilters = { ...prev };
+      items.forEach(item => {
+        const id = item.id || item.name;
+        newFilters[`${prefix}-${id}`] = checked;
+      });
+      return newFilters;
     });
-    setActiveFilters(newFilters);
   };
+
+  // Autosave filters when they change
+  useEffect(() => {
+    if (!loading && user && password && scenarioData && Object.keys(activeFilters).length > 0) {
+      const saveFilters = async () => {
+        try {
+          // Debounce could be added here, but for now we save on change
+          // to ensure persistence on navigation.
+          await saveScenarioData(user.email, password, {
+            ...scenarioData,
+            activeFilters: activeFilters
+          });
+        } catch (err) {
+          console.error("Failed to save filters", err);
+        }
+      };
+      // Short timeout to debounce slightly and avoid rapid writes
+      const timeoutId = setTimeout(saveFilters, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [activeFilters, loading, user, password, scenarioData]);
 
   // Helper to format item label with details
   const formatItemLabel = (item, type = 'standard') => {
@@ -364,8 +402,11 @@ const ScenarioResult = () => {
     }
 
     return (
-      <div className="flex flex-col leading-tight">
-        <span className="font-medium truncate">{item.name}</span>
+      <div className="flex flex-col leading-tight w-full">
+        <div className="flex items-center gap-2">
+          <span className="font-medium truncate">{item.name}</span>
+          {item.strategy === 'Invested' && <LineChartIcon className="w-4 h-4 text-blue-500 shrink-0" strokeWidth={2.5} />}
+        </div>
         <span className="text-xs text-muted-foreground truncate">
           CHF {amount} ({freq}) • {dateInfo}
         </span>
@@ -378,35 +419,35 @@ const ScenarioResult = () => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs">
+        <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs min-w-[600px]">
           <p className="font-bold mb-2 text-sm">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
 
           <div className="flex gap-6 mb-2">
             <div className="flex-1">
-              <p className="font-semibold text-green-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Revenus' : 'Income'}</p>
+              <p className="font-semibold text-green-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)'}</p>
               {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
                 <div key={name} className="flex justify-between gap-4">
                   <span>{name}</span>
-                  <span>CHF {Math.round(val).toLocaleString()}</span>
+                  <span>{Math.round(val).toLocaleString()}</span>
                 </div>
               ))}
               <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
                 <span>Total</span>
-                <span>CHF {Math.round(data.income).toLocaleString()}</span>
+                <span>{Math.round(data.income).toLocaleString()}</span>
               </div>
             </div>
 
             <div className="flex-1">
-              <p className="font-semibold text-red-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Dépenses' : 'Costs'}</p>
+              <p className="font-semibold text-red-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Dépenses (CHF)' : 'Costs (CHF)'}</p>
               {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
                 <div key={name} className="flex justify-between gap-4">
                   <span>{name}</span>
-                  <span>CHF {Math.round(val).toLocaleString()}</span>
+                  <span>{Math.round(val).toLocaleString()}</span>
                 </div>
               ))}
               <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
                 <span>Total</span>
-                <span>CHF {Math.round(data.costs).toLocaleString()}</span>
+                <span>{Math.round(data.costs).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -478,7 +519,10 @@ const ScenarioResult = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Revenus' : 'Incomes'}</h4>
-                    <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', true); toggleAll(retirementData?.rows || [], 'pillar', true); }} className="h-6 text-xs px-2">All</Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', true); toggleAll(retirementData?.rows || [], 'pillar', true); }} className="h-6 text-xs px-2">All</Button>
+                      <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', false); toggleAll(retirementData?.rows || [], 'pillar', false); }} className="h-6 text-xs px-2">None</Button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {incomes.map(item => (
@@ -515,7 +559,10 @@ const ScenarioResult = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Actifs' : 'Assets'}</h4>
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', true)} className="h-6 text-xs px-2">All</Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', true)} className="h-6 text-xs px-2">All</Button>
+                        <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', false)} className="h-6 text-xs px-2">None</Button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {assets.map(item => (
@@ -539,7 +586,10 @@ const ScenarioResult = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dépenses' : 'Costs'}</h4>
-                    <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', true)} className="h-6 text-xs px-2">All</Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', true)} className="h-6 text-xs px-2">All</Button>
+                      <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', false)} className="h-6 text-xs px-2">None</Button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {costs.map(item => (
@@ -563,7 +613,10 @@ const ScenarioResult = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dettes / Sorties' : 'Debts / Outflows'}</h4>
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', true)} className="h-6 text-xs px-2">All</Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', true)} className="h-6 text-xs px-2">All</Button>
+                        <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', false)} className="h-6 text-xs px-2">None</Button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {debts.map(item => (
@@ -590,11 +643,11 @@ const ScenarioResult = () => {
           <div className="xl:col-span-3 space-y-6">
 
             {/* Graph */}
-            <Card className="h-[600px]">
+            <Card className="h-[615px]">
               <CardHeader>
                 <CardTitle>{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
               </CardHeader>
-              <CardContent className="h-[530px]">
+              <CardContent className="h-[545px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={projection.yearlyBreakdown} margin={{ top: 10, right: 30, left: 20, bottom: 0 }} stackOffset="sign">
                     <defs>
@@ -609,7 +662,14 @@ const ScenarioResult = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                     <XAxis dataKey="year" />
-                    <YAxis tickFormatter={(val) => `${val / 1000}k`} />
+                    <YAxis
+                      tick={({ x, y, payload }) => (
+                        <text x={x} y={y} dy={4} textAnchor="end" fill={payload.value === 0 ? "#ffffff" : "#888888"} fontSize={12}>
+                          {payload.value === 0 ? "0k" : `${(payload.value / 1000).toFixed(0)}k`}
+                        </text>
+                      )}
+                    />
+                    <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={2} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Area

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import WorkflowNavigation from '../components/WorkflowNavigation';
-import { Calendar, Minus, Trash2, Split, Plus, TrendingUp } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb } from 'lucide-react';
 
 // Income name translation keys
 const INCOME_KEYS = {
@@ -171,37 +171,8 @@ const DataReview = () => {
             ? scenarioData.currentAssets
             : (assetsData.currentAssets || []);
 
-          // Option 1: Inject LPP Pension Capital as an asset if selected
+
           const option = scenarioData.retirementOption || 'option1';
-          if (option === 'option1' && scenarioData.pensionCapital) {
-            // Check if already exists
-            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'lpp_pension_capital');
-
-            const lppAsset = {
-              id: 'lpp_pension_capital',
-              name: 'LPP Pension Capital',
-              amount: scenarioData.pensionCapital,
-              // If it exists, preserve user's adjusted amount, otherwise default to original
-              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.pensionCapital,
-              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
-              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
-              isOption1: true
-            };
-
-            if (existingIndex >= 0) {
-              // Update existing item (keep position or move to top? user said "added at the top")
-              // Let's remove it and unshift it to ensure top position
-              const newAssets = [...loadedCurrentAssets];
-              newAssets.splice(existingIndex, 1);
-              loadedCurrentAssets = [lppAsset, ...newAssets];
-            } else {
-              // Add to top
-              loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
-            }
-          }
 
           // Option 0: Inject Legal LPP Capital as an asset (One-time) if selected
           if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
@@ -320,6 +291,37 @@ const DataReview = () => {
                 loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
               }
             });
+          }
+
+          // Option 1: Inject LPP Pension Capital as an asset if selected (Moved to end to ensure it is first in list via unshift)
+          if (option === 'option1' && scenarioData.pensionCapital) {
+            // Check if already exists
+            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'lpp_pension_capital');
+
+            const lppAsset = {
+              id: 'lpp_pension_capital',
+              name: language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status',
+              amount: scenarioData.pensionCapital,
+              // If it exists, preserve user's adjusted amount, otherwise default to original
+              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.pensionCapital,
+              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
+              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
+              isOption1: true
+            };
+
+            if (existingIndex >= 0) {
+              // Update existing item (keep position or move to top? user said "added at the top")
+              // Let's remove it and unshift it to ensure top position
+              const newAssets = [...loadedCurrentAssets];
+              newAssets.splice(existingIndex, 1);
+              loadedCurrentAssets = [lppAsset, ...newAssets];
+            } else {
+              // Add to top
+              loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
+            }
           }
 
           const loadedDesiredOutflows = (scenarioData && scenarioData.desiredOutflows && scenarioData.desiredOutflows.length > 0)
@@ -835,24 +837,9 @@ const DataReview = () => {
         // Use the same logic as loadData to inject retirement assets, but reset their values
         if (scenarioData) {
           const retirementDateStr = scenarioData.wishedRetirementDate || retirementLegalDate;
-
-          // Option 1: Inject LPP Pension Capital
           const option = scenarioData.retirementOption || 'option1';
-          if (option === 'option1' && scenarioData.pensionCapital) {
-            const lppAsset = {
-              id: 'lpp_pension_capital',
-              name: 'LPP Pension Capital',
-              amount: scenarioData.pensionCapital,
-              adjustedAmount: scenarioData.pensionCapital, // Reset adjusted to original
-              category: 'Illiquid', // Default
-              preserve: 'No', // Default
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: 'Cash', // Default
-              isOption1: true
-            };
-            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
-          }
+
+
 
           // Option 0: Inject Legal LPP Capital
           if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
@@ -913,6 +900,23 @@ const DataReview = () => {
               };
               loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
             });
+          }
+
+          // Option 1: Inject LPP Pension Capital (New Logic - Unshift to top)
+          if (option === 'option1' && scenarioData.pensionCapital) {
+            const lppAsset = {
+              id: 'lpp_pension_capital',
+              name: language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status',
+              amount: scenarioData.pensionCapital,
+              adjustedAmount: scenarioData.pensionCapital, // Reset adjusted to original
+              category: 'Illiquid', // Default
+              preserve: 'No', // Default
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: 'Cash', // Default
+              isOption1: true
+            };
+            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
           }
         }
 
@@ -1162,7 +1166,7 @@ const DataReview = () => {
     });
   };
 
-  const runSimulation = () => {
+  const runSimulation = async () => {
     try {
       const currentYear = new Date().getFullYear();
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
@@ -1365,6 +1369,26 @@ const DataReview = () => {
       // Final balance
       const finalBalance = cumulativeBalance;
 
+      // Save the simulation inputs to DB to ensure persistence (fixes "Ghost Data" on return)
+      const existingData = await getScenarioData(user.email, password) || {};
+
+      await saveScenarioData(user.email, password, {
+        ...existingData,
+        retirementOption,
+        wishedRetirementDate: simulationRetirementDate,
+        liquidAssets,
+        nonLiquidAssets,
+        futureInflows, // Ensure future inflows are saved if they are part of state
+        adjustedIncomes: incomes,
+        adjustedCosts: costs,
+        incomeDateOverrides,
+        // Note: activeFilters are preserved via existingData
+
+        // Option specific data
+        ...(retirementOption === 'option1' ? { pensionCapital, yearlyReturn } : {}),
+        ...(retirementOption === 'option2' ? { earlyRetirementAge, projectedLPPPension, projectedLPPCapital } : {})
+      });
+
       // Navigate to result with full simulation data
       navigate('/result', {
         state: {
@@ -1502,6 +1526,13 @@ const DataReview = () => {
                 : 'Review and adjust income and costs before running the simulation'}
             </p>
           </div>
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+          >
+            <Lightbulb className="h-4 w-4" />
+            {t('scenario.costTuningAdvice')}
+          </Button>
         </div>
 
         {/* Dynamic Datalist for Cluster Tags */}
@@ -1611,7 +1642,7 @@ const DataReview = () => {
                               onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
                               className="max-w-[150px] ml-auto"
                               style={{
-                                backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.1)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.1)' : 'transparent'
+                                backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
                               }}
                             />
                           </td>
@@ -1830,7 +1861,10 @@ const DataReview = () => {
                                 value={asset.strategy || 'Cash'}
                                 onValueChange={(value) => updateAsset(asset.id, 'strategy', value)}
                               >
-                                <SelectTrigger className="max-w-[120px]">
+                                <SelectTrigger
+                                  className="max-w-[120px]"
+                                  style={{ backgroundColor: asset.strategy === 'Invested' ? 'rgba(59, 130, 246, 0.25)' : 'transparent' }}
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1950,7 +1984,7 @@ const DataReview = () => {
                               onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
                               className="max-w-[150px] ml-auto"
                               style={{
-                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.1)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.1)' : 'transparent'
+                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
                               }}
                             />
                           </td>

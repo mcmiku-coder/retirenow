@@ -1,26 +1,22 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Wallet, PiggyBank, LineChart, Sliders, Landmark, Target, ClipboardCheck, FileText, ChevronRight } from 'lucide-react';
+import { User, CalendarClock, Wallet, CreditCard, PiggyBank, Landmark, Sliders, LineChart, Scale, Briefcase, Calculator } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const WorkflowNavigation = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { language } = useLanguage();
+    const { t } = useLanguage();
 
     const steps = [
-        { path: '/personal-info', icon: User, id: 1 },
-        { path: '/retirement-overview', icon: Calendar, id: 2 },
-        { path: '/income', icon: Wallet, id: 3 },
-        { path: '/costs', icon: PiggyBank, id: 4 },
-        // Financial Balance page hidden as requested
-        // { path: '/financial-balance', icon: LineChart, id: 5 },
-        { path: '/assets-savings', icon: Landmark, id: 5 },
-        // Retirement-inputs step removed - data now collected in retirement-parameters
-        { path: '/retirement-parameters', icon: Target, id: 6 },
-        { path: '/data-review', icon: ClipboardCheck, id: 7 },
-        { path: '/capital-setup', icon: LineChart, id: 8 },
-        { path: '/result', icon: FileText, id: 9 },
+        { path: '/personal-info', icon: User, id: 1, labelKey: 'personalInfo.title' },
+        { path: '/retirement-overview', icon: CalendarClock, id: 2, labelKey: 'retirementOverview.title' },
+        { path: '/income', icon: Wallet, id: 3, labelKey: 'income.title' },
+        { path: '/costs', icon: CreditCard, id: 4, labelKey: 'costs.title' },
+        { path: '/assets-savings', icon: PiggyBank, id: 5, labelKey: 'assetsAndSavings.title' },
+        { path: '/retirement-parameters', icon: Landmark, id: 6, labelKey: 'retirementInputs.title' },
+        { path: '/data-review', icon: Sliders, id: 7, labelKey: 'infoPage.step7Title' },
+        { path: '/capital-setup', icon: LineChart, id: 8, labelKey: 'infoPage.step8Title' },
+        { path: '/result', icon: Scale, id: 9, labelKey: 'result.title' },
     ];
 
     // Find current step index
@@ -65,7 +61,7 @@ const WorkflowNavigation = () => {
                                     }
                   ${isPast ? 'text-primary' : ''}
                 `}
-                                title={`Step ${step.id}`}
+                                title={t(step.labelKey).replace(/^\d+\.\s*/, '')}
                             >
                                 <Icon className={`${isActive ? 'h-6 w-6 sm:h-8 sm:w-8' : 'h-5 w-5 sm:h-6 sm:w-6'}`} />
 

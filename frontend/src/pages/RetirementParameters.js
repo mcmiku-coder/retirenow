@@ -427,6 +427,43 @@ const RetirementParameters = () => {
                                 </span>
                             </label>
 
+                            {/* Option 2: Selector and Message (Moved here) */}
+                            {retirementOption === 'option2' && (
+                                <div className="pl-8 text-white space-y-4">
+                                    <div className="flex gap-4 items-start">
+                                        {/* Desired Retirement Age */}
+                                        <div>
+                                            <Label htmlFor="earlyRetirementAge" className="mb-2 block font-medium">
+                                                {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
+                                            </Label>
+                                            <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
+                                                <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
+                                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="58">58</SelectItem>
+                                                    <SelectItem value="59">59</SelectItem>
+                                                    <SelectItem value="60">60</SelectItem>
+                                                    <SelectItem value="61">61</SelectItem>
+                                                    <SelectItem value="62">62</SelectItem>
+                                                    <SelectItem value="63">63</SelectItem>
+                                                    <SelectItem value="64">64</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Message */}
+                                        <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-1">
+                                            <p className="text-sm">
+                                                {language === 'fr'
+                                                    ? "Veuillez fournir les détails des options de retraite anticipée de votre plan de pension. Choisissez l'âge de retraite souhaité puis saisissez la pension LPP projetée et le capital LPP projeté pour cet âge choisi."
+                                                    : "Please provide the details of your pension plan's early retirement options. Choose the desired retirement age before then input the projected LPP Pension and the projected LPP Capital for that chosen age."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Option 1: Manual Date Selection */}
                             <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                                 <input
@@ -443,6 +480,42 @@ const RetirementParameters = () => {
                                 </span>
                             </label>
 
+                            {/* Option 1: Selector and Message (Moved here) */}
+                            {retirementOption === 'option1' && (
+                                <div className="pl-8 text-white space-y-4">
+                                    {/* Simple Date Picker */}
+                                    <div className="flex gap-4 items-start">
+                                        <div>
+                                            <Label htmlFor="wishedRetirementDate" className="mb-2 block font-medium">
+                                                {language === 'fr' ? 'Date de retraite souhaitée' : 'Desired retirement date'}
+                                            </Label>
+                                            <Input
+                                                id="wishedRetirementDate"
+                                                type="date"
+                                                value={wishedRetirementDate}
+                                                onChange={(e) => setWishedRetirementDate(e.target.value)}
+                                                className="w-40 bg-white/10 border-white/20 text-white"
+                                            />
+                                        </div>
+
+                                        {/* Message moved here from original location, styled like Option 2/3 info box */}
+                                        {wishedRetirementDate && (
+                                            <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-1">
+                                                <p className="text-sm">
+                                                    {new Date(wishedRetirementDate) < new Date(retirementLegalDate)
+                                                        ? (language === 'fr'
+                                                            ? "La date sélectionnée est antérieure à votre date de retraite légale. Veuillez fournir le statut actuel de votre capital de prévoyance car il sera considéré dans la simulation comme un compte de libre passage avec un rendement annuel défini."
+                                                            : "The selected date is prior to your legal retirement date. Please provide your current pension plan capital status as it will be considered in the simulation as a vested benefits account with a defined yearly return")
+                                                        : (language === 'fr'
+                                                            ? "Vous avez choisi une date postérieure à votre date de retraite légale. Cette option vous demandera simplement le statut actuel de votre capital de prévoyance et le considérera comme un actif de \"libre passage\" avec un rendement annuel défini."
+                                                            : "You have picked a date after to your legal retirement date. This option will simply ask you for your current pension plan capital status and consider it as a \"libre passage\" asset with a defined yearly return")}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Option 3: Automatic Calculation - Coming Soon */}
                             <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                                 <input
@@ -458,6 +531,43 @@ const RetirementParameters = () => {
                                         : 'Calculate the earliest retirement date possible (balance at death not negative) - Coming soon'}
                                 </span>
                             </label>
+
+                            {/* Option 3: Selector and Message (Moved here) */}
+                            {retirementOption === 'option3' && (
+                                <div className="pl-8 text-white space-y-4">
+                                    <div className="flex gap-4 items-start">
+                                        {/* Earliest Retirement Age */}
+                                        <div>
+                                            <Label htmlFor="option3EarlyAge" className="mb-2 block font-medium">
+                                                {language === 'fr' ? 'Quel est l\'âge de retraite le plus bas dans votre plan de pension ?' : 'What is the earliest retirement age in your pension plan ?'}
+                                            </Label>
+                                            <Select value={option3EarlyAge} onValueChange={setOption3EarlyAge}>
+                                                <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
+                                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="64">64</SelectItem>
+                                                    <SelectItem value="63">63</SelectItem>
+                                                    <SelectItem value="62">62</SelectItem>
+                                                    <SelectItem value="61">61</SelectItem>
+                                                    <SelectItem value="60">60</SelectItem>
+                                                    <SelectItem value="59">59</SelectItem>
+                                                    <SelectItem value="58">58</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Message */}
+                                        <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-1">
+                                            <p className="text-sm">
+                                                {language === 'fr'
+                                                    ? "Sélectionnez l'âge de retraite anticipée le plus précoce autorisé par votre plan de pension, puis saisissez la rente LPP projetée et le capital LPP projeté pour chaque année. Cela permettra d'exécuter une simulation d'optimisation."
+                                                    : "Select the earliest retirement age allowed by your pension plan, then input the projected LPP Pension and the projected LPP Capital for each year. This will allow runining an optimisation simulation"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Reset to Default Button - Bottom Left */}
                             <div className="mt-4 pt-4 border-t border-white/20">
@@ -494,78 +604,12 @@ const RetirementParameters = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Option 2: Selector and Message (Moved here) */}
-                    {retirementOption === 'option2' && (
-                        <div className="flex gap-4 items-start text-white">
-                            {/* Desired Retirement Age */}
-                            <div>
-                                <Label htmlFor="earlyRetirementAge" className="mb-2 block font-medium">
-                                    {language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age'}
-                                </Label>
-                                <Select value={earlyRetirementAge} onValueChange={setEarlyRetirementAge}>
-                                    <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
-                                        <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="58">58</SelectItem>
-                                        <SelectItem value="59">59</SelectItem>
-                                        <SelectItem value="60">60</SelectItem>
-                                        <SelectItem value="61">61</SelectItem>
-                                        <SelectItem value="62">62</SelectItem>
-                                        <SelectItem value="63">63</SelectItem>
-                                        <SelectItem value="64">64</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
 
-                            {/* Message */}
-                            <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-6">
-                                <p className="text-sm">
-                                    {language === 'fr'
-                                        ? "Veuillez fournir les détails des options de retraite anticipée de votre plan de pension. Choisissez l'âge de retraite souhaité puis saisissez la pension LPP projetée et le capital LPP projeté pour cet âge choisi."
-                                        : "Please provide the details of your pension plan's early retirement options. Choose the desired retirement age before then input the projected LPP Pension and the projected LPP Capital for that chosen age."}
-                                </p>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* Option 3: Selector and Message (Moved here) */}
-                    {retirementOption === 'option3' && (
-                        <div className="flex gap-4 items-start text-white">
-                            {/* Earliest Retirement Age */}
-                            <div>
-                                <Label htmlFor="option3EarlyAge" className="mb-2 block font-medium">
-                                    {language === 'fr' ? 'Quel est l\'âge de retraite le plus bas dans votre plan de pension ?' : 'What is the earliest retirement age in your pension plan ?'}
-                                </Label>
-                                <Select value={option3EarlyAge} onValueChange={setOption3EarlyAge}>
-                                    <SelectTrigger className="w-32 bg-white/10 border-white/20 text-white">
-                                        <SelectValue placeholder={language === 'fr' ? 'Sélectionner un âge' : 'Select age'} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="64">64</SelectItem>
-                                        <SelectItem value="63">63</SelectItem>
-                                        <SelectItem value="62">62</SelectItem>
-                                        <SelectItem value="61">61</SelectItem>
-                                        <SelectItem value="60">60</SelectItem>
-                                        <SelectItem value="59">59</SelectItem>
-                                        <SelectItem value="58">58</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
 
-                            {/* Message */}
-                            <div className="bg-white/10 border border-white/20 p-3 rounded-lg flex-1 mt-6">
-                                <p className="text-sm">
-                                    {language === 'fr'
-                                        ? "Sélectionnez l'âge de retraite anticipée le plus précoce autorisé par votre plan de pension, puis saisissez la rente LPP projetée et le capital LPP projeté pour chaque année. Cela permettra d'exécuter une simulation d'optimisation."
-                                        : "Select the earliest retirement age allowed by your pension plan, then input the projected LPP Pension and the projected LPP Capital for each year. This will allow runining an optimisation simulation"}
-                                </p>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* Dynamic Benefits Table - Visible if pillars selected OR Option 2/0/3 is active (for LPP rows) */}
-                    {(selectedPillars.avs || selectedPillars.threeA || selectedPillars.lppSup || (retirementOption === 'option2' && earlyRetirementAge) || retirementOption === 'option0' || (retirementOption === 'option3' && option3EarlyAge)) && (
+                    {/* Dynamic Benefits Table - Visible if pillars selected OR Option 2/0/3/1 is active (for LPP rows) */}
+                    {(selectedPillars.avs || selectedPillars.threeA || selectedPillars.lppSup || (retirementOption === 'option2' && earlyRetirementAge) || retirementOption === 'option0' || (retirementOption === 'option3' && option3EarlyAge) || (retirementOption === 'option1')) && (
                         <Card className="bg-slate-900 border-slate-800">
                             <div className="p-4 overflow-x-auto">
                                 <table className="w-full text-sm text-left text-gray-400">
@@ -899,6 +943,41 @@ const RetirementParameters = () => {
                                                 )}
                                             </>
                                         )}
+                                        {/* Option 1 LPP Row (Pension Capital) */}
+                                        {retirementOption === 'option1' && (
+                                            <tr className="bg-slate-900 hover:bg-slate-800/50">
+                                                <td className="px-4 py-3 font-medium text-white">{language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status'}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="h-8 flex items-center text-gray-400">
+                                                        {wishedRetirementDate ? new Date(wishedRetirementDate).toLocaleDateString('de-CH') : '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        type="number"
+                                                        value={pensionCapital}
+                                                        onChange={(e) => setPensionCapital(e.target.value)}
+                                                        className="h-8 bg-black/20 border-slate-700 w-32"
+                                                        placeholder="0"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-4 items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
+                                                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                                            </div>
+                                                            <span>One-time</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:bg-gray-800/20" title="This field is required for this option and cannot be deleted">
+                                                        {/* Locked/Info icon or just empty to signify no delete */}
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )}
                                         {/* Supp LPP Row */}
                                         {selectedPillars.lppSup && (
                                             <tr className="bg-slate-900 hover:bg-slate-800/50">
@@ -1068,78 +1147,7 @@ const RetirementParameters = () => {
                         </Card>
                     )}
 
-                    {/* Option 0 Card Removed (Unified into Table) */}
 
-                    {/* Conditional Fields Card - Appears below blue card when option is selected */}
-                    {retirementOption === 'option1' && (
-                        <Card>
-                            <CardContent className="pt-6 space-y-4">
-                                {/* Date Picker and Message side by side */}
-                                <div className="flex gap-4 items-start">
-                                    <div>
-                                        <Label htmlFor="wishedRetirementDate" className="mb-2 block">
-                                            {language === 'fr' ? 'Date de retraite souhaitée' : 'Desired retirement date'}
-                                        </Label>
-                                        <Input
-                                            id="wishedRetirementDate"
-                                            type="date"
-                                            value={wishedRetirementDate}
-                                            onChange={(e) => setWishedRetirementDate(e.target.value)}
-                                            className="max-w-xs"
-                                        />
-                                    </div>
-
-                                    {/* Message */}
-                                    {wishedRetirementDate && (
-                                        <div className="bg-muted p-3 rounded-lg flex-1 mt-1">
-                                            <p className="text-sm">
-                                                {new Date(wishedRetirementDate) < new Date(retirementLegalDate)
-                                                    ? (language === 'fr'
-                                                        ? "La date sélectionnée est antérieure à votre date de retraite légale. Veuillez fournir le statut actuel de votre capital de prévoyance car il sera considéré dans la simulation comme un compte de libre passage avec un rendement annuel défini."
-                                                        : "The selected date is prior to your legal retirement date. Please provide your current pension plan capital status as it will be considered in the simulation as a vested benefits account with a defined yearly return")
-                                                    : (language === 'fr'
-                                                        ? "Vous avez choisi une date postérieure à votre date de retraite légale. Cette option vous demandera simplement le statut actuel de votre capital de prévoyance et le considérera comme un actif de \"libre passage\" avec un rendement annuel défini."
-                                                        : "You have picked a date after to your legal retirement date. This option will simply ask you for your current pension plan capital status and consider it as a \"libre passage\" asset with a defined yearly return")}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Pension Capital and Yearly Return - Side by Side */}
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <Label htmlFor="pensionCapital" className="mb-2 block">
-                                            {language === 'fr' ? 'Statut actuel du capital de prévoyance (en CHF)' : 'Current pension plan capital status (in CHF)'}
-                                        </Label>
-                                        <Input
-                                            id="pensionCapital"
-                                            type="number"
-                                            value={pensionCapital}
-                                            onChange={(e) => setPensionCapital(e.target.value)}
-                                            placeholder="0"
-                                        />
-                                    </div>
-
-                                    <div className="flex-1">
-                                        <Label htmlFor="yearlyReturn" className="mb-2 block">
-                                            {language === 'fr' ? 'Rendement annuel sur le capital de pension' : 'Yearly return on pension capital'}
-                                        </Label>
-                                        <Select value={yearlyReturn} onValueChange={setYearlyReturn}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="0">0%</SelectItem>
-                                                <SelectItem value="1">1%</SelectItem>
-                                                <SelectItem value="2">2%</SelectItem>
-                                                <SelectItem value="3">3%</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
 
                     {/* Option 2 Card Removed (Unified into Table) */}
 

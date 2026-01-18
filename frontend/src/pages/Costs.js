@@ -344,21 +344,20 @@ const Costs = () => {
               {t('costs.subtitle')}
             </p>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowHelpModal(true)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+          >
+            <HelpCircle className="h-4 w-4" />
+            {t('costs.helpButton')}
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Help Button */}
-          <div className="mb-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowHelpModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
-            >
-              <HelpCircle className="h-4 w-4" />
-              {t('costs.helpButton')}
-            </Button>
-          </div>
+
 
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">
             <table className="w-full min-w-[900px]">
