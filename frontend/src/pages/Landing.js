@@ -89,19 +89,25 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="landing-page">
-      {/* Language Selector - Bottom Center */}
-      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-        <div className="flex items-center gap-2 bg-card border rounded-lg p-2 shadow-lg">
-          <Globe className="h-4 w-4 text-muted-foreground" />
-          <select
-            data-testid="language-selector"
-            value={language}
-            onChange={(e) => switchLanguage(e.target.value)}
-            className="bg-transparent border-none text-sm font-medium cursor-pointer focus:outline-none"
+      {/* Language Selector - Top Right */}
+      <div className="absolute top-6 right-6 z-50">
+        <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 w-[100px] justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => switchLanguage('en')}
+            className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'en' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
           >
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-          </select>
+            EN
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => switchLanguage('fr')}
+            className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'fr' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            FR
+          </Button>
         </div>
       </div>
 
@@ -124,7 +130,7 @@ const Landing = () => {
             </p>
             <Link
               to="/information"
-              className="text-primary hover:underline text-sm"
+              className="text-green-500 hover:underline text-sm"
             >
               {t('landing.learnMore')}
             </Link>

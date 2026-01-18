@@ -120,7 +120,7 @@ const RetirementOverview = () => {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" data-testid="retirement-overview-page">
+    <div className="min-h-screen py-6 px-4" data-testid="retirement-overview-page">
       <div className="max-w-4xl w-full mx-auto mb-6 px-4">
       </div>
 

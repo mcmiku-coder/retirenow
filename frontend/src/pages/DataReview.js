@@ -87,19 +87,33 @@ const DataReview = () => {
 
   // Get translated income name
   const getIncomeName = (englishName) => {
+    // Check if it's a known key in our mapping
     const key = INCOME_KEYS[englishName];
     if (key) {
-      return t(`income.${key} `);
+      return t(`income.${key}`);
     }
+
+    // Check if it's already a translation key
+    if (englishName && typeof englishName === 'string' && englishName.startsWith('income.')) {
+      return t(englishName);
+    }
+
     return englishName;
   };
 
   // Get translated cost name
   const getCostName = (englishName) => {
+    // Check if it's a known key in our mapping
     const key = COST_KEYS[englishName];
     if (key) {
-      return t(`costs.costNames.${key} `);
+      return t(`costs.costNames.${key}`);
     }
+
+    // Check if it's already a translation key (which seems to be how data is stored now)
+    if (englishName && typeof englishName === 'string' && englishName.startsWith('costs.costNames.')) {
+      return t(englishName);
+    }
+
     return englishName;
   };
 
@@ -905,6 +919,23 @@ const DataReview = () => {
             });
           }
 
+          // Option 2: Inject Projected LPP Capital (New Logic)
+          if (option === 'option2' && scenarioData.projectedLPPCapital) {
+            const lppAsset = {
+              id: 'projected_lpp_capital_option2',
+              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
+              amount: scenarioData.projectedLPPCapital,
+              adjustedAmount: scenarioData.projectedLPPCapital, // Reset adjusted to original
+              category: 'Illiquid', // Default
+              preserve: 'No', // Default
+              availabilityType: 'Date',
+              availabilityDate: retirementDateStr,
+              strategy: 'Cash', // Default
+              isOption2: true
+            };
+            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
+          }
+
           // Option 1: Inject LPP Pension Capital (New Logic - Unshift to top)
           if (option === 'option1' && scenarioData.pensionCapital) {
             const lppAsset = {
@@ -1580,7 +1611,7 @@ const DataReview = () => {
           <Card>
             <CardHeader>
               <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
-              <p className="text-sm text-muted-foreground">{t('scenario.allDatesEditable')}</p>
+
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -1641,9 +1672,11 @@ const DataReview = () => {
                         ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
                         : income.endDate;
 
+                      const isLPPPension = income.name.includes('LPP Pension');
+
                       return (
-                        <tr key={income.id} className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}>
-                          <td className="p-3 font-medium">
+                        <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                          <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : ''}`}>
                             <div className="flex items-center gap-2">
                               {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
                               {getIncomeName(income.name)}
@@ -1791,9 +1824,11 @@ const DataReview = () => {
                       const isDecreased = adjustedAmount < originalAmount;
                       const isIncreased = adjustedAmount > originalAmount;
 
+                      const isLPPCapital = asset.name.includes('LPP Capital');
+
                       return (
                         <tr key={asset.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium">{asset.name}</td>
+                          <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : ''}`}>{asset.name}</td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {originalAmount.toLocaleString()}
                           </td>
@@ -1802,8 +1837,7 @@ const DataReview = () => {
                               type="number"
                               value={asset.adjustedAmount || asset.amount}
                               onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
-                              className={`max - w - [150px] ml - auto text - right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
-                                } `}
+                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
                             />
                           </td>
                           <td className="p-3">
@@ -1958,7 +1992,6 @@ const DataReview = () => {
           <Card>
             <CardHeader>
               <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
-              <p className="text-sm text-muted-foreground">{t('scenario.costsDescription')}</p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -2012,7 +2045,7 @@ const DataReview = () => {
                               type="number"
                               value={cost.adjustedAmount}
                               onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
-                              className="max-w-[150px] ml-auto"
+                              className="max-w-[150px] ml-auto text-right"
                               style={{
                                 backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
                               }}
@@ -2131,8 +2164,7 @@ const DataReview = () => {
                               type="number"
                               value={debt.adjustedAmount || debt.amount}
                               onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
-                              className={`max - w - [150px] ml - auto text - right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
-                                } `}
+                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
                             />
                           </td>
                           <td className="p-3">

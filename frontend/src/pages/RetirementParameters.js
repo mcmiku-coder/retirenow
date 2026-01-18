@@ -431,7 +431,7 @@ const RetirementParameters = () => {
                                     onChange={() => setRetirementOption('option0')}
                                     className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
                                 />
-                                <span className="text-white font-medium">
+                                <span className="text-white font-medium text-sm">
                                     {language === 'fr'
                                         ? `Simuler mon équilibre financier en prenant ma retraite à la date légale (${retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : ''}) (65 ans)`
                                         : `Simulate my Financial balance when retiring at the legal retirement date ${retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : ''} (65 years old)`}
@@ -447,7 +447,7 @@ const RetirementParameters = () => {
                                     onChange={() => setRetirementOption('option2')}
                                     className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
                                 />
-                                <span className="text-white font-medium">
+                                <span className="text-white font-medium text-sm">
                                     {language === 'fr'
                                         ? 'Choisir une date de retraite correspondant à l\'une des dates de retraite anticipée possibles de votre plan de pension'
                                         : 'Choose a retirement date matching one of the possible early retirement dates of your pension plan'}
@@ -500,7 +500,7 @@ const RetirementParameters = () => {
                                     onChange={() => setRetirementOption('option1')}
                                     className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
                                 />
-                                <span className="text-white font-medium">
+                                <span className="text-white font-medium text-sm">
                                     {language === 'fr'
                                         ? 'Choisir une date de retraite indépendamment de vos plans de retraite anticipée possibles'
                                         : 'Pick a retirement date regardless of your possible early retirement plans'}
@@ -552,7 +552,7 @@ const RetirementParameters = () => {
                                     onChange={() => setRetirementOption('option3')}
                                     className="mt-1 w-5 h-5 text-blue-800 focus:ring-blue-500"
                                 />
-                                <span className="text-white font-medium">
+                                <span className="text-white font-medium text-sm">
                                     {language === 'fr'
                                         ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif) - Bientôt disponible'
                                         : 'Calculate the earliest retirement date possible (balance at death not negative) - Coming soon'}

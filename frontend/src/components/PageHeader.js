@@ -2,7 +2,7 @@ import React from 'react';
 
 const PageHeader = ({ title, subtitle, rightContent }) => {
   return (
-    <div className="w-full bg-gradient-to-r from-background via-slate-900 to-background border-y border-primary/40 py-4 mb-6">
+    <div className="w-full border-y border-primary/40 py-4 mb-6">
       <div className="w-[80%] mx-auto px-4 relative flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white tracking-tight font-sans">

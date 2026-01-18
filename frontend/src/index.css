@@ -112,3 +112,9 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* Custom styles for date picker icon in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    cursor: pointer;
+}

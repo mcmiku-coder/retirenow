@@ -184,7 +184,7 @@ const Income = () => {
 
   return (
     <div className="min-h-screen py-6" data-testid="income-page">
-      <div className="max-w-[1400px] mx-auto mb-6 px-4">
+      <div className="w-[80%] mx-auto mb-6 px-4">
       </div>
 
       <PageHeader
@@ -192,7 +192,7 @@ const Income = () => {
         subtitle={t('income.subtitle')}
       />
 
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="w-[80%] mx-auto px-4">
 
         <form onSubmit={handleSubmit}>
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">
