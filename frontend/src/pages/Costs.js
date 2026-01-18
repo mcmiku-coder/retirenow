@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { saveCostData, getCostData, getUserData, getIncomeData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 
 // Cost name keys for translation
 const COST_KEYS = {
@@ -334,16 +334,17 @@ const Costs = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4" data-testid="costs-page">
-      <div className="max-w-6xl mx-auto">
-        <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('costs.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('costs.subtitle')}
-            </p>
-          </div>
+    <div className="min-h-screen py-6" data-testid="costs-page">
+      <div className="max-w-[1400px] mx-auto mb-6 px-4">
+      </div>
+
+      <PageHeader
+        title={t('costs.title')}
+        subtitle={t('costs.subtitle')}
+      />
+
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex items-center justify-end mb-8">
           <Button
             type="button"
             variant="outline"

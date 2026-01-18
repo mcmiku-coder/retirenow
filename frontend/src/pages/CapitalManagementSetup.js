@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { getScenarioData } from '../utils/database';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 
 const CapitalManagementSetup = () => {
     const navigate = useNavigate();
@@ -52,21 +52,18 @@ const CapitalManagementSetup = () => {
     }
 
     return (
-        <div className="min-h-screen py-12 px-4" data-testid="capital-management-page">
-            <div className="max-w-[1400px] mx-auto">
-                <WorkflowNavigation />
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-                            {language === 'fr' ? 'Gestion du capital' : 'Capital management setup'}
-                        </h1>
-                        <p className="text-muted-foreground">
-                            {language === 'fr'
-                                ? 'Définissez la stratégie pour vos actifs investis'
-                                : 'Setup the strategy for your invested items'}
-                        </p>
-                    </div>
-                </div>
+        <div className="min-h-screen py-6" data-testid="capital-management-page">
+            <div className="max-w-[1400px] mx-auto mb-6 px-4">
+            </div>
+
+            <PageHeader
+                title={language === 'fr' ? 'Gestion du capital' : 'Capital management setup'}
+                subtitle={language === 'fr'
+                    ? 'Définissez la stratégie pour vos actifs investis'
+                    : 'Setup the strategy for your invested items'}
+            />
+
+            <div className="max-w-[1400px] mx-auto px-4">
 
                 <Card>
                     <CardHeader>

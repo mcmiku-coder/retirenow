@@ -1,43 +1,25 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
-import { Button } from './ui/button';
-import { LogOut, Globe } from 'lucide-react';
 
-const PageHeader = ({ showLanguageSelector = false }) => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const { language, switchLanguage } = useLanguage();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
+const PageHeader = ({ title, subtitle, rightContent }) => {
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2">
-      {showLanguageSelector && (
-        <select
-          value={language}
-          onChange={(e) => switchLanguage(e.target.value)}
-          className="bg-muted border rounded-md px-2 py-1 text-sm outline-none"
-        >
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-        </select>
-      )}
-      {user && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          className="flex items-center gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          {language === 'fr' ? 'Déconnexion' : 'Logout'}
-        </Button>
-      )}
+    <div className="w-full bg-gradient-to-r from-background via-slate-900 to-background border-y border-primary/40 py-4 mb-6">
+      <div className="w-[80%] mx-auto px-4 relative flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white tracking-tight font-sans">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl mx-auto">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {rightContent && (
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+            {rightContent}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

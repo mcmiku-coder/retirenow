@@ -10,11 +10,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../componen
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 
 const ScenarioResult = () => {
@@ -472,19 +473,61 @@ const ScenarioResult = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-8 bg-background text-foreground" data-testid="scenario-result-page">
-      <div className="max-w-[1600px] w-full mx-auto">
-        <WorkflowNavigation />
+    <div className="min-h-screen flex flex-col pt-6 pb-8 bg-background text-foreground" data-testid="scenario-result-page">
+      <div className="w-full max-w-[95%] mx-auto mb-6 px-4">
+      </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      <PageHeader
+        title={language === 'fr' ? 'Résultats de la simulation' : 'Simulation results'}
+      />
+
+      <div className="max-w-[1600px] w-full mx-auto px-4">
+
+        <div className="grid grid-cols-1 xl:grid-cols-[450px_1fr] gap-8">
 
           {/* LEFT COLUMN: Controls & Verdict */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="space-y-6">
 
             {/* Verdict Card */}
             <Card className="overflow-hidden border-2 shadow-sm">
               <div className={`h-3 w-full ${projection.canQuit ? 'bg-green-500' : 'bg-red-500'}`} />
               <CardContent className="pt-6">
+                {/* Simulation Description */}
+                <div className="mb-4 text-sm text-gray-300 border-b border-gray-700 pb-4">
+                  {(() => {
+                    const option = scenarioData?.retirementOption || 'option1';
+                    const retireDate = new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate);
+                    // Calculates age based on birthday and retirement date
+                    let age = '';
+                    if (userData?.birthDate && retireDate) {
+                      const birth = new Date(userData.birthDate);
+                      const ageDate = new Date(retireDate - birth);
+                      age = Math.abs(ageDate.getUTCFullYear() - 1970);
+                    }
+
+                    const dateStr = retireDate.toLocaleDateString('de-CH');
+
+                    if (option === 'option0') { // Legal
+                      return language === 'fr'
+                        ? `Simulation à l'âge légal de la retraite le ${dateStr} (${age} ans)`
+                        : `Simulation at legal retirement date ${dateStr} (${age} years old)`;
+                    } else if (option === 'option2') { // Early
+                      return language === 'fr'
+                        ? `Simulation à la date de pré-retraite choisie le ${dateStr} (${age} ans)`
+                        : `Simulation at chosen pre-retirement date ${dateStr} (${age} years old)`;
+                    } else if (option === 'option1') { // Pick date
+                      return language === 'fr'
+                        ? `Simulation à la date choisie le ${dateStr} (${age} ans)`
+                        : `Simulation at chosen date ${dateStr} (${age} years old)`;
+                    } else if (option === 'option3') { // Earliest possible
+                      return language === 'fr'
+                        ? `Calcul de la date de retraite la plus tôt possible: ${dateStr} (${age} ans)`
+                        : `Calculation of earliest retirement date possible: ${dateStr} (${age} years old)`;
+                    }
+                    return '';
+                  })()}
+                </div>
+
                 <div className="flex items-center justify-between gap-4">
                   {/* Image on left */}
                   <img
@@ -640,7 +683,7 @@ const ScenarioResult = () => {
           </div>
 
           {/* RIGHT COLUMN: Graph & Table */}
-          <div className="xl:col-span-3 space-y-6">
+          <div className="space-y-6">
 
             {/* Graph */}
             <Card className="h-[615px]">

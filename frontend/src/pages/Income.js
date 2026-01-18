@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import { saveIncomeData, getIncomeData, getUserData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 
 const Income = () => {
   const navigate = useNavigate();
@@ -183,17 +183,16 @@ const Income = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4" data-testid="income-page">
-      <div className="max-w-6xl mx-auto">
-        <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('income.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('income.subtitle')}
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen py-6" data-testid="income-page">
+      <div className="max-w-[1400px] mx-auto mb-6 px-4">
+      </div>
+
+      <PageHeader
+        title={t('income.title')}
+        subtitle={t('income.subtitle')}
+      />
+
+      <div className="max-w-6xl mx-auto px-4">
 
         <form onSubmit={handleSubmit}>
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">

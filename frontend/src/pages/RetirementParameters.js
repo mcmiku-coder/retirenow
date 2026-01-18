@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { getUserData, getScenarioData, saveScenarioData, getRetirementData } from '../utils/database';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Trash2 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 const RetirementParameters = () => {
     const navigate = useNavigate();
@@ -77,7 +78,7 @@ const RetirementParameters = () => {
         const yearsDifference = 65 - parseInt(age);
         const earlyDate = new Date(legalDate);
         earlyDate.setFullYear(earlyDate.getFullYear() - yearsDifference);
-        return earlyDate.toLocaleDateString('de-CH');
+        return earlyDate.toISOString().split('T')[0];
     };
 
     const userEmail = user?.email;
@@ -321,16 +322,15 @@ const RetirementParameters = () => {
     }
 
     return (
-        <div className="min-h-screen py-12 px-4">
+        <div className="min-h-screen py-6">
+            <div className="max-w-6xl mx-auto mb-6 px-4">
+            </div>
+
+            <PageHeader
+                title={language === 'fr' ? 'Options de simulation et saisie des prestations de retraite' : 'Simulation options and retirement benefits inputs'}
+            />
+
             <div className="max-w-6xl mx-auto">
-                <WorkflowNavigation />
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">
-                            {language === 'fr' ? 'Options de simulation et saisie des prestations de retraite' : 'Simulation options and retirement benefits inputs'}
-                        </h1>
-                    </div>
-                </div>
 
                 <div className="space-y-6">
                     {/* Pillars Selection */}
@@ -389,9 +389,36 @@ const RetirementParameters = () => {
                                         ? 'Choisissez le type de simulation que vous souhaitez effectuer et fournissez les données supplémentaires nécessaires'
                                         : 'Choose the type of simulation you wish to perform and provide the additional necessary data'}
                                 </CardTitle>
-                                <p className="text-sm text-white/80">
-                                    {language === 'fr' ? 'Date de retraite légale' : 'Legal retirement date'}: {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString() : '-'}
-                                </p>
+                                <Button
+                                    onClick={() => {
+                                        // Reset all fields
+                                        setRetirementOption('');
+                                        setWishedRetirementDate('');
+                                        setPensionCapital('');
+                                        setYearlyReturn('0');
+                                        setEarlyRetirementAge('');
+                                        setProjectedLPPPension('');
+                                        setProjectedLPPCapital('');
+                                        setOption3EarlyAge('');
+                                        setPreRetirementData({});
+                                        setProjectedLegalLPPPension('');
+                                        setProjectedLegalLPPCapital('');
+
+                                        // Reset benefits data with default dates
+                                        const defaultDate = retirementLegalDate ? new Date(retirementLegalDate).toISOString().split('T')[0] : '2045-12-01';
+                                        setBenefitsData({
+                                            avs: { amount: '', frequency: 'Monthly', startDate: defaultDate },
+                                            threeA: { amount: '', frequency: 'One-time', startDate: defaultDate },
+                                            lppSup: { amount: '', frequency: 'One-time', startDate: defaultDate }
+                                        });
+
+                                        toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
+                                    }}
+                                    size="sm"
+                                    className="bg-blue-800 hover:bg-blue-900 text-white border-blue-700 whitespace-nowrap"
+                                >
+                                    {language === 'fr' ? 'Réinitialiser' : 'Reset to default'}
+                                </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -569,38 +596,7 @@ const RetirementParameters = () => {
                                 </div>
                             )}
 
-                            {/* Reset to Default Button - Bottom Left */}
-                            <div className="mt-4 pt-4 border-t border-white/20">
-                                <Button
-                                    onClick={() => {
-                                        // Reset all fields
-                                        setRetirementOption('');
-                                        setWishedRetirementDate('');
-                                        setPensionCapital('');
-                                        setYearlyReturn('0');
-                                        setEarlyRetirementAge('');
-                                        setProjectedLPPPension('');
-                                        setProjectedLPPCapital('');
-                                        setOption3EarlyAge('');
-                                        setPreRetirementData({});
-                                        setProjectedLegalLPPPension('');
-                                        setProjectedLegalLPPCapital('');
 
-                                        // Reset benefits data with default dates
-                                        const defaultDate = retirementLegalDate ? new Date(retirementLegalDate).toISOString().split('T')[0] : '2045-12-01';
-                                        setBenefitsData({
-                                            avs: { amount: '', frequency: 'Monthly', startDate: defaultDate },
-                                            threeA: { amount: '', frequency: 'One-time', startDate: defaultDate },
-                                            lppSup: { amount: '', frequency: 'One-time', startDate: defaultDate }
-                                        });
-
-                                        toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to default values');
-                                    }}
-                                    className="bg-blue-800 hover:bg-blue-900 text-white px-6"
-                                >
-                                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to default'}
-                                </Button>
-                            </div>
                         </CardContent>
                     </Card>
 
@@ -698,7 +694,7 @@ const RetirementParameters = () => {
                                                                 {benefitsData.threeA.frequency === 'One-time' && <div className="w-2 h-2 rounded-full bg-red-500" />}
                                                             </div>
                                                             <input type="radio" className="hidden" checked={benefitsData.threeA.frequency === 'One-time'} onChange={() => updateBenefitData('threeA', 'frequency', 'One-time')} />
-                                                            <span>One-time</span>
+                                                            <span>Once</span>
                                                         </label>
                                                     </div>
                                                 </td>
@@ -720,9 +716,12 @@ const RetirementParameters = () => {
                                                                 : `Projected LPP Pension at ${earlyRetirementAge}y`}
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <div className="h-8 flex items-center text-gray-400">
-                                                                {calculateEarlyRetirementDate(earlyRetirementAge) || '-'}
-                                                            </div>
+                                                            <Input
+                                                                type="date"
+                                                                value={calculateEarlyRetirementDate(earlyRetirementAge) || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <Input
@@ -780,9 +779,12 @@ const RetirementParameters = () => {
                                                                 : `Projected LPP Capital at ${earlyRetirementAge}y`}
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <div className="h-8 flex items-center text-gray-400">
-                                                                {calculateEarlyRetirementDate(earlyRetirementAge) || '-'}
-                                                            </div>
+                                                            <Input
+                                                                type="date"
+                                                                value={calculateEarlyRetirementDate(earlyRetirementAge) || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <Input
@@ -799,7 +801,7 @@ const RetirementParameters = () => {
                                                                     <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
                                                                         <div className="w-2 h-2 rounded-full bg-red-500" />
                                                                     </div>
-                                                                    <span>One-time</span>
+                                                                    <span>Once</span>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -837,9 +839,12 @@ const RetirementParameters = () => {
                                                                 : 'Projected LPP Pension at 65y'}
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <div className="h-8 flex items-center text-gray-400">
-                                                                {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString('de-CH') : '-'}
-                                                            </div>
+                                                            <Input
+                                                                type="date"
+                                                                value={retirementLegalDate || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <Input
@@ -897,9 +902,12 @@ const RetirementParameters = () => {
                                                                 : 'Projected LPP Capital at 65y'}
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <div className="h-8 flex items-center text-gray-400">
-                                                                {retirementLegalDate ? new Date(retirementLegalDate).toLocaleDateString('de-CH') : '-'}
-                                                            </div>
+                                                            <Input
+                                                                type="date"
+                                                                value={retirementLegalDate || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3">
                                                             <Input
@@ -916,7 +924,7 @@ const RetirementParameters = () => {
                                                                     <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
                                                                         <div className="w-2 h-2 rounded-full bg-red-500" />
                                                                     </div>
-                                                                    <span>One-time</span>
+                                                                    <span>Once</span>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -948,9 +956,12 @@ const RetirementParameters = () => {
                                             <tr className="bg-slate-900 hover:bg-slate-800/50">
                                                 <td className="px-4 py-3 font-medium text-white">{language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status'}</td>
                                                 <td className="px-4 py-3">
-                                                    <div className="h-8 flex items-center text-gray-400">
-                                                        {wishedRetirementDate ? new Date(wishedRetirementDate).toLocaleDateString('de-CH') : '-'}
-                                                    </div>
+                                                    <Input
+                                                        type="date"
+                                                        value={wishedRetirementDate || ''}
+                                                        className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                        disabled
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <Input
@@ -967,7 +978,7 @@ const RetirementParameters = () => {
                                                             <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
                                                                 <div className="w-2 h-2 rounded-full bg-red-500" />
                                                             </div>
-                                                            <span>One-time</span>
+                                                            <span>Once</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -983,10 +994,22 @@ const RetirementParameters = () => {
                                             <tr className="bg-slate-900 hover:bg-slate-800/50">
                                                 <td className="px-4 py-3 font-medium text-white">{language === 'fr' ? 'Capital de pension supplémentaire' : 'Supplementary Pension capital'}</td>
                                                 <td className="px-4 py-3">
-                                                    <div className="h-8 flex items-center text-gray-400">
-                                                        {retirementOption === 'option2' && earlyRetirementAge
-                                                            ? calculateEarlyRetirementDate(earlyRetirementAge) || '-'
-                                                            : (benefitsData.lppSup.startDate ? new Date(benefitsData.lppSup.startDate).toLocaleDateString('de-CH') : '-')}
+                                                    <div className="h-8 flex items-center">
+                                                        {retirementOption === 'option2' && earlyRetirementAge ? (
+                                                            <Input
+                                                                type="date"
+                                                                value={calculateEarlyRetirementDate(earlyRetirementAge) || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
+                                                        ) : (
+                                                            <Input
+                                                                type="date"
+                                                                value={benefitsData.lppSup.startDate || ''}
+                                                                className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                disabled
+                                                            />
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -1004,7 +1027,7 @@ const RetirementParameters = () => {
                                                             <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
                                                                 <div className="w-2 h-2 rounded-full bg-red-500" />
                                                             </div>
-                                                            <span>One-time</span>
+                                                            <span>Once</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1036,7 +1059,7 @@ const RetirementParameters = () => {
                                                 const yearsDifference = 65 - parseInt(age);
                                                 const earlyDate = new Date(legalDate);
                                                 earlyDate.setFullYear(earlyDate.getFullYear() - yearsDifference);
-                                                return earlyDate.toLocaleDateString('de-CH');
+                                                return earlyDate.toISOString().split('T')[0];
                                             };
 
                                             return yearsToShow.map(year => {
@@ -1053,9 +1076,12 @@ const RetirementParameters = () => {
                                                                     : `Projected LPP Pension at ${age}y`}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <div className="h-8 flex items-center text-gray-400">
-                                                                    {calculateRetirementDateForAge(age)}
-                                                                </div>
+                                                                <Input
+                                                                    type="date"
+                                                                    value={calculateRetirementDateForAge(age)}
+                                                                    className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                    disabled
+                                                                />
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <Input
@@ -1103,9 +1129,12 @@ const RetirementParameters = () => {
                                                                     : `Projected LPP Capital at ${age}y`}
                                                             </td>
                                                             <td className="px-4 py-3">
-                                                                <div className="h-8 flex items-center text-gray-400">
-                                                                    {calculateRetirementDateForAge(age)}
-                                                                </div>
+                                                                <Input
+                                                                    type="date"
+                                                                    value={calculateRetirementDateForAge(age)}
+                                                                    className="h-8 bg-black/20 border-slate-700 w-[140px] text-white opacity-50 cursor-not-allowed"
+                                                                    disabled
+                                                                />
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <Input
@@ -1122,7 +1151,7 @@ const RetirementParameters = () => {
                                                                         <div className="w-4 h-4 rounded-full border border-red-500 flex items-center justify-center">
                                                                             <div className="w-2 h-2 rounded-full bg-red-500" />
                                                                         </div>
-                                                                        <span>One-time</span>
+                                                                        <span>Once</span>
                                                                     </div>
                                                                 </div>
                                                             </td>

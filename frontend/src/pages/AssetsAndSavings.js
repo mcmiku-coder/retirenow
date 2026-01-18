@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { getAssetsData, saveAssetsData, getUserData } from '../utils/database';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 import { Plus, Trash2 } from 'lucide-react';
 
 const AssetsOverview = () => {
@@ -221,22 +221,19 @@ const AssetsOverview = () => {
     }
 
     return (
-        <div className="min-h-screen py-12 px-4">
-            <div className="max-w-7xl mx-auto">
-                <WorkflowNavigation />
-                <div className="max-w-6xl w-full">
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-                                {language === 'fr' ? 'Vue d\'ensemble et perspective des actifs' : 'Asset overview and perspective'}
-                            </h1>
-                            <p className="text-muted-foreground">
-                                {language === 'fr'
-                                    ? 'Définissez vos actifs actuels, entrées attendues et sorties souhaitées'
-                                    : 'Define your current assets, expected inflows, and desired outflows'}
-                            </p>
-                        </div>
-                    </div>
+        <div className="min-h-screen py-6">
+            <div className="max-w-[1400px] mx-auto mb-6 px-4">
+            </div>
+
+            <PageHeader
+                title={language === 'fr' ? 'Vue d\'overview et perspective des actifs' : 'Asset overview and perspective'}
+                subtitle={language === 'fr'
+                    ? 'Définissez vos actifs actuels, entrées attendues et sorties souhaitées'
+                    : 'Define your current assets, expected inflows, and desired outflows'}
+            />
+
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="max-w-6xl w-full mx-auto">
 
                     <form onSubmit={handleSubmit} className="space-y-8">
                         {/* Current Assets and Possible Inflows */}

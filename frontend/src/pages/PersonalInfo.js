@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
@@ -118,17 +118,17 @@ const PersonalInfo = () => {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" data-testid="personal-info-page">
-      <div className="max-w-6xl mx-auto">
-        <WorkflowNavigation />
+    <div className="min-h-screen py-6" data-testid="personal-info-page">
+      <div className="max-w-6xl mx-auto mb-6 px-4">
+      </div>
 
+      <PageHeader
+        title={t('personalInfo.title')}
+        subtitle={t('personalInfo.subtitle')}
+      />
+
+      <div className="max-w-6xl mx-auto px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('personalInfo.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('personalInfo.subtitle')}
-            </p>
-          </div>
 
           <form id="personal-info-form" onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
             <div>

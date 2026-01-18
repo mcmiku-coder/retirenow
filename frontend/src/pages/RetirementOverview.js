@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { getUserData, saveUserData } from '../utils/database';
 import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
-import WorkflowNavigation from '../components/WorkflowNavigation';
+import PageHeader from '../components/PageHeader';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
 
@@ -121,16 +121,15 @@ const RetirementOverview = () => {
 
   return (
     <div className="min-h-screen py-12 px-4" data-testid="retirement-overview-page">
-      <div className="max-w-4xl w-full mx-auto">
-        <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">{t('retirementOverview.title')}</h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {t('retirementOverview.subtitle')}
-            </p>
-          </div>
-        </div>
+      <div className="max-w-4xl w-full mx-auto mb-6 px-4">
+      </div>
+
+      <PageHeader
+        title={t('retirementOverview.title')}
+        subtitle={t('retirementOverview.subtitle')}
+      />
+
+      <div className="max-w-4xl w-full mx-auto px-4">
 
         {retirementData && (
           <div className="grid md:grid-cols-3 gap-6 mb-8">

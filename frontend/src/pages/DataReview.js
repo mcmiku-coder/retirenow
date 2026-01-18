@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
+
+import PageHeader from '../components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,8 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
-import WorkflowNavigation from '../components/WorkflowNavigation';
-import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb } from 'lucide-react';
+import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb, Copy } from 'lucide-react';
 
 // Income name translation keys
 const INCOME_KEYS = {
@@ -87,7 +89,7 @@ const DataReview = () => {
   const getIncomeName = (englishName) => {
     const key = INCOME_KEYS[englishName];
     if (key) {
-      return t(`income.${key}`);
+      return t(`income.${key} `);
     }
     return englishName;
   };
@@ -96,7 +98,7 @@ const DataReview = () => {
   const getCostName = (englishName) => {
     const key = COST_KEYS[englishName];
     if (key) {
-      return t(`costs.costNames.${key}`);
+      return t(`costs.costNames.${key} `);
     }
     return englishName;
   };
@@ -143,6 +145,7 @@ const DataReview = () => {
 
         setRetirementLegalDate(retirementDateStr);
         setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
+        setRetirementOption(scenarioData?.retirementOption || 'option1');
         setDeathDate(deathDateStr);
 
         // Load assets data from assetsData store
@@ -217,7 +220,7 @@ const DataReview = () => {
 
             const option2Asset = {
               id: 'projected_lpp_capital',
-              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
+              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge} y`,
               amount: scenarioData.projectedLPPCapital,
               adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.projectedLPPCapital,
               category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
@@ -401,7 +404,7 @@ const DataReview = () => {
             if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
               processedRetirementIncome.push({
                 id: 'projected_lpp_pension',
-                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
+                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge} y`,
                 amount: scenarioData.projectedLPPPension,
                 adjustedAmount: scenarioData.projectedLPPPension,
                 frequency: 'Monthly',
@@ -421,8 +424,8 @@ const DataReview = () => {
               // Create pension row if pension value exists
               if (row.pension && row.pension !== '' && row.pension !== '0') {
                 processedRetirementIncome.push({
-                  id: `pre_retirement_pension_${row.age}`,
-                  name: `Pre-retirement LPP Pension at ${row.age}y`,
+                  id: `pre_retirement_pension_${row.age} `,
+                  name: `Pre - retirement LPP Pension at ${row.age} y`,
                   amount: row.pension,
                   adjustedAmount: row.pension,
                   frequency: row.frequency || 'Monthly',
@@ -435,8 +438,8 @@ const DataReview = () => {
               // Create capital row if capital value exists
               if (row.capital && row.capital !== '' && row.capital !== '0') {
                 processedRetirementIncome.push({
-                  id: `pre_retirement_capital_${row.age}`,
-                  name: `Pre-retirement LPP Capital at ${row.age}y`,
+                  id: `pre_retirement_capital_${row.age} `,
+                  name: `Pre - retirement LPP Capital at ${row.age} y`,
                   amount: row.capital,
                   adjustedAmount: row.capital,
                   frequency: 'One-time',
@@ -740,7 +743,7 @@ const DataReview = () => {
           if (scenarioData.projectedLPPPension) {
             processedRetirementIncome.push({
               id: 'projected_lpp_pension',
-              name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
+              name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge} y`,
               amount: scenarioData.projectedLPPPension,
               adjustedAmount: scenarioData.projectedLPPPension,
               frequency: scenarioData.lppPensionFrequency || 'Monthly',
@@ -756,8 +759,8 @@ const DataReview = () => {
               const ageData = scenarioData.preRetirementData[age];
               if (ageData.pension) {
                 processedRetirementIncome.push({
-                  id: `pre_retirement_pension_${age}`,
-                  name: `Projected LPP Pension at ${age}y`,
+                  id: `pre_retirement_pension_${age} `,
+                  name: `Projected LPP Pension at ${age} y`,
                   amount: ageData.pension,
                   adjustedAmount: ageData.pension,
                   frequency: ageData.frequency || 'Monthly',
@@ -976,6 +979,24 @@ const DataReview = () => {
       locked: false
     };
     setCurrentAssets([...currentAssets, newAsset]);
+  };
+
+  const duplicateAsset = (id) => {
+    const assetIndex = currentAssets.findIndex(asset => asset.id === id);
+    if (assetIndex === -1) return;
+
+    const originalAsset = currentAssets[assetIndex];
+    const newAsset = {
+      ...originalAsset,
+      id: Date.now(),
+      name: `${originalAsset.name} (dupl.)`,
+      amount: 0,
+      adjustedAmount: originalAsset.adjustedAmount || originalAsset.amount
+    };
+
+    const updatedAssets = [...currentAssets];
+    updatedAssets.splice(assetIndex + 1, 0, newAsset);
+    setCurrentAssets(updatedAssets);
   };
 
   // Debt update and delete functions
@@ -1512,20 +1533,16 @@ const DataReview = () => {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" data-testid="scenario-page">
-      <div className="max-w-[1400px] mx-auto">
-        <WorkflowNavigation />
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4" data-testid="page-title">
-              {language === 'fr' ? 'Revue des données avant simulation' : 'Data review before simulation'}
-            </h1>
-            <p className="text-muted-foreground" data-testid="page-subtitle">
-              {language === 'fr'
-                ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation'
-                : 'Review and adjust income and costs before running the simulation'}
-            </p>
-          </div>
+    <div className="min-h-screen py-6" data-testid="scenario-page">
+      <div className="w-[80%] mx-auto mb-6">
+      </div>
+
+      <PageHeader
+        title={language === 'fr' ? 'Revue des données avant simulation' : 'Data review before simulation'}
+        subtitle={language === 'fr'
+          ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation'
+          : 'Review and adjust income and costs before running the simulation'}
+        rightContent={
           <Button
             variant="outline"
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
@@ -1533,7 +1550,11 @@ const DataReview = () => {
             <Lightbulb className="h-4 w-4" />
             {t('scenario.costTuningAdvice')}
           </Button>
-        </div>
+        }
+      />
+
+      <div className="w-[80%] mx-auto">
+        {/* Dynamic Datalist for Cluster Tags */}
 
         {/* Dynamic Datalist for Cluster Tags */}
         <datalist id="cluster-options">
@@ -1566,14 +1587,14 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1621,7 +1642,7 @@ const DataReview = () => {
                         : income.endDate;
 
                       return (
-                        <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                        <tr key={income.id} className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}>
                           <td className="p-3 font-medium">
                             <div className="flex items-center gap-2">
                               {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
@@ -1636,11 +1657,11 @@ const DataReview = () => {
                           </td>
                           <td className="text-right p-3">
                             <Input
-                              data-testid={`income-adjusted-${index}`}
+                              data-testid={`income - adjusted - ${index} `}
                               type="number"
                               value={income.adjustedAmount}
                               onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
-                              className="max-w-[150px] ml-auto"
+                              className="max-w-[150px] ml-auto text-right"
                               style={{
                                 backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
                               }}
@@ -1650,7 +1671,7 @@ const DataReview = () => {
                           <td className="p-3">
                             {isStandardIncome ? (
                               <Input
-                                data-testid={`income-start-date-${index}`}
+                                data-testid={`income - start - date - ${index} `}
                                 type="date"
                                 value={currentStartDate || ''}
                                 onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
@@ -1670,7 +1691,7 @@ const DataReview = () => {
                               null
                             ) : isStandardIncome ? (
                               <Input
-                                data-testid={`income-end-date-${index}`}
+                                data-testid={`income - end - date - ${index} `}
                                 type="date"
                                 value={currentEndDate || ''}
                                 onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
@@ -1751,15 +1772,15 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                      <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de dispo.' : 'Availability Details'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1781,8 +1802,8 @@ const DataReview = () => {
                               type="number"
                               value={asset.adjustedAmount || asset.amount}
                               onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
-                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
-                                }`}
+                              className={`max - w - [150px] ml - auto text - right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
+                                } `}
                             />
                           </td>
                           <td className="p-3">
@@ -1887,6 +1908,15 @@ const DataReview = () => {
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
+                                onClick={() => duplicateAsset(asset.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                title="Duplicate this asset"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
                                 onClick={() => deleteAsset(asset.id)}
                                 variant="ghost"
                                 size="sm"
@@ -1935,14 +1965,14 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
                       <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[120px]">{t('scenario.actions')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1962,7 +1992,7 @@ const DataReview = () => {
                       return (
                         <tr
                           key={cost.id}
-                          className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}
+                          className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}
                         >
                           <td className="p-3 font-medium">
                             <div className="flex items-center gap-2">
@@ -1978,7 +2008,7 @@ const DataReview = () => {
                           </td>
                           <td className="text-right p-3">
                             <Input
-                              data-testid={`cost-adjusted-${index}`}
+                              data-testid={`cost - adjusted - ${index} `}
                               type="number"
                               value={cost.adjustedAmount}
                               onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
@@ -1991,7 +2021,7 @@ const DataReview = () => {
                           <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
                           <td className="p-3">
                             <Input
-                              data-testid={`cost-start-date-${index}`}
+                              data-testid={`cost - start - date - ${index} `}
                               type="date"
                               value={cost.startDate || ''}
                               onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
@@ -1999,7 +2029,7 @@ const DataReview = () => {
                             />
                           </td>
                           <td className="p-3">
-                            {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost-end-date-${index}`} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
+                            {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost - end - date - ${index} `} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
                           </td>
                           <td className="p-3">
                             <Input
@@ -2074,12 +2104,12 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
                       <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -2101,8 +2131,8 @@ const DataReview = () => {
                               type="number"
                               value={debt.adjustedAmount || debt.amount}
                               onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
-                              className={`max-w-[150px] ml-auto ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
-                                }`}
+                              className={`max - w - [150px] ml - auto text - right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''
+                                } `}
                             />
                           </td>
                           <td className="p-3">
@@ -2197,7 +2227,14 @@ const DataReview = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center gap-4 mt-6">
+            <Button
+              onClick={() => navigate('/capital-setup')}
+              className="px-8 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+              size="lg"
+            >
+              {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
+            </Button>
             <Button
               data-testid="can-i-quit-btn"
               onClick={runSimulation}

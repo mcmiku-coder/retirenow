@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank, LineChart, Landmark, Sliders, Target, ClipboardCheck, FileText } from 'lucide-react';
+import { ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank, LineChart, Landmark, Sliders, Target, ClipboardCheck, FileText, Home } from 'lucide-react';
 
 const Information = () => {
   const navigate = useNavigate();
@@ -39,6 +39,14 @@ const Information = () => {
       color: 'text-orange-500'
     },
     {
+      icon: Home,
+      titleKey: 'step4SpinOffTitle',
+      descKey: 'step4SpinOffDesc',
+      image: '/screenshots/costs.png', // Placeholder
+      color: 'text-orange-400',
+      isSpinOff: true
+    },
+    {
       icon: Landmark,
       titleKey: 'step5Title',
       descKey: 'step5Desc',
@@ -60,16 +68,17 @@ const Information = () => {
       color: 'text-cyan-500'
     },
     {
-      icon: LineChart, // Reusing LineChart for Capital Setup
-      titleKey: 'step8Title',
-      descKey: 'step8Desc',
-      image: '/screenshots/scenario.png', // Using scenario image as placeholder
-      color: 'text-purple-500'
+      icon: LineChart,
+      titleKey: 'step7SpinOffTitle',
+      descKey: 'step7SpinOffDesc',
+      image: '/screenshots/scenario.png',
+      color: 'text-purple-400',
+      isSpinOff: true
     },
     {
       icon: FileText,
-      titleKey: 'step9Title',
-      descKey: 'step9Desc',
+      titleKey: 'step8Title',
+      descKey: 'step8Desc',
       image: '/screenshots/result.png',
       color: 'text-red-500'
     }
@@ -77,7 +86,7 @@ const Information = () => {
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -99,7 +108,7 @@ const Information = () => {
         </div>
 
         {/* Security Section - First Position */}
-        <Card className="mb-12 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+        <Card className="mb-4 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
           <CardContent className="p-6 md:p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-green-500/20 text-green-500">
@@ -116,30 +125,42 @@ const Information = () => {
         </Card>
 
         {/* Steps */}
-        <div className="space-y-12">
+        <div className="space-y-4">
           {steps.map((step, index) => {
             const Icon = step.icon;
             const isEven = index % 2 === 0;
 
             return (
-              <Card key={index} className={`overflow-hidden ${index === 6 ? 'bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20' : ''}`}>
-                <CardContent className="p-0">
-                  {/* Text Content */}
-                  <div className="p-6 md:p-8 flex flex-col justify-center">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`p-2 rounded-lg bg-muted ${step.color}`}>
-                        <Icon className="h-6 w-6" />
+              <div key={index} className="relative">
+                {/* Vertical Connector for Spin-offs */}
+                {step.isSpinOff && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 h-8 w-0.5 bg-border z-0" />
+                )}
+
+                <Card
+                  className={`overflow-hidden transition-all duration-300 relative z-10 ${step.isSpinOff
+                    ? 'ml-8 sm:ml-16 bg-muted/30 scale-95 border-primary/20'
+                    : ''
+                    }`}
+                >
+                  <CardContent className="p-0">
+                    {/* Text Content */}
+                    <div className="p-6 md:p-8 flex flex-col justify-center">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`p-2 rounded-lg bg-muted ${step.color}`}>
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-bold">
+                          {t(`infoPage.${step.titleKey}`)}
+                        </h2>
                       </div>
-                      <h2 className="text-xl sm:text-2xl font-bold">
-                        {t(`infoPage.${step.titleKey}`)}
-                      </h2>
+                      <p className="text-muted-foreground leading-relaxed">
+                        {t(`infoPage.${step.descKey}`)}
+                      </p>
                     </div>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {t(`infoPage.${step.descKey}`)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             );
           })}
         </div>

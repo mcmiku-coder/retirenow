@@ -1,0 +1,68 @@
+INSTRUCTIONS FOR ADDING COLOR CODING AND ADD BUTTON TO PERIODIC OUTFLOWS:
+
+1. ADD addCost FUNCTION (add after the deleteCost function around line 750):
+
+  const addCost = () => {
+    const newId = Date.now();
+    const newCost = {
+      id: newId,
+      name: language === 'fr' ? 'Nouvelle sortie' : 'New outflow',
+      amount: '',
+      adjustedAmount: '',
+      frequency: 'Monthly',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: deathDate || '',
+      locked: false
+    };
+    setCosts([...costs, newCost]);
+  };
+
+2. ADD COLOR CODING TO COSTS TABLE (around line 1344-1351):
+
+Replace the Input element with:
+
+                          <td className="text-right p-3">
+                            <Input
+                              data-testid={`cost-adjusted-${index}`}
+                              type="number"
+                              value={cost.adjustedAmount}
+                              onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
+                              className="max-w-[150px] ml-auto"
+                              style={{
+                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.1)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.1)' : 'transparent'
+                              }}
+                            />
+                          </td>
+
+3. ADD "+ add periodic outflow" BUTTON (around line 1400, before "Reset to defaults"):
+
+Replace:
+              <div className="mt-4">
+                <Button
+                  onClick={resetCostsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+
+With:
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addCost}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
+                </Button>
+                <Button
+                  onClick={resetCostsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { Toaster } from './components/ui/sonner';
 import PageHeader from './components/PageHeader';
+import AppHeader from './components/AppHeader';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
 import Admin from './pages/Admin';
@@ -11,6 +12,7 @@ import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
 import Costs from './pages/Costs';
+import RealEstate from './pages/RealEstate';
 
 // RetirementInputs page removed - data now collected in RetirementParameters
 import AssetsAndSavings from './pages/AssetsAndSavings';
@@ -45,7 +47,7 @@ const GlobalHeader = () => {
     return null;
   }
 
-  return <PageHeader showLanguageSelector={true} />;
+  return <AppHeader />;
 };
 
 const ProtectedRoute = ({ children }) => {
@@ -89,6 +91,11 @@ function AppRoutes() {
         <Route path="/costs" element={
           <ProtectedRoute>
             <Costs />
+          </ProtectedRoute>
+        } />
+        <Route path="/real-estate" element={
+          <ProtectedRoute>
+            <RealEstate />
           </ProtectedRoute>
         } />
         {/* Current Financial Balance page hidden as requested */}

@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import PageHeader from '../components/PageHeader';
 import { toast } from 'sonner';
 import { ArrowLeft, Users, Shield, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
@@ -165,15 +166,15 @@ const Admin = () => {
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="w-full max-w-[95%] mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage your "Can I Quit?" service</p>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
+        <PageHeader
+          title="Admin Dashboard"
+          subtitle='Manage your "Can I Quit?" service'
+          rightContent={
+            <Button variant="outline" onClick={handleLogout} className="bg-background/20 hover:bg-background/40 text-white border-white/20">
+              Logout
+            </Button>
+          }
+        />
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
