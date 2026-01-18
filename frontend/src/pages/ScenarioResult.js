@@ -14,7 +14,9 @@ import { toast } from 'sonner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 
@@ -388,6 +390,548 @@ const ScenarioResult = () => {
     }
   }, [activeFilters, loading, user, password, scenarioData]);
 
+  // Generate Comprehensive PDF Report
+  const generatePDF = async () => {
+    try {
+      setGeneratingPdf(true);
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let yPosition = 20;
+
+      // Helper function to format numbers without special characters
+      const formatNumber = (num) => {
+        // Handle NaN, null, undefined, or invalid numbers
+        if (isNaN(num) || num === null || num === undefined) {
+          return '0';
+        }
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+      };
+
+      // Helper to format dates
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString();
+      };
+
+      // ===== PAGE 1: HEADER, SIMULATION OPTION, GRAPH =====
+
+      // Header
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Can I Quit? - Retirement Simulation Report', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 15;
+
+      // Simulation Option - Full Explanation
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Chosen Simulation Option', 15, yPosition);
+      yPosition += 8;
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+
+      const option = scenarioData?.retirementOption || 'option1';
+      const retireDate = new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate);
+      const birthDate = new Date(userData.birthDate);
+      const retireAge = retireDate.getFullYear() - birthDate.getFullYear();
+
+      let optionText = '';
+      if (option === 'option0') {
+        optionText = `Option 0: Legal Retirement Date (Age 65)`;
+      } else if (option === 'option1') {
+        optionText = `Option 1: Early Retirement with LPP Pension at Age ${retireAge}`;
+        if (scenarioData?.pensionCapital) {
+          optionText += `\nCurrent Pension Capital: CHF ${formatNumber(scenarioData.pensionCapital)}`;
+        }
+      } else if (option === 'option2') {
+        optionText = `Option 2: Early Retirement with LPP Capital at Age ${retireAge}`;
+        if (scenarioData?.projectedLPPCapital) {
+          optionText += `\nProjected LPP Capital: CHF ${formatNumber(scenarioData.projectedLPPCapital)}`;
+        }
+      } else if (option === 'option3') {
+        optionText = `Option 3: Calculate earliest possible retirement (balance > 0)`;
+      }
+
+      const lines = pdf.splitTextToSize(optionText, pageWidth - 30);
+
+      // Set blue color for the option text (RGB: 59, 130, 246 - blue-500)
+      pdf.setTextColor(59, 130, 246);
+      pdf.text(lines, 15, yPosition);
+      pdf.setTextColor(0, 0, 0); // Reset to black
+
+      yPosition += lines.length * 5 + 5;
+
+      pdf.text(`Name: ${userData?.firstName || ''} ${userData?.lastName || ''}`, 15, yPosition);
+      yPosition += 6;
+      pdf.text(`Birth Date: ${formatDate(userData?.birthDate)}`, 15, yPosition);
+      yPosition += 6;
+      pdf.text(`Retirement Date: ${formatDate(retireDate)}`, 15, yPosition);
+      yPosition += 6;
+      pdf.text(`Final Balance: CHF ${formatNumber(projection.finalBalance)}`, 15, yPosition);
+      yPosition += 6;
+      pdf.text(`Status: ${projection.canQuit ? 'Positive' : 'Negative'}`, 15, yPosition);
+      yPosition += 12;
+
+      // Capture Graph
+      const chartElement = document.querySelector('.recharts-wrapper');
+      if (chartElement) {
+        const canvas = await html2canvas(chartElement, { backgroundColor: '#1a1a1a', scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pageWidth - 30;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (yPosition + imgHeight > pageHeight - 20) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+
+        pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
+      }
+
+      // ===== PAGES 2-N: ALL DATA REVIEW TABLES WITH ALL COLUMNS =====
+
+      pdf.addPage();
+      yPosition = 20;
+
+      // Periodic Inflows Table (ALL columns)
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Periodic Inflows - Can be adjusted for simulation', 15, yPosition);
+      yPosition += 8;
+
+      const activeIncomes = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
+      if (activeIncomes.length > 0) {
+        autoTable(pdf, {
+          startY: yPosition,
+          head: [['Name', 'Original', 'Adjusted', 'Frequency', 'Start Date', 'End Date', 'Cluster']],
+          body: activeIncomes.map(i => [
+            i.name,
+            formatNumber(parseFloat(i.amount)),
+            formatNumber(parseFloat(i.adjustedAmount || i.amount)),
+            i.frequency,
+            formatDate(i.startDate),
+            formatDate(i.endDate),
+            i.clusterTag || ''
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+          styles: { fontSize: 7 },
+          columnStyles: {
+            1: { halign: 'right' }, // Original
+            2: { halign: 'right' }  // Adjusted
+          },
+          didParseCell: function (data) {
+            // Adjusted column is index 2
+            if (data.section === 'body' && data.column.index === 2) {
+              const rowIndex = data.row.index;
+              const income = activeIncomes[rowIndex];
+              const original = parseFloat(income.amount) || 0;
+              const adjusted = parseFloat(income.adjustedAmount || income.amount) || 0;
+
+              if (adjusted < original) {
+                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
+              } else if (adjusted > original) {
+                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
+              }
+            }
+          }
+        });
+        yPosition = pdf.lastAutoTable.finalY + 10;
+      }
+
+      // Current or Future Assets Table (ALL columns)
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Current or Future Assets', 15, yPosition);
+      yPosition += 8;
+
+      const activeAssets = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
+
+      if (activeAssets.length > 0) {
+        autoTable(pdf, {
+          startY: yPosition,
+          head: [['Name', 'Original', 'Adjusted', 'Category', 'Preserve', 'Avail.Type', 'Avail.Details', 'Strategy', 'Cluster']],
+          body: activeAssets.map(a => {
+            // Use amount for both original and adjusted if adjustedAmount is missing
+            const originalAmount = parseFloat(a.amount) || 0;
+            const adjustedAmount = parseFloat(a.adjustedAmount || a.amount) || 0;
+
+            // Infer availability type if not explicitly set
+            let availType = a.availabilityType || '';
+            if (!availType && a.availabilityTimeframe) availType = 'Period';
+            if (!availType && a.availabilityDate) availType = 'Date';
+
+            // Get availability details
+            let availDetails = '';
+            if (a.availabilityDate) {
+              availDetails = formatDate(a.availabilityDate);
+            } else if (a.availabilityTimeframe) {
+              availDetails = a.availabilityTimeframe;
+            }
+
+            const row = [
+              a.name || '',
+              formatNumber(originalAmount),
+              formatNumber(adjustedAmount),
+              a.category || '',
+              a.preserve || '',
+              availType,
+              availDetails,
+              a.strategy || '',
+              a.clusterTag || ''
+            ];
+
+            return row;
+          }),
+          theme: 'grid',
+          headStyles: { fillColor: [60, 60, 60], fontSize: 7 },
+          styles: { fontSize: 6 },
+          columnStyles: {
+            1: { halign: 'right' }, // Original
+            2: { halign: 'right' }  // Adjusted
+          },
+          didParseCell: function (data) {
+            // Adjusted column is index 2
+            if (data.section === 'body' && data.column.index === 2) {
+              const rowIndex = data.row.index;
+              const asset = activeAssets[rowIndex];
+              const original = parseFloat(asset.amount) || 0;
+              const adjusted = parseFloat(asset.adjustedAmount || asset.amount) || 0;
+
+              if (adjusted < original) {
+                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
+              } else if (adjusted > original) {
+                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
+              }
+            }
+          }
+        });
+        yPosition = pdf.lastAutoTable.finalY + 10;
+      }
+
+      // Periodic Outflows Table (ALL columns)
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Periodic Outflows - Can be adjusted for simulation', 15, yPosition);
+      yPosition += 8;
+
+      const activeCosts = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
+      if (activeCosts.length > 0) {
+        autoTable(pdf, {
+          startY: yPosition,
+          head: [['Name', 'Original', 'Adjusted', 'Frequency', 'Start Date', 'End Date', 'Cluster']],
+          body: activeCosts.map(c => [
+            c.name,
+            formatNumber(parseFloat(c.amount)),
+            formatNumber(parseFloat(c.adjustedAmount || c.amount)),
+            c.frequency,
+            formatDate(c.startDate),
+            formatDate(c.endDate),
+            c.clusterTag || ''
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+          styles: { fontSize: 7 },
+          columnStyles: {
+            1: { halign: 'right' }, // Original
+            2: { halign: 'right' }  // Adjusted
+          },
+          didParseCell: function (data) {
+            // Adjusted column is index 2
+            if (data.section === 'body' && data.column.index === 2) {
+              const rowIndex = data.row.index;
+              const cost = activeCosts[rowIndex];
+              const original = parseFloat(cost.amount) || 0;
+              const adjusted = parseFloat(cost.adjustedAmount || cost.amount) || 0;
+
+              if (adjusted < original) {
+                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
+              } else if (adjusted > original) {
+                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
+              }
+            }
+          }
+        });
+        yPosition = pdf.lastAutoTable.finalY + 10;
+      }
+
+      // Current or Future Debts Table (ALL columns)
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Current or Future Debts', 15, yPosition);
+      yPosition += 8;
+
+      const activeDebts = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
+      if (activeDebts.length > 0) {
+        autoTable(pdf, {
+          startY: yPosition,
+          head: [['Name', 'Original', 'Adjusted', 'Avail.Type', 'Avail.Details', 'Cluster']],
+          body: activeDebts.map(d => {
+            // Infer availability type if not explicitly set
+            let availType = d.madeAvailableType || '';
+            if (!availType && d.madeAvailableTimeframe) availType = 'Period';
+            if (!availType && d.madeAvailableDate) availType = 'Date';
+
+            // Get availability details
+            let availDetails = '';
+            if (d.madeAvailableDate) {
+              availDetails = formatDate(d.madeAvailableDate);
+            } else if (d.madeAvailableTimeframe) {
+              availDetails = d.madeAvailableTimeframe;
+            }
+
+            return [
+              d.name,
+              formatNumber(parseFloat(d.amount)),
+              formatNumber(parseFloat(d.adjustedAmount || d.amount)),
+              availType,
+              availDetails,
+              d.clusterTag || ''
+            ];
+          }),
+          theme: 'grid',
+          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+          styles: { fontSize: 7 },
+          columnStyles: {
+            1: { halign: 'right' }, // Original
+            2: { halign: 'right' }  // Adjusted
+          },
+          didParseCell: function (data) {
+            // Adjusted column is index 2
+            if (data.section === 'body' && data.column.index === 2) {
+              const rowIndex = data.row.index;
+              const debt = activeDebts[rowIndex];
+              const original = parseFloat(debt.amount) || 0;
+              const adjusted = parseFloat(debt.adjustedAmount || debt.amount) || 0;
+
+              if (adjusted < original) {
+                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
+              } else if (adjusted > original) {
+                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
+              }
+            }
+          }
+        });
+      }
+
+      // ===== LAST PAGE: LANDSCAPE YEAR-BY-YEAR BREAKDOWN =====
+
+      pdf.addPage('a4', 'landscape');
+      const landscapeWidth = pdf.internal.pageSize.getWidth();
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Year-by-Year Breakdown', 15, 15);
+
+      // Collect all unique income and cost keys from the breakdown data
+      const allIncomeKeys = new Set();
+      const allCostKeys = new Set();
+
+      projection.yearlyBreakdown.forEach(row => {
+        if (row.incomeBreakdown) {
+          Object.keys(row.incomeBreakdown).forEach(key => allIncomeKeys.add(key));
+        }
+        if (row.costBreakdown) {
+          Object.keys(row.costBreakdown).forEach(key => allCostKeys.add(key));
+        }
+      });
+
+      const incomeKeys = Array.from(allIncomeKeys);
+      const costKeys = Array.from(allCostKeys);
+
+      // Build headers: Year + income keys + cost keys + balances
+      const headers = ['Year'];
+      incomeKeys.forEach(key => headers.push(key.substring(0, 15))); // Truncate long names
+      costKeys.forEach(key => headers.push(key.substring(0, 15)));
+      headers.push('Annual Bal.');
+      headers.push('Cumul. Bal.');
+
+      // Build body data from projection
+      const bodyData = projection.yearlyBreakdown.map(row => {
+        const rowData = [row.year];
+
+        // Add income values using the collected keys
+        incomeKeys.forEach(key => {
+          const val = row.incomeBreakdown?.[key] || 0;
+          rowData.push(val > 0 ? formatNumber(val) : '');
+        });
+
+        // Add cost values using the collected keys
+        costKeys.forEach(key => {
+          const val = row.costBreakdown?.[key] || 0;
+          rowData.push(val > 0 ? formatNumber(val) : '');
+        });
+
+        // Add balances
+        rowData.push(formatNumber(row.annualBalance));
+        rowData.push(formatNumber(row.cumulativeBalance));
+
+        return rowData;
+      });
+
+      autoTable(pdf, {
+        startY: 25,
+        head: [headers],
+        body: bodyData,
+        theme: 'grid',
+        headStyles: { fillColor: [60, 60, 60], fontSize: 6, halign: 'right' },
+        styles: { fontSize: 5, cellPadding: 1, halign: 'right' },
+        columnStyles: {
+          0: { fontStyle: 'bold', halign: 'left' }
+        },
+        didParseCell: function (data) {
+          // Apply conditional formatting to the last two columns (Annual Bal. and Cumul. Bal.)
+          const numColumns = headers.length;
+          const annualBalColIndex = numColumns - 2;
+          const cumulBalColIndex = numColumns - 1;
+
+          if (data.section === 'body' && (data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex)) {
+            const rowIndex = data.row.index;
+            const yearData = projection.yearlyBreakdown[rowIndex];
+
+            if (yearData) {
+              const value = data.column.index === annualBalColIndex ? yearData.annualBalance : yearData.cumulativeBalance;
+
+              // Set text color based on positive/negative
+              if (value >= 0) {
+                data.cell.styles.textColor = [34, 197, 94]; // Green (green-500)
+              } else {
+                data.cell.styles.textColor = [239, 68, 68]; // Red (red-500)
+              }
+            }
+          }
+        }
+      });
+
+      // Save PDF
+      pdf.save(`retirement-simulation-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success(language === 'fr' ? 'Rapport PDF généré' : 'PDF report generated');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(language === 'fr' ? 'Erreur lors de la génération du PDF' : 'Error generating PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  // Export to Excel
+  const exportExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Summary Sheet
+      const summaryData = [
+        ['Can I Quit? - Retirement Simulation'],
+        ['Generated:', new Date().toLocaleDateString()],
+        [],
+        ['Parameters'],
+        ['Name:', `${userData?.firstName || ''} ${userData?.lastName || ''}`],
+        ['Birth Date:', userData?.birthDate ? new Date(userData.birthDate).toLocaleDateString() : 'N/A'],
+        ['Retirement Date:', new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate).toLocaleDateString()],
+        ['Option:', scenarioData?.retirementOption || 'option1'],
+        [],
+        ['Results'],
+        ['Final Balance (CHF):', Math.round(projection.finalBalance)],
+        ['Status:', projection.canQuit ? 'Positive' : 'Negative']
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+      // Projection Sheet
+      const projectionData = projection.yearlyBreakdown.map(row => ({
+        Year: row.year,
+        Age: row.year - new Date(userData.birthDate).getFullYear(),
+        'Total Income (CHF)': Math.round(row.income),
+        'Total Costs (CHF)': Math.round(row.costs),
+        'Net Result (CHF)': Math.round(row.annualBalance),
+        'Cumulative Balance (CHF)': Math.round(row.cumulativeBalance)
+      }));
+      const wsProjection = XLSX.utils.json_to_sheet(projectionData);
+      XLSX.utils.book_append_sheet(wb, wsProjection, 'Projection');
+
+      // Incomes Sheet
+      const activeIncomes = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
+      if (activeIncomes.length > 0) {
+        const incomesData = activeIncomes.map(i => ({
+          Name: i.name,
+          'Amount (CHF)': Math.round(parseFloat(i.adjustedAmount || i.amount)),
+          Frequency: i.frequency,
+          'Start Date': i.startDate || '',
+          'End Date': i.endDate || ''
+        }));
+        const wsIncomes = XLSX.utils.json_to_sheet(incomesData);
+        XLSX.utils.book_append_sheet(wb, wsIncomes, 'Incomes');
+      }
+
+      // Costs Sheet
+      const activeCosts = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
+      if (activeCosts.length > 0) {
+        const costsData = activeCosts.map(c => ({
+          Name: c.name,
+          'Amount (CHF)': Math.round(parseFloat(c.adjustedAmount || c.amount)),
+          Frequency: c.frequency,
+          'Start Date': c.startDate || '',
+          'End Date': c.endDate || ''
+        }));
+        const wsCosts = XLSX.utils.json_to_sheet(costsData);
+        XLSX.utils.book_append_sheet(wb, wsCosts, 'Costs');
+      }
+
+      // Assets & Debts Sheet
+      const activeAssets = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
+      const activeDebts = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
+      if (activeAssets.length > 0 || activeDebts.length > 0) {
+        const assetsDebtsData = [
+          ['Assets'],
+          ['Name', 'Amount (CHF)', 'Category', 'Availability'],
+          ...activeAssets.map(a => [
+            a.name,
+            Math.round(parseFloat(a.adjustedAmount || a.amount)),
+            a.category || '',
+            a.availabilityDate || a.availabilityTimeframe || ''
+          ]),
+          [],
+          ['Debts'],
+          ['Name', 'Amount (CHF)', 'Availability'],
+          ...activeDebts.map(d => [
+            d.name,
+            Math.round(parseFloat(d.adjustedAmount || d.amount)),
+            d.madeAvailableDate || d.madeAvailableTimeframe || ''
+          ])
+        ];
+        const wsAssetsDebts = XLSX.utils.aoa_to_sheet(assetsDebtsData);
+        XLSX.utils.book_append_sheet(wb, wsAssetsDebts, 'Assets & Debts');
+      }
+
+      // Write file
+      XLSX.writeFile(wb, `retirement-simulation-${new Date().toISOString().split('T')[0]}.xlsx`);
+      // toast.success(language === 'fr' ? 'Fichier Excel exporté' : 'Excel file exported'); // Assuming toast is defined elsewhere
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      // toast.error(language === 'fr' ? 'Erreur lors de l\'export Excel' : 'Error exporting Excel'); // Assuming toast is defined elsewhere
+    }
+  };
+
   // Helper to format item label with details
   const formatItemLabel = (item, type = 'standard') => {
     const amount = parseFloat(item.adjustedAmount || item.amount || 0).toLocaleString();
@@ -479,6 +1023,29 @@ const ScenarioResult = () => {
 
       <PageHeader
         title={language === 'fr' ? 'Résultats de la simulation' : 'Simulation results'}
+        rightContent={
+          <div className="flex gap-2">
+            <Button
+              onClick={generatePDF}
+              variant="outline"
+              size="sm"
+              disabled={generatingPdf}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              {language === 'fr' ? 'Générer rapport' : 'Generate report'}
+            </Button>
+            <Button
+              onClick={exportExcel}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {language === 'fr' ? 'Exporter données' : 'Export data'}
+            </Button>
+          </div>
+        }
       />
 
       <div className="max-w-[1600px] w-full mx-auto px-4">

@@ -1676,7 +1676,7 @@ const DataReview = () => {
 
                       return (
                         <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
-                          <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : ''}`}>
+                          <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
                             <div className="flex items-center gap-2">
                               {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
                               {getIncomeName(income.name)}
@@ -1828,7 +1828,7 @@ const DataReview = () => {
 
                       return (
                         <tr key={asset.id} className="border-b hover:bg-muted/30">
-                          <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : ''}`}>{asset.name}</td>
+                          <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : 'text-white'}`}>{asset.name}</td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {originalAmount.toLocaleString()}
                           </td>
@@ -2027,7 +2027,7 @@ const DataReview = () => {
                           key={cost.id}
                           className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}
                         >
-                          <td className="p-3 font-medium">
+                          <td className="p-3 font-medium text-white">
                             <div className="flex items-center gap-2">
                               {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
                               {getCostName(cost.name)}
@@ -2155,7 +2155,7 @@ const DataReview = () => {
 
                       return (
                         <tr key={debt.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium">{debt.name}</td>
+                          <td className="p-3 font-medium text-white">{debt.name}</td>
                           <td className="text-right p-3 text-muted-foreground">
                             CHF {originalAmount.toLocaleString()}
                           </td>
