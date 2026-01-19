@@ -201,7 +201,7 @@ def send_verification_email(to_email: str, token: str):
     """Send verification email using SMTP"""
     sender_email = os.environ.get('SMTP_EMAIL')
     sender_password = os.environ.get('SMTP_PASSWORD')
-    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
     
     if not sender_email or not sender_password:
         logger.warning("SMTP credentials not found, printing to console instead")
@@ -228,9 +228,9 @@ def send_verification_email(to_email: str, token: str):
         
         msg.attach(MIMEText(body, 'html'))
         
-        # Connect to Gmail SMTP
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
+        # Connect to Gmail SMTP using SSL (Port 465)
+        # This is often more reliable on cloud providers than STARTTLS (587)
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(sender_email, sender_password)
         text = msg.as_string()
         server.sendmail(sender_email, to_email, text)
