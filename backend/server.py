@@ -381,7 +381,7 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     # This prevents the UI from hitting a timeout while waiting for SMTP
     background_tasks.add_task(send_verification_email, user.email, verify_token_str)
 
-    return TokenResponse(email=user.email, message="Verification email sent")
+    return TokenResponse(email=user.email, message="Verification email sent (v2)")
 
 @api_router.post("/auth/verify")
 async def verify_email(request: VerifyRequest):
