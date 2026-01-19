@@ -13,6 +13,7 @@ import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
 import Costs from './pages/Costs';
 import RealEstate from './pages/RealEstate';
+import VerifyEmail from './pages/VerifyEmail';
 
 // RetirementInputs page removed - data now collected in RetirementParameters
 import AssetsAndSavings from './pages/AssetsAndSavings';
@@ -73,6 +74,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/information" element={<Information />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/personal-info" element={
           <ProtectedRoute>
             <PersonalInfo />

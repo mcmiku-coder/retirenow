@@ -16,6 +16,9 @@ import jwt
 import pandas as pd
 import csv
 import traceback
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -94,9 +97,13 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class TokenResponse(BaseModel):
+class VerifyRequest(BaseModel):
     token: str
+
+class TokenResponse(BaseModel):
+    token: Optional[str] = None
     email: str
+    message: Optional[str] = None
 
 class LifeExpectancyRequest(BaseModel):
     birth_date: str  # Format: YYYY-MM-DD
@@ -161,9 +168,19 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
+def create_verification_token(email: str) -> str:
+    """Create a short-lived token for email verification"""
+    payload = {
+        'email': email,
+        'type': 'verification',
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
 def create_token(email: str) -> str:
     payload = {
         'email': email,
+        'type': 'auth',
         'exp': datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -171,11 +188,62 @@ def create_token(email: str) -> str:
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        # Ensure it's an auth token
+        if payload.get('type') and payload.get('type') != 'auth':
+             raise HTTPException(status_code=401, detail="Invalid token type")
         return payload['email']
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+def send_verification_email(to_email: str, token: str):
+    """Send verification email using SMTP"""
+    sender_email = os.environ.get('SMTP_EMAIL')
+    sender_password = os.environ.get('SMTP_PASSWORD')
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+    
+    if not sender_email or not sender_password:
+        logger.warning("SMTP credentials not found, printing to console instead")
+        # Fallback to console if not configured
+        mock_link = f"{frontend_url}/verify?token={token}"
+        print(f"\n{'='*50}\nTo: {to_email}\nLink: {mock_link}\n{'='*50}\n")
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = to_email
+        msg['Subject'] = "Verify your Can I Quit? account"
+
+        verification_link = f"{frontend_url}/verify?token={token}"
+        
+        body = f"""
+        <h1>Welcome to Can I Quit?</h1>
+        <p>Please click the link below to verify your email address:</p>
+        <p><a href="{verification_link}">Verify Email</a></p>
+        <p>Or copy this link: {verification_link}</p>
+        <p>This link expires in 24 hours.</p>
+        """
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        # Connect to Gmail SMTP
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        text = msg.as_string()
+        server.sendmail(sender_email, to_email, text)
+        server.quit()
+        
+        logger.info(f"Verification email sent to {to_email}")
+        
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        # Don't crash registration if email fails, but log it
+        print(f"FAILED TO SEND EMAIL: {e}")
+        # Print link as backup
+        print(f"BACKUP LINK: {frontend_url}/verify?token={token}")
 
 # Routes
 @api_router.get("/health")
@@ -268,10 +336,11 @@ async def register(user: UserRegister, request: Request):
         "password": hashed_pw,
         "created_at": current_time,
         "last_login": current_time,
-        "login_count": 1,
+        "login_count": 0,
         "last_ip": request.client.host,
         "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop",
-        "total_pages_viewed": 0
+        "total_pages_viewed": 0,
+        "is_verified": False  # New users unverified
     }
     
     try:
@@ -283,8 +352,45 @@ async def register(user: UserRegister, request: Request):
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to create user in database: {str(e)}")
     
-    token = create_token(user.email)
-    return TokenResponse(token=token, email=user.email)
+    # Generate verification token
+    verify_token_str = create_verification_token(user.email)
+    
+    # Send Email
+    # Run synchronously for now to keep it simple, or use background tasks in real prod
+    send_verification_email(user.email, verify_token_str)
+
+    return TokenResponse(email=user.email, message="Verification email sent")
+
+@api_router.post("/auth/verify")
+async def verify_email(request: VerifyRequest):
+    """Verify email using token"""
+    try:
+        payload = jwt.decode(request.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get('type') != 'verification':
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        
+        email = payload['email']
+        
+        # specific update to verify user
+        result = await db.access.update_one(
+            {"email": email},
+            {"$set": {"is_verified": True}}
+        )
+        
+        if result.modified_count == 0:
+             # Check if already verified
+             user = await db.access.find_one({"email": email})
+             if not user:
+                 raise HTTPException(status_code=404, detail="User not found")
+             if user.get("is_verified"):
+                 return {"success": True, "message": "Email already verified"}
+
+        return {"success": True, "message": "Email verified successfully"}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Verification link expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid verification link")
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(user: UserLogin, request: Request):
@@ -296,6 +402,12 @@ async def login(user: UserLogin, request: Request):
     # Verify password
     if not verify_password(user.password, user_doc['password']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # CHECK VERIFICATION STATUS
+    # Default to True for old users, False for new ones
+    is_verified = user_doc.get("is_verified", True)
+    if is_verified is False:
+        raise HTTPException(status_code=403, detail="Email not verified. Please check your inbox.")
     
     # Update login analytics
     current_time = datetime.now(timezone.utc).isoformat()
@@ -476,3 +588,7 @@ async def startup_db_client():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

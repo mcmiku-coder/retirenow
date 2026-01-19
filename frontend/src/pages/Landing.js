@@ -23,49 +23,31 @@ const Landing = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+
   const handleRegister = async (e) => {
     e.preventDefault();
     console.log('Register clicked', { email, password });
 
     const passwordError = validatePassword(password);
-    console.log('Password validation result:', passwordError);
     if (passwordError) {
       toast.error(passwordError);
       return;
     }
 
     setLoading(true);
-    console.log('Sending request to:', `${API}/auth/register`);
     try {
       // 1. Register with backend
-      const response = await axios.post(`${API}/auth/register`, { email, password });
-      console.log('Response:', response);
+      await axios.post(`${API}/auth/register`, { email, password });
 
-      const userEmail = response.data.email || email;
-      const token = response.data.token;
-
-      // 2. Log in locally (sets context)
-      login(userEmail, token, password);
-
-      // 3. Initialize local encrypted storage immediately
-      // This verifies that encryption keys can be derived and data can be written
-      try {
-        // Dynamic import to avoid circular dependencies if any, or just direct import usage
-        // But since we are inside formatting, we'll assume the import is added at top
-        const { initializeUserDB } = await import('../utils/database');
-        await initializeUserDB(userEmail, password);
-
-        navigate('/personal-info');
-      } catch (dbError) {
-        console.error('Local DB Init Error:', dbError);
-        toast.error('Account created, but local storage failed. Please try logging in again.');
-        // We still navigate because the account exists, they might just need to retry or check browser settings
-        navigate('/personal-info');
-      }
+      // 2. Show Success Message
+      setRegisterSuccess(true);
+      toast.success(t('auth.checkEmail'));
 
     } catch (error) {
       console.error('Registration error:', error);
       toast.error(error.response?.data?.detail || t('auth.registrationFailed'));
+      setRegisterSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -186,63 +168,82 @@ const Landing = () => {
               </div>
             )}
 
-            <form onSubmit={showRegister ? handleRegister : handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="email">{t('auth.email')}</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    data-testid="email-input"
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('auth.emailPlaceholder')}
-                    required
-                    className="pl-10"
-                  />
+            {registerSuccess ? (
+              <div className="text-center">
+                <div className="mb-4 bg-green-500/10 text-green-500 p-4 rounded-full inline-block">
+                  <Mail className="h-12 w-12" />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    data-testid="password-input"
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('auth.passwordPlaceholder')}
-                    required
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  data-testid="submit-btn"
-                  type="submit"
-                  className="flex-1"
-                  disabled={loading}
-                >
-                  {loading ? t('common.loading') : (showRegister ? t('auth.createBtn') : t('auth.loginBtn'))}
-                </Button>
-                <Button
-                  data-testid="cancel-btn"
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowRegister(false);
-                    setShowLogin(false);
-                    setEmail('');
-                    setPassword('');
-                  }}
-                >
-                  {t('common.cancel')}
+                <h3 className="text-xl font-bold mb-2">{t('auth.registrationSuccess')}</h3>
+                <p className="text-muted-foreground mb-6">
+                  {t('auth.checkEmail')}
+                </p>
+                <Button onClick={() => {
+                  setRegisterSuccess(false);
+                  setShowLogin(true);
+                  setShowRegister(false);
+                }} className="w-full">
+                  {t('auth.loginBtn')}
                 </Button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={showRegister ? handleRegister : handleLogin} className="space-y-4">
+                <div>
+                  <Label htmlFor="email">{t('auth.email')}</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      data-testid="email-input"
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t('auth.emailPlaceholder')}
+                      required
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="password">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      data-testid="password-input"
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t('auth.passwordPlaceholder')}
+                      required
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    data-testid="submit-btn"
+                    type="submit"
+                    className="flex-1"
+                    disabled={loading}
+                  >
+                    {loading ? t('common.loading') : (showRegister ? t('auth.createBtn') : t('auth.loginBtn'))}
+                  </Button>
+                  <Button
+                    data-testid="cancel-btn"
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowRegister(false);
+                      setShowLogin(false);
+                      setEmail('');
+                      setPassword('');
+                    }}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         )}
       </div>

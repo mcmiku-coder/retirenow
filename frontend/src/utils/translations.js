@@ -75,7 +75,11 @@ export const translations = {
       registrationSuccess: "Account created successfully!",
       loginSuccess: "Login successful!",
       registrationFailed: "Registration failed",
-      loginFailed: "Login failed"
+      loginFailed: "Login failed",
+      checkEmail: "Please check your email to confirm your account.",
+      verificationSuccess: "Email verified! You can now log in.",
+      verificationFailed: "Invalid or expired verification link.",
+      verifying: "Verifying your email..."
     },
 
     // Personal Info Page
@@ -477,7 +481,11 @@ export const translations = {
       registrationSuccess: "Compte créé avec succès !",
       loginSuccess: "Connexion réussie !",
       registrationFailed: "Échec de l'inscription",
-      loginFailed: "Échec de la connexion"
+      loginFailed: "Échec de la connexion",
+      checkEmail: "Veuillez vérifier votre email pour confirmer votre compte.",
+      verificationSuccess: "Email vérifié ! Vous pouvez maintenant vous connecter.",
+      verificationFailed: "Lien de vérification invalide ou expiré.",
+      verifying: "Vérification de votre email..."
     },
 
     // Personal Info Page
