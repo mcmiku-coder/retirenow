@@ -16,9 +16,7 @@ import jwt
 import pandas as pd
 import csv
 import traceback
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -197,47 +195,56 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def send_verification_email(to_email: str, token: str):
-    """Send verification email using SMTP"""
-    sender_email = os.environ.get('SMTP_EMAIL')
-    sender_password = os.environ.get('SMTP_PASSWORD')
+    # Brevo API Logic
+    api_key = os.environ.get('BREVO_API_KEY')
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
     
-    if not sender_email or not sender_password:
-        logger.warning("SMTP credentials not found, printing to console instead")
-        # Fallback to console if not configured
+    if not api_key:
+        logger.warning("Brevo API Key not found, printing to console instead")
         mock_link = f"{frontend_url}/verify?token={token}"
         print(f"\n{'='*50}\nTo: {to_email}\nLink: {mock_link}\n{'='*50}\n")
         return
 
     try:
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = to_email
-        msg['Subject'] = "Verify your Can I Quit? account"
-
         verification_link = f"{frontend_url}/verify?token={token}"
         
-        body = f"""
-        <h1>Welcome to Can I Quit?</h1>
-        <p>Please click the link below to verify your email address:</p>
-        <p><a href="{verification_link}">Verify Email</a></p>
-        <p>Or copy this link: {verification_link}</p>
-        <p>This link expires in 24 hours.</p>
-        """
+        # Brevo API Endpoint
+        url = "https://api.brevo.com/v3/smtp/email"
         
-        msg.attach(MIMEText(body, 'html'))
+        # Headers
+        headers = {
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json"
+        }
         
-        # Connect to Gmail SMTP using SSL (Port 465)
-        # This is often more reliable on cloud providers than STARTTLS (587)
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(sender_email, sender_password)
-        text = msg.as_string()
-        server.sendmail(sender_email, to_email, text)
-        server.quit()
+        # Sender - must be verified in Brevo. Using SMTP_EMAIL as the sender.
+        # Fallback to no-reply if empty (though Brevo might reject unverified senders)
+        sender_email = os.environ.get('SMTP_EMAIL', 'no-reply@retirenow.com')
         
-        logger.info(f"Verification email sent to {to_email}")
+        payload = {
+            "sender": {"name": "Can I Quit App", "email": sender_email},
+            "to": [{"email": to_email}],
+            "subject": "Verify your Can I Quit? account",
+            "htmlContent": f"""
+                <h1>Welcome to Can I Quit?</h1>
+                <p>Please click the link below to verify your email address:</p>
+                <p><a href="{verification_link}">Verify Email</a></p>
+                <p>Or copy this link: {verification_link}</p>
+                <p>This link expires in 24 hours.</p>
+            """
+        }
         
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code in [200, 201, 202]:
+            logger.info(f"Verification email sent to {to_email} via Brevo")
+        else:
+            logger.error(f"Brevo API Error: {response.status_code} - {response.text}")
+            # Fallback to console print
+            print(f"FAILED TO SEND EMAIL VIA BREVO: {response.text}")
+            print(f"BACKUP LINK: {verification_link}")
+
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         # Don't crash registration if email fails, but log it
