@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
@@ -339,7 +339,7 @@ async def get_admin_stats(request: AdminLoginRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/auth/register", response_model=TokenResponse)
-async def register(user: UserRegister, request: Request):
+async def register(user: UserRegister, request: Request, background_tasks: BackgroundTasks):
     logger.info(f"Registration attempt for email: {user.email}")
     
     # Check if user exists
@@ -377,9 +377,9 @@ async def register(user: UserRegister, request: Request):
     # Generate verification token
     verify_token_str = create_verification_token(user.email)
     
-    # Send Email
-    # Run synchronously for now to keep it simple, or use background tasks in real prod
-    send_verification_email(user.email, verify_token_str)
+    # Send Email in Background
+    # This prevents the UI from hitting a timeout while waiting for SMTP
+    background_tasks.add_task(send_verification_email, user.email, verify_token_str)
 
     return TokenResponse(email=user.email, message="Verification email sent")
 
