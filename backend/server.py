@@ -195,6 +195,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+def send_verification_email(to_email: str, token: str):
     # Brevo API Logic
     api_key = os.environ.get('BREVO_API_KEY')
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
