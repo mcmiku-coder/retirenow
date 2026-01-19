@@ -197,7 +197,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 
 def send_verification_email(to_email: str, token: str):
     # Brevo API Logic
-    api_key = os.environ.get('BREVO_API_KEY')
+    # We strip() to remove any accidental whitespace/newlines from the env var
+    api_key = os.environ.get('BREVO_API_KEY', '').strip()
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
     
     if not api_key:
