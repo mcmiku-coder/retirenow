@@ -2,182 +2,296 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank, LineChart, Landmark, Sliders, Target, ClipboardCheck, FileText, Home } from 'lucide-react';
+import {
+  ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank,
+  LineChart, Landmark, Sliders, ClipboardCheck, FileText, Home,
+  ArrowRight
+} from 'lucide-react';
 
 const Information = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language, switchLanguage } = useLanguage();
 
   const steps = [
     {
       icon: User,
       titleKey: 'step1Title',
       descKey: 'step1Desc',
-      image: '/screenshots/personal-info.png',
-      color: 'text-blue-500'
+      color: 'bg-blue-600',
+      lightColor: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
     },
     {
       icon: Calendar,
       titleKey: 'step2Title',
       descKey: 'step2Desc',
-      image: '/screenshots/retirement-overview.png',
-      color: 'text-green-500'
+      color: 'bg-green-600',
+      lightColor: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
     },
     {
       icon: Wallet,
       titleKey: 'step3Title',
       descKey: 'step3Desc',
-      image: '/screenshots/income.png',
-      color: 'text-yellow-500'
+      color: 'bg-yellow-600',
+      lightColor: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
     },
     {
       icon: PiggyBank,
       titleKey: 'step4Title',
       descKey: 'step4Desc',
-      image: '/screenshots/costs.png',
-      color: 'text-orange-500'
+      color: 'bg-orange-600',
+      lightColor: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
     },
     {
       icon: Home,
       titleKey: 'step4SpinOffTitle',
       descKey: 'step4SpinOffDesc',
-      image: '/screenshots/costs.png', // Placeholder
-      color: 'text-orange-400',
+      color: 'bg-orange-500',
+      lightColor: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
       isSpinOff: true
     },
     {
       icon: Landmark,
       titleKey: 'step5Title',
       descKey: 'step5Desc',
-      image: '/screenshots/assets-savings.png',
-      color: 'text-teal-500'
+      color: 'bg-teal-600',
+      lightColor: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
     },
     {
       icon: Sliders,
       titleKey: 'step6Title',
       descKey: 'step6Desc',
-      image: '/screenshots/retirement-inputs.png',
-      color: 'text-indigo-500'
+      color: 'bg-indigo-600',
+      lightColor: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
     },
     {
       icon: ClipboardCheck,
       titleKey: 'step7Title',
       descKey: 'step7Desc',
-      image: '/screenshots/data-review.png',
-      color: 'text-cyan-500'
+      color: 'bg-cyan-600',
+      lightColor: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300'
     },
     {
       icon: LineChart,
       titleKey: 'step7SpinOffTitle',
       descKey: 'step7SpinOffDesc',
-      image: '/screenshots/scenario.png',
-      color: 'text-purple-400',
+      color: 'bg-purple-500',
+      lightColor: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
       isSpinOff: true
     },
     {
       icon: FileText,
       titleKey: 'step8Title',
       descKey: 'step8Desc',
-      image: '/screenshots/result.png',
-      color: 'text-red-500'
+      color: 'bg-red-600',
+      lightColor: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
     }
   ];
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
+    <div className="min-h-screen py-12 px-4 bg-background overflow-x-hidden relative">
+
+      {/* Language Selector - Top Right Absolute */}
+      <div className="absolute top-6 right-6 z-50">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 w-[100px] justify-center shadow-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => switchLanguage('en')}
+            className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'en' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+          >
+            EN
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => switchLanguage('fr')}
+            className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'fr' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+          >
+            FR
+          </Button>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto">
+        {/* Navigation */}
         <Button
           variant="ghost"
           onClick={() => navigate('/')}
-          className="mb-6 flex items-center gap-2"
+          className="mb-8 group flex items-center gap-2 text-muted-foreground hover:text-foreground pl-0"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           {t('infoPage.backToHome')}
         </Button>
 
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4 text-primary">
-            {t('infoPage.title')}
+        {/* Header Section - CORRECTED TITLE FONT & COLORS */}
+        <div className="text-center mb-16 space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-sans">
+            <span className="text-foreground dark:text-white">Can I</span> <span className="text-primary">Quit</span><span className="text-foreground dark:text-white">?</span> <span className="text-foreground dark:text-white">How does it work?</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {t('infoPage.subtitle')}
           </p>
         </div>
 
-        {/* Security Section - First Position */}
-        <Card className="mb-4 bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <CardContent className="p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-green-500/20 text-green-500">
-                <Shield className="h-6 w-6" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
-                {t('infoPage.securityTitle')}
-              </h2>
+        {/* Security Badge */}
+        {/* Security Badge */}
+        <div className="mb-12 relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500/30 to-teal-500/30 border border-emerald-500/40 p-1">
+          <div className="relative bg-background/60 backdrop-blur-sm rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="p-4 bg-emerald-100 dark:bg-emerald-900/50 rounded-full text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Shield className="h-8 w-8" />
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              {t('infoPage.securityDesc')}
-            </p>
-          </CardContent>
-        </Card>
+            <div>
+              <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mb-2 font-sans">
+                {t('infoPage.securityTitle')}
+              </h3>
+              <p className="text-muted-foreground text-sm md:text-base w-full">
+                {t('infoPage.securityDesc')}
+              </p>
+            </div>
+          </div>
+        </div>
 
-        {/* Steps */}
-        <div className="space-y-4">
+        {/* Visual Stack Layout - SEGMENTED TIMELINE LOGIC FIX */}
+        <div className="relative space-y-0 pb-12">
+
           {steps.map((step, index) => {
             const Icon = step.icon;
-            const isEven = index % 2 === 0;
+            const nonSpinOffIndex = steps.slice(0, index + 1).filter(s => !s.isSpinOff).length;
+            const isLastStep = index === steps.length - 1;
+            const isFirstStep = index === 0;
 
+            if (step.isSpinOff) {
+              return (
+                <div key={index} className="relative py-8 min-h-[140px]">
+                  {/* SPIN-OFF LINE SEGMENT */}
+                  {!isLastStep ? (
+                    <div
+                      className="absolute left-[36px] w-[3px] bg-slate-300 dark:bg-slate-600 z-0"
+                      style={{ top: '0', bottom: '0' }}
+                    />
+                  ) : (
+                    <div
+                      className="absolute left-[36px] w-[3px] bg-slate-300 dark:bg-slate-600 z-0"
+                      style={{ top: '0', bottom: '50%' }}
+                    />
+                  )}
+
+                  {/* Horizontal Branch Segment */}
+                  <div
+                    className="absolute left-[36px] w-[calc(15%-36px)] md:w-[120px] border-b-[3px] border-slate-300 dark:border-slate-600 z-0"
+                    style={{ top: 'calc(50% - 1.5px)' }}
+                  />
+
+                  {/* Spin-off Card */}
+                  <div className="w-full flex justify-end pl-8 sm:pl-0">
+                    <div className="w-[85%] md:w-[80%] bg-orange-50/90 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5 shadow-sm hover:shadow-md transition-all relative z-10">
+                      <div className={`p-3 rounded-full ${step.color} text-white shrink-0 shadow-sm ring-4 ring-background`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                          {/* REMOVED "EXTENSION" BADGE HERE */}
+                          <h3 className="font-bold text-lg text-foreground/90 font-sans">
+                            {t(`infoPage.${step.titleKey}`)}
+                          </h3>
+                        </div>
+                        <p className="text-base text-muted-foreground leading-relaxed whitespace-normal">
+                          {t(`infoPage.${step.descKey}`)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            // Normal Step
             return (
-              <div key={index} className="relative">
-                {/* Vertical Connector for Spin-offs */}
-                {step.isSpinOff && (
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 h-8 w-0.5 bg-border z-0" />
+              <div key={index} className="relative group py-6 z-10">
+
+                {/* TIMELINE SEGMENTS FOR NORMAL STEP - FIXED GAP */}
+                {/* Lines now meet at 60px (center of icon) behind the opaque container */}
+
+                {/* 1. Upper Connector (from previous step) */}
+                {!isFirstStep && (
+                  <div
+                    className="absolute left-[36px] w-[3px] bg-slate-300 dark:bg-slate-600 z-0"
+                    style={{ top: '0', height: '60px' }}
+                  />
                 )}
 
-                <Card
-                  className={`overflow-hidden transition-all duration-300 relative z-10 ${step.isSpinOff
-                    ? 'ml-8 sm:ml-16 bg-muted/30 scale-95 border-primary/20'
-                    : ''
-                    }`}
-                >
-                  <CardContent className="p-0">
-                    {/* Text Content */}
-                    <div className="p-6 md:p-8 flex flex-col justify-center">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={`p-2 rounded-lg bg-muted ${step.color}`}>
-                          <Icon className="h-6 w-6" />
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-bold">
-                          {t(`infoPage.${step.titleKey}`)}
-                        </h2>
+                {/* 2. Lower Connector (to next step) */}
+                {!isLastStep && (
+                  <div
+                    className="absolute left-[36px] w-[3px] bg-slate-300 dark:bg-slate-600 z-0"
+                    style={{ top: '60px', bottom: '0' }}
+                  />
+                )}
+
+                <div className="flex items-start gap-6 md:gap-10">
+                  {/* Icon Container */}
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="relative w-[72px] h-[72px] rounded-2xl flex items-center justify-center shadow-lg border-[3px] border-background group-hover:scale-105 transition-transform duration-300 z-10"
+                      style={{ backgroundColor: 'hsl(var(--background))' }}
+                    >
+                      <div className={`absolute inset-0 rounded-[14px] ${step.lightColor}`} />
+                      <div className="relative z-10">
+                        <Icon className="h-8 w-8" />
                       </div>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {t(`infoPage.${step.descKey}`)}
-                      </p>
+
+                      <div className={`absolute -bottom-3 -right-3 w-9 h-9 rounded-full ${step.color} text-white flex items-center justify-center font-bold text-lg shadow-md ring-[3px] ring-background z-20`}>
+                        {nonSpinOffIndex}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  {/* Main Content Bar */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`
+                         rounded-2xl border bg-card text-card-foreground p-6 pl-8
+                         shadow-sm hover:shadow-md transition-all duration-300
+                         group-hover:border-primary/20 relative overflow-hidden
+                         min-h-[110px] flex items-center
+                      `}>
+                      <div className={`absolute left-0 top-0 bottom-0 w-2 ${step.color}`} />
+                      <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 w-full">
+                        {/* ADDED font-sans TO NORMAL STEP TITLE */}
+                        <h3 className="text-xl font-bold text-foreground md:w-1/3 leading-tight font-sans">
+                          {t(`infoPage.${step.titleKey}`)}
+                        </h3>
+                        <div className="hidden md:block w-px h-12 bg-slate-200 dark:bg-slate-700" />
+                        <p className="text-muted-foreground text-sm md:text-base leading-relaxed flex-1 whitespace-normal">
+                          {t(`infoPage.${step.descKey}`)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
 
         {/* CTA Section */}
-        <div className="mt-12 text-center py-8">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-6">
-            {t('infoPage.ctaTitle')}
-          </h2>
-          <Button
-            onClick={() => navigate('/')}
-            size="lg"
-            className="min-w-[250px] text-lg"
-          >
-            {t('infoPage.ctaButton')}
-          </Button>
+        <div className="mt-16 text-center sticky bottom-8 z-20">
+          <div className="inline-block relative group">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-all duration-500" />
+            <Button
+              onClick={() => navigate('/')}
+              size="lg"
+              className="relative h-16 pl-8 pr-10 text-xl rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 border-4 border-background/50 backdrop-blur-sm"
+            >
+              <span className="mr-2">{t('infoPage.ctaButton')}</span>
+              <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground font-medium drop-shadow-sm bg-background/80 inline-block px-3 py-1 rounded-full backdrop-blur-sm">
+            {t('infoPage.ctaFooter')}
+          </p>
         </div>
+
+        <div className="h-24" />
       </div>
     </div>
   );
