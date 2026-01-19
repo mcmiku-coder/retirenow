@@ -47,7 +47,9 @@ const Information = () => {
       descKey: 'step4SpinOffDesc',
       color: 'bg-orange-500',
       lightColor: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
-      isSpinOff: true
+      isSpinOff: true,
+      cardBg: 'bg-orange-50/90 dark:bg-orange-950/40',
+      cardBorder: 'border-orange-200 dark:border-orange-800'
     },
     {
       icon: Landmark,
@@ -76,7 +78,9 @@ const Information = () => {
       descKey: 'step7SpinOffDesc',
       color: 'bg-purple-500',
       lightColor: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-      isSpinOff: true
+      isSpinOff: true,
+      cardBg: 'bg-cyan-50/90 dark:bg-cyan-950/40',
+      cardBorder: 'border-cyan-200 dark:border-cyan-800'
     },
     {
       icon: FileText,
@@ -178,24 +182,24 @@ const Information = () => {
 
                   {/* Horizontal Branch Segment */}
                   <div
-                    className="absolute left-[36px] w-[calc(15%-36px)] md:w-[120px] border-b-[3px] border-slate-300 dark:border-slate-600 z-0"
+                    className="absolute left-[36px] w-[calc(20%-36px)] md:w-[120px] border-b-[3px] border-slate-300 dark:border-slate-600 z-0"
                     style={{ top: 'calc(50% - 1.5px)' }}
                   />
 
                   {/* Spin-off Card */}
                   <div className="w-full flex justify-end pl-8 sm:pl-0">
-                    <div className="w-[85%] md:w-[80%] bg-orange-50/90 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-5 shadow-sm hover:shadow-md transition-all relative z-10">
-                      <div className={`p-3 rounded-full ${step.color} text-white shrink-0 shadow-sm ring-4 ring-background`}>
+                    <div className={`w-[80%] md:w-[75%] ${step.cardBg} border ${step.cardBorder} rounded-3xl p-5 flex flex-col sm:flex-row items-center gap-4 shadow-sm hover:shadow-md transition-all relative z-10`}>
+                      <div className={`p-2.5 rounded-full ${step.color} text-white shrink-0 shadow-sm ring-4 ring-background`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="flex-1 text-left">
-                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-1.5">
                           {/* REMOVED "EXTENSION" BADGE HERE */}
-                          <h3 className="font-bold text-lg text-foreground/90 font-sans">
+                          <h3 className="font-bold text-base md:text-lg text-foreground/90 font-sans">
                             {t(`infoPage.${step.titleKey}`)}
                           </h3>
                         </div>
-                        <p className="text-base text-muted-foreground leading-relaxed whitespace-normal">
+                        <p className="text-sm md:text-base text-muted-foreground leading-relaxed whitespace-normal">
                           {t(`infoPage.${step.descKey}`)}
                         </p>
                       </div>
