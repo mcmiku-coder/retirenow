@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import PageHeader from '../components/PageHeader';
 import { toast } from 'sonner';
-import { ArrowLeft, Users, Shield, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Eye, EyeOff, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
@@ -99,6 +99,26 @@ const Admin = () => {
       console.error('Load data error:', error);
       const errorMessage = error.response?.data?.detail || error.message || 'Unknown error';
       toast.error(`Failed to load data: ${errorMessage}`);
+    }
+  };
+
+  const handleDeleteUser = async (userId, email) => {
+    if (!window.confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${BACKEND_URL}/api/admin/users/${userId}`, {
+        data: { admin_key: adminKey }
+      });
+      toast.success('User deleted successfully');
+      // Remove user from local state immediately
+      setUsers(users.filter(u => u.user_id !== userId));
+      // Reload stats
+      loadData();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to delete user');
     }
   };
 
@@ -228,7 +248,9 @@ const Admin = () => {
                       <th className="text-left p-3 font-semibold">Info</th>
                       <th className="text-center p-3 font-semibold">Pages</th>
                       <th className="text-left p-3 font-semibold">Last Page</th>
+                      <th className="text-left p-3 font-semibold">Last Page</th>
                       <th className="text-left p-3 font-semibold">Deepest Page</th>
+                      <th className="text-right p-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -274,6 +296,17 @@ const Admin = () => {
                               {formatPageName(user.deepest_page)}
                             </span>
                           ) : '-'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteUser(user.user_id, user.email)}
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))}

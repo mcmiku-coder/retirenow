@@ -298,6 +298,28 @@ async def get_all_users(request: AdminLoginRequest):
         logger.error(f"Error fetching users: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, request: AdminLoginRequest):
+    """Delete a user by ID (admin only)"""
+    if not verify_admin_key(request.admin_key):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    try:
+        # Delete from all collections
+        result = await db.access.delete_one({"user_id": user_id})
+        await db.login_events.delete_many({"user_id": user_id})
+        await db.page_visits.delete_many({"user_id": user_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        logger.info(f"User {user_id} deleted by admin")
+        return {"success": True, "message": "User deleted successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 @api_router.post("/admin/stats")
 async def get_admin_stats(request: AdminLoginRequest):
     """Get admin statistics (admin only)"""
