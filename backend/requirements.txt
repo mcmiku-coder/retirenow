@@ -6,3 +6,4 @@ bcrypt
 pyjwt
 pandas
 requests
+email-validator

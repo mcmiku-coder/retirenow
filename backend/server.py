@@ -209,6 +209,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         verification_link = f"{frontend_url}/verify?token={token}"
         
         # Brevo API Endpoint
+        # V3 endpoint for transactional emails
         url = "https://api.brevo.com/v3/smtp/email"
         
         # Headers
