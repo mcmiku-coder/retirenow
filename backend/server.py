@@ -126,7 +126,9 @@ class AdminUserResponse(BaseModel):
     deepest_page: Optional[str] = None
     last_ip: Optional[str] = None
     last_device_type: Optional[str] = None
+    last_location: Optional[str] = None
     total_pages_viewed: int = 0
+    is_verified: bool = False
 
 class AdminStatsResponse(BaseModel):
     total_users: int
@@ -195,6 +197,20 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+# Helper for IP Geolocation
+def get_location_from_ip(ip_address: str) -> str:
+    if not ip_address or ip_address == "127.0.0.1":
+         return "Localhost"
+    try:
+        # Using ip-api.com (Free for non-commercial, 45req/min)
+        response = requests.get(f"http://ip-api.com/json/{ip_address}?fields=country,city", timeout=3)
+        if response.status_code == 200:
+            data = response.json()
+            return f"{data.get('city', 'Unknown')}, {data.get('country', 'Unknown')}"
+    exceptException:
+        pass
+    return "Unknown"
+
 def send_verification_email(to_email: str, token: str):
     # Brevo API Logic
     # We strip() to remove any accidental whitespace/newlines from the env var
@@ -242,6 +258,8 @@ def send_verification_email(to_email: str, token: str):
         
         if response.status_code in [200, 201, 202]:
             logger.info(f"Verification email sent to {to_email} via Brevo")
+            # For dev/testing: Always log the link so user can verify if email is blocked/spammed
+            logger.info(f"DEBUG: Manually verify at -> {verification_link}")
         else:
             logger.error(f"Brevo API Error: {response.status_code} - {response.text}")
             # Fallback to console print
@@ -295,7 +313,9 @@ async def get_all_users(request: AdminLoginRequest):
                 deepest_page=user.get("deepest_page", None),
                 last_ip=user.get("last_ip", None),
                 last_device_type=user.get("last_device_type", None),
-                total_pages_viewed=user.get("total_pages_viewed", 0)
+                last_location=user.get("last_location", "Unknown"),
+                total_pages_viewed=user.get("total_pages_viewed", 0),
+                is_verified=user.get("is_verified", False)
             )
             for user in users
         ]
@@ -362,6 +382,9 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     hashed_pw = hash_password(user.password)
     current_time = datetime.now(timezone.utc).isoformat()
     
+    # Resolve Location
+    user_location = get_location_from_ip(request.client.host)
+
     user_doc = {
         "user_id": str(uuid.uuid4()),
         "email": user.email,
@@ -370,6 +393,7 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
         "last_login": current_time,
         "login_count": 0,
         "last_ip": request.client.host,
+        "last_location": user_location,
         "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop",
         "total_pages_viewed": 0,
         "is_verified": False  # New users unverified
@@ -443,6 +467,8 @@ async def login(user: UserLogin, request: Request):
     
     # Update login analytics
     current_time = datetime.now(timezone.utc).isoformat()
+    current_location = get_location_from_ip(request.client.host)
+    
     await db.access.update_one(
         {"email": user.email},
         {
@@ -450,6 +476,7 @@ async def login(user: UserLogin, request: Request):
             "$set": {
                 "last_login": current_time,
                 "last_ip": request.client.host,
+                "last_location": current_location,
                 "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop"
             }
         }

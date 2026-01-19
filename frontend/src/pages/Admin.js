@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import PageHeader from '../components/PageHeader';
 import { toast } from 'sonner';
-import { ArrowLeft, Users, Shield, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Eye, EyeOff, Trash2, Check, X, MapPin } from 'lucide-react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
@@ -245,11 +245,11 @@ const Admin = () => {
                       <th className="text-left p-3 font-semibold">Created</th>
                       <th className="text-center p-3 font-semibold">Logins</th>
                       <th className="text-left p-3 font-semibold">Last Login</th>
-                      <th className="text-left p-3 font-semibold">Info</th>
+                      <th className="text-left p-3 font-semibold">Info (IP/Loc)</th>
                       <th className="text-center p-3 font-semibold">Pages</th>
                       <th className="text-left p-3 font-semibold">Last Page</th>
-                      <th className="text-left p-3 font-semibold">Last Page</th>
                       <th className="text-left p-3 font-semibold">Deepest Page</th>
+                      <th className="text-center p-3 font-semibold">Verified</th>
                       <th className="text-right p-3 font-semibold">Actions</th>
                     </tr>
                   </thead>
@@ -272,6 +272,12 @@ const Admin = () => {
                         <td className="p-3 text-xs">
                           <div className="flex flex-col gap-1">
                             {user.last_ip && <span className="text-muted-foreground">IP: {user.last_ip}</span>}
+                            {user.last_location && (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <MapPin className="h-3 w-3" />
+                                <span>{user.last_location}</span>
+                              </div>
+                            )}
                             {user.last_device_type && (
                               <span className={`inline-flex w-fit items-center px-1.5 py-0.5 rounded ${user.last_device_type === 'Mobile' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-700 text-slate-300'
                                 }`}>
@@ -296,6 +302,13 @@ const Admin = () => {
                               {formatPageName(user.deepest_page)}
                             </span>
                           ) : '-'}
+                        </td>
+                        <td className="p-3 text-center">
+                          {user.is_verified ? (
+                            <Check className="h-5 w-5 text-green-500 mx-auto" />
+                          ) : (
+                            <X className="h-5 w-5 text-red-500 mx-auto" opacity={0.5} />
+                          )}
                         </td>
                         <td className="p-3 text-right">
                           <Button
