@@ -282,8 +282,9 @@ const ScenarioResult = () => {
           const val = calculateYearlyAmount(amount, row.frequency, row.startDate, row.endDate, year);
           if (val > 0) {
             yearCosts += val;
-            const cat = row.category || row.name || 'Other';
-            costBreakdown[cat] = (costBreakdown[cat] || 0) + val;
+            // Do not aggregate by category. Use name to match Data Review columns.
+            const costKey = row.name;
+            costBreakdown[costKey] = (costBreakdown[costKey] || 0) + val;
           }
         });
 
@@ -743,26 +744,25 @@ const ScenarioResult = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.text('Year-by-Year Breakdown', 15, 15);
 
-      // Collect all unique income and cost keys from the breakdown data
-      const allIncomeKeys = new Set();
-      const allCostKeys = new Set();
-
-      projection.yearlyBreakdown.forEach(row => {
-        if (row.incomeBreakdown) {
-          Object.keys(row.incomeBreakdown).forEach(key => allIncomeKeys.add(key));
-        }
-        if (row.costBreakdown) {
-          Object.keys(row.costBreakdown).forEach(key => allCostKeys.add(key));
-        }
-      });
-
-      const incomeKeys = Array.from(allIncomeKeys);
-      const costKeys = Array.from(allCostKeys);
-
-      // Build headers: Year + income keys + cost keys + balances
+      // Build headers explicitly based on the active lists order to match Data Review
       const headers = ['Year'];
-      incomeKeys.forEach(key => headers.push(key.substring(0, 15))); // Truncate long names
-      costKeys.forEach(key => headers.push(key.substring(0, 15)));
+
+      // 1. Incomes
+      const activeIncomeItems = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
+      activeIncomeItems.forEach(i => headers.push(i.name.substring(0, 25))); // Increased limit to avoid truncation
+
+      // 2. Assets (displayed as inflows)
+      const activeAssetItems = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
+      activeAssetItems.forEach(a => headers.push(a.name.substring(0, 25)));
+
+      // 3. Costs
+      const activeCostItems = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
+      activeCostItems.forEach(c => headers.push(c.name.substring(0, 25)));
+
+      // 4. Debts (displayed as outflows)
+      const activeDebtItems = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
+      activeDebtItems.forEach(d => headers.push(d.name.substring(0, 25)));
+
       headers.push('Annual Bal.');
       headers.push('Cumul. Bal.');
 
@@ -770,24 +770,43 @@ const ScenarioResult = () => {
       const bodyData = projection.yearlyBreakdown.map(row => {
         const rowData = [row.year];
 
-        // Add income values using the collected keys
-        incomeKeys.forEach(key => {
-          const val = row.incomeBreakdown?.[key] || 0;
+        // 1. Incomes
+        activeIncomeItems.forEach(i => {
+          const val = row.incomeBreakdown?.[i.name] || 0;
           rowData.push(val > 0 ? formatNumber(val) : '');
         });
 
-        // Add cost values using the collected keys
-        costKeys.forEach(key => {
-          const val = row.costBreakdown?.[key] || 0;
+        // 2. Assets (stored in incomeBreakdown in calculation logic)
+        activeAssetItems.forEach(a => {
+          const val = row.incomeBreakdown?.[a.name] || 0;
           rowData.push(val > 0 ? formatNumber(val) : '');
         });
 
-        // Add balances
+        // 3. Costs (stored in costBreakdown)
+        activeCostItems.forEach(c => {
+          const val = row.costBreakdown?.[c.name] || 0;
+          rowData.push(val > 0 ? formatNumber(val) : '');
+        });
+
+        // 4. Debts (stored in costBreakdown)
+        activeDebtItems.forEach(d => {
+          const val = row.costBreakdown?.[d.name] || 0;
+          rowData.push(val > 0 ? formatNumber(val) : '');
+        });
+
+        // Balances
         rowData.push(formatNumber(row.annualBalance));
         rowData.push(formatNumber(row.cumulativeBalance));
 
         return rowData;
       });
+
+      // Calculate boundaries for separators
+      // Year is column 0
+      const boundaryIncome = activeIncomeItems.length; // 0 (Year) + N incomes -> Last Income is at index N
+      const boundaryAssets = boundaryIncome + activeAssetItems.length;
+      const boundaryCosts = boundaryAssets + activeCostItems.length;
+      const boundaryDebts = boundaryCosts + activeDebtItems.length;
 
       autoTable(pdf, {
         startY: 25,
@@ -798,6 +817,24 @@ const ScenarioResult = () => {
         styles: { fontSize: 5, cellPadding: 1, halign: 'right' },
         columnStyles: {
           0: { fontStyle: 'bold', halign: 'left' }
+        },
+        didDrawCell: function (data) {
+          // Add thick colored vertical lines to separate sections
+          if (data.section === 'body' || data.section === 'head') {
+            const idx = data.column.index;
+            // Draw line on the right edge of the cell if it's a boundary column
+            if (idx === boundaryIncome || idx === boundaryAssets || idx === boundaryCosts || idx === boundaryDebts) {
+              const doc = data.doc;
+              doc.setDrawColor(59, 130, 246); // Blue color
+              doc.setLineWidth(0.5); // Thicker line
+
+              const x = data.cell.x + data.cell.width;
+              const y = data.cell.y;
+              const h = data.cell.height;
+
+              doc.line(x, y, x, y + h);
+            }
+          }
         },
         didParseCell: function (data) {
           // Apply conditional formatting to the last two columns (Annual Bal. and Cumul. Bal.)
@@ -965,9 +1002,23 @@ const ScenarioResult = () => {
       const data = payload[0].payload;
       return (
         <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs min-w-[600px]">
-          <p className="font-bold mb-2 text-sm">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
+          {/* Header Row: Year left, Balances right */}
+          <div className="flex justify-between items-center bg-gray-900/50 p-2 -mx-3 -mt-3 mb-2 border-b border-gray-700 rounded-t">
+            <p className="font-bold text-sm text-gray-100 pl-1">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
 
-          <div className="flex gap-6 mb-2">
+            <div className="flex gap-4">
+              <div className={`flex items-center gap-2 font-bold ${data.annualBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className="text-gray-400 font-normal">{language === 'fr' ? 'Annuel:' : 'Annual:'}</span>
+                <span>{Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2 font-bold text-blue-300">
+                <span className="text-gray-400 font-normal">{language === 'fr' ? 'Cumulé:' : 'Cumul:'}</span>
+                <span>{Math.round(data.cumulativeBalance).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-6 mb-2 mt-3">
             <div className="flex-1">
               <p className="font-semibold text-green-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)'}</p>
               {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
@@ -995,16 +1046,6 @@ const ScenarioResult = () => {
                 <span>{Math.round(data.costs).toLocaleString()}</span>
               </div>
             </div>
-          </div>
-
-          <div className={`mt-2 pt-2 border-t border-gray-600 font-bold flex justify-between ${data.annualBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            <span>{language === 'fr' ? 'Solde annuel' : 'Annual Balance'}</span>
-            <span>CHF {Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
-          </div>
-
-          <div className="mt-1 flex justify-between text-blue-300 font-bold">
-            <span>{language === 'fr' ? 'Solde cumulé' : 'Cumulative'}</span>
-            <span>CHF {Math.round(data.cumulativeBalance).toLocaleString()}</span>
           </div>
         </div>
       );

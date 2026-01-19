@@ -207,7 +207,7 @@ def get_location_from_ip(ip_address: str) -> str:
         if response.status_code == 200:
             data = response.json()
             return f"{data.get('city', 'Unknown')}, {data.get('country', 'Unknown')}"
-    exceptException:
+    except Exception:
         pass
     return "Unknown"
 
@@ -258,8 +258,10 @@ def send_verification_email(to_email: str, token: str):
         
         if response.status_code in [200, 201, 202]:
             logger.info(f"Verification email sent to {to_email} via Brevo")
-            # For dev/testing: Always log the link so user can verify if email is blocked/spammed
-            logger.info(f"DEBUG: Manually verify at -> {verification_link}")
+            # Force print for visibility in Render logs
+            print(f"\n{'='*20} MANUAL VERIFICATION LINK {'='*20}", flush=True)
+            print(f"DEBUG_LINK: {verification_link}", flush=True)
+            print(f"{'='*60}\n", flush=True)
         else:
             logger.error(f"Brevo API Error: {response.status_code} - {response.text}")
             # Fallback to console print
