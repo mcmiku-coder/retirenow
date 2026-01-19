@@ -154,8 +154,8 @@ const Landing = () => {
         </div>
 
         {(showRegister || showLogin) && (
-          <div className="max-w-md mx-auto bg-card border rounded-lg p-8">
-            <h2 className="text-2xl font-semibold mb-6" data-testid="auth-form-title">
+          <div className="max-w-xl mx-auto bg-card border rounded-lg p-8">
+            <h2 className="text-3xl font-semibold font-sans mb-6 text-center" data-testid="auth-form-title">
               {showRegister ? t('auth.createAccount') : t('auth.login')}
             </h2>
 

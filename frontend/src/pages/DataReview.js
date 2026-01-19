@@ -11,6 +11,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
+import { Slider } from '../components/ui/slider';
+import { Checkbox } from '../components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb, Copy } from 'lucide-react';
@@ -69,6 +73,117 @@ const DataReview = () => {
   const [currentAssets, setCurrentAssets] = useState([]);
   const [desiredOutflows, setDesiredOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Adjustment Modal State
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustRows, setAdjustRows] = useState([]);
+
+  // Initialize modal data
+  const openAdjustModal = () => {
+    const targetCostKeys = ['Vacation', 'Private transportation']; // English keys from COST_KEYS
+
+    const newRows = targetCostKeys.map(englishKey => {
+      const translationKey = COST_KEYS[englishKey];
+      const translatedName = t(`costs.costNames.${translationKey}`);
+
+      // Find cost by its original English name or its translated name
+      const cost = costs.find(c =>
+        c.name === englishKey ||
+        c.name === translatedName ||
+        (c.name && c.name.startsWith('costs.costNames.') && t(c.name) === translatedName)
+      );
+
+      if (cost) {
+        const currentAmount = parseFloat(cost.amount || 0);
+        const adjustedAmount = parseFloat(cost.adjustedAmount || cost.amount || 0);
+        return {
+          id: cost.id, // Assuming costs have unique IDs
+          name: getCostName(cost.name), // Display translated name
+          originalAmount: currentAmount,
+          frequency: cost.frequency,
+          adjustedAmount: adjustedAmount,
+          changeAtAge: parseFloat(cost.changeAtAge || 75), // Default age
+          checked: false
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    setAdjustRows(newRows);
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjustRowChange = (id, field, value) => {
+    setAdjustRows(prev => prev.map(row =>
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
+
+  // Apply changes to actual costs
+  const applyTableAdjustments = () => {
+    let updatedCosts = [...costs];
+    const bDateObj = new Date(birthDate);
+
+    adjustRows.forEach(row => {
+      const originalIndex = updatedCosts.findIndex(c => c.id === row.id);
+      if (originalIndex === -1) return;
+      const originalCost = updatedCosts[originalIndex];
+
+      if (row.checked) {
+        // SPLIT LOGIC
+        const splitAge = row.changeAtAge;
+        const splitYear = bDateObj.getFullYear() + splitAge;
+
+        // Construct date object
+        const splitDateObj = new Date(splitYear, bDateObj.getMonth(), bDateObj.getDate());
+
+        // Format as YYYY-MM-DD (ISO) for state consistency and Input[type="date"]
+        const day = String(splitDateObj.getDate()).padStart(2, '0');
+        const month = String(splitDateObj.getMonth() + 1).padStart(2, '0');
+        const year = splitDateObj.getFullYear();
+        const splitDateStr = `${year}-${month}-${day}`;
+
+        // Define Group ID for Split Visualization on BOTH parent and child
+        const groupId = originalCost.groupId || originalCost.id;
+
+        // 1. Update End Date of Original Item AND Assign Group ID
+        const modifiedOriginal = {
+          ...originalCost,
+          endDate: splitDateStr,
+          groupId: groupId
+        };
+
+        // 2. Create New Cost Item for the Split Period
+        const newSplitCost = {
+          ...originalCost,
+          id: `${originalCost.id}-split-${Date.now()}`,
+          parentId: originalCost.id, // Link to parent to trigger "split" icon/logic
+          groupId: groupId, // Group with parent for visual grouping
+          name: originalCost.name,
+          startDate: splitDateStr,
+          endDate: originalCost.endDate,
+          amount: originalCost.amount, // Inherit usage of original amount as base
+          adjustedAmount: row.adjustedAmount, // New adjusted amount
+          isSplit: true
+        };
+
+        updatedCosts[originalIndex] = modifiedOriginal;
+        // Insert right after original for visual continuity
+        updatedCosts.splice(originalIndex + 1, 0, newSplitCost);
+
+      } else {
+        // GLOBAL UPDATE LOGIC
+        updatedCosts[originalIndex] = {
+          ...originalCost,
+          adjustedAmount: row.adjustedAmount
+        };
+      }
+    });
+
+    setCosts(updatedCosts);
+    setShowAdjustModal(false);
+    toast.success(language === 'fr' ? 'Ajustements appliqués' : 'Adjustments applied');
+  };
 
   // Retirement option: 'option1', 'option2', or 'option3'
   const [retirementOption, setRetirementOption] = useState('option1');
@@ -1552,6 +1667,76 @@ const DataReview = () => {
     return cumulativeBalance - transmission;
   };
 
+  const handleAdjustAnswer = (key, value) => {
+    setAdjustAnswers(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const applyAdjustments = () => {
+    // Logic to update costs based on answers
+    // This is a heuristic approach based on typical Swiss values or simply modifying existing values
+    // For this implementation, we will apply multipliers to existing costs if they match categories,
+    // or add them if missing? The request says "adjust automatically", implying modifying the existing COST list.
+
+    // We map answers to multipliers or fixed values.
+    // NOTE: This modifies 'adjustedAmount' in the 'costs' state.
+
+    let newCosts = [...costs];
+
+    const modifyCost = (keyword, multiplier) => {
+      newCosts = newCosts.map(c => {
+        if (c.name.toLowerCase().includes(keyword.toLowerCase())) {
+          const original = parseFloat(c.amount || 0);
+          if (original > 0) {
+            return { ...c, adjustedAmount: Math.round(original * multiplier) };
+          }
+        }
+        return c;
+      });
+    };
+
+    // Example logic (can be refined):
+    // Car: Yes -> 100% (no change if existing), No -> 0% (remove cost)
+    if (adjustAnswers.car === 'no') modifyCost('transport', 0.2); // Reduce transport if no car, but maybe keeping public?
+    // Actually, distinct question for public transport.
+    if (adjustAnswers.car === 'yes') modifyCost('Private transportation', 1.0); // Keep
+    if (adjustAnswers.car === 'no') modifyCost('Private transportation', 0); // Remove
+
+    // Public Transport
+    if (adjustAnswers.publicTransport === 'never') modifyCost('Public', 0);
+    if (adjustAnswers.publicTransport === 'sometimes') modifyCost('Public', 0.5); // Reduce
+
+    // Vacation
+    if (adjustAnswers.vacation === 'high') modifyCost('Vacation', 1.2);
+    if (adjustAnswers.vacation === 'low') modifyCost('Vacation', 0.5);
+
+    // Restaurants
+    if (adjustAnswers.restaurant === 'yes') modifyCost('Restaurant', 1.2);
+    if (adjustAnswers.restaurant === 'no') modifyCost('Restaurant', 0.5);
+
+    // Food (Groceries)
+    if (adjustAnswers.food === 'high') modifyCost('Food', 1.2);
+    if (adjustAnswers.food === 'low') modifyCost('Food', 0.8);
+
+    // Clothing
+    if (adjustAnswers.clothing === 'very often') modifyCost('Clothing', 1.3);
+    if (adjustAnswers.clothing === 'rarely') modifyCost('Clothing', 0.5);
+
+    // Utilities
+    if (adjustAnswers.utilities === 'high') modifyCost('TV', 1.2); // Matches TV/Internet/Phone
+    if (adjustAnswers.utilities === 'low') modifyCost('TV', 0.8);
+
+    // Health is tricky, usually fixed, but maybe supplementary?
+    // "Do you have private health insurance?"
+    if (adjustAnswers.health === 'no') modifyCost('Health', 0.8); // Assume base only
+
+    setCosts(newCosts);
+    setShowAdjustModal(false);
+    toast.success(language === 'fr' ? 'Ajustements appliqués' : 'Adjustments applied');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1564,721 +1749,840 @@ const DataReview = () => {
   }
 
   return (
-    <div className="min-h-screen py-6" data-testid="scenario-page">
-      <div className="w-[80%] mx-auto mb-6">
-      </div>
+    <div className="min-h-screen flex flex-col pt-20 pb-12 bg-background text-foreground" data-testid="data-review-page">
+      <div className="w-full max-w-[95%] mx-auto mb-6 px-4">
 
-      <PageHeader
-        title={language === 'fr' ? 'Revue des données avant simulation' : 'Data review before simulation'}
-        subtitle={language === 'fr'
-          ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation'
-          : 'Review and adjust income and costs before running the simulation'}
-        rightContent={
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
-          >
-            <Lightbulb className="h-4 w-4" />
-            {t('scenario.costTuningAdvice')}
-          </Button>
-        }
-      />
+        <PageHeader
+          title={language === 'fr' ? 'Revue des données avant simulation' : 'Data Review Before Simulation'}
+          description={language === 'fr' ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation' : 'Review and adjust incomes and costs before running the simulation'}
+          rightContent={
+            <Button
+              onClick={openAdjustModal}
+              className="bg-green-600 hover:bg-green-700 text-white gap-2"
+            >
+              <Lightbulb className="h-4 w-4" />
+              {language === 'fr' ? 'Suggère moi des ajustements pertinents' : 'Suggest relevant adjustments'}
+            </Button>
+          }
+        />
 
-      <div className="w-[80%] mx-auto">
-        {/* Dynamic Datalist for Cluster Tags */}
+        {/* Adjust Modal */}
+        <Dialog open={showAdjustModal} onOpenChange={setShowAdjustModal}>
+          <DialogContent className="max-w-5xl bg-card text-card-foreground border-border">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-serif">
+                {language === 'fr' ? 'Donnez-moi des conseils d\'ajustement' : 'Give me some adjustment advice'}
+              </DialogTitle>
+              <DialogDescription className="text-green-500">
+                {language === 'fr'
+                  ? 'En répondant à ces questions, vous pouvez implémenter automatiquement des ajustements cohérents avec vos vues sur la retraite'
+                  : 'By answering these questions, you can automatically implement some adjustments consistent with your retirement views'}
+              </DialogDescription>
+            </DialogHeader>
 
-        {/* Dynamic Datalist for Cluster Tags */}
-        <datalist id="cluster-options">
-          <option value="Cluster A" />
-          <option value="Cluster B" />
-          <option value="Cluster C" />
-          {/* Dynamically add unique tags from all data sources */}
-          {[
-            ...new Set([
-              ...incomes.map(i => i.clusterTag),
-              ...costs.map(c => c.clusterTag),
-              ...currentAssets.map(a => a.clusterTag),
-              ...desiredOutflows.map(d => d.clusterTag)
-            ])
-          ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
-            <option key={tag} value={tag} />
-          ))}
-        </datalist>
+            <div className="mt-6">
+              {/* Header Row */}
+              <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-sm font-medium text-muted-foreground px-2">
+                <div></div>
+                <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
+                <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
+                <div>{language === 'fr' ? 'Fréquence' : 'Frequency'}</div>
+                <div>{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</div>
+                <div>{/* Slider */}</div>
+                <div className="text-right">{language === 'fr' ? 'Changement à' : 'Change at'}</div>
+              </div>
 
-        <div className="space-y-6">
+              <div className="space-y-3">
+                {adjustRows.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    {language === 'fr' ? 'Aucun coût pertinent trouvé.' : 'No relevant costs found to adjust.'}
+                  </div>
+                )}
 
-          {/* Incomes Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
+                {adjustRows.map(row => {
+                  const birthYear = new Date(birthDate).getFullYear();
+                  const deathYear = new Date(deathDate).getFullYear();
+                  const currentYear = new Date().getFullYear();
+                  const currentAge = currentYear - birthYear;
+                  const deathAge = deathYear - birthYear;
+                  const maxAge = deathAge - 1;
+                  const startAge = currentAge + 1;
+                  const ageOptions = [];
+                  if (startAge < maxAge) {
+                    for (let y = startAge; y <= maxAge; y++) {
+                      ageOptions.push(y);
+                    }
+                  } else {
+                    ageOptions.push(startAge);
+                  }
 
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {incomes.map((income, index) => {
-                      // Check if this income is part of a split group
-                      const isInGroup = income.groupId !== undefined && income.groupId !== null;
-                      const isChildIncome = income.parentId !== undefined && income.parentId !== null;
+                  return (
+                    <div key={row.id} className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center bg-muted/40 p-3 rounded-lg border border-border">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={row.checked}
+                          onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
+                        />
+                      </div>
+                      <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
+                      <div className="text-muted-foreground">{row.originalAmount}</div>
+                      <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency, t)}</div>
+                      <div>
+                        <Input
+                          type="number"
+                          value={row.adjustedAmount}
+                          onChange={(e) => handleAdjustRowChange(row.id, 'adjustedAmount', parseFloat(e.target.value) || 0)}
+                          className="bg-background border-input h-8 text-right font-mono"
+                        />
+                      </div>
+                      <div className="px-2">
+                        <Slider
+                          value={[row.adjustedAmount]}
+                          min={0}
+                          max={(row.originalAmount || 1000) * 1.5}
+                          step={100}
+                          onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                          className="py-2"
+                        />
+                      </div>
+                      <div>
+                        <Select
+                          value={row.changeAtAge?.toString()}
+                          onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
+                          disabled={!row.checked}
+                        >
+                          <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
+                            <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
+                            {ageOptions.map(age => (
+                              <SelectItem key={age} value={age.toString()}>
+                                {age} {language === 'fr' ? 'ans' : 'years'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                      // Visual grouping - lighter background for grouped incomes, slightly indented for children
-                      const groupStyles = isInGroup
-                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
-                        : '';
-                      const childStyles = isChildIncome
-                        ? 'bg-muted/10'
-                        : '';
+            <DialogFooter className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                className="bg-transparent border-input text-muted-foreground hover:bg-muted"
+                onClick={() => setShowAdjustModal(false)}
+              >
+                {language === 'fr' ? 'Annuler' : 'Cancel'}
+              </Button>
+              <Button
+                className="bg-[#EF5343] hover:bg-[#d94334] text-white px-8"
+                onClick={applyTableAdjustments}
+              >
+                {language === 'fr' ? 'Appliquer' : 'Apply'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-                      // Get effective dates (override or default)
-                      const today = new Date().toISOString().split('T')[0];
-                      const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
+        <div className="w-[80%] mx-auto">
+          {/* Dynamic Datalist for Cluster Tags */}
 
-                      // Calculate default dates for standard income types
-                      let defaultStartDate = '';
-                      let defaultEndDate = '';
+          {/* Dynamic Datalist for Cluster Tags */}
+          <datalist id="cluster-options">
+            <option value="Cluster A" />
+            <option value="Cluster B" />
+            <option value="Cluster C" />
+            {/* Dynamically add unique tags from all data sources */}
+            {[
+              ...new Set([
+                ...incomes.map(i => i.clusterTag),
+                ...costs.map(c => c.clusterTag),
+                ...currentAssets.map(a => a.clusterTag),
+                ...desiredOutflows.map(d => d.clusterTag)
+              ])
+            ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
+              <option key={tag} value={tag} />
+            ))}
+          </datalist>
 
-                      if (income.name === 'Salary') {
-                        defaultStartDate = today;
-                        defaultEndDate = wishedRetirementDate;
-                      } else if (income.name === 'LPP') {
-                        defaultStartDate = wishedRetirementDate;
-                        defaultEndDate = deathDate;
-                      } else if (income.name === 'AVS') {
-                        defaultStartDate = retirementLegalDate;
-                        defaultEndDate = deathDate;
-                      } else if (income.name === '3a') {
-                        defaultStartDate = wishedRetirementDate;
-                        defaultEndDate = '';
-                      }
+          <div className="space-y-6">
 
-                      // Get current values (override or default)
-                      const currentStartDate = isStandardIncome
-                        ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
-                        : income.startDate;
-                      const currentEndDate = isStandardIncome
-                        ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
-                        : income.endDate;
+            {/* Incomes Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
 
-                      const isLPPPension = income.name.includes('LPP Pension');
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {incomes.map((income, index) => {
+                        // Check if this income is part of a split group
+                        const isInGroup = income.groupId !== undefined && income.groupId !== null;
+                        const isChildIncome = income.parentId !== undefined && income.parentId !== null;
 
-                      return (
-                        <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
-                          <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
-                            <div className="flex items-center gap-2">
-                              {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
-                              {getIncomeName(income.name)}
-                              {isInGroup && !isChildIncome && (
-                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
+                        // Visual grouping - lighter background for grouped incomes, slightly indented for children
+                        const groupStyles = isInGroup
+                          ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
+                          : '';
+                        const childStyles = isChildIncome
+                          ? 'bg-muted/10'
+                          : '';
+
+                        // Get effective dates (override or default)
+                        const today = new Date().toISOString().split('T')[0];
+                        const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
+
+                        // Calculate default dates for standard income types
+                        let defaultStartDate = '';
+                        let defaultEndDate = '';
+
+                        if (income.name === 'Salary') {
+                          defaultStartDate = today;
+                          defaultEndDate = wishedRetirementDate;
+                        } else if (income.name === 'LPP') {
+                          defaultStartDate = wishedRetirementDate;
+                          defaultEndDate = deathDate;
+                        } else if (income.name === 'AVS') {
+                          defaultStartDate = retirementLegalDate;
+                          defaultEndDate = deathDate;
+                        } else if (income.name === '3a') {
+                          defaultStartDate = wishedRetirementDate;
+                          defaultEndDate = '';
+                        }
+
+                        // Get current values (override or default)
+                        const currentStartDate = isStandardIncome
+                          ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
+                          : income.startDate;
+                        const currentEndDate = isStandardIncome
+                          ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
+                          : income.endDate;
+
+                        const isLPPPension = income.name.includes('LPP Pension');
+
+                        return (
+                          <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                            <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
+                              <div className="flex items-center gap-2">
+                                {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
+                                {getIncomeName(income.name)}
+                                {isInGroup && !isChildIncome && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-right p-3 text-muted-foreground">
+                              CHF {parseFloat(income.amount).toLocaleString()}
+                            </td>
+                            <td className="text-right p-3">
+                              <Input
+                                data-testid={`income - adjusted - ${index} `}
+                                type="number"
+                                value={income.adjustedAmount}
+                                onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
+                                className="max-w-[150px] ml-auto text-right"
+                                style={{
+                                  backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                                }}
+                              />
+                            </td>
+                            <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
+                            <td className="p-3">
+                              {isStandardIncome ? (
+                                <Input
+                                  data-testid={`income - start - date - ${index} `}
+                                  type="date"
+                                  value={currentStartDate || ''}
+                                  onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
+                                  className="max-w-[150px]"
+                                />
+                              ) : (
+                                <Input
+                                  type="date"
+                                  value={income.startDate || ''}
+                                  onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
+                                  className="max-w-[150px]"
+                                />
                               )}
-                            </div>
-                          </td>
-                          <td className="text-right p-3 text-muted-foreground">
-                            CHF {parseFloat(income.amount).toLocaleString()}
-                          </td>
-                          <td className="text-right p-3">
-                            <Input
-                              data-testid={`income - adjusted - ${index} `}
-                              type="number"
-                              value={income.adjustedAmount}
-                              onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
-                              className="max-w-[150px] ml-auto text-right"
-                              style={{
-                                backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                              }}
-                            />
-                          </td>
-                          <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
-                          <td className="p-3">
-                            {isStandardIncome ? (
+                            </td>
+                            <td className="p-3">
+                              {income.name === '3a' ? (
+                                null
+                              ) : isStandardIncome ? (
+                                <Input
+                                  data-testid={`income - end - date - ${index} `}
+                                  type="date"
+                                  value={currentEndDate || ''}
+                                  onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
+                                  className="max-w-[150px]"
+                                />
+                              ) : (
+                                (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null : <Input type="date" value={income.endDate || ""} onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)} className="max-w-[150px]" />
+                              )}
+                            </td>
+
+                            <td className="p-3">
                               <Input
-                                data-testid={`income - start - date - ${index} `}
-                                type="date"
-                                value={currentStartDate || ''}
-                                onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
+                                type="text"
+                                list="cluster-options"
+                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                                value={income.clusterTag || ''}
+                                onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
                                 className="max-w-[150px]"
                               />
-                            ) : (
-                              <Input
-                                type="date"
-                                value={income.startDate || ''}
-                                onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
-                                className="max-w-[150px]"
-                              />
-                            )}
-                          </td>
-                          <td className="p-3">
-                            {income.name === '3a' ? (
-                              null
-                            ) : isStandardIncome ? (
-                              <Input
-                                data-testid={`income - end - date - ${index} `}
-                                type="date"
-                                value={currentEndDate || ''}
-                                onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
-                                className="max-w-[150px]"
-                              />
-                            ) : (
-                              (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null : <Input type="date" value={income.endDate || ""} onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)} className="max-w-[150px]" />
-                            )}
-                          </td>
-
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={income.clusterTag || ''}
-                              onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                onClick={() => splitIncome(income.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                title="Split this income into two periods"
-                                disabled={income.isRetirement}
-                              >
-                                <Split className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => deleteIncome(income.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                title="Delete this income line"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={addIncome}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter un revenu périodique' : '+ add periodic inflow'}
-                </Button>
-                <Button
-                  onClick={resetIncomesToDefaults}
-                  variant="outline"
-                  size="sm"
-                >
-                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Assets Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                      <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de dispo.' : 'Availability Details'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentAssets.map((asset) => {
-                      const originalAmount = parseFloat(asset.amount) || 0;
-                      const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
-                      const isDecreased = adjustedAmount < originalAmount;
-                      const isIncreased = adjustedAmount > originalAmount;
-
-                      const isLPPCapital = asset.name.includes('LPP Capital');
-
-                      return (
-                        <tr key={asset.id} className="border-b hover:bg-muted/30">
-                          <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : 'text-white'}`}>{asset.name}</td>
-                          <td className="text-right p-3 text-muted-foreground">
-                            CHF {originalAmount.toLocaleString()}
-                          </td>
-                          <td className="text-right p-3">
-                            <Input
-                              type="number"
-                              value={asset.adjustedAmount || asset.amount}
-                              onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
-                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.category}
-                              onValueChange={(value) => updateAsset(asset.id, 'category', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
-                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.preserve}
-                              onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
-                            >
-                              <SelectTrigger className="max-w-[100px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
-                                <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
-                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
-                              <Select
-                                value={asset.availabilityTimeframe || 'Select'}
-                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
-                              >
-                                <SelectTrigger className="max-w-[150px]">
-                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
-                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type="date"
-                                value={asset.availabilityDate || ''}
-                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                                className="max-w-[140px]"
-                              />
-                            )}
-                          </td>
-                          <td className="p-3">
-                            {(asset.availabilityType !== 'Period') && (
-                              <Select
-                                value={asset.strategy || 'Cash'}
-                                onValueChange={(value) => updateAsset(asset.id, 'strategy', value)}
-                              >
-                                <SelectTrigger
-                                  className="max-w-[120px]"
-                                  style={{ backgroundColor: asset.strategy === 'Invested' ? 'rgba(59, 130, 246, 0.25)' : 'transparent' }}
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  onClick={() => splitIncome(income.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                  title="Split this income into two periods"
+                                  disabled={income.isRetirement}
                                 >
+                                  <Split className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => deleteIncome(income.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  title="Delete this income line"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={addIncome}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'fr' ? '+ ajouter un revenu périodique' : '+ add periodic inflow'}
+                  </Button>
+                  <Button
+                    onClick={resetIncomesToDefaults}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Assets Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                        <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de dispo.' : 'Availability Details'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentAssets.map((asset) => {
+                        const originalAmount = parseFloat(asset.amount) || 0;
+                        const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
+                        const isDecreased = adjustedAmount < originalAmount;
+                        const isIncreased = adjustedAmount > originalAmount;
+
+                        const isLPPCapital = asset.name.includes('LPP Capital');
+
+                        return (
+                          <tr key={asset.id} className="border-b hover:bg-muted/30">
+                            <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : 'text-white'}`}>{asset.name}</td>
+                            <td className="text-right p-3 text-muted-foreground">
+                              CHF {originalAmount.toLocaleString()}
+                            </td>
+                            <td className="text-right p-3">
+                              <Input
+                                type="number"
+                                value={asset.adjustedAmount || asset.amount}
+                                onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
+                                className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Select
+                                value={asset.category}
+                                onValueChange={(value) => updateAsset(asset.id, 'category', value)}
+                              >
+                                <SelectTrigger className="max-w-[120px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
-                                  <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
+                                  <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
+                                  <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={asset.clusterTag || ''}
-                              onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                onClick={() => duplicateAsset(asset.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                title="Duplicate this asset"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => deleteAsset(asset.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                title="Delete this asset"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={addAsset}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
-                </Button>
-                <Button
-                  onClick={resetAssetsToDefaults}
-                  variant="outline"
-                  size="sm"
-                >
-                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Costs Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {costs.map((cost, index) => {
-                      // Check if this cost is part of a split group
-                      const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
-                      const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
-
-                      // Visual grouping - lighter background for grouped costs, slightly indented for children
-                      const groupStyles = isInGroup
-                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
-                        : '';
-                      const childStyles = isChildCost
-                        ? 'bg-muted/10'
-                        : '';
-
-                      return (
-                        <tr
-                          key={cost.id}
-                          className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}
-                        >
-                          <td className="p-3 font-medium text-white">
-                            <div className="flex items-center gap-2">
-                              {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
-                              {getCostName(cost.name)}
-                              {isInGroup && !isChildCost && (
-                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="text-right p-3 text-muted-foreground">
-                            CHF {parseFloat(cost.amount).toLocaleString()}
-                          </td>
-                          <td className="text-right p-3">
-                            <Input
-                              data-testid={`cost - adjusted - ${index} `}
-                              type="number"
-                              value={cost.adjustedAmount}
-                              onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
-                              className="max-w-[150px] ml-auto text-right"
-                              style={{
-                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                              }}
-                            />
-                          </td>
-                          <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
-                          <td className="p-3">
-                            <Input
-                              data-testid={`cost - start - date - ${index} `}
-                              type="date"
-                              value={cost.startDate || ''}
-                              onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3">
-                            {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost - end - date - ${index} `} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={cost.clusterTag || ''}
-                              onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                onClick={() => splitCost(cost.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                title="Split this cost into two periods"
-                              >
-                                <Split className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => deleteCost(cost.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                title="Delete this cost line"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={addCost}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
-                </Button>
-                <Button
-                  onClick={resetCostsToDefaults}
-                  variant="outline"
-                  size="sm"
-                >
-                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-
-
-
-
-          {/* Debts Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Dettes actuelles ou futures' : 'Current or future Debts'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {desiredOutflows.map((debt) => {
-                      const originalAmount = parseFloat(debt.amount) || 0;
-                      const adjustedAmount = parseFloat(debt.adjustedAmount || debt.amount) || 0;
-                      const isDecreased = adjustedAmount < originalAmount;
-                      const isIncreased = adjustedAmount > originalAmount;
-
-                      return (
-                        <tr key={debt.id} className="border-b hover:bg-muted/30">
-                          <td className="p-3 font-medium text-white">{debt.name}</td>
-                          <td className="text-right p-3 text-muted-foreground">
-                            CHF {originalAmount.toLocaleString()}
-                          </td>
-                          <td className="text-right p-3">
-                            <Input
-                              type="number"
-                              value={debt.adjustedAmount || debt.amount}
-                              onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
-                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={debt.madeAvailableType || (debt.madeAvailableTimeframe ? 'Period' : 'Date')}
-                              onValueChange={(value) => updateDebt(debt.id, 'madeAvailableType', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3">
-                            {(debt.madeAvailableType === 'Period' || (!debt.madeAvailableType && debt.madeAvailableTimeframe)) ? (
+                            </td>
+                            <td className="p-3">
                               <Select
-                                value={debt.madeAvailableTimeframe || 'Select'}
-                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                                value={asset.preserve}
+                                onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
                               >
-                                <SelectTrigger className="max-w-[150px]">
-                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                <SelectTrigger className="max-w-[100px]">
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
-                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                  <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
+                                  <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            ) : (
-                              <Input
-                                type="date"
-                                value={debt.madeAvailableDate || ''}
-                                onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
-                                className="max-w-[140px]"
-                              />
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={debt.clusterTag || ''}
-                              onChange={(e) => updateDebt(debt.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                onClick={() => deleteDebt(debt.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                title="Delete this debt"
+                            </td>
+                            <td className="p-3">
+                              <Select
+                                value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={addDebt}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {language === 'fr' ? '+ ajouter une dette' : '+ add debt'}
-                </Button>
-                <Button
-                  onClick={resetDebtsToDefaults}
-                  variant="outline"
-                  size="sm"
-                >
-                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                                <SelectTrigger className="max-w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-3">
+                              {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
+                                <Select
+                                  value={asset.availabilityTimeframe || 'Select'}
+                                  onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                                >
+                                  <SelectTrigger className="max-w-[150px]">
+                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  type="date"
+                                  value={asset.availabilityDate || ''}
+                                  onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                  className="max-w-[140px]"
+                                />
+                              )}
+                            </td>
+                            <td className="p-3">
+                              {(asset.availabilityType !== 'Period') && (
+                                <Select
+                                  value={asset.strategy || 'Cash'}
+                                  onValueChange={(value) => updateAsset(asset.id, 'strategy', value)}
+                                >
+                                  <SelectTrigger
+                                    className="max-w-[120px]"
+                                    style={{ backgroundColor: asset.strategy === 'Invested' ? 'rgba(59, 130, 246, 0.25)' : 'transparent' }}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
+                                    <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                type="text"
+                                list="cluster-options"
+                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                                value={asset.clusterTag || ''}
+                                onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  onClick={() => duplicateAsset(asset.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                  title="Duplicate this asset"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => deleteAsset(asset.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  title="Delete this asset"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={addAsset}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
+                  </Button>
+                  <Button
+                    onClick={resetAssetsToDefaults}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          <div className="flex justify-center gap-4 mt-6">
-            <Button
-              onClick={() => navigate('/capital-setup')}
-              className="px-8 text-lg bg-blue-600 hover:bg-blue-700 text-white"
-              size="lg"
-            >
-              {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
-            </Button>
-            <Button
-              data-testid="can-i-quit-btn"
-              onClick={runSimulation}
-              className="px-12 text-lg"
-              size="lg"
-            >
-              {language === 'fr' ? 'Lancer la simulation' : 'Run simulation'}
-            </Button>
+            {/* Costs Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                        <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costs.map((cost, index) => {
+                        // Check if this cost is part of a split group
+                        const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
+                        const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
+
+                        // Visual grouping - lighter background for grouped costs, slightly indented for children
+                        const groupStyles = isInGroup
+                          ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
+                          : '';
+                        const childStyles = isChildCost
+                          ? 'bg-muted/10'
+                          : '';
+
+                        return (
+                          <tr
+                            key={cost.id}
+                            className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}
+                          >
+                            <td className="p-3 font-medium text-white">
+                              <div className="flex items-center gap-2">
+                                {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
+                                {getCostName(cost.name)}
+                                {isInGroup && !isChildCost && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-right p-3 text-muted-foreground">
+                              CHF {parseFloat(cost.amount).toLocaleString()}
+                            </td>
+                            <td className="text-right p-3">
+                              <Input
+                                data-testid={`cost - adjusted - ${index} `}
+                                type="number"
+                                value={cost.adjustedAmount}
+                                onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
+                                className="max-w-[150px] ml-auto text-right"
+                                style={{
+                                  backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                                }}
+                              />
+                            </td>
+                            <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
+                            <td className="p-3">
+                              <Input
+                                data-testid={`cost - start - date - ${index} `}
+                                type="date"
+                                value={cost.startDate || ''}
+                                onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            </td>
+                            <td className="p-3">
+                              {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost - end - date - ${index} `} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                type="text"
+                                list="cluster-options"
+                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                                value={cost.clusterTag || ''}
+                                onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  onClick={() => splitCost(cost.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                  title="Split this cost into two periods"
+                                >
+                                  <Split className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => deleteCost(cost.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  title="Delete this cost line"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={addCost}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
+                  </Button>
+                  <Button
+                    onClick={resetCostsToDefaults}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+
+
+
+
+            {/* Debts Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{language === 'fr' ? 'Dettes actuelles ou futures' : 'Current or future Debts'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                        <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {desiredOutflows.map((debt) => {
+                        const originalAmount = parseFloat(debt.amount) || 0;
+                        const adjustedAmount = parseFloat(debt.adjustedAmount || debt.amount) || 0;
+                        const isDecreased = adjustedAmount < originalAmount;
+                        const isIncreased = adjustedAmount > originalAmount;
+
+                        return (
+                          <tr key={debt.id} className="border-b hover:bg-muted/30">
+                            <td className="p-3 font-medium text-white">{debt.name}</td>
+                            <td className="text-right p-3 text-muted-foreground">
+                              CHF {originalAmount.toLocaleString()}
+                            </td>
+                            <td className="text-right p-3">
+                              <Input
+                                type="number"
+                                value={debt.adjustedAmount || debt.amount}
+                                onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
+                                className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Select
+                                value={debt.madeAvailableType || (debt.madeAvailableTimeframe ? 'Period' : 'Date')}
+                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableType', value)}
+                              >
+                                <SelectTrigger className="max-w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-3">
+                              {(debt.madeAvailableType === 'Period' || (!debt.madeAvailableType && debt.madeAvailableTimeframe)) ? (
+                                <Select
+                                  value={debt.madeAvailableTimeframe || 'Select'}
+                                  onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                                >
+                                  <SelectTrigger className="max-w-[150px]">
+                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  type="date"
+                                  value={debt.madeAvailableDate || ''}
+                                  onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
+                                  className="max-w-[140px]"
+                                />
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                type="text"
+                                list="cluster-options"
+                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                                value={debt.clusterTag || ''}
+                                onChange={(e) => updateDebt(debt.id, 'clusterTag', e.target.value)}
+                                className="max-w-[150px]"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  onClick={() => deleteDebt(debt.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  title="Delete this debt"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={addDebt}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {language === 'fr' ? '+ ajouter une dette' : '+ add debt'}
+                  </Button>
+                  <Button
+                    onClick={resetDebtsToDefaults}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-center gap-4 mt-6">
+              <Button
+                onClick={() => navigate('/capital-setup')}
+                className="px-8 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+                size="lg"
+              >
+                {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
+              </Button>
+              <Button
+                data-testid="can-i-quit-btn"
+                onClick={runSimulation}
+                className="px-12 text-lg"
+                size="lg"
+              >
+                {language === 'fr' ? 'Lancer la simulation' : 'Run simulation'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 
