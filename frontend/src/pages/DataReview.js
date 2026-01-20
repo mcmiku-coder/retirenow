@@ -1051,6 +1051,27 @@ const DataReview = () => {
             loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
           }
 
+          // Option 3: Inject Pre-retirement Capital Rows
+          if (option === 'option3' && scenarioData.preRetirementRows) {
+            scenarioData.preRetirementRows.forEach(row => {
+              if (row.capital && row.capital !== '' && row.capital !== '0') {
+                const assetItem = {
+                  id: `pre_retirement_capital_${row.age} `,
+                  name: `Pre - retirement LPP Capital at ${row.age} y`,
+                  amount: row.capital,
+                  adjustedAmount: row.capital, // Reset adjusted to original
+                  category: 'Illiquid', // Default
+                  preserve: 'No', // Default
+                  availabilityType: 'Date',
+                  availabilityDate: retirementDateStr, // Or specific date if available? Usually retirement date.
+                  strategy: 'Cash', // Default
+                  isOption3: true
+                };
+                loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
+              }
+            });
+          }
+
           // Option 1: Inject LPP Pension Capital (New Logic - Unshift to top)
           if (option === 'option1' && scenarioData.pensionCapital) {
             const lppAsset = {
@@ -1068,19 +1089,19 @@ const DataReview = () => {
             loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
           }
         }
-
-        setCurrentAssets(loadedCurrentAssets);
-
-        // Autosave the reset state
-        await saveScenarioData(user.email, password, {
-          ...scenarioData,
-          currentAssets: loadedCurrentAssets, // Save the reset assets list
-          liquidAssets, // These will update via useEffect but good to keep consistency if possible, though state update might lag slightly
-          nonLiquidAssets
-        });
-
-        toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
       }
+
+      setCurrentAssets(loadedCurrentAssets);
+
+      // Autosave the reset state
+      await saveScenarioData(user.email, password, {
+        ...scenarioData,
+        currentAssets: loadedCurrentAssets, // Save the reset assets list
+        liquidAssets, // These will update via useEffect but good to keep consistency if possible, though state update might lag slightly
+        nonLiquidAssets
+      });
+
+      toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
     } catch (error) {
       console.error('Error resetting assets:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
@@ -1768,21 +1789,17 @@ const DataReview = () => {
 
         {/* Adjust Modal */}
         <Dialog open={showAdjustModal} onOpenChange={setShowAdjustModal}>
-          <DialogContent className="max-w-5xl bg-card text-card-foreground border-border">
+          <DialogContent className="max-w-7xl bg-card text-card-foreground border-border">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-serif">
+              <DialogTitle className="text-2xl font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {language === 'fr' ? 'Donnez-moi des conseils d\'ajustement' : 'Give me some adjustment advice'}
               </DialogTitle>
-              <DialogDescription className="text-green-500">
-                {language === 'fr'
-                  ? 'En répondant à ces questions, vous pouvez implémenter automatiquement des ajustements cohérents avec vos vues sur la retraite'
-                  : 'By answering these questions, you can automatically implement some adjustments consistent with your retirement views'}
-              </DialogDescription>
             </DialogHeader>
 
             <div className="mt-6">
+
               {/* Header Row */}
-              <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-sm font-medium text-muted-foreground px-2">
+              <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-base font-medium text-white px-2">
                 <div></div>
                 <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
                 <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
@@ -1817,56 +1834,66 @@ const DataReview = () => {
                   }
 
                   return (
-                    <div key={row.id} className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center bg-muted/40 p-3 rounded-lg border border-border">
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          checked={row.checked}
-                          onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
-                        />
-                      </div>
-                      <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
-                      <div className="text-muted-foreground">{row.originalAmount}</div>
-                      <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency, t)}</div>
-                      <div>
-                        <Input
-                          type="text"
-                          value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                          onChange={(e) => {
-                            const rawValue = e.target.value.replace(/'/g, '');
-                            if (!isNaN(rawValue)) {
-                              handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
-                            }
-                          }}
-                          className="bg-background border-input h-8 text-right font-mono"
-                        />
-                      </div>
-                      <div className="px-2">
-                        <Slider
-                          value={[row.adjustedAmount]}
-                          min={0}
-                          max={(row.originalAmount || 1000) * 1.5}
-                          step={100}
-                          onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                          className="py-2"
-                        />
-                      </div>
-                      <div>
-                        <Select
-                          value={row.changeAtAge?.toString()}
-                          onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
-                          disabled={!row.checked}
-                        >
-                          <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
-                            <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
-                            {ageOptions.map(age => (
-                              <SelectItem key={age} value={age.toString()}>
-                                {age} {language === 'fr' ? 'ans' : 'years'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    <div key={row.id} className="mb-4">
+                      <p className="text-green-500 mb-2 text-sm font-medium">
+                        {language === 'fr'
+                          ? 'Vos dépenses de vacances diminuent dans les dernières années de votre vie, fixez un nouveau montant à partir d\'un âge choisi'
+                          : 'Your vacation expenses decrease in the later years of your life, set a new amount starting from a chosen age'}
+                      </p>
+                      <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center bg-muted/40 p-3 rounded-lg border border-border">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={row.checked}
+                            onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
+                          />
+                        </div>
+                        <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
+                        <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
+                        <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency, t)}</div>
+                        <div>
+                          <Input
+                            type="text"
+                            value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/'/g, '');
+                              if (!isNaN(rawValue)) {
+                                handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
+                              }
+                            }}
+                            className="h-9 text-right"
+                            style={{
+                              backgroundColor: parseFloat(row.adjustedAmount) < parseFloat(row.originalAmount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(row.adjustedAmount) > parseFloat(row.originalAmount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                            }}
+                          />
+                        </div>
+                        <div className="px-2">
+                          <Slider
+                            value={[row.adjustedAmount]}
+                            min={0}
+                            max={(row.originalAmount || 1000) * 1.5}
+                            step={100}
+                            onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                            className="py-2"
+                          />
+                        </div>
+                        <div>
+                          <Select
+                            value={row.changeAtAge?.toString()}
+                            onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
+                            disabled={!row.checked}
+                          >
+                            <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
+                              <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
+                              {ageOptions.map(age => (
+                                <SelectItem key={age} value={age.toString()}>
+                                  {age} {language === 'fr' ? 'ans' : 'years'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   );
