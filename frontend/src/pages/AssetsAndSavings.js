@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { getAssetsData, saveAssetsData, getUserData } from '../utils/database';
+import { getAssetsData, saveAssetsData, getUserData, getRealEstateData } from '../utils/database';
 import PageHeader from '../components/PageHeader';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -154,10 +154,33 @@ const AssetsOverview = () => {
         setCurrentAssets(currentAssets.filter(row => row.id !== id));
     };
 
-    const resetAssets = () => {
+    const resetAssets = async () => {
         const today = new Date().toISOString().split('T')[0];
-        setCurrentAssets(getDefaultAssets(today));
-        setNextAssetId(4);
+        let newAssets = getDefaultAssets(today);
+
+        try {
+            const reData = await getRealEstateData(user.email, password);
+            if (reData && reData.totals && reData.totals.assetValue > 0) {
+                const maxId = Math.max(...newAssets.map(a => a.id));
+                newAssets.push({
+                    id: maxId + 1,
+                    name: t('realEstate.netAssetValue'),
+                    amount: Math.round(reData.totals.assetValue).toString(),
+                    category: 'Illiquid',
+                    preserve: 'Yes',
+                    availabilityType: 'Period',
+                    availabilityTimeframe: 'within_20_25y',
+                    availabilityDate: '',
+                    locked: false
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching real estate data for reset:', error);
+        }
+
+        setCurrentAssets(newAssets);
+        const finalMaxId = Math.max(...newAssets.map(a => a.id));
+        setNextAssetId(finalMaxId + 1);
     };
 
     // Desired Outflows functions
@@ -270,11 +293,16 @@ const AssetsOverview = () => {
                                                     </td>
                                                     <td className="p-2">
                                                         <Input
-                                                            type="number"
-                                                            value={row.amount}
-                                                            onChange={(e) => updateAsset(row.id, 'amount', e.target.value)}
+                                                            type="text"
+                                                            value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                            onChange={(e) => {
+                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                if (!isNaN(rawValue)) {
+                                                                    updateAsset(row.id, 'amount', rawValue);
+                                                                }
+                                                            }}
                                                             placeholder="0"
-                                                            className="min-w-[120px]"
+                                                            className="min-w-[120px] text-right"
                                                         />
                                                     </td>
                                                     <td className="p-2">
@@ -407,11 +435,16 @@ const AssetsOverview = () => {
                                                     </td>
                                                     <td className="p-2">
                                                         <Input
-                                                            type="number"
-                                                            value={row.amount}
-                                                            onChange={(e) => updateOutflow(row.id, 'amount', e.target.value)}
+                                                            type="text"
+                                                            value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                            onChange={(e) => {
+                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                if (!isNaN(rawValue)) {
+                                                                    updateOutflow(row.id, 'amount', rawValue);
+                                                                }
+                                                            }}
                                                             placeholder="0"
-                                                            className="min-w-[120px]"
+                                                            className="min-w-[120px] text-right"
                                                         />
                                                     </td>
                                                     <td className="p-2">

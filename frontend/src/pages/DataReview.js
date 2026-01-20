@@ -1829,9 +1829,14 @@ const DataReview = () => {
                       <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency, t)}</div>
                       <div>
                         <Input
-                          type="number"
-                          value={row.adjustedAmount}
-                          onChange={(e) => handleAdjustRowChange(row.id, 'adjustedAmount', parseFloat(e.target.value) || 0)}
+                          type="text"
+                          value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(/'/g, '');
+                            if (!isNaN(rawValue)) {
+                              handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
+                            }
+                          }}
                           className="bg-background border-input h-8 text-right font-mono"
                         />
                       </div>
@@ -1994,9 +1999,14 @@ const DataReview = () => {
                             <td className="text-right p-3">
                               <Input
                                 data-testid={`income - adjusted - ${index} `}
-                                type="number"
-                                value={income.adjustedAmount}
-                                onChange={(e) => updateIncomeAdjusted(income.id, e.target.value)}
+                                type="text"
+                                value={income.adjustedAmount ? income.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/'/g, '');
+                                  if (!isNaN(rawValue)) {
+                                    updateIncomeAdjusted(income.id, rawValue);
+                                  }
+                                }}
                                 className="max-w-[150px] ml-auto text-right"
                                 style={{
                                   backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
@@ -2137,9 +2147,14 @@ const DataReview = () => {
                             </td>
                             <td className="text-right p-3">
                               <Input
-                                type="number"
-                                value={asset.adjustedAmount || asset.amount}
-                                onChange={(e) => updateAsset(asset.id, 'adjustedAmount', e.target.value)}
+                                type="text"
+                                value={(asset.adjustedAmount !== undefined ? asset.adjustedAmount : asset.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/'/g, '');
+                                  if (!isNaN(rawValue)) {
+                                    updateAsset(asset.id, 'adjustedAmount', rawValue);
+                                  }
+                                }}
                                 className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
                               />
                             </td>
@@ -2345,9 +2360,14 @@ const DataReview = () => {
                             <td className="text-right p-3">
                               <Input
                                 data-testid={`cost - adjusted - ${index} `}
-                                type="number"
-                                value={cost.adjustedAmount}
-                                onChange={(e) => updateCostAdjusted(cost.id, e.target.value)}
+                                type="text"
+                                value={cost.adjustedAmount ? cost.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/'/g, '');
+                                  if (!isNaN(rawValue)) {
+                                    updateCostAdjusted(cost.id, rawValue);
+                                  }
+                                }}
                                 className="max-w-[150px] ml-auto text-right"
                                 style={{
                                   backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
@@ -2464,9 +2484,14 @@ const DataReview = () => {
                             </td>
                             <td className="text-right p-3">
                               <Input
-                                type="number"
-                                value={debt.adjustedAmount || debt.amount}
-                                onChange={(e) => updateDebt(debt.id, 'adjustedAmount', e.target.value)}
+                                type="text"
+                                value={(debt.adjustedAmount !== undefined ? debt.adjustedAmount : debt.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value.replace(/'/g, '');
+                                  if (!isNaN(rawValue)) {
+                                    updateDebt(debt.id, 'adjustedAmount', rawValue);
+                                  }
+                                }}
                                 className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
                               />
                             </td>

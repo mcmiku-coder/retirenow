@@ -130,7 +130,7 @@ const Information = () => {
         {/* Header Section - CORRECTED TITLE FONT & COLORS */}
         <div className="text-center mb-16 space-y-4">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-sans">
-            <span className="text-foreground dark:text-white">Can I</span> <span className="text-primary">Quit</span><span className="text-foreground dark:text-white">?</span> <span className="text-foreground dark:text-white">How does it work?</span>
+            <span className="text-foreground dark:text-white">Can I</span> <span className="text-primary">Quit</span><span className="text-foreground dark:text-white">?</span> <span className="text-foreground dark:text-white">{t('infoPage.titleSuffix')}</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {t('infoPage.subtitle')}
@@ -297,7 +297,7 @@ const Information = () => {
 
         <div className="h-24" />
       </div>
-    </div>
+    </div >
   );
 };
 

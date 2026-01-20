@@ -216,7 +216,7 @@ const Income = () => {
                           data-testid={`income-name-${index}`}
                           value={getIncomeName(row.name)}
                           disabled={true}
-                          className="min-w-[120px]"
+                          className="min-w-[120px] disabled:opacity-100 disabled:text-white"
                         />
                       ) : (
                         <Input
@@ -230,11 +230,16 @@ const Income = () => {
                     <td className="p-2">
                       <Input
                         data-testid={`income-amount-${index}`}
-                        type="number"
-                        value={row.amount}
-                        onChange={(e) => updateRow(row.id, 'amount', e.target.value)}
+                        type="text"
+                        value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/'/g, '');
+                          if (!isNaN(rawValue)) {
+                            updateRow(row.id, 'amount', rawValue);
+                          }
+                        }}
                         placeholder="0"
-                        className="min-w-[100px]"
+                        className="min-w-[100px] text-right"
                       />
                     </td>
                     <td className="p-2">

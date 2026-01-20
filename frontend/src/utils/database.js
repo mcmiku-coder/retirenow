@@ -9,13 +9,14 @@ import { encryptData, decryptData, generateSalt } from './encryption';
 class EncryptedDatabase extends Dexie {
   constructor() {
     super('QuitRetirementDB');
-    this.version(4).stores({
+    this.version(5).stores({
       userData: 'email, encryptedData, salt, iv',
       incomeData: 'email, encryptedData, salt, iv',
       costData: 'email, encryptedData, salt, iv',
       scenarioData: 'email, encryptedData, salt, iv',
       retirementData: 'email, encryptedData, salt, iv',
-      assetsData: 'email, encryptedData, salt, iv'
+      assetsData: 'email, encryptedData, salt, iv',
+      realEstateData: 'email, encryptedData, salt, iv'
     });
   }
 }
@@ -344,6 +345,60 @@ export async function getAssetsData(email, password) {
 }
 
 /**
+ * Save real estate calculator data (encrypted)
+ */
+export async function saveRealEstateData(email, password, data) {
+  if (!email || !password) {
+    console.error('saveRealEstateData: Missing email or password');
+    throw new Error('Email and password are required');
+  }
+
+  try {
+    const salt = generateSalt();
+    const encrypted = await encryptData(data, password, salt);
+
+    await db.realEstateData.put({
+      email: email,
+      encryptedData: encrypted.encryptedData,
+      salt: encrypted.salt,
+      iv: encrypted.iv
+    });
+  } catch (error) {
+    console.error('saveRealEstateData: Encryption or storage failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Get real estate calculator data (decrypted)
+ */
+export async function getRealEstateData(email, password) {
+  if (!email || typeof email !== 'string' || email.trim() === '') {
+    return null;
+  }
+
+  if (!password) {
+    return null;
+  }
+
+  try {
+    const record = await db.realEstateData.get(email);
+    if (!record) {
+      return null;
+    }
+
+    return await decryptData({
+      encryptedData: record.encryptedData,
+      salt: record.salt,
+      iv: record.iv
+    }, password);
+  } catch (error) {
+    console.error('getRealEstateData error:', error);
+    return null;
+  }
+}
+
+/**
  * Clear all user data
  */
 export async function clearUserData(email) {
@@ -358,6 +413,7 @@ export async function clearUserData(email) {
     await db.scenarioData.delete(email);
     await db.retirementData.delete(email);
     await db.assetsData.delete(email);
+    await db.realEstateData.delete(email);
   } catch (error) {
     console.error('clearUserData error:', error);
   }

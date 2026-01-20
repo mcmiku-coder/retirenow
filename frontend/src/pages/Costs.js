@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { saveCostData, getCostData, getUserData, getIncomeData } from '../utils/database';
-import { Trash2, Plus, HelpCircle } from 'lucide-react';
+import { Trash2, Plus, HelpCircle, Home } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 // Cost name keys for translation
@@ -342,15 +342,26 @@ const Costs = () => {
         title={t('costs.title')}
         subtitle={t('costs.subtitle')}
         rightContent={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setShowHelpModal(true)}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
-          >
-            <HelpCircle className="h-4 w-4" />
-            {t('costs.helpButton')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/real-estate')}
+              className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+            >
+              <Home className="h-4 w-4" />
+              {t('step4SpinOffTitle')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowHelpModal(true)}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {t('costs.helpButton')}
+            </Button>
+          </div>
         }
       />
 
@@ -382,7 +393,7 @@ const Costs = () => {
                           data-testid={`cost-name-${index}`}
                           value={getCostName(row.name)}
                           disabled={true}
-                          className="min-w-[150px]"
+                          className="min-w-[150px] disabled:opacity-100 disabled:text-white"
                         />
                       ) : (
                         <Input
@@ -396,11 +407,16 @@ const Costs = () => {
                     <td className="p-2">
                       <Input
                         data-testid={`cost-amount-${index}`}
-                        type="number"
-                        value={row.amount}
-                        onChange={(e) => updateRow(row.id, 'amount', e.target.value)}
+                        type="text"
+                        value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/'/g, '');
+                          if (!isNaN(rawValue)) {
+                            updateRow(row.id, 'amount', rawValue);
+                          }
+                        }}
                         placeholder="0"
-                        className="min-w-[100px]"
+                        className="min-w-[100px] text-right"
                       />
                     </td>
                     <td className="p-2">
@@ -429,11 +445,11 @@ const Costs = () => {
                           data-testid={`cost-category-${index}`}
                           value={getCategoryLabel(row.category)}
                           disabled={true}
-                          className="min-w-[120px]"
+                          className="min-w-[90px] disabled:opacity-100 disabled:text-white"
                         />
                       ) : (
                         <Select value={row.category} onValueChange={(value) => updateRow(row.id, 'category', value)}>
-                          <SelectTrigger data-testid={`cost-category-${index}`} className="min-w-[120px]">
+                          <SelectTrigger data-testid={`cost-category-${index}`} className="min-w-[90px]">
                             <SelectValue placeholder={t('costs.selectCategory')} />
                           </SelectTrigger>
                           <SelectContent>
