@@ -9,16 +9,16 @@ import PageHeader from '../components/PageHeader';
 
 const CapitalManagementSetup = () => {
     const navigate = useNavigate();
-    const { user, password } = useAuth();
+    const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [loading, setLoading] = useState(true);
     const [investedItems, setInvestedItems] = useState([]);
 
     useEffect(() => {
         const loadData = async () => {
-            if (user?.email && password) {
+            if (user?.email && masterKey) {
                 try {
-                    const scenarioData = await getScenarioData(user.email, password);
+                    const scenarioData = await getScenarioData(user.email, masterKey);
                     if (scenarioData) {
                         const allItems = [
                             ...(scenarioData.incomes || []),
@@ -40,7 +40,7 @@ const CapitalManagementSetup = () => {
         };
 
         loadData();
-    }, [user, password]);
+    }, [user, masterKey]);
 
     // Format amount as CHF
     const formatAmount = (amount) => {

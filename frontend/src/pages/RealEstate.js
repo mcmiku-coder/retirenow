@@ -20,7 +20,7 @@ import {
 
 const RealEstate = () => {
     const navigate = useNavigate();
-    const { user, password } = useAuth();
+    const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [loading, setLoading] = useState(false);
 
@@ -40,12 +40,12 @@ const RealEstate = () => {
     });
 
     useEffect(() => {
-        if (!user || !password) {
+        if (!user || !masterKey) {
             navigate('/');
             return;
         }
         loadData();
-    }, [user, password]);
+    }, [user, masterKey]);
 
     useEffect(() => {
         calculateTotals();
@@ -53,7 +53,7 @@ const RealEstate = () => {
 
     const loadData = async () => {
         try {
-            const data = await getRealEstateData(user.email, password);
+            const data = await getRealEstateData(user.email, masterKey);
             if (data) {
                 setMortgageRows(data.mortgageRows || []);
                 setAssetRows(data.assetRows || []);
@@ -155,7 +155,7 @@ const RealEstate = () => {
         setLoading(true);
         try {
             // 1. Save local state INCLUDING TOTALS
-            await saveRealEstateData(user.email, password, {
+            await saveRealEstateData(user.email, masterKey, {
                 mortgageRows,
                 assetRows,
                 maintenanceRows,
@@ -163,8 +163,8 @@ const RealEstate = () => {
             });
 
             // 2. Update Costs
-            const costs = await getCostData(user.email, password) || [];
-            const userData = await getUserData(user.email, password);
+            const costs = await getCostData(user.email, masterKey) || [];
+            const userData = await getUserData(user.email, masterKey);
             const today = new Date().toISOString().split('T')[0];
             const deathDateStr = userData?.theoreticalDeathDate || today;
 
@@ -195,10 +195,10 @@ const RealEstate = () => {
                     categoryLocked: true
                 });
             }
-            await saveCostData(user.email, password, costs);
+            await saveCostData(user.email, masterKey, costs);
 
             // 3. Update Assets (New Structure: currentAssets array)
-            const assetsData = await getAssetsData(user.email, password) || { currentAssets: [], desiredOutflows: [] };
+            const assetsData = await getAssetsData(user.email, masterKey) || { currentAssets: [], desiredOutflows: [] };
             let currentAssets = assetsData.currentAssets || [];
 
             // Name: Uses 'Net Housing Asset Value' key
@@ -235,7 +235,7 @@ const RealEstate = () => {
             }
             // If value is 0, we simply don't add it back (effectively deleting it)
 
-            await saveAssetsData(user.email, password, {
+            await saveAssetsData(user.email, masterKey, {
                 currentAssets: currentAssets,
                 desiredOutflows: assetsData.desiredOutflows || []
             });

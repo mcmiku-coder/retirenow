@@ -84,14 +84,16 @@ export async function getUserData(email, masterKey) {
  */
 export async function saveIncomeData(email, masterKey, data) {
   if (!email || !masterKey) {
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
-  const encrypted = await encryptDataWithMasterKey(data, masterKey);
+  
+  const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
   await db.incomeData.put({
     email: email,
     encryptedData: encrypted.encryptedData,
+    
     iv: encrypted.iv
   });
 }
@@ -107,7 +109,7 @@ export async function getIncomeData(email, masterKey) {
   }
 
   if (!masterKey) {
-    console.warn('getIncomeData: No master key provided');
+    console.warn('getIncomeData: No masterKey provided');
     return null;
   }
 
@@ -119,6 +121,7 @@ export async function getIncomeData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -132,14 +135,16 @@ export async function getIncomeData(email, masterKey) {
  */
 export async function saveCostData(email, masterKey, data) {
   if (!email || !masterKey) {
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
-  const encrypted = await encryptDataWithMasterKey(data, masterKey);
+  
+  const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
   await db.costData.put({
     email: email,
     encryptedData: encrypted.encryptedData,
+    
     iv: encrypted.iv
   });
 }
@@ -155,7 +160,7 @@ export async function getCostData(email, masterKey) {
   }
 
   if (!masterKey) {
-    console.warn('getCostData: No master key provided');
+    console.warn('getCostData: No masterKey provided');
     return null;
   }
 
@@ -167,6 +172,7 @@ export async function getCostData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -181,16 +187,17 @@ export async function getCostData(email, masterKey) {
 export async function saveScenarioData(email, masterKey, data) {
   if (!email || !masterKey) {
     console.error('saveScenarioData: Missing email or masterKey');
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
   try {
-
-    const encrypted = await encryptDataWithMasterKey(data, masterKey);
+    
+    const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
     await db.scenarioData.put({
       email: email,
       encryptedData: encrypted.encryptedData,
+      
       iv: encrypted.iv
     });
   } catch (error) {
@@ -209,7 +216,7 @@ export async function getScenarioData(email, masterKey) {
   }
 
   if (!masterKey) {
-    console.warn('getScenarioData: No master key provided');
+    console.warn('getScenarioData: No masterKey provided');
     return null;
   }
 
@@ -221,6 +228,7 @@ export async function getScenarioData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -234,15 +242,16 @@ export async function getScenarioData(email, masterKey) {
  */
 export async function saveRetirementData(email, masterKey, data) {
   if (!email || !masterKey) {
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
-
-  const encrypted = await encryptDataWithMasterKey(data, masterKey);
+  
+  const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
   await db.retirementData.put({
     email: email,
     encryptedData: encrypted.encryptedData,
+    
     iv: encrypted.iv
   });
 }
@@ -267,6 +276,7 @@ export async function getRetirementData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -281,16 +291,17 @@ export async function getRetirementData(email, masterKey) {
 export async function saveAssetsData(email, masterKey, data) {
   if (!email || !masterKey) {
     console.error('saveAssetsData: Missing email or masterKey');
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
   try {
-
-    const encrypted = await encryptDataWithMasterKey(data, masterKey);
+    
+    const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
     await db.assetsData.put({
       email: email,
       encryptedData: encrypted.encryptedData,
+      
       iv: encrypted.iv
     });
   } catch (error) {
@@ -309,7 +320,7 @@ export async function getAssetsData(email, masterKey) {
   }
 
   if (!masterKey) {
-    console.warn('getAssetsData: No master key provided');
+    console.warn('getAssetsData: No masterKey provided');
     return null;
   }
 
@@ -321,6 +332,7 @@ export async function getAssetsData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -335,16 +347,17 @@ export async function getAssetsData(email, masterKey) {
 export async function saveRealEstateData(email, masterKey, data) {
   if (!email || !masterKey) {
     console.error('saveRealEstateData: Missing email or masterKey');
-    throw new Error('Email and master key are required');
+    throw new Error('Email and masterKey are required');
   }
 
   try {
-
-    const encrypted = await encryptDataWithMasterKey(data, masterKey);
+    
+    const encrypted = await encryptDataWithMasterKey(data, masterKey, salt);
 
     await db.realEstateData.put({
       email: email,
       encryptedData: encrypted.encryptedData,
+      
       iv: encrypted.iv
     });
   } catch (error) {
@@ -373,6 +386,7 @@ export async function getRealEstateData(email, masterKey) {
 
     return await decryptDataWithMasterKey({
       encryptedData: record.encryptedData,
+      salt: record.salt,
       iv: record.iv
     }, masterKey);
   } catch (error) {
@@ -407,7 +421,7 @@ export async function clearUserData(email) {
  */
 export async function initializeUserDB(email, masterKey) {
   if (!email || !masterKey) {
-    throw new Error('Email and master key are required for initialization');
+    throw new Error('Email and masterKey are required for initialization');
   }
 
   try {

@@ -21,6 +21,9 @@ import RetirementParameters from './pages/RetirementParameters';
 import DataReview from './pages/DataReview';
 import CapitalManagementSetup from './pages/CapitalManagementSetup';
 import ScenarioResult from './pages/ScenarioResult';
+import Settings from './pages/Settings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import { trackPageVisit } from './utils/analytics';
 import './App.css';
@@ -74,7 +77,10 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/information" element={<Information />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/verify" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/personal-info" element={
           <ProtectedRoute>
             <PersonalInfo />
@@ -129,6 +135,11 @@ function AppRoutes() {
         <Route path="/result" element={
           <ProtectedRoute>
             <ScenarioResult />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         } />
       </Routes>

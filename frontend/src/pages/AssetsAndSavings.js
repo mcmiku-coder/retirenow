@@ -15,7 +15,7 @@ import { Plus, Trash2 } from 'lucide-react';
 
 const AssetsOverview = () => {
     const navigate = useNavigate();
-    const { user, password } = useAuth();
+    const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [currentAssets, setCurrentAssets] = useState([]);
     const [desiredOutflows, setDesiredOutflows] = useState([]);
@@ -34,7 +34,7 @@ const AssetsOverview = () => {
     ];
 
     useEffect(() => {
-        if (!user || !password) {
+        if (!user || !masterKey) {
             navigate('/');
             return;
         }
@@ -42,11 +42,11 @@ const AssetsOverview = () => {
         const loadData = async () => {
             try {
                 // Get theoretical death date from user data
-                const userData = await getUserData(user.email, password);
+                const userData = await getUserData(user.email, masterKey);
                 const deathDate = userData?.theoreticalDeathDate || '';
                 setTheoreticalDeathDate(deathDate);
 
-                const savedData = await getAssetsData(user.email, password);
+                const savedData = await getAssetsData(user.email, masterKey);
                 const today = new Date().toISOString().split('T')[0];
 
                 if (savedData && savedData.currentAssets && savedData.currentAssets.length > 0) {
@@ -72,7 +72,7 @@ const AssetsOverview = () => {
         };
 
         loadData();
-    }, [user, password, navigate, t, language]);
+    }, [user, masterKey, navigate, t, language]);
 
     const getDefaultAssets = (today) => [
         {
@@ -159,7 +159,7 @@ const AssetsOverview = () => {
         let newAssets = getDefaultAssets(today);
 
         try {
-            const reData = await getRealEstateData(user.email, password);
+            const reData = await getRealEstateData(user.email, masterKey);
             if (reData && reData.totals && reData.totals.assetValue > 0) {
                 const maxId = Math.max(...newAssets.map(a => a.id));
                 newAssets.push({
@@ -222,7 +222,7 @@ const AssetsOverview = () => {
                 desiredOutflows
             };
 
-            await saveAssetsData(user.email, password, dataToSave);
+            await saveAssetsData(user.email, masterKey, dataToSave);
             navigate('/retirement-parameters'); // Updated: skip removed retirement-inputs page
         } catch (error) {
             console.error('Error saving assets data:', error);

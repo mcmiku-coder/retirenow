@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Save } from 'lucide-react';
 import WorkflowNavigation from './WorkflowNavigation';
 
 const AppHeader = () => {
@@ -44,6 +44,16 @@ const AppHeader = () => {
                         FR
                     </Button>
                 </div>
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/settings')}
+                    className="h-9 w-9 p-0 rounded-lg bg-slate-900/50 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all"
+                    title={language === 'en' ? 'Manage Data & Settings' : 'Gérer les données et paramètres'}
+                >
+                    <Save className="h-4 w-4" />
+                </Button>
 
                 <Button
                     variant="ghost"

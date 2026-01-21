@@ -7,3 +7,4 @@ pyjwt
 pandas
 requests
 email-validator
+cryptography

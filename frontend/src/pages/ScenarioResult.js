@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
-import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, getRealEstateData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ const ScenarioResult = () => {
   const navigate = useNavigate();
 
   const location = useLocation();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -38,6 +38,7 @@ const ScenarioResult = () => {
   const [debts, setDebts] = useState([]); // from desiredOutflows
   // Retirement data pillars are merged into incomes for unified processing usually, but kept separate here for filtering
   const [retirementData, setRetirementData] = useState(null);
+  const [realEstateData, setRealEstateData] = useState(null);
   const [scenarioData, setScenarioData] = useState(null);
 
   // UI State
@@ -62,19 +63,20 @@ const ScenarioResult = () => {
 
   // Load Data
   useEffect(() => {
-    if (!user || !password) {
+    if (!user || !masterKey) {
       navigate('/');
       return;
     }
 
     const loadAllData = async () => {
       try {
-        const [uData, iData, cData, rData, sData] = await Promise.all([
-          getUserData(user.email, password),
-          getIncomeData(user.email, password),
-          getCostData(user.email, password),
-          getRetirementData(user.email, password),
-          getScenarioData(user.email, password)
+        const [uData, iData, cData, rData, sData, reData] = await Promise.all([
+          getUserData(user.email, masterKey),
+          getIncomeData(user.email, masterKey),
+          getCostData(user.email, masterKey),
+          getRetirementData(user.email, masterKey),
+          getScenarioData(user.email, masterKey),
+          getRealEstateData(user.email, masterKey)
         ]);
 
         // Use provided data from location state (simulation adjusted) or fallback to DB
@@ -102,6 +104,7 @@ const ScenarioResult = () => {
         setDebts(finalDebts);
         setRetirementData(rData);
         setScenarioData(sData);
+        setRealEstateData(reData);
 
         // Initialize filters with prefixed keys to avoid ID collisions
         // Restore from saved filters if available, otherwise default to true
@@ -149,7 +152,7 @@ const ScenarioResult = () => {
     };
 
     loadAllData();
-  }, [user, password, navigate, location]);
+  }, [user, masterKey, navigate, location]);
 
   // Calculate Projection using iterative approach for Option 3 or single run for others
   useEffect(() => {
@@ -551,12 +554,12 @@ const ScenarioResult = () => {
 
   // Autosave filters when they change
   useEffect(() => {
-    if (!loading && user && password && scenarioData && Object.keys(activeFilters).length > 0) {
+    if (!loading && user && masterKey && scenarioData && Object.keys(activeFilters).length > 0) {
       const saveFilters = async () => {
         try {
           // Debounce could be added here, but for now we save on change
           // to ensure persistence on navigation.
-          await saveScenarioData(user.email, password, {
+          await saveScenarioData(user.email, masterKey, {
             ...scenarioData,
             activeFilters: activeFilters
           });
@@ -568,7 +571,7 @@ const ScenarioResult = () => {
       const timeoutId = setTimeout(saveFilters, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [activeFilters, loading, user, password, scenarioData]);
+  }, [activeFilters, loading, user, masterKey, scenarioData]);
 
   // Generate Comprehensive PDF Report
   const generatePDF = async () => {
@@ -657,21 +660,43 @@ const ScenarioResult = () => {
       pdf.text(`Status: ${projection.canQuit ? 'Positive' : 'Negative'}`, 15, yPosition);
       yPosition += 12;
 
+
       // Capture Graph
-      const chartElement = document.querySelector('.recharts-wrapper');
-      if (chartElement) {
-        const canvas = await html2canvas(chartElement, { backgroundColor: '#1a1a1a', scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pageWidth - 30;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      try {
+        const chartElement = document.querySelector('.recharts-wrapper');
+        if (chartElement) {
+          // Wait for state update to trigger re-render
+          await new Promise(resolve => setTimeout(resolve, 500)); // Increased timeout for stability
 
-        if (yPosition + imgHeight > pageHeight - 20) {
-          pdf.addPage();
-          yPosition = 20;
+          const canvas = await html2canvas(chartElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true, // Enable CORS for images
+            allowTaint: true,
+            logging: false,
+            ignoreElements: (element) => element.tagName === 'IMG' || element.tagName === 'IMAGE' // Explicitly ignore external images to prevent crash
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = pageWidth - 30;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          if (yPosition + imgHeight > pageHeight - 20) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+
+          pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
         }
-
-        pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
+      } catch (chartError) {
+        console.error('Failed to capture chart for PDF (continuing without it):', chartError);
+        pdf.setFontSize(10);
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('Chart could not be generated in PDF', 15, yPosition);
+        pdf.setTextColor(0, 0, 0);
+        yPosition += 10;
       }
+
 
       // ===== PAGES 2-N: ALL DATA REVIEW TABLES WITH ALL COLUMNS =====
 
@@ -927,19 +952,48 @@ const ScenarioResult = () => {
       const headers = ['Year'];
 
       // 1. Incomes
-      const activeIncomeItems = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
+      let activeIncomeItems = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
+
+      // Apply Option 3 Pre-retirement filter for PDF (Same logic as UI)
+      if (scenarioData?.retirementOption === 'option3' && projection?.simRetirementDate) {
+        const birthDate = new Date(userData.birthDate);
+        const simDate = new Date(projection.simRetirementDate);
+        const ageAtRetirement = (simDate.getFullYear() - birthDate.getFullYear()) + ((simDate.getMonth() - birthDate.getMonth()) / 12);
+        const earliestPlanAge = parseInt(scenarioData.option3EarlyAge || '58');
+
+        // Determine which age bucket was used
+        let usedAge = Math.floor(ageAtRetirement);
+        if (usedAge < earliestPlanAge) usedAge = earliestPlanAge;
+
+        activeIncomeItems = activeIncomeItems.filter(item => {
+          if (item.id?.toString().includes('pre_retirement_')) {
+            const match = item.id.toString().match(/_(\d+)\s+$/) || item.id.toString().match(/_(\d+)\s*$/);
+            if (match) {
+              const itemAge = parseInt(match[1]);
+              if (itemAge !== usedAge) return false;
+            }
+          }
+          return true;
+        });
+      }
+
+      // Filter out items with 0 amount, BUT keep Pre-retirement items (as they are dynamic)
+      activeIncomeItems = activeIncomeItems.filter(i =>
+        i.id?.toString().includes('pre_retirement_') || Math.abs(parseFloat(i.adjustedAmount || i.amount || 0)) > 0
+      );
+
       activeIncomeItems.forEach(i => headers.push(i.name.substring(0, 25))); // Increased limit to avoid truncation
 
       // 2. Assets (displayed as inflows)
-      const activeAssetItems = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
+      const activeAssetItems = assets.filter(a => activeFilters[`asset-${a.id || a.name}`] && Math.abs(parseFloat(a.adjustedAmount || a.amount || 0)) > 0);
       activeAssetItems.forEach(a => headers.push(a.name.substring(0, 25)));
 
       // 3. Costs
-      const activeCostItems = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
+      const activeCostItems = costs.filter(c => activeFilters[`cost-${c.id || c.name}`] && Math.abs(parseFloat(c.adjustedAmount || c.amount || 0)) > 0);
       activeCostItems.forEach(c => headers.push(c.name.substring(0, 25)));
 
       // 4. Debts (displayed as outflows)
-      const activeDebtItems = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
+      const activeDebtItems = debts.filter(d => activeFilters[`debt-${d.id || d.name}`] && Math.abs(parseFloat(d.adjustedAmount || d.amount || 0)) > 0);
       activeDebtItems.forEach(d => headers.push(d.name.substring(0, 25)));
 
       headers.push('Annual Bal.');
@@ -951,7 +1005,22 @@ const ScenarioResult = () => {
 
         // 1. Incomes
         activeIncomeItems.forEach(i => {
-          const val = row.incomeBreakdown?.[i.name] || 0;
+          let val = row.incomeBreakdown?.[i.name] || 0;
+
+          // FIX for Option 3: Map Pre-retirement dummy items to actual LPP values calculated in simulation
+          if (val === 0 && i.id?.toString().includes('pre_retirement_')) {
+            if (i.name.toLowerCase().includes('pension')) {
+              // Try to find the LPP Pension key used by calculateProjection
+              // 1. Check for standard LPP row name from retirementData
+              const lppRow = retirementData?.rows?.find(r => r.name.toLowerCase().includes('lpp') && !r.name.toLowerCase().includes('sup') && !r.name.toLowerCase().includes('capital'));
+              const lppKey = lppRow ? lppRow.name : 'LPP Pension';
+              val = row.incomeBreakdown?.[lppKey] || 0;
+            } else if (i.name.toLowerCase().includes('capital')) {
+              // Try to find LPP Capital key
+              val = row.incomeBreakdown?.['LPP Capital'] || 0;
+            }
+          }
+
           rowData.push(val > 0 ? formatNumber(val) : '');
         });
 
@@ -1021,23 +1090,155 @@ const ScenarioResult = () => {
           const annualBalColIndex = numColumns - 2;
           const cumulBalColIndex = numColumns - 1;
 
-          if (data.section === 'body' && (data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex)) {
-            const rowIndex = data.row.index;
-            const yearData = projection.yearlyBreakdown[rowIndex];
+          if (data.section === 'body') {
+            // Add light grey background to Year (0) and Balance columns
+            if (data.column.index === 0 || data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex) {
+              data.cell.styles.fillColor = [245, 245, 245];
+            }
 
-            if (yearData) {
-              const value = data.column.index === annualBalColIndex ? yearData.annualBalance : yearData.cumulativeBalance;
+            if (data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex) {
+              const rowIndex = data.row.index;
+              const yearData = projection.yearlyBreakdown[rowIndex];
 
-              // Set text color based on positive/negative
-              if (value >= 0) {
-                data.cell.styles.textColor = [34, 197, 94]; // Green (green-500)
-              } else {
-                data.cell.styles.textColor = [239, 68, 68]; // Red (red-500)
+              if (yearData) {
+                const value = data.column.index === annualBalColIndex ? yearData.annualBalance : yearData.cumulativeBalance;
+
+                // Set text color based on positive/negative
+                if (value >= 0) {
+                  data.cell.styles.textColor = [34, 197, 94]; // Green (green-500)
+                } else {
+                  data.cell.styles.textColor = [239, 68, 68]; // Red (red-500)
+                }
               }
             }
           }
         }
       });
+
+
+      // ===== ANNEX: HOUSING CALCULATOR =====
+      // Always add the page to confirm it works
+      pdf.addPage('a4', 'portrait');
+      yPosition = 20;
+
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(language === 'fr' ? 'Annexe : Calculs immobiliers' : 'Annex : Housing asset and cost calculation used', 15, yPosition);
+      yPosition += 15;
+
+      if (!realEstateData) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(language === 'fr' ? 'Aucune donnée immobilière enregistrée.' : 'No housing calculation data saved.', 15, yPosition);
+      } else {
+        // 1. Mortgage Details
+        if (realEstateData.mortgageRows && realEstateData.mortgageRows.length > 0) {
+          pdf.setFontSize(12);
+          pdf.text(language === 'fr' ? 'Détails Hypothécaires' : 'Mortgage Details', 15, yPosition);
+          yPosition += 5;
+
+          autoTable(pdf, {
+            startY: yPosition,
+            head: [[
+              language === 'fr' ? 'Nom' : 'Name',
+              language === 'fr' ? 'Montant' : 'Amount',
+              language === 'fr' ? 'Échéance' : 'Maturity Date',
+              language === 'fr' ? 'Taux' : 'Rate',
+              language === 'fr' ? 'Coût Annuel' : 'Yearly Cost'
+            ]],
+            body: realEstateData.mortgageRows.map(row => {
+              const amount = parseFloat(row.amount) || 0;
+              const rate = parseFloat(row.rate) || 0;
+              const yearly = amount * (rate / 100);
+              return [
+                row.name,
+                formatNumber(amount),
+                formatDate(row.maturityDate),
+                rate + '%',
+                formatNumber(yearly)
+              ];
+            }),
+            theme: 'grid',
+            headStyles: { fillColor: [60, 60, 60] }
+          });
+          yPosition = pdf.lastAutoTable.finalY + 10;
+        }
+
+        // 2. Market Value
+        if (realEstateData.assetRows && realEstateData.assetRows.length > 0) {
+          pdf.setFontSize(12);
+          pdf.text(language === 'fr' ? 'Valeur du Marché' : 'Market Value', 15, yPosition);
+          yPosition += 5;
+
+          autoTable(pdf, {
+            startY: yPosition,
+            head: [[
+              language === 'fr' ? 'Nom' : 'Name',
+              language === 'fr' ? 'Valeur Estimée' : 'Estimated Value'
+            ]],
+            body: realEstateData.assetRows.map(row => [
+              row.name,
+              formatNumber(parseFloat(row.amount) || 0)
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [60, 60, 60] }
+          });
+          yPosition = pdf.lastAutoTable.finalY + 10;
+        }
+
+        // 3. Maintenance
+        if (realEstateData.maintenanceRows && realEstateData.maintenanceRows.length > 0) {
+          pdf.setFontSize(12);
+          pdf.text(language === 'fr' ? 'Entretien & Charges' : 'Maintenance & Other Costs', 15, yPosition);
+          yPosition += 5;
+
+          autoTable(pdf, {
+            startY: yPosition,
+            head: [[
+              language === 'fr' ? 'Nom' : 'Name',
+              language === 'fr' ? 'Montant' : 'Amount',
+              language === 'fr' ? 'Fréquence' : 'Frequency'
+            ]],
+            body: realEstateData.maintenanceRows.map(row => [
+              row.name,
+              formatNumber(parseFloat(row.amount) || 0),
+              language === 'fr' && row.frequency === 'Yearly' ? 'Annuel' :
+                language === 'fr' && row.frequency === 'Monthly' ? 'Mensuel' : row.frequency
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [60, 60, 60] }
+          });
+          yPosition = pdf.lastAutoTable.finalY + 15;
+        }
+
+        // 4. Totals Summary
+        if (realEstateData.totals) {
+          pdf.setFontSize(12);
+          pdf.text(language === 'fr' ? 'Résumé' : 'Summary', 15, yPosition);
+          yPosition += 8;
+
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+
+          const totals = realEstateData.totals;
+
+          const summaryData = [
+            [language === 'fr' ? 'Coût Total Annuel' : 'Total Yearly Cost', `CHF ${formatNumber(totals.yearlyCost)}`],
+            [language === 'fr' ? 'Coût Total Mensuel (Repris dans les Dépenses)' : 'Total Monthly Cost (Carried to Costs)', `CHF ${formatNumber(totals.monthlyCost)}`],
+            [language === 'fr' ? 'Valeur Nette du Bien (Repris dans les Actifs)' : 'Net Asset Value (Carried to Assets)', `CHF ${formatNumber(totals.assetValue)}`]
+          ];
+
+          autoTable(pdf, {
+            startY: yPosition,
+            body: summaryData,
+            theme: 'plain',
+            columnStyles: {
+              0: { fontStyle: 'bold', cellWidth: 100 },
+              1: { fontStyle: 'bold' }
+            }
+          });
+        }
+      }
 
       // Save PDF
       pdf.save(`retirement-simulation-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1506,7 +1707,7 @@ const ScenarioResult = () => {
               </CardHeader>
               <CardContent className="h-[545px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={projection.yearlyBreakdown} margin={{ top: 10, right: 30, left: 20, bottom: 0 }} stackOffset="sign">
+                  <ComposedChart data={projection.yearlyBreakdown} margin={{ top: 10, right: 30, left: 20, bottom: 40 }} stackOffset="sign">
                     <defs>
                       <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -1521,14 +1722,14 @@ const ScenarioResult = () => {
                     <XAxis dataKey="year" />
                     <YAxis
                       tick={({ x, y, payload }) => (
-                        <text x={x} y={y} dy={4} textAnchor="end" fill={payload.value === 0 ? "#ffffff" : "#888888"} fontSize={12}>
+                        <text x={x} y={y} dy={4} textAnchor="end" fill={generatingPdf ? "#000000" : (payload.value === 0 ? "#ffffff" : "#888888")} fontSize={12}>
                           {payload.value === 0 ? "0k" : `${(payload.value / 1000).toFixed(0)}k`}
                         </text>
                       )}
                     />
-                    <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={2} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
+                    <ReferenceLine y={0} stroke={generatingPdf ? "#000000" : "#FFFFFF"} strokeWidth={2} />
+                    {!generatingPdf && <Tooltip content={<CustomTooltip />} />}
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
                     <Area
                       type="monotone"
                       dataKey="cumulativeBalance"

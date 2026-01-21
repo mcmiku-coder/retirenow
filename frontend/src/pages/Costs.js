@@ -28,7 +28,7 @@ const COST_KEYS = {
 
 const Costs = () => {
   const navigate = useNavigate();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [rows, setRows] = useState([]);
   const [nextId, setNextId] = useState(11);
@@ -59,7 +59,7 @@ const Costs = () => {
 
   // Initialize default rows with English keys (for data storage) but display translated
   const getDefaultRows = async () => {
-    const userData = await getUserData(user.email, password);
+    const userData = await getUserData(user.email, masterKey);
     const today = new Date().toISOString().split('T')[0];
     const deathDateStr = userData?.theoreticalDeathDate || today;
 
@@ -78,7 +78,7 @@ const Costs = () => {
   };
 
   useEffect(() => {
-    if (!user || !password) {
+    if (!user || !masterKey) {
       navigate('/');
       return;
     }
@@ -86,7 +86,7 @@ const Costs = () => {
     const loadData = async () => {
       try {
         // Load salary amount for tax calculation
-        const incomeData = await getIncomeData(user.email, password);
+        const incomeData = await getIncomeData(user.email, masterKey);
         if (incomeData && incomeData.length > 0) {
           const salaryRow = incomeData.find(r => r.name === 'Salary' || r.name === 'Net Salary');
           if (salaryRow && salaryRow.amount) {
@@ -94,7 +94,7 @@ const Costs = () => {
           }
         }
 
-        const data = await getCostData(user.email, password);
+        const data = await getCostData(user.email, masterKey);
         if (data && data.length > 0) {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
@@ -108,7 +108,7 @@ const Costs = () => {
       }
     };
     loadData();
-  }, [user, password, navigate]);
+  }, [user, masterKey, navigate]);
 
   const updateRow = (id, field, value) => {
     setRows(rows.map(row => {
@@ -130,7 +130,7 @@ const Costs = () => {
   };
 
   const addRow = async () => {
-    const userData = await getUserData(user.email, password);
+    const userData = await getUserData(user.email, masterKey);
     const today = new Date().toISOString().split('T')[0];
     const deathDateStr = userData?.theoreticalDeathDate || today;
 
@@ -183,7 +183,7 @@ const Costs = () => {
 
     setLoading(true);
     try {
-      await saveCostData(user.email, password, rows);
+      await saveCostData(user.email, masterKey, rows);
       navigate('/assets-savings');
     } catch (error) {
       toast.error(t('costs.saveFailed'));
@@ -346,15 +346,6 @@ const Costs = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/real-estate')}
-              className="flex items-center gap-2 border-orange-500 text-orange-600 hover:bg-orange-50"
-            >
-              <Home className="h-4 w-4" />
-              {t('step4SpinOffTitle')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
               onClick={() => setShowHelpModal(true)}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
             >
@@ -405,19 +396,45 @@ const Costs = () => {
                       )}
                     </td>
                     <td className="p-2">
-                      <Input
-                        data-testid={`cost-amount-${index}`}
-                        type="text"
-                        value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                        onChange={(e) => {
-                          const rawValue = e.target.value.replace(/'/g, '');
-                          if (!isNaN(rawValue)) {
-                            updateRow(row.id, 'amount', rawValue);
-                          }
-                        }}
-                        placeholder="0"
-                        className="min-w-[100px] text-right"
-                      />
+                      {row.name === 'Rent/Mortgage' ? (
+                        <div className="flex gap-1 h-10 w-full min-w-[200px]">
+                          <Button
+                            type="button"
+                            onClick={() => navigate('/real-estate')}
+                            className="flex-1 h-full px-2 text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white whitespace-nowrap"
+                            title={language === 'fr' ? 'Calculateur logement' : 'Housing calculator'}
+                          >
+                            {language === 'fr' ? 'Calculateur logement' : 'Housing calculator'}
+                          </Button>
+                          <Input
+                            data-testid={`cost-amount-${index}`}
+                            type="text"
+                            value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                            onChange={(e) => {
+                              const rawValue = e.target.value.replace(/'/g, '');
+                              if (!isNaN(rawValue)) {
+                                updateRow(row.id, 'amount', rawValue);
+                              }
+                            }}
+                            placeholder="0"
+                            className="flex-1 min-w-[80px] text-right h-full"
+                          />
+                        </div>
+                      ) : (
+                        <Input
+                          data-testid={`cost-amount-${index}`}
+                          type="text"
+                          value={row.amount ? row.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(/'/g, '');
+                            if (!isNaN(rawValue)) {
+                              updateRow(row.id, 'amount', rawValue);
+                            }
+                          }}
+                          placeholder="0"
+                          className="min-w-[100px] text-right"
+                        />
+                      )}
                     </td>
                     <td className="p-2">
                       <RadioGroup

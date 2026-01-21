@@ -14,7 +14,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_A
 
 const RetirementOverview = () => {
   const navigate = useNavigate();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [retirementData, setRetirementData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const RetirementOverview = () => {
       return;
     }
 
-    if (!password) {
+    if (!masterKey) {
       console.warn('No password available, redirecting to login');
       navigate('/');
       return;
@@ -40,7 +40,7 @@ const RetirementOverview = () => {
     const loadRetirementData = async () => {
       try {
         console.log('Loading user data for:', userEmail);
-        const userData = await getUserData(userEmail, password);
+        const userData = await getUserData(userEmail, masterKey);
 
         if (!userData || !userData.birthDate) {
           console.warn('No user data or birth date found, redirecting to personal-info');
@@ -64,7 +64,7 @@ const RetirementOverview = () => {
           theoreticalDeathDate: retirementResult.theoretical_death_date,
           lifeExpectancyYears: retirementResult.life_expectancy_years
         };
-        await saveUserData(userEmail, password, updatedUserData);
+        await saveUserData(userEmail, masterKey, updatedUserData);
         console.log('Updated user data saved');
       } catch (error) {
         console.error('Error in loadRetirementData:', error);
@@ -76,7 +76,7 @@ const RetirementOverview = () => {
     };
 
     loadRetirementData();
-  }, [user, userEmail, password, navigate, t]);
+  }, [user, userEmail, masterKey, navigate, t]);
 
   // Format date based on language
   const formatDate = (dateString) => {

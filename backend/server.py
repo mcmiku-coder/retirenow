@@ -17,6 +17,8 @@ import pandas as pd
 import csv
 import traceback
 import requests
+import secrets
+from cryptography.fernet import Fernet
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -47,6 +49,12 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 1 week
 
 # Admin Secret Key - Change this in production!
 ADMIN_SECRET_KEY = os.environ.get('ADMIN_SECRET_KEY', 'quit-admin-2024-secret')
+
+# Master Key Encryption - For encrypting user master keys in MongoDB
+SERVER_ENCRYPTION_KEY = os.environ.get('SERVER_ENCRYPTION_KEY', '')
+if not SERVER_ENCRYPTION_KEY:
+    logger.warning("SERVER_ENCRYPTION_KEY not set! Master key encryption will fail.")
+fernet = Fernet(SERVER_ENCRYPTION_KEY.encode()) if SERVER_ENCRYPTION_KEY else None
 
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
@@ -98,10 +106,18 @@ class UserLogin(BaseModel):
 class VerifyRequest(BaseModel):
     token: str
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
 class TokenResponse(BaseModel):
     token: Optional[str] = None
     email: str
     message: Optional[str] = None
+    master_key: Optional[str] = None  # Added for master key encryption
 
 class LifeExpectancyRequest(BaseModel):
     birth_date: str  # Format: YYYY-MM-DD
@@ -176,6 +192,31 @@ def create_verification_token(email: str) -> str:
         'exp': datetime.now(timezone.utc) + timedelta(hours=24)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def create_password_reset_token(email: str) -> str:
+    """Create a short-lived token for password reset"""
+    payload = {
+        'email': email,
+        'type': 'password_reset',
+        'exp': datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def generate_master_key() -> str:
+    """Generate a 256-bit master encryption key"""
+    return secrets.token_hex(32)  # 32 bytes = 256 bits
+
+def encrypt_master_key(master_key: str) -> str:
+    """Encrypt master key with server secret"""
+    if not fernet:
+        raise Exception("Server encryption not configured")
+    return fernet.encrypt(master_key.encode()).decode()
+
+def decrypt_master_key(encrypted_key: str) -> str:
+    """Decrypt master key with server secret"""
+    if not fernet:
+        raise Exception("Server encryption not configured")
+    return fernet.decrypt(encrypted_key.encode()).decode()
 
 def create_token(email: str) -> str:
     payload = {
@@ -274,6 +315,61 @@ def send_verification_email(to_email: str, token: str):
         print(f"FAILED TO SEND EMAIL: {e}")
         # Print link as backup
         print(f"BACKUP LINK: {frontend_url}/verify?token={token}")
+
+def send_password_reset_email(to_email: str, token: str):
+    """Send password reset email via Brevo"""
+    api_key = os.environ.get('BREVO_API_KEY', '').strip()
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+    
+    if not api_key:
+        logger.warning("Brevo API Key not found, printing to console instead")
+        mock_link = f"{frontend_url}/reset-password?token={token}"
+        print(f"\n{'='*50}\nPassword Reset Link\nTo: {to_email}\nLink: {mock_link}\n{'='*50}\n")
+        return
+
+    try:
+        reset_link = f"{frontend_url}/reset-password?token={token}"
+        
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json"
+        }
+        
+        sender_email = os.environ.get('SMTP_EMAIL', 'no-reply@retirenow.com')
+        
+        payload = {
+            "sender": {"name": "Can I Quit App", "email": sender_email},
+            "to": [{"email": to_email}],
+            "subject": "Reset your Can I Quit? password",
+            "htmlContent": f"""
+                <h1>Password Reset Request</h1>
+                <p>You requested to reset your password for Can I Quit?</p>
+                <p>Click the link below to reset your password:</p>
+                <p><a href="{reset_link}">Reset Password</a></p>
+                <p>Or copy this link: {reset_link}</p>
+                <p>This link expires in 1 hour.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+            """
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code in [200, 201, 202]:
+            logger.info(f"Password reset email sent to {to_email} via Brevo")
+            print(f"\n{'='*20} MANUAL RESET LINK {'='*20}", flush=True)
+            print(f"DEBUG_LINK: {reset_link}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+        else:
+            logger.error(f"Brevo API Error: {response.status_code} - {response.text}")
+            print(f"FAILED TO SEND EMAIL VIA BREVO: {response.text}")
+            print(f"BACKUP LINK: {reset_link}")
+
+    except Exception as e:
+        logger.error(f"Failed to send password reset email: {e}")
+        print(f"FAILED TO SEND EMAIL: {e}")
+        print(f"BACKUP LINK: {frontend_url}/reset-password?token={token}")
 
 # Routes
 @api_router.get("/health")
@@ -398,8 +494,18 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
         "last_location": user_location,
         "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop",
         "total_pages_viewed": 0,
-        "is_verified": False  # New users unverified
+        "is_verified": False,  # New users unverified
+        "master_encryption_key": None  # Will be set below
     }
+    
+    # Generate and encrypt master key
+    try:
+        master_key = generate_master_key()
+        encrypted_master_key = encrypt_master_key(master_key)
+        user_doc["master_encryption_key"] = encrypted_master_key
+    except Exception as e:
+        logger.error(f"Failed to generate master key: {e}")
+        raise HTTPException(status_code=500, detail="Failed to initialize encryption")
     
     try:
         result = await db.access.insert_one(user_doc)
@@ -417,7 +523,11 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     # This prevents the UI from hitting a timeout while waiting for SMTP
     background_tasks.add_task(send_verification_email, user.email, verify_token_str)
 
-    return TokenResponse(email=user.email, message="Verification email sent (v2)")
+    return TokenResponse(
+        email=user.email, 
+        message="Verification email sent (v2)",
+        master_key=master_key  # Return master key to client
+    )
 
 @api_router.post("/auth/verify")
 async def verify_email(request: VerifyRequest):
@@ -493,10 +603,78 @@ async def login(user: UserLogin, request: Request):
     
     logger.info(f"User logged in: {user.email}")
     
+    # Decrypt and return master key
+    master_key = None
+    if user_doc.get("master_encryption_key"):
+        try:
+            master_key = decrypt_master_key(user_doc["master_encryption_key"])
+        except Exception as e:
+            logger.error(f"Failed to decrypt master key for {user.email}: {e}")
+            # For backward compatibility with old users without master keys
+            pass
+    
     token = create_token(user.email)
-    return TokenResponse(token=token, email=user.email)
+    return TokenResponse(
+        token=token, 
+        email=user.email,
+        master_key=master_key
+    )
+
+@api_router.post("/auth/request-password-reset")
+async def request_password_reset(request: PasswordResetRequest, background_tasks: BackgroundTasks):
+    """Request a password reset email"""
+    # Check if user exists
+    user_doc = await db.access.find_one({"email": request.email}, {"_id": 0})
+    
+    # Always return success to prevent email enumeration
+    if not user_doc:
+        logger.warning(f"Password reset requested for non-existent email: {request.email}")
+        return {"success": True, "message": "If the email exists, a reset link has been sent"}
+    
+    # Generate reset token
+    reset_token = create_password_reset_token(request.email)
+    
+    # Send email in background
+    background_tasks.add_task(send_password_reset_email, request.email, reset_token)
+    
+    logger.info(f"Password reset requested for: {request.email}")
+    return {"success": True, "message": "If the email exists, a reset link has been sent"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: PasswordResetConfirm):
+    """Reset password using token"""
+    try:
+        # Verify token
+        payload = jwt.decode(request.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get('type') != 'password_reset':
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        
+        email = payload['email']
+        
+        # Hash new password
+        new_password_hash = hash_password(request.new_password)
+        
+        # Update password (master key remains unchanged!)
+        result = await db.access.update_one(
+            {"email": email},
+            {"$set": {"password": new_password_hash}}
+        )
+        
+        if result.modified_count == 0:
+            user = await db.access.find_one({"email": email})
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"Password reset successful for: {email}")
+        return {"success": True, "message": "Password reset successfully"}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Reset link expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid reset link")
 
 @api_router.post("/track-page")
+
 async def track_page_visit(request: PageVisitRequest, email: str = Depends(verify_token)):
     """Track user page visits for analytics"""
     try:

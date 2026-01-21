@@ -13,25 +13,27 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [password, setPassword] = useState(null); // Stored in memory only for encryption
+  const [masterKey, setMasterKey] = useState(null); // Stored in memory only for encryption
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check for existing session
     const storedToken = localStorage.getItem('token');
     const storedEmail = localStorage.getItem('email');
-    
+
     if (storedToken && storedEmail) {
       setToken(storedToken);
       setUser({ email: storedEmail });
+      // Note: masterKey is NOT stored in localStorage for security
+      // User must login again to get masterKey from server
     }
     setLoading(false);
   }, []);
 
-  const login = (email, token, pwd) => {
+  const login = (email, token, masterKeyFromServer) => {
     setUser({ email });
     setToken(token);
-    setPassword(pwd);
+    setMasterKey(masterKeyFromServer); // Store master key in memory
     localStorage.setItem('token', token);
     localStorage.setItem('email', email);
   };
@@ -39,13 +41,13 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    setPassword(null);
+    setMasterKey(null); // Clear master key from memory
     localStorage.removeItem('token');
     localStorage.removeItem('email');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, password, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, masterKey, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -13,7 +13,7 @@ import PageHeader from '../components/PageHeader';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
@@ -33,7 +33,7 @@ const PersonalInfo = () => {
     }
 
     // If user exists but password is null (page was refreshed), redirect to login
-    if (!password) {
+    if (!masterKey) {
       console.warn('Password not available - session may have been refreshed. Redirecting to login.');
       navigate('/');
       return;
@@ -44,8 +44,8 @@ const PersonalInfo = () => {
       setDataLoading(true);
       try {
         // Only try to load if we have valid email and password
-        if (userEmail && password) {
-          const data = await getUserData(userEmail, password);
+        if (userEmail && masterKey) {
+          const data = await getUserData(userEmail, masterKey);
           if (data) {
             setBirthDate(data.birthDate || '');
             setGender(data.gender || '');
@@ -61,7 +61,7 @@ const PersonalInfo = () => {
       }
     };
     loadData();
-  }, [user, userEmail, password, navigate]);
+  }, [user, userEmail, masterKey, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,7 +79,7 @@ const PersonalInfo = () => {
       return;
     }
 
-    if (!password) {
+    if (!masterKey) {
       console.error('No password available for save');
       toast.error('Session expired. Please log in again.');
       navigate('/');
@@ -95,7 +95,7 @@ const PersonalInfo = () => {
       };
 
       console.log('Saving user data for:', userEmail);
-      await saveUserData(userEmail, password, userData);
+      await saveUserData(userEmail, masterKey, userData);
       navigate('/retirement-overview');
     } catch (error) {
       console.error('Save error:', error);

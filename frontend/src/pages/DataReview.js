@@ -58,7 +58,7 @@ const getTranslatedFrequency = (frequency, t) => {
 
 const DataReview = () => {
   const navigate = useNavigate();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [wishedRetirementDate, setWishedRetirementDate] = useState('');
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
@@ -233,18 +233,18 @@ const DataReview = () => {
   };
 
   useEffect(() => {
-    if (!user || !password) {
+    if (!user || !masterKey) {
       navigate('/');
       return;
     }
 
     const loadData = async () => {
       try {
-        const userData = await getUserData(user.email, password);
-        const incomeData = await getIncomeData(user.email, password) || [];
-        const costData = await getCostData(user.email, password) || [];
-        const scenarioData = await getScenarioData(user.email, password);
-        const rData = await getRetirementData(user.email, password);
+        const userData = await getUserData(user.email, masterKey);
+        const incomeData = await getIncomeData(user.email, masterKey) || [];
+        const costData = await getCostData(user.email, masterKey) || [];
+        const scenarioData = await getScenarioData(user.email, masterKey);
+        const rData = await getRetirementData(user.email, masterKey);
         setRetirementData(rData);
 
         if (!userData) {
@@ -278,22 +278,23 @@ const DataReview = () => {
         setDeathDate(deathDateStr);
 
         // Load assets data from assetsData store
-        const assetsData = await getAssetsData(user.email, password);
+
+        const assetsData = await getAssetsData(user.email, masterKey);
         if (assetsData) {
-          // Calculate liquid and non-liquid assets from savingsRows
-          if (assetsData.savingsRows && assetsData.savingsRows.length > 0) {
-            const liquidTotal = assetsData.savingsRows
-              .filter(row => row.category === 'Liquid')
-              .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
-            const illiquidTotal = assetsData.savingsRows
-              .filter(row => row.category === 'Illiquid')
-              .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
-            setLiquidAssets(liquidTotal.toString());
-            setNonLiquidAssets(illiquidTotal.toString());
-          } else {
-            setLiquidAssets('');
-            setNonLiquidAssets('');
-          }
+          // Calculate liquid and non-liquid assets from currentAssets (New Structure)
+          const sourceAssets = assetsData.currentAssets || [];
+
+          const liquidTotal = sourceAssets
+            .filter(row => row.category === 'Liquid')
+            .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+
+          const illiquidTotal = sourceAssets
+            .filter(row => row.category === 'Illiquid')
+            .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+
+          setLiquidAssets(liquidTotal.toString());
+          setNonLiquidAssets(illiquidTotal.toString());
+
           setFutureInflows(assetsData.futureInflows || []);
 
           // Load current assets and desired outflows for display
@@ -668,19 +669,19 @@ const DataReview = () => {
     };
 
     loadData();
-  }, [user, password, navigate]);
+  }, [user, masterKey, navigate]);
 
   // Auto-save scenario data when values change
   useEffect(() => {
-    if (loading || !user?.email || !password) return;
+    if (loading || !user?.email || !masterKey) return;
 
     const saveData = async () => {
       try {
         // Load existing scenario data to preserve all fields
-        const existingData = await getScenarioData(user.email, password) || {};
+        const existingData = await getScenarioData(user.email, masterKey) || {};
 
         // Merge with updates, preserving retirement option fields
-        await saveScenarioData(user.email, password, {
+        await saveScenarioData(user.email, masterKey, {
           ...existingData,  // Preserve all existing fields including retirement options
           liquidAssets,
           nonLiquidAssets,
@@ -699,7 +700,7 @@ const DataReview = () => {
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
-  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, desiredOutflows, user, password, loading]);
+  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, desiredOutflows, user, masterKey, loading]);
 
   // Recalculate totals when currentAssets changes
   useEffect(() => {
@@ -810,8 +811,8 @@ const DataReview = () => {
     try {
       console.log('Resetting incomes to defaults...');
       // Reload income data from database
-      const incomeData = await getIncomeData(user.email, password) || [];
-      const scenarioData = await getScenarioData(user.email, password);
+      const incomeData = await getIncomeData(user.email, masterKey) || [];
+      const scenarioData = await getScenarioData(user.email, masterKey);
 
       // Process regular incomes
       const processedIncomes = incomeData.map(inc => {
@@ -907,7 +908,7 @@ const DataReview = () => {
       setIncomes(allIncomes);
 
       // IMPORTANT: Spread scenarioData to preserve ALL fields (retirementOption, benefitsData, etc.)
-      await saveScenarioData(user.email, password, {
+      await saveScenarioData(user.email, masterKey, {
         ...scenarioData,  // Preserve all existing fields
         liquidAssets,
         nonLiquidAssets,
@@ -927,7 +928,7 @@ const DataReview = () => {
   const resetCostsToDefaults = async () => {
     try {
       console.log('Resetting costs to defaults...');
-      const costData = await getCostData(user.email, password) || [];
+      const costData = await getCostData(user.email, masterKey) || [];
 
       const processedCosts = costData.map(cost => {
         const { groupId, parentId, ...cleanCost } = cost;
@@ -939,9 +940,9 @@ const DataReview = () => {
 
       setCosts(processedCosts);
 
-      const scenarioData = await getScenarioData(user.email, password);
+      const scenarioData = await getScenarioData(user.email, masterKey);
       // IMPORTANT: Spread scenarioData to preserve ALL fields
-      await saveScenarioData(user.email, password, {
+      await saveScenarioData(user.email, masterKey, {
         ...scenarioData,  // Preserve all existing fields
         liquidAssets,
         nonLiquidAssets,
@@ -960,11 +961,12 @@ const DataReview = () => {
 
   const resetAssetsToDefaults = async () => {
     try {
-      const assetsData = await getAssetsData(user.email, password);
-      const scenarioData = await getScenarioData(user.email, password);
+      const assetsData = await getAssetsData(user.email, masterKey);
+      const scenarioData = await getScenarioData(user.email, masterKey);
 
+      let loadedCurrentAssets = [];
       if (assetsData) {
-        let loadedCurrentAssets = assetsData.currentAssets || [];
+        loadedCurrentAssets = assetsData.currentAssets || [];
 
         // Use the same logic as loadData to inject retirement assets, but reset their values
         if (scenarioData) {
@@ -1094,7 +1096,7 @@ const DataReview = () => {
       setCurrentAssets(loadedCurrentAssets);
 
       // Autosave the reset state
-      await saveScenarioData(user.email, password, {
+      await saveScenarioData(user.email, masterKey, {
         ...scenarioData,
         currentAssets: loadedCurrentAssets, // Save the reset assets list
         liquidAssets, // These will update via useEffect but good to keep consistency if possible, though state update might lag slightly
@@ -1110,7 +1112,7 @@ const DataReview = () => {
 
   const resetDebtsToDefaults = async () => {
     try {
-      const assetsData = await getAssetsData(user.email, password);
+      const assetsData = await getAssetsData(user.email, masterKey);
       if (assetsData) {
         setDesiredOutflows(assetsData.desiredOutflows || []);
         toast.success(language === 'fr' ? 'Dettes réinitialisées aux valeurs par défaut' : 'Debts reset to default values');
@@ -1558,9 +1560,9 @@ const DataReview = () => {
       const finalBalance = cumulativeBalance;
 
       // Save the simulation inputs to DB to ensure persistence (fixes "Ghost Data" on return)
-      const existingData = await getScenarioData(user.email, password) || {};
+      const existingData = await getScenarioData(user.email, masterKey) || {};
 
-      await saveScenarioData(user.email, password, {
+      await saveScenarioData(user.email, masterKey, {
         ...existingData,
         retirementOption,
         wishedRetirementDate: simulationRetirementDate,

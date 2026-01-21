@@ -13,7 +13,7 @@ import PageHeader from '../components/PageHeader';
 
 const Income = () => {
   const navigate = useNavigate();
-  const { user, password } = useAuth();
+  const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
 
   // Income name translation
@@ -34,7 +34,7 @@ const Income = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || !password) {
+    if (!user || !masterKey) {
       navigate('/');
       return;
     }
@@ -42,14 +42,14 @@ const Income = () => {
     // Load existing data or pre-fill with retirement dates
     const loadData = async () => {
       try {
-        const data = await getIncomeData(user.email, password);
+        const data = await getIncomeData(user.email, masterKey);
         if (data && data.length > 0) {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
         } else {
           // Pre-fill dates based on retirement data
-          const userData = await getUserData(user.email, password);
+          const userData = await getUserData(user.email, masterKey);
           if (userData) {
             const today = new Date().toISOString().split('T')[0];
 
@@ -74,7 +74,7 @@ const Income = () => {
       }
     };
     loadData();
-  }, [user, password, navigate]);
+  }, [user, masterKey, navigate]);
 
   const updateRow = (id, field, value) => {
     setRows(rows.map(row => {
@@ -91,7 +91,7 @@ const Income = () => {
   };
 
   const resetToDefaults = async () => {
-    const userData = await getUserData(user.email, password);
+    const userData = await getUserData(user.email, masterKey);
     if (userData) {
       const today = new Date().toISOString().split('T')[0];
 
@@ -163,7 +163,7 @@ const Income = () => {
 
     setLoading(true);
     try {
-      await saveIncomeData(user.email, password, rows);
+      await saveIncomeData(user.email, masterKey, rows);
       navigate('/costs');
     } catch (error) {
       toast.error(t('income.saveFailed'));

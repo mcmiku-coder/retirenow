@@ -15,7 +15,7 @@ import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const RetirementInputs = () => {
     const navigate = useNavigate();
-    const { user, password } = useAuth();
+    const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [loading, setLoading] = useState(false);
 
@@ -31,7 +31,7 @@ const RetirementInputs = () => {
     const [preRetirementRows, setPreRetirementRows] = useState([]);
 
     useEffect(() => {
-        if (!user || !password) {
+        if (!user || !masterKey) {
             navigate('/');
             return;
         }
@@ -39,7 +39,7 @@ const RetirementInputs = () => {
         const initializeData = async () => {
             try {
                 // 1. Get User Data to calculate Legal Retirement Date
-                const userData = await getUserData(user.email, password);
+                const userData = await getUserData(user.email, masterKey);
                 if (!userData) {
                     navigate('/personal-info');
                     return;
@@ -50,7 +50,7 @@ const RetirementInputs = () => {
                 setLegalRetirementDate(legalDateStr);
 
                 // 2. Try to load existing Retirement Data
-                const savedData = await getRetirementData(user.email, password);
+                const savedData = await getRetirementData(user.email, masterKey);
 
                 if (savedData) {
                     setRows(savedData.rows);
@@ -102,7 +102,7 @@ const RetirementInputs = () => {
         };
 
         initializeData();
-    }, [user, password, navigate]);
+    }, [user, masterKey, navigate]);
 
     // Update Green Block Row
     const updateRow = (id, field, value) => {
@@ -194,7 +194,7 @@ const RetirementInputs = () => {
                 preRetirementRows
             };
 
-            await saveRetirementData(user.email, password, dataToSave);
+            await saveRetirementData(user.email, masterKey, dataToSave);
             navigate('/retirement-parameters');
         } catch (error) {
             console.error('Save error:', error);

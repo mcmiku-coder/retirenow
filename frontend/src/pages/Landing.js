@@ -60,7 +60,14 @@ const Landing = () => {
       const response = await axios.post(`${API}/auth/login`, { email, password });
       // Use local email variable as fallback in case response.data.email is undefined
       const userEmail = response.data.email || email;
-      login(userEmail, response.data.token, password);
+      const masterKey = response.data.master_key; // Get master key from server
+
+      if (!masterKey) {
+        toast.error('Failed to retrieve encryption key. Please try again.');
+        return;
+      }
+
+      login(userEmail, response.data.token, masterKey); // Pass master key instead of password
       navigate('/personal-info');
     } catch (error) {
       toast.error(error.response?.data?.detail || t('auth.loginFailed'));
@@ -218,6 +225,14 @@ const Landing = () => {
                       className="pl-10"
                     />
                   </div>
+                </div>
+                <div className="flex justify-end">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-blue-500 hover:text-blue-400"
+                  >
+                    {t('auth.forgotPassword') || 'Forgot Password?'}
+                  </Link>
                 </div>
                 <div className="flex gap-3">
                   <Button

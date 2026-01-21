@@ -62,8 +62,8 @@ const Information = () => {
       icon: Sliders,
       titleKey: 'step6Title',
       descKey: 'step6Desc',
-      color: 'bg-indigo-600',
-      lightColor: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+      color: 'bg-blue-600',
+      lightColor: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
     },
     {
       icon: ClipboardCheck,
@@ -265,9 +265,28 @@ const Information = () => {
                           {t(`infoPage.${step.titleKey}`)}
                         </h3>
                         <div className="hidden md:block w-px h-12 bg-slate-200 dark:bg-slate-700" />
-                        <p className="text-muted-foreground text-sm md:text-base leading-relaxed flex-1 whitespace-normal">
-                          {t(`infoPage.${step.descKey}`)}
-                        </p>
+
+                        {step.descKey === 'step6Desc' ? (
+                          <div className="flex-1 min-w-0">
+                            {/* Intro text (everything before the first 1) ) */}
+                            <p className="text-muted-foreground text-sm md:text-base leading-relaxed mb-3">
+                              {t(`infoPage.${step.descKey}`).split('1)')[0]}
+                            </p>
+
+                            {/* Options in Blue Text */}
+                            <div className="flex flex-col gap-1.5 mt-2">
+                              {t(`infoPage.${step.descKey}`).split('\n').filter(line => line.trim().match(/^\d\)/)).map((line, i) => (
+                                <div key={i} className="leading-snug text-blue-600 dark:text-blue-400 font-medium text-sm md:text-base">
+                                  {line}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-sm md:text-base leading-relaxed flex-1 whitespace-pre-line">
+                            {t(`infoPage.${step.descKey}`)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

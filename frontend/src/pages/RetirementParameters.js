@@ -16,7 +16,7 @@ import PageHeader from '../components/PageHeader';
 
 const RetirementParameters = () => {
     const navigate = useNavigate();
-    const { user, password } = useAuth();
+    const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [wishedRetirementDate, setWishedRetirementDate] = useState('');
     const [retirementLegalDate, setRetirementLegalDate] = useState('');
@@ -84,16 +84,16 @@ const RetirementParameters = () => {
     const userEmail = user?.email;
 
     useEffect(() => {
-        if (!user || !userEmail || !password) {
+        if (!user || !userEmail || !masterKey) {
             navigate('/');
             return;
         }
 
         const loadData = async () => {
             try {
-                const userData = await getUserData(userEmail, password);
-                const retirementData = await getRetirementData(userEmail, password);
-                const scenarioData = await getScenarioData(userEmail, password);
+                const userData = await getUserData(userEmail, masterKey);
+                const retirementData = await getRetirementData(userEmail, masterKey);
+                const scenarioData = await getScenarioData(userEmail, masterKey);
 
                 console.log('=== LOADING RETIREMENT DATA ===');
                 console.log('userData:', userData);
@@ -214,7 +214,7 @@ const RetirementParameters = () => {
         };
 
         loadData();
-    }, [user, userEmail, password, navigate]);
+    }, [user, userEmail, masterKey, navigate]);
 
     const handleContinue = async () => {
         // For Option 2, calculate retirement date from age if not manually set
@@ -222,7 +222,7 @@ const RetirementParameters = () => {
 
         if (retirementOption === 'option2' && !wishedRetirementDate && earlyRetirementAge) {
             try {
-                const userData = await getUserData(userEmail, password);
+                const userData = await getUserData(userEmail, masterKey);
                 if (userData && userData.birthDate) {
                     const birthDate = new Date(userData.birthDate);
                     const calculatedRetirementDate = new Date(birthDate);
@@ -251,7 +251,7 @@ const RetirementParameters = () => {
         }
 
         try {
-            const scenarioData = await getScenarioData(userEmail, password) || {};
+            const scenarioData = await getScenarioData(userEmail, masterKey) || {};
 
             console.log('=== SAVING RETIREMENT PARAMETERS ===');
             console.log('retirementOption:', retirementOption);
@@ -297,11 +297,11 @@ const RetirementParameters = () => {
             console.log('Specifically - option3EarlyAge:', updatedScenarioData.option3EarlyAge);
             console.log('Specifically - preRetirementRows:', updatedScenarioData.preRetirementRows);
 
-            await saveScenarioData(userEmail, password, updatedScenarioData);
+            await saveScenarioData(userEmail, masterKey, updatedScenarioData);
 
             // Verify the save worked by immediately reloading
             console.log('=== VERIFYING SAVE ===');
-            const reloadedData = await getScenarioData(userEmail, password);
+            const reloadedData = await getScenarioData(userEmail, masterKey);
             console.log('Reloaded retirementOption:', reloadedData?.retirementOption);
             console.log('Reloaded option3EarlyAge:', reloadedData?.option3EarlyAge);
             console.log('Reloaded preRetirementRows:', reloadedData?.preRetirementRows);
@@ -554,8 +554,8 @@ const RetirementParameters = () => {
                                 />
                                 <span className="text-white font-medium text-sm">
                                     {language === 'fr'
-                                        ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif) - Bientôt disponible'
-                                        : 'Calculate the earliest retirement date possible (balance at death not negative) - Coming soon'}
+                                        ? 'Calculer la date de retraite la plus précoce possible (solde au décès non négatif)'
+                                        : 'Calculate the earliest retirement date possible (balance at death not negative)'}
                                 </span>
                             </label>
 
