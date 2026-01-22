@@ -55,6 +55,19 @@ export const translations = {
       ctaMainTitle: "Start your planning journey today.",
       ctaFooter: "Free to use • No credit card required • Secure",
       step: "STEP",
+      securityModal: {
+        button: "How is my data secured?",
+        title: "Your data security is our top priority",
+        architecture: "How we keep your information safe",
+        localEncryptionTitle: "Bank-Grade Local Encryption",
+        localEncryptionDesc: "Unlike standard web apps, your financial data never leaves your device unencrypted. We use military-grade AES-256 encryption right here in your browser, meaning we physically cannot see your financial life.",
+        masterKeyTitle: "The Problem & Our Solution",
+        masterKeyDesc: "Usually, secure local apps lose your data if you forget your password. We solved this by creating a secure 'Digital Bridge'—a unique key stored in a separate vault that only opens when you verify your identity.",
+        passwordResetTitle: "No Data Loss Guarantee",
+        passwordResetDesc: "This smart separation means that even if you forget your password, we can help you recover access via email verification without ever compromising these privacy guarantees.",
+        privacyTitle: "Data Sovereignty & Backups",
+        privacyDesc: "You are in full control. You can export your encrypted data to a secure backup file at any time, or restore it to another device. Your data belongs to you, not us."
+      },
       spinOff: "SPIN-OFF"
     },
 
@@ -432,7 +445,17 @@ export const translations = {
       carriedToAssets: "Carried to Assets Page",
       cancel: "Cancel",
       applySave: "Apply & Save",
-      saving: "Saving..."
+      saving: "Saving...",
+      defaultMortgageName: "Primary Mortgage",
+      defaultPropertyName: "Main Property",
+      defaultMaintenance: {
+        electricity: "Electricity",
+        heating: "Heating",
+        insurance: "Insurance",
+        taxes: "Taxes",
+        renovation: "Renovation funding",
+        garden: "Garden"
+      }
     }
   },
 
@@ -491,6 +514,19 @@ export const translations = {
       ctaMainTitle: "Commencez votre planification aujourd'hui.",
       ctaFooter: "Gratuit • Pas de carte de crédit requise • Sécurisé",
       step: "ÉTAPE",
+      securityModal: {
+        button: "En savoir plus sur la sécurité",
+        title: "La sécurité de vos données est notre priorité",
+        architecture: "Comment nous protégeons vos informations",
+        localEncryptionTitle: "Chiffrement local de niveau bancaire",
+        localEncryptionDesc: "Contrairement aux applications web classiques, vos données financières ne quittent jamais votre appareil sans être chiffrées ici-même, dans votre navigateur (AES-256). Nous ne pouvons techniquement pas voir votre vie financière.",
+        masterKeyTitle: "Le Problème & Notre Solution",
+        masterKeyDesc: "Généralement, les applications locales sécurisées perdent vos données si vous oubliez votre mot de passe. Nous avons résolu cela en créant un 'Pont Numérique' : une clé unique stockée dans un coffre séparé qui ne s'ouvre que si vous validez votre identité.",
+        passwordResetTitle: "Aucune Perte de Données Garantie",
+        passwordResetDesc: "Cette séparation intelligente signifie que même en cas d'oubli de mot de passe, nous pouvons vous aider à récupérer l'accès via email sans jamais compromettre ces garanties de confidentialité.",
+        privacyTitle: "Vos données vous appartiennent",
+        privacyDesc: "Garder le contrôle. Vous pouvez exporter vos données chiffrées dans un fichier de sauvegarde à tout moment, ou les restaurer sur un nouvel appareil. Vos données sont votre propriété, pas la notre."
+      },
       spinOff: "EXTENSION"
     },
 
@@ -867,7 +903,17 @@ export const translations = {
       carriedToAssets: "Reporté sur la page Actifs",
       cancel: "Annuler",
       applySave: "Appliquer & Sauvegarder",
-      saving: "Enregistrement..."
+      saving: "Enregistrement...",
+      defaultMortgageName: "Hypothèque principale",
+      defaultPropertyName: "Propriété principale",
+      defaultMaintenance: {
+        electricity: "Électricité",
+        heating: "Chauffage",
+        insurance: "Assurance",
+        taxes: "Impôts",
+        renovation: "Fonds de rénovation",
+        garden: "Jardin"
+      }
     }
   }
 };

@@ -70,18 +70,18 @@ const RealEstate = () => {
 
     const initializeDefaults = () => {
         setMortgageRows([
-            { id: 1, name: 'Primary Mortgage', amount: '', maturityDate: '', rate: '' }
+            { id: 1, name: t('realEstate.defaultMortgageName'), amount: '', maturityDate: '', rate: '' }
         ]);
         setAssetRows([
-            { id: 1, name: 'Main Property', amount: '' }
+            { id: 1, name: t('realEstate.defaultPropertyName'), amount: '' }
         ]);
         setMaintenanceRows([
-            { id: 1, name: 'Electricity', amount: '', frequency: 'Yearly' },
-            { id: 2, name: 'Heating', amount: '', frequency: 'Yearly' },
-            { id: 3, name: 'Insurance', amount: '', frequency: 'Yearly' },
-            { id: 4, name: 'Taxes', amount: '', frequency: 'Yearly' },
-            { id: 5, name: 'Renovation funding', amount: '', frequency: 'Yearly' },
-            { id: 6, name: 'Garden', amount: '', frequency: 'Yearly' }
+            { id: 1, name: t('realEstate.defaultMaintenance.electricity'), amount: '', frequency: 'Yearly' },
+            { id: 2, name: t('realEstate.defaultMaintenance.heating'), amount: '', frequency: 'Yearly' },
+            { id: 3, name: t('realEstate.defaultMaintenance.insurance'), amount: '', frequency: 'Yearly' },
+            { id: 4, name: t('realEstate.defaultMaintenance.taxes'), amount: '', frequency: 'Yearly' },
+            { id: 5, name: t('realEstate.defaultMaintenance.renovation'), amount: '', frequency: 'Yearly' },
+            { id: 6, name: t('realEstate.defaultMaintenance.garden'), amount: '', frequency: 'Yearly' }
         ]);
     };
 
@@ -251,6 +251,21 @@ const RealEstate = () => {
         }
     };
 
+    // --- Translation Helper for Legacy Data ---
+    const translateDefault = (name) => {
+        const defaults = {
+            'Primary Mortgage': 'realEstate.defaultMortgageName',
+            'Main Property': 'realEstate.defaultPropertyName',
+            'Electricity': 'realEstate.defaultMaintenance.electricity',
+            'Heating': 'realEstate.defaultMaintenance.heating',
+            'Insurance': 'realEstate.defaultMaintenance.insurance',
+            'Taxes': 'realEstate.defaultMaintenance.taxes',
+            'Renovation funding': 'realEstate.defaultMaintenance.renovation',
+            'Garden': 'realEstate.defaultMaintenance.garden'
+        };
+        return defaults[name] ? t(defaults[name]) : name;
+    };
+
     return (
         <div className="min-h-screen py-6 bg-background space-y-8">
             <PageHeader
@@ -285,7 +300,7 @@ const RealEstate = () => {
                                     return (
                                         <TableRow key={row.id}>
                                             <TableCell>
-                                                <Input value={row.name} onChange={e => updateRow(setMortgageRows, row.id, 'name', e.target.value)} />
+                                                <Input value={translateDefault(row.name)} onChange={e => updateRow(setMortgageRows, row.id, 'name', e.target.value)} />
                                             </TableCell>
                                             <TableCell>
                                                 <Input
@@ -320,9 +335,9 @@ const RealEstate = () => {
                                 {/* Footer Line */}
                                 <TableRow className="bg-muted/50 font-bold">
                                     <TableCell>{t('realEstate.total')}</TableCell>
-                                    <TableCell>CHF {totals.mortgageTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+                                    <TableCell className="text-right">CHF {totals.mortgageTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
                                     <TableCell colSpan={2}></TableCell>
-                                    <TableCell>{totals.mortgageYearlyTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+                                    <TableCell className="text-right">{totals.mortgageYearlyTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
                                     <TableCell></TableCell>
                                 </TableRow>
                             </TableBody>
@@ -351,7 +366,7 @@ const RealEstate = () => {
                                 {assetRows.map(row => (
                                     <TableRow key={row.id}>
                                         <TableCell>
-                                            <Input value={row.name} onChange={e => updateRow(setAssetRows, row.id, 'name', e.target.value)} />
+                                            <Input value={translateDefault(row.name)} onChange={e => updateRow(setAssetRows, row.id, 'name', e.target.value)} />
                                         </TableCell>
                                         <TableCell>
                                             <Input
@@ -375,7 +390,7 @@ const RealEstate = () => {
                                 ))}
                                 <TableRow className="bg-muted/50 font-bold">
                                     <TableCell>{t('realEstate.totalMarketValue')}</TableCell>
-                                    <TableCell>CHF {totals.marketValueTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+                                    <TableCell className="text-right">CHF {totals.marketValueTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
                                     <TableCell></TableCell>
                                 </TableRow>
                             </TableBody>
@@ -405,7 +420,7 @@ const RealEstate = () => {
                                 {maintenanceRows.map(row => (
                                     <TableRow key={row.id}>
                                         <TableCell>
-                                            <Input value={row.name} onChange={e => updateRow(setMaintenanceRows, row.id, 'name', e.target.value)} />
+                                            <Input value={translateDefault(row.name)} onChange={e => updateRow(setMaintenanceRows, row.id, 'name', e.target.value)} />
                                         </TableCell>
                                         <TableCell>
                                             <Input
@@ -443,6 +458,12 @@ const RealEstate = () => {
                                         </TableCell>
                                     </TableRow>
                                 ))}
+                                <TableRow className="bg-muted/50 font-bold">
+                                    <TableCell>{t('realEstate.total')}</TableCell>
+                                    <TableCell className="text-right">CHF {totals.yearlyCost.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell></TableCell>
+                                </TableRow>
                             </TableBody>
                         </Table>
                         <Button variant="outline" size="sm" className="mt-4" onClick={() => addRow(setMaintenanceRows, { name: '', amount: '', frequency: 'Yearly' })}>

@@ -2154,7 +2154,7 @@ const DataReview = () => {
                         <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de dispo.' : 'Availability Details'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Stratégie' : 'Strategy'}</th>
+                        <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
                         <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                         <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                       </tr>
@@ -2258,22 +2258,16 @@ const DataReview = () => {
                               )}
                             </td>
                             <td className="p-3">
-                              {(asset.availabilityType !== 'Period') && (
-                                <Select
-                                  value={asset.strategy || 'Cash'}
-                                  onValueChange={(value) => updateAsset(asset.id, 'strategy', value)}
-                                >
-                                  <SelectTrigger
-                                    className="max-w-[120px]"
-                                    style={{ backgroundColor: asset.strategy === 'Invested' ? 'rgba(59, 130, 246, 0.25)' : 'transparent' }}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Cash">{language === 'fr' ? 'Cash' : 'Cash'}</SelectItem>
-                                    <SelectItem value="Invested">{language === 'fr' ? 'Investi' : 'Invested'}</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                              {asset.category === 'Liquid' ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <Checkbox
+                                    checked={asset.strategy === 'Invested'}
+                                    onCheckedChange={(checked) => updateAsset(asset.id, 'strategy', checked ? 'Invested' : 'Not invested')}
+                                  />
+                                  <span className="text-sm">{language === 'fr' ? 'Oui' : 'Yes'}</span>
+                                </div>
+                              ) : (
+                                <div className="text-center text-muted-foreground">-</div>
                               )}
                             </td>
                             <td className="p-3">
