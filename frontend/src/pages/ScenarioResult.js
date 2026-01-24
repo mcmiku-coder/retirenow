@@ -319,8 +319,14 @@ const ScenarioResult = () => {
 
     // --- 3a Payout Date Logic ---
     // Rule: If retirement < 60, 3a available at 60. Else at retirement.
+    // OVERRIDE: If the user explicitly set a date in the Unified Table (stored in retirementData.rows), use that.
     let payoutDate3a = simRetirementDateObj;
-    if (effectiveScenarioData?.retirementOption === 'option3' && ageAtRetirement < 60) {
+
+    // Find 3a row to check for manual date
+    const p3aRow = effectiveRetirementData?.rows?.find(r => r.name.toLowerCase().includes('3a'));
+    if (p3aRow && p3aRow.startDate) {
+      payoutDate3a = new Date(p3aRow.startDate);
+    } else if (effectiveScenarioData?.retirementOption === 'option3' && ageAtRetirement < 60) {
       const dateAt60 = new Date(birthDate);
       dateAt60.setFullYear(dateAt60.getFullYear() + 60);
       payoutDate3a = dateAt60;
@@ -1779,19 +1785,61 @@ const ScenarioResult = () => {
       const totalBase = parseFloat(row.cumulativeBalance) || 0;
       const rowYear = parseInt(row.year);
 
+      // Calculate how much of the "Invested" capital is currently recognized in the Baseline (Liquid)
+      // This is necessary because Baseline treats assets as "becoming available" at specific dates,
+      // whereas Monte Carlo simulation (currently) assumes invested assets are held from the start (or aligned).
+      // To correctly splice them, we must subtract ONLY the portion of invested capital that is currently sitting in the Baseline.
+      let investedInBaseline = 0;
+
+      if (monteCarloProjections.details?.portfolioAssets || monteCarloProjections.investedBookDetails?.assets) {
+        const investedAssetsList = monteCarloProjections.details?.portfolioAssets || monteCarloProjections.investedBookDetails?.assets;
+
+        investedAssetsList.forEach(asset => {
+          // Find original asset to check dates
+          // Note: portfolioAssets uses 'assetId', investedBookDetails might use 'id'. Check both.
+          const lookupId = asset.assetId || asset.id;
+          const originalAsset = assets.find(a => (a.id === lookupId || a.name === asset.productName));
+
+          if (originalAsset) {
+            const amount = parseFloat(originalAsset.adjustedAmount || originalAsset.amount || 0);
+
+            // Logic mimics Baseline: When does it enter the equation?
+            let isAvailable = true;
+            if (originalAsset.availabilityDate) {
+              const availYear = new Date(originalAsset.availabilityDate).getFullYear();
+              if (availYear > rowYear) isAvailable = false;
+            }
+            // (Asset periods handled as flow, usually not invested lump sum, but if so, handle here? Assuming availabilityDate for now)
+
+            if (isAvailable) {
+              investedInBaseline += amount;
+            }
+          } else {
+            // Fallback: assume available if we can't find specific logic
+            investedInBaseline += parseFloat(asset.amount || 0);
+          }
+        });
+      } else {
+        // Fallback if no details
+        investedInBaseline = initialInvested;
+      }
+
       // Helper to calculate wealth for a percentile
       const calcWealth = (percentilePath) => {
         if (!percentilePath) return totalBase;
 
         let mcInvestedVal = initialInvested; // default (flat)
+        // MC Simulation Value (Asset Value at Year X)
         const mcRow = percentilePath.find(m => parseInt(m.year) === rowYear);
         if (mcRow && !isNaN(parseFloat(mcRow.value))) {
           mcInvestedVal = parseFloat(mcRow.value);
         }
 
-        // (BaselineTotal - BaselineConstantInvested) + MCInvested
-        // Note: Baseline calculation assumes 0% return, so "Invested" part stays constant at 'initialInvested'
-        return (totalBase - initialInvested) + mcInvestedVal;
+        // Logic:
+        // TotalBase includes [Liquid Cash] + [available InvestedPrincipal].
+        // We want to show [Liquid Cash] + [MC Market Value].
+        // So: (TotalBase - available InvestedPrincipal) + MC Market Value.
+        return (totalBase - investedInBaseline) + mcInvestedVal;
       };
 
       return {
@@ -1801,7 +1849,7 @@ const ScenarioResult = () => {
         mc10: calcWealth(monteCarloProjections.p10)
       };
     });
-  }, [projection, monteCarloProjections]);
+  }, [projection, monteCarloProjections, assets]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

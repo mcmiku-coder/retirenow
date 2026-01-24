@@ -51,7 +51,21 @@ export function getInvestedBookAssets(assets, scenarioData) {
 
     return assets.filter(asset => {
         const productId = scenarioData.investmentSelections[asset.id];
-        return productId && getProductById(productId) && asset.strategy === 'Invested';
+        const hasProduct = productId && getProductById(productId) && asset.strategy === 'Invested';
+
+        if (!hasProduct) return false;
+
+        // CRITICAL FIX: Exclude assets that are not yet available (Future Assets).
+        // The Monte Carlo simulation runs from T=0. We generally cannot simulate returns on money we don't have yet 
+        // without a more complex time-variant simulation engine.
+        // For now, treat future assets as "Cash" (Baseline) when they arrive, rather than "Invested from Start".
+        if (asset.availabilityDate) {
+            const currentYear = new Date().getFullYear();
+            const availYear = new Date(asset.availabilityDate).getFullYear();
+            if (availYear > currentYear) return false;
+        }
+
+        return true;
     });
 }
 
