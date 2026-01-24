@@ -168,31 +168,43 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
 
     console.log(`Running portfolio Monte Carlo with ${portfolioAssets.length} assets, total: ${totalAmount}`);
 
-    const simulations = [];
-
     // Run simulations
+    // We store arrays of values per year to calculate Point-in-Time percentiles
+    // Structure: yearValues[yearIndex] = [val_sim1, val_sim2, ...]
+    const yearValues = Array(years + 1).fill(0).map(() => new Float32Array(iterations));
+
     for (let i = 0; i < iterations; i++) {
         const path = generatePortfolioPath(portfolioAssets, years);
-        simulations.push({
-            path: path,
-            finalValue: path[path.length - 1]
+        for (let y = 0; y <= years; y++) {
+            yearValues[y][i] = path[y];
+        }
+    }
+
+    // Calculate percentiles for each year independently (Point-in-Time)
+    // This creates smooth curves ("cones of uncertainty") instead of wiggly single paths
+    const percentiles = {};
+    const pLevels = [5, 10, 25, 50, 75, 90, 95];
+
+    // Initialize percentile paths
+    pLevels.forEach(p => {
+        percentiles[`p${p}`] = { path: new Float32Array(years + 1) };
+    });
+
+    for (let y = 0; y <= years; y++) {
+        // Sort values for this year
+        yearValues[y].sort(); // Float32Array sorts numerically by default in modern browsers (or lexicographically in old, but we assume modern env)
+
+        pLevels.forEach(p => {
+            const index = Math.floor((p / 100) * (iterations - 1));
+            percentiles[`p${p}`].path[y] = yearValues[y][index];
         });
     }
 
-    // Sort by final value for percentile calculation
-    simulations.sort((a, b) => a.finalValue - b.finalValue);
-
-    // Calculate percentiles (5th through 95th in 5% increments)
-    const percentiles = {};
-    for (let p = 5; p <= 95; p += 5) {
-        const index = Math.floor((p / 100) * iterations);
-        percentiles[`p${p}`] = simulations[index];
-    }
-
+    // Return the result (structure compatible with existing consumers)
     return {
         portfolioAssets: portfolioAssets,
         totalAmount: totalAmount,
-        simulations: simulations,
+        simulations: [], // We no longer return raw paths to save memory
         percentiles: percentiles,
         timestamp: Date.now()
     };
