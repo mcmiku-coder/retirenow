@@ -194,6 +194,221 @@ const CapitalManagementSetup = () => {
         return <div className="p-8 text-center">{language === 'fr' ? 'Chargement...' : 'Loading...'}</div>;
     }
 
+    if (showProductPicker) {
+        return (
+            <div className="min-h-screen bg-background text-foreground animate-in slide-in-from-bottom-4 duration-300" data-testid="product-picker-page">
+                {/* Sticky Header */}
+                <div className="border-b bg-card shadow-sm sticky top-0 z-50">
+                    <div className="max-w-[1600px] mx-auto p-4 relative flex items-center justify-center">
+                        {/* Centered Title */}
+                        <div className="text-center">
+                            <h2 className="text-2xl font-bold flex items-center justify-center gap-2 mb-1 tracking-tight font-sans">
+                                {language === 'fr' ? 'Sélectionner un produit d\'investissement' : 'Select Investment Product'}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {language === 'fr' ? 'Choisissez le produit qui correspond à votre stratégie' : 'Choose the product matching your strategy'}
+                            </p>
+                        </div>
+
+                        {/* Right Actions */}
+                        <div className="absolute right-4 flex gap-3">
+                            <Button variant="outline" onClick={() => setShowProductPicker(false)}>
+                                {language === 'fr' ? 'Annuler' : 'Cancel'}
+                            </Button>
+                            <Button
+                                onClick={saveProductSelection}
+                                disabled={!selectedProductId}
+                                className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+                            >
+                                {language === 'fr' ? 'Sauvegarder la sélection' : 'Save Selection'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="max-w-[1600px] mx-auto p-6 pb-20">
+                    {/* Asset Class Filter Buttons */}
+                    <div className="flex gap-3 mb-8 flex-wrap justify-center sticky top-[80px] z-40 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full border shadow-sm w-fit mx-auto px-6">
+                        <button
+                            onClick={() => setAssetClassFilter(null)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === null
+                                ? 'bg-primary text-primary-foreground shadow-md'
+                                : 'hover:bg-muted'
+                                }`}
+                        >
+                            {language === 'fr' ? 'Tous' : 'All'}
+                        </button>
+
+                        <button
+                            onClick={() => setAssetClassFilter('Equities')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === 'Equities'
+                                ? 'bg-red-500 text-white shadow-md'
+                                : 'text-red-500 hover:bg-red-50'
+                                }`}
+                        >
+                            <TrendingUp className="h-4 w-4" />
+                            {language === 'fr' ? 'Actions' : 'Equities'}
+                        </button>
+
+                        <button
+                            onClick={() => setAssetClassFilter('Bonds')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === 'Bonds'
+                                ? 'bg-orange-500 text-white shadow-md'
+                                : 'text-orange-500 hover:bg-orange-50'
+                                }`}
+                        >
+                            <Landmark className="h-4 w-4" />
+                            {language === 'fr' ? 'Obligations' : 'Bonds'}
+                        </button>
+
+                        <button
+                            onClick={() => setAssetClassFilter('Real Estate')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === 'Real Estate'
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : 'text-blue-500 hover:bg-blue-50'
+                                }`}
+                        >
+                            <Home className="h-4 w-4" />
+                            {language === 'fr' ? 'Immobilier' : 'Real Estate'}
+                        </button>
+
+                        <button
+                            onClick={() => setAssetClassFilter('Commodities')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === 'Commodities'
+                                ? 'bg-yellow-500 text-white shadow-md'
+                                : 'text-yellow-500 hover:bg-yellow-50'
+                                }`}
+                        >
+                            <Coins className="h-4 w-4" />
+                            {language === 'fr' ? 'Matières premières' : 'Commodities'}
+                        </button>
+
+                        <button
+                            onClick={() => setAssetClassFilter('Money Market')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === 'Money Market'
+                                ? 'bg-green-500 text-white shadow-md'
+                                : 'text-green-500 hover:bg-green-50'
+                                }`}
+                        >
+                            <Banknote className="h-4 w-4" />
+                            {language === 'fr' ? 'Monétaire' : 'Money Market'}
+                        </button>
+                    </div>
+
+                    <RadioGroup value={selectedProductId} onValueChange={setSelectedProductId}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {investmentProducts
+                                .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
+                                .map((product) => {
+                                    const isSelected = selectedProductId === product.id;
+                                    return (
+                                        <Card
+                                            key={product.id}
+                                            className={`relative cursor-pointer hover:border-primary transition-all duration-200 ${isSelected ? 'ring-2 ring-primary border-primary shadow-xl scale-[1.02]' : 'hover:shadow-md'
+                                                }`}
+                                            onClick={() => setSelectedProductId(previous => previous === product.id ? null : product.id)}
+                                        >
+                                            <CardContent className="p-5">
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
+                                                        {product.assetClass === 'Equities' && <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                        {product.assetClass === 'Bonds' && <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                        {product.assetClass === 'Real Estate' && <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                        {product.assetClass === 'Money Market' && <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                        {product.assetClass === 'Commodities' && <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                    </div>
+                                                    <RadioGroupItem value={product.id} id={product.id} className="mt-1" />
+                                                </div>
+
+                                                <div className="mb-4">
+                                                    <h3 className="font-bold text-lg leading-tight mb-1 tracking-tight font-sans">{product.name}</h3>
+                                                    <div className="text-sm text-muted-foreground font-mono">{product.ticker}</div>
+                                                </div>
+
+                                                <div className={`mb-4 w-full ${isSelected ? 'h-40' : 'h-32'}`}>
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={product.performanceData}>
+                                                            <XAxis dataKey="year" hide />
+                                                            <YAxis hide domain={['auto', 'auto']} />
+                                                            <Tooltip
+                                                                contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                                                                itemStyle={{ padding: 0 }}
+                                                            />
+
+                                                            {/* Highlight Max Loss Period */}
+                                                            {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (
+                                                                <ReferenceArea
+                                                                    x1={parseInt(product.metrics.max3YLossPeriod.split('-')[0])}
+                                                                    x2={parseInt(product.metrics.max3YLossPeriod.split('-')[1])}
+                                                                    fill="red"
+                                                                    fillOpacity={0.2}
+                                                                />
+                                                            )}
+
+                                                            {/* Highlight Max Gain Period */}
+                                                            {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (
+                                                                <ReferenceArea
+                                                                    x1={parseInt(product.metrics.max3YGainPeriod.split('-')[0])}
+                                                                    x2={parseInt(product.metrics.max3YGainPeriod.split('-')[1])}
+                                                                    fill="green"
+                                                                    fillOpacity={0.2}
+                                                                />
+                                                            )}
+
+                                                            <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
+                                                    <div>
+                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return'}</span>
+                                                        <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Volatilité' : 'Volatility'}</span>
+                                                        <span className="font-semibold">{product.metrics.avgVolatility}%</span>
+                                                    </div>
+
+                                                    <div
+                                                        className="cursor-pointer hover:bg-red-50 p-1 -ml-1 rounded transition-colors group"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'loss' ? null : 'loss' }));
+                                                        }}
+                                                    >
+                                                        <span className="text-muted-foreground block text-xs group-hover:text-red-600 transition-colors">{language === 'fr' ? 'Perte Max' : 'Max Loss'}</span>
+                                                        <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
+                                                        {isSelected && product.metrics.max3YLossPeriod && (
+                                                            <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YLossPeriod})</span>
+                                                        )}
+                                                    </div>
+
+                                                    <div
+                                                        className="text-right cursor-pointer hover:bg-green-50 p-1 -mr-1 rounded transition-colors group"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'gain' ? null : 'gain' }));
+                                                        }}
+                                                    >
+                                                        <span className="text-muted-foreground block text-xs group-hover:text-green-600 transition-colors">{language === 'fr' ? 'Gain Max' : 'Max Gain'}</span>
+                                                        <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
+                                                        {isSelected && product.metrics.max3YGainPeriod && (
+                                                            <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YGainPeriod})</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                        </div>
+                    </RadioGroup>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen py-6" data-testid="capital-management-page">
             <PageHeader
@@ -306,253 +521,7 @@ const CapitalManagementSetup = () => {
                 </Card>
             </div>
 
-            {/* Investment Product Picker Modal */}
-            <Dialog open={showProductPicker} onOpenChange={setShowProductPicker}>
-                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            {language === 'fr' ? 'Sélectionner un produit d\'investissement' : 'Select Investment Product'}
-                        </DialogTitle>
-                    </DialogHeader>
 
-                    {/* Asset Class Filter Buttons */}
-                    <div className="flex gap-3 mt-4 mb-2 flex-wrap justify-center">
-                        <button
-                            onClick={() => setAssetClassFilter(null)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === null
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <span className="font-medium text-sm">{language === 'fr' ? 'Tous' : 'All'}</span>
-                        </button>
-
-                        <button
-                            onClick={() => setAssetClassFilter('Equities')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === 'Equities'
-                                ? 'bg-red-500/20 border-2 border-red-500'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <TrendingUp className="h-4 w-4 text-red-500" />
-                            <span className="font-medium text-sm text-red-500">{language === 'fr' ? 'Actions' : 'Equities'}</span>
-                        </button>
-
-                        <button
-                            onClick={() => setAssetClassFilter('Bonds')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === 'Bonds'
-                                ? 'bg-orange-500/20 border-2 border-orange-500'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <Landmark className="h-4 w-4 text-orange-500" />
-                            <span className="font-medium text-sm text-orange-500">{language === 'fr' ? 'Obligations' : 'Bonds'}</span>
-                        </button>
-
-                        <button
-                            onClick={() => setAssetClassFilter('Real Estate')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === 'Real Estate'
-                                ? 'bg-blue-500/20 border-2 border-blue-500'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <Home className="h-4 w-4 text-blue-500" />
-                            <span className="font-medium text-sm text-blue-500">{language === 'fr' ? 'Immobilier' : 'Real Estate'}</span>
-                        </button>
-
-                        <button
-                            onClick={() => setAssetClassFilter('Commodities')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === 'Commodities'
-                                ? 'bg-yellow-500/20 border-2 border-yellow-500'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <Coins className="h-4 w-4 text-yellow-500" />
-                            <span className="font-medium text-sm text-yellow-500">{language === 'fr' ? 'Matières premières' : 'Commodities'}</span>
-                        </button>
-
-                        <button
-                            onClick={() => setAssetClassFilter('Money Market')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${assetClassFilter === 'Money Market'
-                                ? 'bg-green-500/20 border-2 border-green-500'
-                                : 'bg-muted hover:bg-muted/80'
-                                }`}
-                        >
-                            <Banknote className="h-4 w-4 text-green-500" />
-                            <span className="font-medium text-sm text-green-500">{language === 'fr' ? 'Monétaire' : 'Money Market'}</span>
-                        </button>
-                    </div>
-
-                    <RadioGroup value={selectedProductId} onValueChange={setSelectedProductId}>
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                            {investmentProducts
-                                .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
-                                .map((product, index) => {
-                                    const isSelected = selectedProductId === product.id;
-                                    // Determine transform origin based on position in grid
-                                    const row = Math.floor(index / 3);
-                                    const col = index % 3;
-                                    let transformOrigin = 'center';
-                                    if (row === 0 && col === 0) transformOrigin = 'top left';
-                                    else if (row === 0 && col === 2) transformOrigin = 'top right';
-                                    else if (row === 0) transformOrigin = 'top center';
-                                    else if (col === 0) transformOrigin = 'center left';
-                                    else if (col === 2) transformOrigin = 'center right';
-
-                                    return (
-                                        <Card
-                                            key={product.id}
-                                            className={`relative cursor-pointer hover:border-primary transition-all duration-300 ${isSelected ? 'scale-125 z-10 border-primary shadow-2xl' : 'scale-100'
-                                                }`}
-                                            style={{
-                                                transformOrigin: transformOrigin,
-                                            }}
-                                        >
-                                            <CardContent className="p-4">
-                                                {/* Header with Icon and Radio Button - CLICKABLE ZONE */}
-                                                <div
-                                                    className="cursor-pointer"
-                                                    onClick={() => {
-                                                        // Toggle: if already selected, deselect (set to null), otherwise select this product
-                                                        setSelectedProductId(selectedProductId === product.id ? null : product.id);
-                                                    }}
-                                                >
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        {/* Asset Class Icon */}
-                                                        <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
-                                                            {product.assetClass === 'Equities' && (
-                                                                <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />
-                                                            )}
-                                                            {product.assetClass === 'Bonds' && (
-                                                                <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />
-                                                            )}
-                                                            {product.assetClass === 'Real Estate' && (
-                                                                <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />
-                                                            )}
-                                                            {product.assetClass === 'Money Market' && (
-                                                                <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />
-                                                            )}
-                                                            {product.assetClass === 'Commodities' && (
-                                                                <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />
-                                                            )}
-                                                        </div>
-
-                                                        {/* Radio Button */}
-                                                        <RadioGroupItem value={product.id} id={product.id} />
-                                                    </div>
-
-                                                    {/* Product Name */}
-                                                    <div className="block mb-3">
-                                                        <div className="font-semibold text-sm">{product.name}</div>
-                                                        <div className="text-xs text-muted-foreground">{product.ticker}</div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Performance Chart */}
-                                                <div className={`mb-3 ${isSelected ? 'h-36' : 'h-32'}`}>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={product.performanceData}>
-                                                            <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-                                                            <YAxis tick={{ fontSize: 10 }} />
-                                                            <Tooltip />
-
-                                                            {/* Highlight Max Loss Period */}
-                                                            {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (
-                                                                <ReferenceArea
-                                                                    x1={parseInt(product.metrics.max3YLossPeriod.split('-')[0])}
-                                                                    x2={parseInt(product.metrics.max3YLossPeriod.split('-')[1])}
-                                                                    fill="red"
-                                                                    fillOpacity={0.3}
-                                                                    stroke="red"
-                                                                    strokeWidth={2}
-                                                                />
-                                                            )}
-
-                                                            {/* Highlight Max Gain Period */}
-                                                            {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (
-                                                                <ReferenceArea
-                                                                    x1={parseInt(product.metrics.max3YGainPeriod.split('-')[0])}
-                                                                    x2={parseInt(product.metrics.max3YGainPeriod.split('-')[1])}
-                                                                    fill="green"
-                                                                    fillOpacity={0.3}
-                                                                    stroke="green"
-                                                                    strokeWidth={2}
-                                                                />
-                                                            )}
-
-                                                            <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                {/* Metrics */}
-                                                <div className="space-y-1 text-xs">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">{language === 'fr' ? 'Rendement moyen (25a)' : 'Avg Return (25y)'}</span>
-                                                        <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">{language === 'fr' ? 'Volatilité moyenne' : 'Avg Volatility'}</span>
-                                                        <span className="font-semibold">{product.metrics.avgVolatility}%</span>
-                                                    </div>
-                                                    <div
-                                                        className="flex justify-between cursor-pointer hover:bg-red-500/10 p-1 rounded transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setHighlightedPeriod(prev => ({
-                                                                ...prev,
-                                                                [product.id]: prev[product.id] === 'loss' ? null : 'loss'
-                                                            }));
-                                                        }}
-                                                    >
-                                                        <span className="text-muted-foreground">{language === 'fr' ? 'Perte max (3a)' : 'Max Loss (3y)'}</span>
-                                                        <div className="text-right">
-                                                            <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
-                                                            {isSelected && product.metrics.max3YLossPeriod && (
-                                                                <div className="text-[10px] text-muted-foreground">({product.metrics.max3YLossPeriod})</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        className="flex justify-between cursor-pointer hover:bg-green-500/10 p-1 rounded transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setHighlightedPeriod(prev => ({
-                                                                ...prev,
-                                                                [product.id]: prev[product.id] === 'gain' ? null : 'gain'
-                                                            }));
-                                                        }}
-                                                    >
-                                                        <span className="text-muted-foreground">{language === 'fr' ? 'Gain max (3a)' : 'Max Gain (3y)'}</span>
-                                                        <div className="text-right">
-                                                            <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
-                                                            {isSelected && product.metrics.max3YGainPeriod && (
-                                                                <div className="text-[10px] text-muted-foreground">({product.metrics.max3YGainPeriod})</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                        </div>
-                    </RadioGroup>
-
-                    <DialogFooter className="mt-6">
-                        <Button variant="outline" onClick={() => setShowProductPicker(false)}>
-                            {language === 'fr' ? 'Annuler' : 'Cancel'}
-                        </Button>
-                        <Button
-                            onClick={saveProductSelection}
-                            disabled={!selectedProductId}
-                            className="bg-blue-600 hover:bg-blue-700"
-                        >
-                            {language === 'fr' ? 'Sauvegarder' : 'Save'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 };

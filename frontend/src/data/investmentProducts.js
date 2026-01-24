@@ -399,6 +399,63 @@ export const getAllProducts = () => {
     return investmentProducts;
 };
 
+/**
+ * Correlation Matrix between Asset Classes
+ * Based on historical correlations between major asset classes
+ * Values range from -1 (perfect negative correlation) to +1 (perfect positive correlation)
+ */
+export const assetClassCorrelations = {
+    'Equities': {
+        'Equities': 1.00,      // Perfect correlation with itself
+        'Bonds': -0.15,        // Slight negative correlation (flight to safety)
+        'Real Estate': 0.55,   // Moderate positive correlation
+        'Commodities': 0.25,   // Low positive correlation
+        'Money Market': 0.05   // Very low correlation (near zero)
+    },
+    'Bonds': {
+        'Equities': -0.15,
+        'Bonds': 1.00,
+        'Real Estate': 0.10,
+        'Commodities': -0.05,
+        'Money Market': 0.40    // Higher correlation with cash-like assets
+    },
+    'Real Estate': {
+        'Equities': 0.55,
+        'Bonds': 0.10,
+        'Real Estate': 1.00,
+        'Commodities': 0.30,
+        'Money Market': 0.05
+    },
+    'Commodities': {
+        'Equities': 0.25,
+        'Bonds': -0.05,
+        'Real Estate': 0.30,
+        'Commodities': 1.00,
+        'Money Market': 0.00
+    },
+    'Money Market': {
+        'Equities': 0.05,
+        'Bonds': 0.40,
+        'Real Estate': 0.05,
+        'Commodities': 0.00,
+        'Money Market': 1.00
+    }
+};
+
+/**
+ * Get correlation between two asset classes
+ * @param {string} assetClass1 - First asset class
+ * @param {string} assetClass2 - Second asset class
+ * @returns {number} Correlation coefficient (-1 to 1)
+ */
+export const getCorrelation = (assetClass1, assetClass2) => {
+    if (!assetClassCorrelations[assetClass1] || !assetClassCorrelations[assetClass1][assetClass2]) {
+        console.warn(`Correlation not found for ${assetClass1} and ${assetClass2}, defaulting to 0`);
+        return 0;
+    }
+    return assetClassCorrelations[assetClass1][assetClass2];
+};
+
 // Helper to get asset class icon and color
 export const getAssetClassStyle = (assetClass) => {
     const styles = {

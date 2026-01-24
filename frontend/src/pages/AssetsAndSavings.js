@@ -181,6 +181,19 @@ const AssetsOverview = () => {
         setCurrentAssets(newAssets);
         const finalMaxId = Math.max(...newAssets.map(a => a.id));
         setNextAssetId(finalMaxId + 1);
+
+        // Save to database immediately
+        try {
+            const dataToSave = {
+                currentAssets: newAssets,
+                desiredOutflows
+            };
+            await saveAssetsData(user.email, masterKey, dataToSave);
+            toast.success(language === 'fr' ? 'Actifs réinitialisés' : 'Assets reset to defaults');
+        } catch (error) {
+            console.error('Error saving reset assets:', error);
+            toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting assets');
+        }
     };
 
     // Desired Outflows functions
@@ -207,9 +220,23 @@ const AssetsOverview = () => {
         setDesiredOutflows(desiredOutflows.filter(row => row.id !== id));
     };
 
-    const resetOutflows = () => {
-        setDesiredOutflows(getDefaultOutflows(theoreticalDeathDate));
+    const resetOutflows = async () => {
+        const newOutflows = getDefaultOutflows(theoreticalDeathDate);
+        setDesiredOutflows(newOutflows);
         setNextOutflowId(3);
+
+        // Save to database immediately
+        try {
+            const dataToSave = {
+                currentAssets,
+                desiredOutflows: newOutflows
+            };
+            await saveAssetsData(user.email, masterKey, dataToSave);
+            toast.success(language === 'fr' ? 'Sorties réinitialisées' : 'Outflows reset to defaults');
+        } catch (error) {
+            console.error('Error saving reset outflows:', error);
+            toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting outflows');
+        }
     };
 
     const handleSubmit = async (e) => {

@@ -375,14 +375,29 @@ const DataReview = () => {
             const oneTimeItems = [];
 
             // 1. Check for 3a from benefitsData
-            if (scenarioData.benefitsData.threeA && scenarioData.benefitsData.threeA.amount) {
-              oneTimeItems.push({
-                id: '3a',
-                name: '3a',
-                amount: scenarioData.benefitsData.threeA.amount,
-                startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
+            if (scenarioData.benefitsData.threeA) {
+              if (Array.isArray(scenarioData.benefitsData.threeA)) {
+                scenarioData.benefitsData.threeA.forEach((item, index) => {
+                  if (item.amount) {
+                    oneTimeItems.push({
+                      id: `3a_account_${index}`,
+                      name: `3a (${index + 1})`,
+                      amount: item.amount,
+                      startDate: item.startDate || wishedRetirementDate,
+                      frequency: 'One-time'
+                    });
+                  }
+                });
+              } else if (scenarioData.benefitsData.threeA.amount) {
+                // Fallback for legacy single object
+                oneTimeItems.push({
+                  id: '3a',
+                  name: '3a',
+                  amount: scenarioData.benefitsData.threeA.amount,
+                  startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
+                  frequency: 'One-time'
+                });
+              }
             }
 
             // 2. Check for Supplementary Pension capital from benefitsData
@@ -502,7 +517,7 @@ const DataReview = () => {
                 name: 'Projected LPP Pension at 65y',
                 amount: scenarioData.projectedLegalLPPPension,
                 adjustedAmount: scenarioData.projectedLegalLPPPension,
-                frequency: 'Monthly',
+                frequency: 'Yearly',
                 startDate: retirementDateStr,
                 endDate: deathDateStr,
                 isRetirement: true
@@ -518,27 +533,29 @@ const DataReview = () => {
               const bDate = new Date(userData.birthDate);
               const earlyRetDate = new Date(bDate);
               earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
-              // Set to same day/month as birthdate or specific logic? 
-              // Usually retirement is 1st of month after birthday? 
-              // Let's use the explicit selected date from previous step?
-              // Actually user inputs age.
-              // Let's rely on age calculation.
-              // User image shows "1.12.2040" for 60y. 
-              // Standard logic: 1st of month after age reached.
               earlyRetDate.setDate(1);
               earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
               earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
             }
 
-            // Check if fields exist (not just truthy) to handle zero values
-            if (scenarioData.projectedLPPPension !== undefined && scenarioData.projectedLPPPension !== null && scenarioData.projectedLPPPension !== '') {
+            // Get pension value from preRetirementRows for the selected age
+            let pensionValue = scenarioData.projectedLPPPension; // Fallback to old single value
+            if (scenarioData.preRetirementRows && scenarioData.earlyRetirementAge) {
+              const ageRow = scenarioData.preRetirementRows.find(row => row.age === parseInt(scenarioData.earlyRetirementAge));
+              if (ageRow && ageRow.pension) {
+                pensionValue = ageRow.pension;
+              }
+            }
+
+            // Check if pension value exists
+            if (pensionValue !== undefined && pensionValue !== null && pensionValue !== '') {
               processedRetirementIncome.push({
                 id: 'projected_lpp_pension',
-                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge} y`,
-                amount: scenarioData.projectedLPPPension,
-                adjustedAmount: scenarioData.projectedLPPPension,
-                frequency: 'Monthly',
-                startDate: earlyRetirementDateStr, // Use Calculated Early Date
+                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
+                amount: pensionValue,
+                adjustedAmount: pensionValue,
+                frequency: 'Yearly',
+                startDate: earlyRetirementDateStr,
                 endDate: deathDateStr,
                 isRetirement: true
               });
@@ -596,7 +613,14 @@ const DataReview = () => {
         }
 
         // STEP 1: Always load ORIGINAL income data from incomeData
-        const originalRegularIncomes = incomeData.filter(i => i.amount).map(i => {
+        // CRITICAL: Filter out any "ghost" retirement items that might have been saved as regular income
+        const originalRegularIncomes = incomeData.filter(i =>
+          i.amount &&
+          !i.location && // Regular incomes typically don't have location/isRetirement flags in this app version, checking ID/Name safely
+          !String(i.id || '').toLowerCase().includes('pension') &&
+          !String(i.id || '').toLowerCase().includes('lpp') &&
+          !String(i.name || '').toLowerCase().includes('pension')
+        ).map(i => {
           let endDate = i.endDate;
           if (opt2EarlyDateStr && (i.name === 'Net Salary' || i.name === 'Salary')) {
             endDate = opt2EarlyDateStr;
@@ -643,6 +667,18 @@ const DataReview = () => {
             }
             return item;
           });
+        }
+
+        // SAFETY CHECK: If for any reason Salary/Net Salary is missing from finalIncomes (e.g. corrupted adjustments/ghost filtering gone wrong),
+        // but it existed in original data, RESTORE IT!
+        const hasSalary = finalIncomes.some(i => i.name === 'Salary' || i.name === 'Net Salary');
+        if (!hasSalary) {
+          const originalSalary = originalRegularIncomes.find(i => i.name === 'Salary' || i.name === 'Net Salary');
+          if (originalSalary) {
+            console.log('Restoring missing Salary from original data');
+            // Ensure it is not marked as retirement
+            finalIncomes.push({ ...originalSalary, isRetirement: false });
+          }
         }
 
         console.log('Final incomes:', finalIncomes.length, '(original:', allOriginalIncomes.length, ')');
@@ -863,7 +899,7 @@ const DataReview = () => {
               name: 'Projected LPP Pension at 65y',
               amount: scenarioData.projectedLegalLPPPension,
               adjustedAmount: scenarioData.projectedLegalLPPPension,
-              frequency: scenarioData.legalLppPensionFrequency || 'Monthly',
+              frequency: 'Yearly', // Forced Yearly as per input label
               startDate: retirementLegalDate,
               endDate: deathDate,
               isRetirement: true
@@ -876,7 +912,7 @@ const DataReview = () => {
               name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge} y`,
               amount: scenarioData.projectedLPPPension,
               adjustedAmount: scenarioData.projectedLPPPension,
-              frequency: scenarioData.lppPensionFrequency || 'Monthly',
+              frequency: 'Yearly', // Always Yearly for option2
               startDate: retirementLegalDate,
               endDate: deathDate,
               isRetirement: true
@@ -1594,6 +1630,8 @@ const DataReview = () => {
           yearlyBreakdown: breakdown,
           adjustedIncomes: incomes,
           adjustedCosts: costs,
+          adjustedAssets: currentAssets,
+          adjustedDebts: desiredOutflows,
           incomeDateOverrides
         }
       });
