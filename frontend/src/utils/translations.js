@@ -499,7 +499,7 @@ export const translations = {
       step5Title: "Actifs et épargne",
       step5Desc: "Saisissez vos actifs liquides et non-liquides, vos rentrées futurs possibles (héritage, etc).",
       step6Title: "Données de prévoyance et choix du modèle de simulation",
-      step6Desc: "Saisissez vos données AVS, LPP et 3a, puis choissez l'une des 4 options de simulation suivantes:\n\n1) Simuler mon équilibre financier en prenant ma retraite à la date légale\n2) Choisir une date de retraite correspondant à l'une des dates de retraite anticipée possibles de mon plan de pension\n3) Choisir une date de retraite libre, indépendamment des possiblités de mon plan de retraite\n4) Calculer la date de retraite la plus précoce possible (solde au décès non négatif)",
+      step6Desc: "Saisissez vos données AVS, LPP et 3a. Précisez les montants, les fréquences et les dates pour chaque source.",
       step7Title: "Revue des données avant simulation",
       step7Desc: "Ajustez vos revenus et de coûts avant de lancer la simulation de long terme à l'aide de l'assistant qui vous suggèrera des ajustements liés au viellissement. Renseignez des paliers de revenus ou de coûts qui évoluent au cours du temps.",
       step7SpinOffTitle: "Gestion des actifs liquides (option avancée)",

@@ -421,10 +421,13 @@ const DataReview = () => {
                 amount: item.amount,
                 // If it exists, preserve user's adjusted amount, otherwise default to original
                 adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : item.amount,
-                category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid', // Default to Illiquid for retirement savings
+                // CRITICAL FIX: 3a and Supplementary Pension should be Liquid by default as they are cash payouts at retirement
+                category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Liquid',
                 preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
                 availabilityType: 'Date',
                 availabilityDate: item.startDate || wishedRetirementDate, // Default to start date (usually retirement date)
+                ownType: 'Date',
+                ownDate: item.startDate || wishedRetirementDate,
                 strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
                 isRetirement: true // Mark as coming from retirement inputs
               };
@@ -1032,15 +1035,29 @@ const DataReview = () => {
           if (scenarioData.benefitsData) {
             const oneTimeItems = [];
 
-            // 1. Check for 3a
-            if (scenarioData.benefitsData.threeA && scenarioData.benefitsData.threeA.amount) {
-              oneTimeItems.push({
-                id: '3a',
-                name: '3a',
-                amount: scenarioData.benefitsData.threeA.amount,
-                startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
+            // 1. Check for 3a (Handle Array or Single Object)
+            if (scenarioData.benefitsData.threeA) {
+              if (Array.isArray(scenarioData.benefitsData.threeA)) {
+                scenarioData.benefitsData.threeA.forEach((item, index) => {
+                  if (item.amount) {
+                    oneTimeItems.push({
+                      id: `3a_account_${index}`,
+                      name: `3a (${index + 1})`,
+                      amount: item.amount,
+                      startDate: item.startDate || wishedRetirementDate,
+                      frequency: 'One-time'
+                    });
+                  }
+                });
+              } else if (scenarioData.benefitsData.threeA.amount) {
+                oneTimeItems.push({
+                  id: '3a',
+                  name: '3a',
+                  amount: scenarioData.benefitsData.threeA.amount,
+                  startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
+                  frequency: 'One-time'
+                });
+              }
             }
 
             // 2. Check for Supplementary Pension capital
@@ -1061,7 +1078,7 @@ const DataReview = () => {
                 name: item.name,
                 amount: item.amount,
                 adjustedAmount: item.amount, // Reset adjusted to original
-                category: 'Illiquid', // Default
+                category: 'Liquid', // 3a/Supplementary default to Liquid
                 preserve: 'No', // Default
                 availabilityType: 'Date',
                 availabilityDate: item.startDate || wishedRetirementDate,
@@ -2189,11 +2206,14 @@ const DataReview = () => {
                         <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
                         <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                        <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                        {/* Own Type Column Moved */}
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Propre Type' : 'Own Type'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Propre Valeur' : 'Own Value'}</th>
+                        {/* Preserve Column Removed */}
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de dispo.' : 'Availability Details'}</th>
+                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
                         <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                        <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
                         <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                       </tr>
                     </thead>
@@ -2208,7 +2228,14 @@ const DataReview = () => {
 
                         return (
                           <tr key={asset.id} className="border-b hover:bg-muted/30">
-                            <td className={`p-3 font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : 'text-white'}`}>{asset.name}</td>
+                            <td className="p-3">
+                              <Input
+                                type="text"
+                                value={asset.name}
+                                onChange={(e) => updateAsset(asset.id, 'name', e.target.value)}
+                                className={`font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : ''}`}
+                              />
+                            </td>
                             <td className="text-right p-3 text-muted-foreground">
                               CHF {originalAmount.toLocaleString()}
                             </td>
@@ -2239,19 +2266,50 @@ const DataReview = () => {
                                 </SelectContent>
                               </Select>
                             </td>
+                            {/* Preserve Cell Removed */}
+                            {/* Own Type Column Moved */}
                             <td className="p-3">
                               <Select
-                                value={asset.preserve}
-                                onValueChange={(value) => updateAsset(asset.id, 'preserve', value)}
+                                value={asset.ownType || 'Date'}
+                                onValueChange={(value) => updateAsset(asset.id, 'ownType', value)}
                               >
-                                <SelectTrigger className="max-w-[100px]">
+                                <SelectTrigger className="max-w-[120px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Yes">{language === 'fr' ? 'Oui' : 'Yes'}</SelectItem>
-                                  <SelectItem value="No">{language === 'fr' ? 'Non' : 'No'}</SelectItem>
+                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
                                 </SelectContent>
                               </Select>
+                            </td>
+                            {/* Own Value Column Moved */}
+                            <td className="p-3">
+                              {asset.ownType === 'Period' ? (
+                                <Select
+                                  value={asset.ownTimeframe || 'Select'}
+                                  onValueChange={(value) => updateAsset(asset.id, 'ownTimeframe', value === 'Select' ? '' : value)}
+                                >
+                                  <SelectTrigger className="max-w-[150px]">
+                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  type="date"
+                                  value={asset.ownDate || ''}
+                                  onChange={(e) => updateAsset(asset.id, 'ownDate', e.target.value)}
+                                  className="max-w-[140px]"
+                                />
+                              )}
                             </td>
                             <td className="p-3">
                               <Select
@@ -2315,7 +2373,7 @@ const DataReview = () => {
                                 placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
                                 value={asset.clusterTag || ''}
                                 onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
-                                className="max-w-[150px]"
+                                className="max-w-[150px] ml-auto" // Added ml-auto to align right content similar to text-right header
                               />
                             </td>
                             <td className="p-3">
@@ -2668,7 +2726,7 @@ const DataReview = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

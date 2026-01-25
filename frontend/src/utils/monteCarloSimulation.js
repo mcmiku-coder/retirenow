@@ -227,7 +227,9 @@ export function extractPercentile(simulationResult, percentile) {
     }
 
     // Convert path array to year-value objects
-    return percentileData.path.map((value, index) => ({
+    // Fix: Float32Array.map returns a typed array, which cannot hold objects. 
+    // We must use Array.from first or a standard loop.
+    return Array.from(percentileData.path).map((value, index) => ({
         year: new Date().getFullYear() + index,
         value: Math.round(value)
     }));

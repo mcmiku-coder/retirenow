@@ -81,6 +81,9 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Liquid',
             preserve: 'No',
+            ownType: 'Date',
+            ownDate: today,
+            availabilityType: 'Date',
             availabilityDate: today,
             availabilityTimeframe: '',
             locked: false
@@ -91,7 +94,10 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Illiquid',
             preserve: 'No',
-            availabilityDate: '',
+            ownType: 'Date',
+            ownDate: today,
+            availabilityType: 'Date',
+            availabilityDate: today,
             availabilityTimeframe: '',
             locked: false
         },
@@ -101,6 +107,9 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Illiquid',
             preserve: 'No',
+            ownType: 'Date',
+            ownDate: '',
+            availabilityType: 'Date',
             availabilityDate: '',
             availabilityTimeframe: '',
             locked: false
@@ -168,9 +177,11 @@ const AssetsOverview = () => {
                     amount: Math.round(reData.totals.assetValue).toString(),
                     category: 'Illiquid',
                     preserve: 'Yes',
-                    availabilityType: 'Period',
-                    availabilityTimeframe: 'within_20_25y',
+                    ownType: 'Date',
+                    ownDate: today,
+                    availabilityType: 'Date',
                     availabilityDate: '',
+                    availabilityTimeframe: '',
                     locked: false
                 });
             }
@@ -301,9 +312,10 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Préserver' : 'Preserve'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Propre Type' : 'Own Type'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Propre Valeur' : 'Own Value'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
@@ -348,20 +360,45 @@ const AssetsOverview = () => {
                                                         </Select>
                                                     </td>
                                                     <td className="p-2">
-                                                        <RadioGroup
-                                                            value={row.preserve}
-                                                            onValueChange={(value) => updateAsset(row.id, 'preserve', value)}
-                                                            className="flex gap-4"
+                                                        <Select
+                                                            value={row.ownType || 'Date'}
+                                                            onValueChange={(value) => updateAsset(row.id, 'ownType', value)}
+                                                            disabled={row.locked}
                                                         >
-                                                            <div className="flex items-center gap-1">
-                                                                <RadioGroupItem value="Yes" id={`asset-yes-${row.id}`} />
-                                                                <Label htmlFor={`asset-yes-${row.id}`} className="text-sm">{language === 'fr' ? 'Oui' : 'Yes'}</Label>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                <RadioGroupItem value="No" id={`asset-no-${row.id}`} />
-                                                                <Label htmlFor={`asset-no-${row.id}`} className="text-sm">{language === 'fr' ? 'Non' : 'No'}</Label>
-                                                            </div>
-                                                        </RadioGroup>
+                                                            <SelectTrigger className="min-w-[120px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {row.ownType === 'Period' ? (
+                                                            <Select
+                                                                value={row.ownTimeframe}
+                                                                onValueChange={(value) => updateAsset(row.id, 'ownTimeframe', value)}
+                                                                disabled={row.locked}
+                                                            >
+                                                                <SelectTrigger className="min-w-[180px]">
+                                                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {timeframeOptions.map(opt => (
+                                                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <Input
+                                                                type="date"
+                                                                value={row.ownDate || ''}
+                                                                onChange={(e) => updateAsset(row.id, 'ownDate', e.target.value)}
+                                                                disabled={row.locked}
+                                                                className="min-w-[140px]"
+                                                            />
+                                                        )}
                                                     </td>
                                                     <td className="p-2">
                                                         <Select
@@ -445,7 +482,7 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>

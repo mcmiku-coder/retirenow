@@ -94,3 +94,9 @@ input[type=number] {
         @apply bg-background text-foreground;
     }
 }
+
+/* Fix date picker icon visibility in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}

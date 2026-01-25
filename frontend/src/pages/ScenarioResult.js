@@ -19,7 +19,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 
@@ -148,6 +148,21 @@ const ScenarioResult = () => {
 
         let finalDebts = location.state?.adjustedDebts || sData?.desiredOutflows || [];
         finalDebts = finalDebts.filter(d => Math.abs(parseFloat(d.adjustedAmount || d.amount) || 0) > 0);
+
+        // MERGE INVESTED BOOK: Override liquid invested assets if customizable book exists
+        if (sData?.investedBook && Array.isArray(sData.investedBook)) {
+          // 1. Remove original items that would be replaced (Liquid + Invested)
+          // Note: We identify them by the same criteria used in CapitalManagementSetup
+          finalAssets = finalAssets.filter(a => !(a.category === 'Liquid' && a.strategy === 'Invested'));
+
+          // 2. Add the customized rows
+          const bookAssets = sData.investedBook.map(row => ({
+            ...row,
+            category: 'Liquid', // Ensure category is preserved for logic downstream
+            adjustedAmount: row.amount // Map amount to adjustedAmount for consistency
+          }));
+          finalAssets = [...finalAssets, ...bookAssets];
+        }
 
         // Filter Retirement Pillars: Exclude 'One-time' items (3a, LPP Capital) handled in Assets
         if (rData?.rows) {
@@ -821,7 +836,6 @@ const ScenarioResult = () => {
       // 3. Create updated scenario object to use immediately (avoiding state lag)
       const updatedScenarioData = {
         ...scenarioData,
-        earlyRetirementAge: years.toString(),
         projectedLPPPension: pensionValue,
         projectedLPPCapital: capitalValue,
         wishedRetirementDate: retirementDateStr
@@ -2204,7 +2218,7 @@ const ScenarioResult = () => {
             </CardHeader>
             <CardContent className="h-[545px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 10, right: 60, left: 20, bottom: 40 }} stackOffset="sign">
+                <ComposedChart data={chartData} margin={{ top: 10, right: 100, left: 20, bottom: 40 }} stackOffset="sign">
                   <defs>
                     <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -2247,7 +2261,7 @@ const ScenarioResult = () => {
                         // Only show label on the last point
                         if (chartData && index === chartData.length - 1) {
                           return (
-                            <text x={x} y={y} dx={10} dy={0} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={11} fontWeight="bold" textAnchor="start">
+                            <text x={x} y={y} dx={10} dy={0} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
                               {Math.round(value).toLocaleString()}
                             </text>
                           );
@@ -2272,7 +2286,7 @@ const ScenarioResult = () => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
                           return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={11} fontWeight="bold" textAnchor="start">
+                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
                               {Math.round(value).toLocaleString()}
                             </text>
                           );
@@ -2295,7 +2309,7 @@ const ScenarioResult = () => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
                           return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={11} fontWeight="bold" textAnchor="start">
+                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
                               {Math.round(value).toLocaleString()}
                             </text>
                           );
@@ -2318,7 +2332,7 @@ const ScenarioResult = () => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
                           return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={11} fontWeight="bold" textAnchor="start">
+                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
                               {Math.round(value).toLocaleString()}
                             </text>
                           );
@@ -2412,47 +2426,66 @@ const ScenarioResult = () => {
                   </div>
 
                   {/* Slider with age labels, ticks and dates */}
-                  <div className="space-y-2 pt-6"> {/* Added top padding for labels/ticks if needed, but styling is below */}
-                    <Slider
-                      value={[retirementAge]}
-                      onValueChange={(value) => setRetirementAge(value[0])}
-                      min={58}
-                      max={65}
-                      step={1 / 12} // Monthly steps (1/12 of a year)
-                      className="flex-1"
-                    />
+                  <div className="pt-6 flex gap-4 items-start">
+                    {/* Lock Icon */}
+                    <div className="pt-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary">
+                        <Lock className="h-4 w-4" />
+                      </Button>
+                    </div>
 
-                    {/* Age markers with Ticks and Dates */}
-                    <div className="relative h-12 text-xs text-gray-500 mt-2">
-                      {[58, 59, 60, 61, 62, 63, 64, 65].map(age => {
-                        // Calculate date for this integer age tick
-                        const tickDate = new Date(userData?.birthDate);
-                        tickDate.setFullYear(tickDate.getFullYear() + age);
-                        tickDate.setMonth(tickDate.getMonth() + 1); // +1 month logic consistent with retirement date
-                        tickDate.setDate(1);
+                    <div className="flex-1 space-y-2">
+                      {(() => {
+                        const minAge = parseInt(scenarioData?.earlyRetirementAge || '58', 10);
+                        const maxAge = 65;
+                        const range = maxAge - minAge;
 
                         return (
-                          <div
-                            key={age}
-                            className="absolute transform -translate-x-1/2 flex flex-col items-center"
-                            style={{
-                              left: `${((age - 58) / 7) * 100}%`,
-                              top: '-6px' // Position relative to the container below slider
-                            }}
-                          >
-                            {/* Tick Mark */}
-                            <div className="h-2 w-px bg-gray-400 mb-1"></div>
+                          <>
+                            <Slider
+                              value={[retirementAge]}
+                              onValueChange={(value) => setRetirementAge(value[0])}
+                              min={minAge}
+                              max={maxAge}
+                              step={1 / 12} // Monthly steps (1/12 of a year)
+                              className="flex-1"
+                            />
 
-                            {/* Age Label */}
-                            <span className="font-semibold">{age}</span>
+                            {/* Age markers with Ticks and Dates */}
+                            <div className="relative h-12 text-xs text-gray-500 mt-2">
+                              {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => {
+                                // Calculate date for this integer age tick
+                                const tickDate = new Date(userData?.birthDate);
+                                tickDate.setFullYear(tickDate.getFullYear() + age);
+                                tickDate.setMonth(tickDate.getMonth() + 1); // +1 month logic consistent with retirement date
+                                tickDate.setDate(1);
 
-                            {/* Date Label (Vertical or Small) */}
-                            <span className="text-[10px] text-gray-400 whitespace-nowrap mt-0.5">
-                              {tickDate.toLocaleDateString()}
-                            </span>
-                          </div>
+                                return (
+                                  <div
+                                    key={age}
+                                    className="absolute transform -translate-x-1/2 flex flex-col items-center"
+                                    style={{
+                                      left: `${((age - minAge) / range) * 100}%`,
+                                      top: '-6px' // Position relative to the container below slider
+                                    }}
+                                  >
+                                    {/* Tick Mark */}
+                                    <div className="h-2 w-px bg-gray-400 mb-1"></div>
+
+                                    {/* Age Label */}
+                                    <span className="font-semibold">{age}</span>
+
+                                    {/* Date Label (Vertical or Small) */}
+                                    <span className="text-[10px] text-gray-400 whitespace-nowrap mt-0.5">
+                                      {tickDate.toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   </div>
 

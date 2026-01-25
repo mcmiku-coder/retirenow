@@ -150,7 +150,7 @@ export const generateComprehensivePDF = async ({
   if (activeAssets.length > 0) {
     autoTable(pdf, {
       startY: yPosition,
-      head: [['Name', 'Original Value', 'Adjusted Value', 'Category', 'Preserve', 'Availability Type', 'Availability Details', 'Strategy', 'Cluster Tag']],
+      head: [['Name', 'Original Value', 'Adjusted Value', 'Category', 'Preserve', 'Availability Type', 'Availability Value', 'Strategy', 'Cluster Tag']],
       body: activeAssets.map(a => [
         a.name,
         formatNumber(parseFloat(a.amount)),
@@ -216,7 +216,7 @@ export const generateComprehensivePDF = async ({
   if (activeDebts.length > 0) {
     autoTable(pdf, {
       startY: yPosition,
-      head: [['Name', 'Original Value', 'Adjusted Value', 'Availability Type', 'Availability Details', 'Cluster Tag']],
+      head: [['Name', 'Original Value', 'Adjusted Value', 'Availability Type', 'Availability Value', 'Cluster Tag']],
       body: activeDebts.map(d => [
         d.name,
         formatNumber(parseFloat(d.amount)),

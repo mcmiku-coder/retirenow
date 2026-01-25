@@ -28,9 +28,42 @@ const CapitalManagementSetup = () => {
     const [highlightedPeriod, setHighlightedPeriod] = useState({}); // { productId: 'loss' | 'gain' | null }
     const [deathDate, setDeathDate] = useState('');
 
+    const [isSaving, setIsSaving] = useState(false);
+
     useEffect(() => {
         loadData();
     }, [user, masterKey]);
+
+    const handleContinue = async () => {
+        if (!user?.email || !masterKey) return;
+
+        setIsSaving(true);
+        try {
+            const scenarioData = await getScenarioData(user.email, masterKey);
+
+            // Transform tableRows into "Asset" like objects for the simulation
+            // explicitly marking them as 'Invested' and mapping startDate to availabilityDate
+            const investedBook = tableRows.map(row => ({
+                id: row.id,
+                name: row.name,
+                amount: parseFloat(row.amount || 0), // Use the user-adjusted amount
+                strategy: 'Invested',
+                availabilityDate: row.startDate,
+                endDate: row.endDate,
+                // Ensure we keep the product selection ID if needed (though it's in investmentSelections)
+                selectedProduct: row.selectedProduct
+            }));
+
+            scenarioData.investedBook = investedBook;
+
+            await saveScenarioData(user.email, masterKey, scenarioData);
+            navigate('/result');
+        } catch (error) {
+            console.error('Error saving invested book:', error);
+            alert('Failed to save changes. Please try again.');
+            setIsSaving(false);
+        }
+    };
 
     const loadData = async () => {
         if (!user?.email || !masterKey) {
@@ -328,7 +361,13 @@ const CapitalManagementSetup = () => {
                                                 <div className={`mb-4 w-full ${isSelected ? 'h-40' : 'h-32'}`}>
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <LineChart data={product.performanceData}>
-                                                            <XAxis dataKey="year" hide />
+                                                            <XAxis
+                                                                dataKey="year"
+                                                                axisLine={false}
+                                                                tickLine={false}
+                                                                tick={{ fontSize: 10, fill: '#888888' }}
+                                                                minTickGap={30}
+                                                            />
                                                             <YAxis hide domain={['auto', 'auto']} />
                                                             <Tooltip
                                                                 contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
@@ -362,7 +401,7 @@ const CapitalManagementSetup = () => {
 
                                                 <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
                                                     <div>
-                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return'}</span>
+                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return (25y)'}</span>
                                                         <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
                                                     </div>
                                                     <div className="text-right">
@@ -452,7 +491,14 @@ const CapitalManagementSetup = () => {
                                         {tableRows.map((row, index) => (
                                             <tr key={row.id} className="border-b hover:bg-muted/30">
                                                 <td className="p-3 font-medium">{row.name}</td>
-                                                <td className="text-right p-3 text-muted-foreground">{formatAmount(row.amount)}</td>
+                                                <td className="p-3 text-right">
+                                                    <Input
+                                                        type="number"
+                                                        value={row.amount}
+                                                        onChange={(e) => updateRow(index, 'amount', e.target.value)}
+                                                        className="max-w-[150px] ml-auto text-right"
+                                                    />
+                                                </td>
                                                 <td className="p-3">
                                                     <Input
                                                         type="date"
@@ -511,17 +557,16 @@ const CapitalManagementSetup = () => {
                                 {language === 'fr' ? 'Retour' : 'Back'}
                             </Button>
                             <Button
-                                onClick={() => navigate('/result')}
+                                onClick={handleContinue}
                                 className="bg-blue-600 hover:bg-blue-700"
+                                disabled={isSaving}
                             >
-                                {language === 'fr' ? 'Continuer vers le verdict' : 'Continue to Verdict'}
+                                {isSaving ? (language === 'fr' ? 'Sauvegarde...' : 'Saving...') : (language === 'fr' ? 'Continuer vers le verdict' : 'Continue to Verdict')}
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
             </div>
-
-
         </div>
     );
 };
