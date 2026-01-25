@@ -75,9 +75,10 @@ const CapitalManagementSetup = () => {
         setLoading(true);
         try {
             const scenarioData = await getScenarioData(user.email, masterKey);
-            // Clear current selections
-            if (scenarioData.investmentSelections) {
+            // Clear current selections and the final invested book
+            if (scenarioData) {
                 scenarioData.investmentSelections = {};
+                scenarioData.investedBook = [];
                 await saveScenarioData(user.email, masterKey, scenarioData);
             }
             // Reload defaults

@@ -10,11 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
-import { Slider } from '../components/ui/slider';
 import { Checkbox } from '../components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb, Copy } from 'lucide-react';
@@ -74,115 +71,9 @@ const DataReview = () => {
   const [desiredOutflows, setDesiredOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Adjustment Modal State
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [adjustRows, setAdjustRows] = useState([]);
-
-  // Initialize modal data
-  const openAdjustModal = () => {
-    const targetCostKeys = ['Vacation', 'Private transportation']; // English keys from COST_KEYS
-
-    const newRows = targetCostKeys.map(englishKey => {
-      const translationKey = COST_KEYS[englishKey];
-      const translatedName = t(`costs.costNames.${translationKey}`);
-
-      // Find cost by its original English name or its translated name
-      const cost = costs.find(c =>
-        c.name === englishKey ||
-        c.name === translatedName ||
-        (c.name && c.name.startsWith('costs.costNames.') && t(c.name) === translatedName)
-      );
-
-      if (cost) {
-        const currentAmount = parseFloat(cost.amount || 0);
-        const adjustedAmount = parseFloat(cost.adjustedAmount || cost.amount || 0);
-        return {
-          id: cost.id, // Assuming costs have unique IDs
-          name: getCostName(cost.name), // Display translated name
-          originalAmount: currentAmount,
-          frequency: cost.frequency,
-          adjustedAmount: adjustedAmount,
-          changeAtAge: parseFloat(cost.changeAtAge || 75), // Default age
-          checked: false
-        };
-      }
-      return null;
-    }).filter(Boolean);
-
-    setAdjustRows(newRows);
-    setShowAdjustModal(true);
-  };
-
-  const handleAdjustRowChange = (id, field, value) => {
-    setAdjustRows(prev => prev.map(row =>
-      row.id === id ? { ...row, [field]: value } : row
-    ));
-  };
-
-  // Apply changes to actual costs
-  const applyTableAdjustments = () => {
-    let updatedCosts = [...costs];
-    const bDateObj = new Date(birthDate);
-
-    adjustRows.forEach(row => {
-      const originalIndex = updatedCosts.findIndex(c => c.id === row.id);
-      if (originalIndex === -1) return;
-      const originalCost = updatedCosts[originalIndex];
-
-      if (row.checked) {
-        // SPLIT LOGIC
-        const splitAge = row.changeAtAge;
-        const splitYear = bDateObj.getFullYear() + splitAge;
-
-        // Construct date object
-        const splitDateObj = new Date(splitYear, bDateObj.getMonth(), bDateObj.getDate());
-
-        // Format as YYYY-MM-DD (ISO) for state consistency and Input[type="date"]
-        const day = String(splitDateObj.getDate()).padStart(2, '0');
-        const month = String(splitDateObj.getMonth() + 1).padStart(2, '0');
-        const year = splitDateObj.getFullYear();
-        const splitDateStr = `${year}-${month}-${day}`;
-
-        // Define Group ID for Split Visualization on BOTH parent and child
-        const groupId = originalCost.groupId || originalCost.id;
-
-        // 1. Update End Date of Original Item AND Assign Group ID
-        const modifiedOriginal = {
-          ...originalCost,
-          endDate: splitDateStr,
-          groupId: groupId
-        };
-
-        // 2. Create New Cost Item for the Split Period
-        const newSplitCost = {
-          ...originalCost,
-          id: `${originalCost.id}-split-${Date.now()}`,
-          parentId: originalCost.id, // Link to parent to trigger "split" icon/logic
-          groupId: groupId, // Group with parent for visual grouping
-          name: originalCost.name,
-          startDate: splitDateStr,
-          endDate: originalCost.endDate,
-          amount: originalCost.amount, // Inherit usage of original amount as base
-          adjustedAmount: row.adjustedAmount, // New adjusted amount
-          isSplit: true
-        };
-
-        updatedCosts[originalIndex] = modifiedOriginal;
-        // Insert right after original for visual continuity
-        updatedCosts.splice(originalIndex + 1, 0, newSplitCost);
-
-      } else {
-        // GLOBAL UPDATE LOGIC
-        updatedCosts[originalIndex] = {
-          ...originalCost,
-          adjustedAmount: row.adjustedAmount
-        };
-      }
-    });
-
-    setCosts(updatedCosts);
-    setShowAdjustModal(false);
-    toast.success(language === 'fr' ? 'Ajustements appliqués' : 'Adjustments applied');
+  // Adjustment button handler
+  const handleSuggestionClick = () => {
+    navigate('/adjustment-advice');
   };
 
   // Retirement option: 'option1', 'option2', or 'option3'
@@ -1151,9 +1042,10 @@ const DataReview = () => {
       // Autosave the reset state
       await saveScenarioData(user.email, masterKey, {
         ...scenarioData,
-        currentAssets: loadedCurrentAssets, // Save the reset assets list
-        liquidAssets, // These will update via useEffect but good to keep consistency if possible, though state update might lag slightly
-        nonLiquidAssets
+        currentAssets: loadedCurrentAssets,
+        liquidAssets,
+        nonLiquidAssets,
+        investedBook: [] // CLEAR GHOSTS: Reset investment customizations when assets are reset
       });
 
       toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
@@ -1835,7 +1727,7 @@ const DataReview = () => {
           description={language === 'fr' ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation' : 'Review and adjust incomes and costs before running the simulation'}
           rightContent={
             <Button
-              onClick={openAdjustModal}
+              onClick={handleSuggestionClick}
               className="bg-green-600 hover:bg-green-700 text-white gap-2"
             >
               <Lightbulb className="h-4 w-4" />
@@ -1843,138 +1735,6 @@ const DataReview = () => {
             </Button>
           }
         />
-
-        {/* Adjust Modal */}
-        <Dialog open={showAdjustModal} onOpenChange={setShowAdjustModal}>
-          <DialogContent className="max-w-7xl bg-card text-card-foreground border-border">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                {language === 'fr' ? 'Donnez-moi des conseils d\'ajustement' : 'Give me some adjustment advice'}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="mt-6">
-
-              {/* Header Row */}
-              <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-base font-medium text-white px-2">
-                <div></div>
-                <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
-                <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
-                <div>{language === 'fr' ? 'Fréquence' : 'Frequency'}</div>
-                <div>{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</div>
-                <div>{/* Slider */}</div>
-                <div className="text-right">{language === 'fr' ? 'Changement à' : 'Change at'}</div>
-              </div>
-
-              <div className="space-y-3">
-                {adjustRows.length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    {language === 'fr' ? 'Aucun coût pertinent trouvé.' : 'No relevant costs found to adjust.'}
-                  </div>
-                )}
-
-                {adjustRows.map(row => {
-                  const birthYear = new Date(birthDate).getFullYear();
-                  const deathYear = new Date(deathDate).getFullYear();
-                  const currentYear = new Date().getFullYear();
-                  const currentAge = currentYear - birthYear;
-                  const deathAge = deathYear - birthYear;
-                  const maxAge = deathAge - 1;
-                  const startAge = currentAge + 1;
-                  const ageOptions = [];
-                  if (startAge < maxAge) {
-                    for (let y = startAge; y <= maxAge; y++) {
-                      ageOptions.push(y);
-                    }
-                  } else {
-                    ageOptions.push(startAge);
-                  }
-
-                  return (
-                    <div key={row.id} className="mb-4">
-                      <p className="text-green-500 mb-2 text-sm font-medium">
-                        {language === 'fr'
-                          ? 'Vos dépenses de vacances diminuent dans les dernières années de votre vie, fixez un nouveau montant à partir d\'un âge choisi'
-                          : 'Your vacation expenses decrease in the later years of your life, set a new amount starting from a chosen age'}
-                      </p>
-                      <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center bg-muted/40 p-3 rounded-lg border border-border">
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            checked={row.checked}
-                            onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
-                          />
-                        </div>
-                        <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
-                        <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
-                        <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency, t)}</div>
-                        <div>
-                          <Input
-                            type="text"
-                            value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                            onChange={(e) => {
-                              const rawValue = e.target.value.replace(/'/g, '');
-                              if (!isNaN(rawValue)) {
-                                handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
-                              }
-                            }}
-                            className="h-9 text-right"
-                            style={{
-                              backgroundColor: parseFloat(row.adjustedAmount) < parseFloat(row.originalAmount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(row.adjustedAmount) > parseFloat(row.originalAmount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                            }}
-                          />
-                        </div>
-                        <div className="px-2">
-                          <Slider
-                            value={[row.adjustedAmount]}
-                            min={0}
-                            max={(row.originalAmount || 1000) * 1.5}
-                            step={100}
-                            onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                            className="py-2"
-                          />
-                        </div>
-                        <div>
-                          <Select
-                            value={row.changeAtAge?.toString()}
-                            onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
-                            disabled={!row.checked}
-                          >
-                            <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
-                              <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
-                            </SelectTrigger>
-                            <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
-                              {ageOptions.map(age => (
-                                <SelectItem key={age} value={age.toString()}>
-                                  {age} {language === 'fr' ? 'ans' : 'years'}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <DialogFooter className="mt-6 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                className="bg-transparent border-input text-muted-foreground hover:bg-muted"
-                onClick={() => setShowAdjustModal(false)}
-              >
-                {language === 'fr' ? 'Annuler' : 'Cancel'}
-              </Button>
-              <Button
-                className="bg-[#EF5343] hover:bg-[#d94334] text-white px-8"
-                onClick={applyTableAdjustments}
-              >
-                {language === 'fr' ? 'Appliquer' : 'Apply'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         <div className="w-[80%] mx-auto">
           {/* Dynamic Datalist for Cluster Tags */}
@@ -2422,6 +2182,18 @@ const DataReview = () => {
                     {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
                   </Button>
                 </div>
+
+                {currentAssets.some(asset => asset.strategy === 'Invested') && (
+                  <div className="mt-8 flex justify-center border-t pt-6">
+                    <Button
+                      onClick={() => navigate('/capital-setup')}
+                      className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
+                      size="lg"
+                    >
+                      {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -2707,13 +2479,6 @@ const DataReview = () => {
             </Card>
 
             <div className="flex justify-center gap-4 mt-6">
-              <Button
-                onClick={() => navigate('/capital-setup')}
-                className="px-8 text-lg bg-blue-600 hover:bg-blue-700 text-white"
-                size="lg"
-              >
-                {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
-              </Button>
               <Button
                 data-testid="can-i-quit-btn"
                 onClick={runSimulation}

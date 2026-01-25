@@ -660,26 +660,6 @@ const RetirementParameters = () => {
                                         />
                                         <span className="text-white font-medium">{language === 'fr' ? 'Capital de pension supplémentaire' : 'Supplementary Pension plan'}</span>
                                     </label>
-
-                                    {
-                                        selectedPillars.lppSup && (
-                                            <div className="flex items-center gap-4 flex-1 animate-in slide-in-from-left-2 duration-200">
-                                                <span className="text-gray-300 text-sm ml-auto mr-4">
-                                                    {language === 'fr' ? 'quel type de prestation choisirez-vous (si applicable)' : 'what type of benefit will choose (if applicable)'}
-                                                </span>
-                                                <Select value={lppSupBenefitStrategy} onValueChange={setLppSupBenefitStrategy}>
-                                                    <SelectTrigger className="w-[300px] h-9 bg-slate-700 border-slate-600 text-white">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Only Pension">{language === 'fr' ? 'Rente uniquement' : 'Only Pension'}</SelectItem>
-                                                        <SelectItem value="Only Capital">{language === 'fr' ? 'Capital uniquement' : 'Only Capital'}</SelectItem>
-                                                        <SelectItem value="Mix of Pension and Capital">{language === 'fr' ? 'Mixte (Rente et Capital)' : 'Mix of Pension and Capital'}</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        )
-                                    }
                                 </div >
                             </div >
                         </div >
@@ -1062,7 +1042,7 @@ const RetirementParameters = () => {
                     {/* Unified Benefits Table - Only visible in View Mode */}
                     {!isBenefitEditMode && (
                         <Card className="bg-blue-600 border-blue-600">
-                            <CardHeader>
+                            <CardHeader className="px-3 py-3">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="flex items-center gap-2 text-white">
                                         {language === 'fr'
@@ -1102,7 +1082,7 @@ const RetirementParameters = () => {
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="px-3 pb-3 pt-0">
                                 <div className="overflow-x-auto rounded-lg border border-slate-700">
                                     <Table className="w-full text-sm text-left">
                                         <thead className="text-xs bg-slate-800 text-white">

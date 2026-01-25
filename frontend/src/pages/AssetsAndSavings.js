@@ -200,6 +200,16 @@ const AssetsOverview = () => {
                 desiredOutflows
             };
             await saveAssetsData(user.email, masterKey, dataToSave);
+
+            // ALSO clear investment book in scenarioData if it exists
+            const scenarioData = await getScenarioData(user.email, masterKey);
+            if (scenarioData) {
+                await saveScenarioData(user.email, masterKey, {
+                    ...scenarioData,
+                    investedBook: []
+                });
+            }
+
             toast.success(language === 'fr' ? 'Actifs réinitialisés' : 'Assets reset to defaults');
         } catch (error) {
             console.error('Error saving reset assets:', error);

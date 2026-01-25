@@ -19,6 +19,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import AssetsAndSavings from './pages/AssetsAndSavings';
 import RetirementParameters from './pages/RetirementParameters';
 import DataReview from './pages/DataReview';
+import AdjustmentAdvice from './pages/AdjustmentAdvice';
 import CapitalManagementSetup from './pages/CapitalManagementSetup';
 import ScenarioResult from './pages/ScenarioResult';
 import Settings from './pages/Settings';
@@ -125,6 +126,11 @@ function AppRoutes() {
         <Route path="/data-review" element={
           <ProtectedRoute>
             <DataReview />
+          </ProtectedRoute>
+        } />
+        <Route path="/adjustment-advice" element={
+          <ProtectedRoute>
+            <AdjustmentAdvice />
           </ProtectedRoute>
         } />
         <Route path="/capital-setup" element={

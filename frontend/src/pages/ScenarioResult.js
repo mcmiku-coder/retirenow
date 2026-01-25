@@ -6,12 +6,14 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, getRealEstateData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateInvestedProjection } from '../utils/projectionCalculator';
 import { extractPercentile, calculateBandwidth } from '../utils/monteCarloSimulation';
+import { getProductById, getAssetClassStyle } from '../data/investmentProducts';
 import { Slider } from '../components/ui/slider';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
@@ -19,7 +21,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 
@@ -52,9 +54,8 @@ const ScenarioResult = () => {
 
   // Monte Carlo State
   const [showBaseline, setShowBaseline] = useState(true);
-  const [show50thPercentile, setShow50thPercentile] = useState(false);
-  const [show10thPercentile, setShow10thPercentile] = useState(true);
-  const [show5thPercentile, setShow5thPercentile] = useState(false); // New Very Pessimistic
+  const [show10thPercentile, setShow10thPercentile] = useState(false);
+  const [show5thPercentile, setShow5thPercentile] = useState(true); // Default Very Pessimistic
   const [show25thPercentile, setShow25thPercentile] = useState(false);
   const [monteCarloProjections, setMonteCarloProjections] = useState(null);
   const [simulationLoading, setSimulationLoading] = useState(false);
@@ -72,6 +73,10 @@ const ScenarioResult = () => {
     balanceBeforeTransmission: 0,
     transmissionAmount: 0
   });
+
+  // Activate All Ownings State
+  const [activateAllOwnings, setActivateAllOwnings] = useState(false);
+  const [owningsActivationDate, setOwningsActivationDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Scroll to top
   useEffect(() => {
@@ -152,39 +157,28 @@ const ScenarioResult = () => {
 
         // MERGE INVESTED BOOK: Override liquid invested assets if customizable book exists
         if (sData?.investedBook && Array.isArray(sData.investedBook)) {
-          // 1. Remove original items that would be replaced (Liquid + Invested)
-          // Note: We identify them by the same criteria used in CapitalManagementSetup
-          finalAssets = finalAssets.filter(a => !(a.category === 'Liquid' && a.strategy === 'Invested'));
+          // PROACTIVE SYNC: Only use the book if at least one current asset is still marked as 'Invested'
+          // This prevents "ghost" items after a user unchecks "Invest?" but skips the setup screen.
+          const hasAnyInvestedMarkers = finalAssets.some(a => a.category === 'Liquid' && a.strategy === 'Invested');
 
-          // 2. Add the customized rows
-          const bookAssets = sData.investedBook.map(row => ({
-            ...row,
-            category: 'Liquid', // Ensure category is preserved for logic downstream
-            adjustedAmount: row.amount // Map amount to adjustedAmount for consistency
-          }));
-          finalAssets = [...finalAssets, ...bookAssets];
+          if (hasAnyInvestedMarkers) {
+            // 1. Remove original items that would be replaced (Liquid + Invested)
+            finalAssets = finalAssets.filter(a => !(a.category === 'Liquid' && a.strategy === 'Invested'));
+
+            // 2. Add the customized rows
+            const bookAssets = sData.investedBook.map(row => ({
+              ...row,
+              category: 'Liquid',
+              adjustedAmount: row.amount
+            }));
+            finalAssets = [...finalAssets, ...bookAssets];
+          } else if (sData.investedBook.length > 0) {
+            console.log('[Simulation] Ignoring stale investedBook because no assets are marked for investment.');
+          }
         }
 
-        // AUTO-CORRECT: Fix "Pension/3a" assets that have "Today" as date due to default value bug.
-        // If these assets are set to available in Current Year, move them to Wished Retirement Date.
-        const currentYear = new Date().getFullYear();
-        const targetRetirementDate = location.state?.wishedRetirementDate || sData?.wishedRetirementDate || rData?.retirementLegalDate;
-
-        if (targetRetirementDate) {
-          finalAssets = finalAssets.map(asset => {
-            const nameLower = (asset.name || '').toLowerCase();
-            // Check for pension keywords
-            if (nameLower.includes('supplementary pension') || nameLower.includes('3a') || nameLower.includes('lpp capital')) {
-              const assetDate = asset.availabilityDate ? new Date(asset.availabilityDate) : new Date();
-              // If erroneously set to start now/soon (bug), push to retirement
-              if (assetDate.getFullYear() <= currentYear) {
-                console.log(`[Auto-Fix] Correcting '${asset.name}' date from ${asset.availabilityDate} to ${targetRetirementDate}`);
-                return { ...asset, availabilityDate: targetRetirementDate };
-              }
-            }
-            return asset;
-          });
-        }
+        // REMOVED AUTO-CORRECT: The aggressive correction was overriding valid staggered payouts (e.g. 3a in 2026).
+        // If a user sets a date, we should respect it.
 
         // CRITICAL FIX: Deduplicate Assets to prevent "Ghost" items (Same ID/Name but different dates)
         // Logs showed both a 2026 version and 2035 version of the same asset.
@@ -244,6 +238,14 @@ const ScenarioResult = () => {
         setRetirementData(rData);
         setScenarioData(sData);
         setRealEstateData(reData);
+
+        // Initialize activateAllOwnings and owningsActivationDate from scenarioData
+        if (sData?.activateAllOwnings !== undefined) {
+          setActivateAllOwnings(sData.activateAllOwnings);
+        }
+        if (sData?.owningsActivationDate) {
+          setOwningsActivationDate(sData.owningsActivationDate);
+        }
 
         // Initialize filters with prefixed keys to avoid ID collisions
         // Restore from saved filters if available, otherwise default to true
@@ -313,6 +315,8 @@ const ScenarioResult = () => {
     const effectiveDebts = overrides.debts || debts;
     const effectiveRetirementData = overrides.retirementData || retirementData;
     const ignorePensionFilters = overrides.ignorePensionFilters || false;
+    const simActivateOwnings = overrides.hasOwnProperty('activateAllOwnings') ? overrides.activateAllOwnings : activateAllOwnings;
+    const simOwningsDate = overrides.hasOwnProperty('owningsActivationDate') ? overrides.owningsActivationDate : owningsActivationDate;
 
     const simRetirementDateObj = new Date(simRetirementDate);
     const currentYear = new Date().getFullYear();
@@ -463,6 +467,7 @@ const ScenarioResult = () => {
 
     for (let year = currentYear; year <= deathYear; year++) {
       let yearIncome = 0;
+      let yearActivatedOwnings = 0;
       let yearCosts = 0;
       const incomeBreakdown = {};
       const costBreakdown = {};
@@ -655,17 +660,33 @@ const ScenarioResult = () => {
         }
         // Date or Instant
         else {
-          // STRICT RULE: Asset must have a valid availability date to be processed here
-          if (!asset.availabilityDate) return;
+          // ACTIVATE ALL OWNINGS LOGIC
+          let effectiveDateStr = asset.availabilityDate;
+          let isActivatedOwning = false;
 
-          const date = new Date(asset.availabilityDate);
+          if (!effectiveDateStr && !asset.availabilityTimeframe && simActivateOwnings) {
+            effectiveDateStr = simOwningsDate;
+            isActivatedOwning = true;
+          }
+
+          // STRICT RULE: Asset must have a valid availability date to be processed here
+          if (!effectiveDateStr) return;
+
+          const date = new Date(effectiveDateStr);
 
           if (year === date.getFullYear()) {
             // IT BECOMES AVAILABLE THIS YEAR
 
-            // Show it on the INCOME side for visual confirmation
-            yearIncome += amount;
-            incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + amount;
+            if (isActivatedOwning) {
+              // Track separately for pink bar
+              yearActivatedOwnings += amount;
+              // Also add to income breakdown for tooltip detail
+              incomeBreakdown[`${asset.name} (Activated)`] = (incomeBreakdown[`${asset.name} (Activated)`] || 0) + amount;
+            } else {
+              // Show it on the INCOME side for visual confirmation
+              yearIncome += amount;
+              incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + amount;
+            }
 
             if (isInvested) {
               // If it's invested, we move it to the Invested Pot immediately
@@ -712,7 +733,7 @@ const ScenarioResult = () => {
         cumulativeBalance -= transmissionAmt;
       }
 
-      const annualBalance = yearIncome - yearCosts;
+      const annualBalance = (yearIncome + yearActivatedOwnings) - yearCosts;
 
       // Cumulative balance logic:
       // Regular flow: add annual balance.
@@ -733,6 +754,7 @@ const ScenarioResult = () => {
       breakdown.push({
         year,
         income: yearIncome,
+        activatedOwnings: yearActivatedOwnings,
         costs: yearCosts,
         negCosts: -Math.abs(yearCosts),
         annualBalance,
@@ -753,7 +775,7 @@ const ScenarioResult = () => {
       transmissionAmount: transmissionAmt,
       simRetirementDate // stored for ref
     };
-  }, [userData, scenarioData, location.state, activeFilters, assets, debts, incomes, costs, retirementData]);
+  }, [userData, scenarioData, location.state, activeFilters, assets, debts, incomes, costs, retirementData, activateAllOwnings, owningsActivationDate]);
 
   // Calculate Projection using iterative approach for Option 3 or single run for others
   useEffect(() => {
@@ -778,7 +800,7 @@ const ScenarioResult = () => {
       let testDate = new Date(startDate);
       while (testDate <= endDate && iterations < maxIterations) {
         // Optimization: Find earliest date assuming pension IS taken (ignore filters = true)
-        const result = runSimulation(testDate, true);
+        const result = runSimulation(testDate, { ignorePensionFilters: true });
         if (result && result.finalBalance >= 0) {
           found = true;
           bestResult = result;
@@ -792,11 +814,11 @@ const ScenarioResult = () => {
       if (found && bestResult) {
         // Once optimal date is found, run simulation AGAIN respecting actual filters (ignore filters = false)
         // This allows user to uncheck the box and see the NEGATIVE balance for that same date.
-        const finalResult = runSimulation(bestResult.simRetirementDate, false);
+        const finalResult = runSimulation(bestResult.simRetirementDate, { ignorePensionFilters: false });
         setProjection(finalResult);
       } else {
         // If no solution found, show the result for the latest possible date (Legal)
-        const fallbackResult = runSimulation(endDate, false);
+        const fallbackResult = runSimulation(endDate, { ignorePensionFilters: false });
         setProjection(fallbackResult);
       }
 
@@ -806,8 +828,7 @@ const ScenarioResult = () => {
       const result = runSimulation(targetDate);
       if (result) setProjection(result);
     }
-
-  }, [loading, userData, runSimulation, scenarioData, location.state]);
+  }, [loading, userData, runSimulation, scenarioData, location.state, activateAllOwnings, owningsActivationDate]);
 
   // Run Monte Carlo simulation for Invested Book
   useEffect(() => {
@@ -947,26 +968,25 @@ const ScenarioResult = () => {
     });
   };
 
-  // Autosave filters when they change
+  // Autosave filters and activation settings when they change
   useEffect(() => {
     if (!loading && user && masterKey && scenarioData && Object.keys(activeFilters).length > 0) {
-      const saveFilters = async () => {
+      const saveData = async () => {
         try {
-          // Debounce could be added here, but for now we save on change
-          // to ensure persistence on navigation.
           await saveScenarioData(user.email, masterKey, {
             ...scenarioData,
-            activeFilters: activeFilters
+            activeFilters: activeFilters,
+            activateAllOwnings: activateAllOwnings,
+            owningsActivationDate: owningsActivationDate
           });
         } catch (err) {
-          console.error("Failed to save filters", err);
+          console.error("Failed to save settings", err);
         }
       };
-      // Short timeout to debounce slightly and avoid rapid writes
-      const timeoutId = setTimeout(saveFilters, 500);
+      const timeoutId = setTimeout(saveData, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [activeFilters, loading, user, masterKey, scenarioData]);
+  }, [activeFilters, activateAllOwnings, owningsActivationDate, loading, user, masterKey, scenarioData]);
 
   // Generate Comprehensive PDF Report
   const generatePDF = async () => {
@@ -1808,9 +1828,15 @@ const ScenarioResult = () => {
                   <span>{Math.round(val).toLocaleString()}</span>
                 </div>
               ))}
+              {data.activatedOwnings > 0 && (
+                <div className="flex justify-between gap-4 text-pink-400 font-medium">
+                  <span>{language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'}</span>
+                  <span>{Math.round(data.activatedOwnings).toLocaleString()}</span>
+                </div>
+              )}
               <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
                 <span>Total</span>
-                <span>{Math.round(data.income).toLocaleString()}</span>
+                <span>{Math.round(data.income + (data.activatedOwnings || 0)).toLocaleString()}</span>
               </div>
             </div>
 
@@ -1938,6 +1964,53 @@ const ScenarioResult = () => {
     });
   }, [projection, monteCarloProjections, assets]);
 
+  const isInvested = useMemo(() => hasInvestedBook(scenarioData, assets), [scenarioData, assets]);
+  const finalChartRow = chartData && chartData.length > 0 ? chartData[chartData.length - 1] : null;
+  const finalBaselineBalance = projection.finalBalance;
+  const final5Balance = (isInvested && finalChartRow) ? finalChartRow.mc5 : null;
+
+  // Verdict calculation
+  const canQuitVerdict = isInvested ? (final5Balance >= 0) : (finalBaselineBalance >= 0);
+
+  // Retirement Info Helpers
+  const retirementInfo = useMemo(() => {
+    const option = scenarioData?.retirementOption || 'option1';
+    const defaultDateStr = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate;
+
+    let retireDate;
+    if (option === 'option2' && retirementAge) {
+      const birthDate = new Date(userData?.birthDate);
+      const years = Math.floor(retirementAge);
+      const months = Math.round((retirementAge - years) * 12);
+      retireDate = new Date(birthDate);
+      retireDate.setFullYear(retireDate.getFullYear() + years);
+      retireDate.setMonth(retireDate.getMonth() + months + 1);
+      retireDate.setDate(1);
+    } else if (option === 'option3' && projection?.simRetirementDate) {
+      retireDate = new Date(projection.simRetirementDate);
+    } else {
+      retireDate = new Date(defaultDateStr);
+    }
+
+    let ageYears = 0;
+    let ageMonths = 0;
+    if (userData?.birthDate && retireDate) {
+      const birth = new Date(userData.birthDate);
+      const diffTime = Math.abs(retireDate - birth);
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      ageYears = Math.floor(diffDays / 365.25);
+      ageMonths = Math.floor((diffDays % 365.25) / 30.44);
+    }
+
+    return {
+      date: retireDate,
+      dateStr: !isNaN(retireDate.getTime()) ? retireDate.toLocaleDateString('de-CH') : '',
+      ageYears,
+      ageMonths,
+      option
+    };
+  }, [scenarioData, userData, retirementAge, projection.simRetirementDate, location.state]);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -1976,326 +2049,130 @@ const ScenarioResult = () => {
 
       <div className="max-w-[80%] w-full mx-auto px-4">
 
-        {/* TOP ROW: 3 Boxes (Verdict | Info | Controls) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* TOP LAYOUT: Boxes 1, 4, 2, 3, 5 */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
 
-          {/* 1. Verdict Box */}
-          <Card className="overflow-hidden border-2 shadow-sm h-full flex flex-col">
-            <div className={`h-3 w-full ${projection.canQuit ? 'bg-green-500' : 'bg-red-500'}`} />
-            <CardContent className="flex-1 p-0 grid grid-cols-[1fr_2fr]">
-              {/* Col 1: Image (Full Height) */}
-              <div className="bg-muted/10 flex items-center justify-center p-4 border-r">
+          {/* Box 1: Verdict Image */}
+          <div className="col-span-2">
+            <Card className="overflow-hidden border-2 shadow-sm h-full flex flex-col min-h-[180px]">
+              <div className={`h-2 w-full ${canQuitVerdict ? 'bg-green-500' : 'bg-red-500'}`} />
+              <CardContent className="flex-1 p-0 flex items-center justify-center bg-muted/5">
                 <img
-                  src={projection.canQuit ? '/yes_quit.png' : '/no_quit.png'}
+                  src={canQuitVerdict ? '/yes_quit.png' : '/no_quit.png'}
                   alt="Verdict"
-                  className="w-full h-full object-contain max-h-[140px]"
+                  className="w-full h-full object-contain p-2 max-h-[170px]"
                 />
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Col 2: Text & Balance */}
-              <div className="p-4 flex flex-col justify-between">
-                {/* Top: Description */}
-                <div className="text-sm text-gray-300">
-                  {(() => {
-                    const option = scenarioData?.retirementOption || 'option1';
-                    const defaultDate = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate;
+          {/* Box 4 (Title) and Boxes 2 & 3 (Balances) */}
+          <div className="col-span-5 flex flex-col gap-4">
+            {/* Box 4: Title */}
+            <Card className="flex items-center justify-center p-3 h-[46px]">
+              <span className="text-sm font-semibold text-white">
+                {language === 'fr'
+                  ? `Simulation à la date de retraite choisie le ${retirementInfo.dateStr} (${retirementInfo.ageYears} ans)`
+                  : `Simulation at chosen retirement date ${retirementInfo.dateStr} (${retirementInfo.ageYears} years old)`}
+              </span>
+            </Card>
 
-                    let retireDate;
-                    if (option === 'option2' && retirementAge) {
-                      // Option 2 (Slider): Calculate date dynamically from slider state
-                      const birthDate = new Date(userData?.birthDate);
-                      const years = Math.floor(retirementAge);
-                      const months = Math.round((retirementAge - years) * 12);
-                      retireDate = new Date(birthDate);
-                      retireDate.setFullYear(retireDate.getFullYear() + years);
-                      retireDate.setMonth(retireDate.getMonth() + months + 1);
-                      retireDate.setDate(1);
-                    } else if (option === 'option3' && projection?.simRetirementDate) {
-                      // Option 3 (Auto): Use optimal calculated date
-                      retireDate = new Date(projection.simRetirementDate);
-                    } else {
-                      // Default / Option 0 / Option 1
-                      retireDate = new Date(defaultDate);
-                    }
-
-                    // Calculates age based on birthday and retirement date
-                    let age = '';
-                    if (userData?.birthDate && retireDate) {
-                      const birth = new Date(userData.birthDate);
-                      const ageDate = new Date(retireDate - birth);
-                      age = Math.abs(ageDate.getUTCFullYear() - 1970);
-
-                      // Better age precision if using slider? 
-                      // For display consistency, let's show integer years or if it's option 2, maybe more detail?
-                      // Use the passed retirementAge if available for cleaner match with slider
-                      if (option === 'option2' && retirementAge) {
-                        age = Math.floor(retirementAge);
-                      }
-                    }
-
-                    const dateStr = retireDate.toLocaleDateString('de-CH');
-
-                    if (option === 'option0') { // Legal
-                      return language === 'fr'
-                        ? `Simulation à l'âge légal de la retraite le ${dateStr} (${age} ans)`
-                        : `Simulation at legal retirement date ${dateStr} (${age} years old)`;
-                    } else if (option === 'option2') { // Early
-                      return language === 'fr'
-                        ? `Simulation à la date de pré-retraite choisie le ${dateStr} (${age} ans)`
-                        : `Simulation at chosen pre-retirement date ${dateStr} (${age} years old)`;
-                    } else if (option === 'option1') { // Pick date
-                      return language === 'fr'
-                        ? `Simulation à la date choisie le ${dateStr} (${age} ans)`
-                        : `Simulation at chosen date ${dateStr} (${age} years old)`;
-                    } else if (option === 'option3') { // Earliest possible
-                      return language === 'fr'
-                        ? `Calcul de la date de retraite la plus tôt possible: ${dateStr} (${age} ans)`
-                        : `Calculation of earliest retirement date possible: ${dateStr} (${age} years old)`;
-                    }
-                    return '';
-                  })()}
-                </div>
-
-                {/* Bottom: Balance */}
-                <div className="text-right mt-4">
-                  <p className={`text-2xl font-bold ${projection.canQuit ? 'text-green-500' : 'text-red-500'}`}>
-                    CHF {Math.round(projection.finalBalance).toLocaleString()}
+            <div className="grid grid-cols-2 gap-4 flex-1">
+              {/* Box 2: Monte Carlo (Situation 1 only) */}
+              {isInvested ? (
+                <Card className="bg-blue-900/10 border-blue-500/20 flex flex-col items-center justify-center p-4">
+                  <h4 className="text-[10px] uppercase tracking-wider text-blue-400 font-bold mb-2 text-center">
+                    {language === 'fr' ? 'Simulation Monte-carlo sur investissements' : 'Monte-carlo simulation on investments'}
+                  </h4>
+                  <p className="text-xl font-bold text-blue-400">
+                    CHF {Math.round(final5Balance).toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance'}
+                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                    {language === 'fr' ? 'Solde final projeté (5%)' : 'Projected Final Balance (5%)'}
                   </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 2. MIDDLE BOX: Status Info */}
-          <Card className="h-full flex items-center justify-center border-dashed border-2 bg-muted/20">
-            <CardContent className="text-center p-6">
-              {hasInvestedBook(scenarioData, assets) ? (
-                <div className="text-blue-400 font-semibold text-lg px-4">
-                  {language === 'fr' ? 'Simulations avec rendements projetés (Monte Carlo)' : 'Simulations with projected returns using Monte-Carlo approach'}
-                </div>
+                </Card>
               ) : (
-                <div className="text-green-400 font-semibold text-lg px-4">
-                  {language === 'fr' ? 'Simulation sécurisée sans investissements' : 'Safe simulation without investments'}
-                </div>
+                <div className="hidden" /> // Box 2 not displayed in Situation 2
               )}
-            </CardContent>
-          </Card>
 
-          {/* 3. RIGHT BOX: Monte Carlo Controls */}
-          {hasInvestedBook(scenarioData, assets) ? (
-            <Card className="h-full">
-              <CardContent className="pt-6 h-full flex flex-col justify-center">
-                <h4 className="font-semibold text-sm mb-4 text-muted-foreground flex items-center gap-2 uppercase tracking-wide">
-                  {language === 'fr' ? 'Contrôles de Projection' : 'Projection Controls'}
-                  {simulationLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+              {/* Box 3: Baseline */}
+              <Card className={`${isInvested ? '' : 'col-span-2'} bg-green-900/10 border-green-500/20 flex flex-col items-center justify-center p-4`}>
+                <h4 className="text-[10px] uppercase tracking-wider text-green-400 font-bold mb-2 text-center">
+                  {language === 'fr' ? 'Simulation avec cash seulement (sans investissement)' : 'Simulation with only cash (no investment)'}
                 </h4>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="show-baseline" checked={showBaseline} onCheckedChange={setShowBaseline} />
-                    <Label htmlFor="show-baseline" className="text-sm cursor-pointer">{language === 'fr' ? 'Référence (Cash sans rendement)' : 'Baseline (Cash no return)'}</Label>
+                <p className="text-xl font-bold text-green-400">
+                  CHF {Math.round(finalBaselineBalance).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                  {language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance'}
+                </p>
+              </Card>
+            </div>
+          </div>
+
+          {/* Box 5: Slider (Compact) */}
+          <div className="col-span-5">
+            <Card className="h-full">
+              <CardHeader className="py-3">
+                <CardTitle className="text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {language === 'fr' ? 'Ajuster l\'âge de retraite' : 'Adjust Retirement Age'}
+                  </span>
+                  <span className="text-primary font-bold text-xl">
+                    {retirementInfo.ageYears} {language === 'fr' ? 'ans' : 'years'} {retirementInfo.ageMonths > 0 && `${retirementInfo.ageMonths} ${language === 'fr' ? 'mois' : 'months'}`}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-center pt-10 pb-8">
+                <div className="flex gap-4 items-center px-2">
+                  <div className="h-10 w-10 bg-muted/10 border border-muted/20 rounded-lg flex items-center justify-center p-1 text-muted-foreground">
+                    <LockKeyhole className="h-full w-full" strokeWidth={1.5} />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="show-50th" checked={show50thPercentile} onCheckedChange={setShow50thPercentile} />
-                    <Label htmlFor="show-50th" className="text-sm cursor-pointer text-cyan-500">{language === 'fr' ? 'Projection 50%' : '50% Projection'}</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="show-25th" checked={show25thPercentile} onCheckedChange={setShow25thPercentile} />
-                    <Label htmlFor="show-25th" className="text-sm cursor-pointer text-amber-500">{language === 'fr' ? '25% (Conservateur)' : '25% (Conservative)'}</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="show-10th" checked={show10thPercentile} onCheckedChange={setShow10thPercentile} />
-                    <Label htmlFor="show-10th" className="text-sm cursor-pointer text-blue-500">{language === 'fr' ? '10% (Pessimiste)' : '10% (Pessimistic)'}</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="show-5th" checked={show5thPercentile} onCheckedChange={setShow5thPercentile} />
-                    <Label htmlFor="show-5th" className="text-sm cursor-pointer text-purple-600">{language === 'fr' ? '5% (Très Pessimiste)' : '5% (Very Pessimistic)'}</Label>
+                  <div className="flex-1">
+                    {(() => {
+                      const minAge = parseInt(scenarioData?.earlyRetirementAge || '58', 10);
+                      const maxAge = 65;
+                      const range = maxAge - minAge;
+                      return (
+                        <div className="relative pt-2 pb-6">
+                          <Slider
+                            value={[retirementAge || retirementInfo.ageYears + (retirementInfo.ageMonths / 12)]}
+                            onValueChange={(value) => setRetirementAge(value[0])}
+                            min={minAge}
+                            max={maxAge}
+                            step={1 / 12}
+                            className="w-full"
+                            thumbClassName="bg-primary border-primary"
+                            disabled={scenarioData?.retirementOption !== 'option2'}
+                          />
+                          <div className="absolute w-full flex justify-between text-xl font-bold text-muted-foreground mt-4 px-1">
+                            {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => (
+                              <div key={age} className="flex flex-col items-center">
+                                <div className="h-2 w-px bg-muted-foreground/30 mb-1" />
+                                <span>{age}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <Card className="h-full flex items-center justify-center bg-muted/10">
-              <span className="text-muted-foreground italic text-sm">
-                {language === 'fr' ? 'Investissements inactifs' : 'Investments inactive'}
-              </span>
-            </Card>
-          )}
-
+          </div>
         </div>
 
-        {/* HIDDEN: Active Contributors Checkbox Section */}
-        {/* TODO: [User Request] Remove this block if confirmed unnecessary in 3 weeks */}
-        {false && (
-          <Card className="max-h-[520px] overflow-y-auto mb-6 hidden">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <SlidersHorizontal className="h-5 w-5" />
-                {language === 'fr' ? 'Contributeurs actifs' : 'Active Contributors'}
-              </CardTitle>
+        {/* MIDDLE SECTION: Box 8 (Graph) */}
+        <div className="mb-6">
+          <Card className="h-[600px]">
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-semibold">{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Incomes */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Revenus' : 'Incomes'}</h4>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', true); toggleAll(retirementData?.rows || [], 'pillar', true); }} className="h-6 text-xs px-2">All</Button>
-                    <Button variant="ghost" size="sm" onClick={() => { toggleAll(incomes, 'income', false); toggleAll(retirementData?.rows || [], 'pillar', false); }} className="h-6 text-xs px-2">None</Button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-
-                  {incomes.map(item => {
-                    // Option 3: Only show the pre-retirement row relevant to the simulation result
-                    if (scenarioData?.retirementOption === 'option3' && projection?.simRetirementDate && item.id?.toString().includes('pre_retirement_')) {
-                      const birthDate = new Date(userData.birthDate);
-                      const simDate = new Date(projection.simRetirementDate);
-                      const ageAtRetirement = (simDate.getFullYear() - birthDate.getFullYear()) + ((simDate.getMonth() - birthDate.getMonth()) / 12);
-                      const earliestPlanAge = parseInt(scenarioData.option3EarlyAge || '58');
-
-                      // Determine which age bucket was used
-                      let usedAge = Math.floor(ageAtRetirement);
-                      if (usedAge < earliestPlanAge) usedAge = earliestPlanAge;
-
-                      // IDs are like "pre_retirement_pension_62 " or "pre_retirement_capital_62 "
-                      // Extract age from ID
-                      const match = item.id.toString().match(/_(\d+)\s+$/) || item.id.toString().match(/_(\d+)\s*$/);
-                      if (match) {
-                        const itemAge = parseInt(match[1]);
-                        if (itemAge !== usedAge) return null;
-                      }
-                    }
-
-                    const itemId = (item.id || item.name).toString().trim();
-                    return (
-                      <div key={item.id || item.name} className="flex items-start space-x-2">
-                        <Checkbox
-                          id={`filter-income-${itemId}`}
-                          checked={activeFilters[`income-${itemId}`] !== false}
-                          onCheckedChange={(checked) => handleFilterChange(`income-${itemId}`, checked)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor={`filter-income-${itemId}`} className="text-sm cursor-pointer whitespace-normal">
-                          {formatItemLabel(item)}
-                        </Label>
-                      </div>
-                    );
-                  })}
-                  {retirementData?.rows?.map(item => (
-                    <div key={item.id || item.name} className="flex items-start space-x-2">
-                      <Checkbox
-                        id={`filter-pillar-${item.id || item.name}`}
-                        checked={activeFilters[`pillar-${item.id || item.name}`] !== false}
-                        onCheckedChange={(checked) => handleFilterChange(`pillar-${item.id || item.name}`, checked)}
-                        className="mt-1"
-                      />
-                      <Label htmlFor={`filter-pillar-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
-                        {formatItemLabel(item)}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Assets */}
-              {assets.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Actifs' : 'Assets'}</h4>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', true)} className="h-6 text-xs px-2">All</Button>
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(assets, 'asset', false)} className="h-6 text-xs px-2">None</Button>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {assets.map(item => (
-                      <div key={item.id || item.name} className="flex items-start space-x-2">
-                        <Checkbox
-                          id={`filter-asset-${item.id || item.name}`}
-                          checked={!!activeFilters[`asset-${item.id || item.name}`]}
-                          onCheckedChange={(checked) => handleFilterChange(`asset-${item.id || item.name}`, checked)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor={`filter-asset-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
-                          {formatItemLabel(item, 'asset')}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Costs */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dépenses' : 'Costs'}</h4>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', true)} className="h-6 text-xs px-2">All</Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggleAll(costs, 'cost', false)} className="h-6 text-xs px-2">None</Button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {costs.map(item => (
-                    <div key={item.id || item.name} className="flex items-start space-x-2">
-                      <Checkbox
-                        id={`filter-cost-${item.id || item.name}`}
-                        checked={!!activeFilters[`cost-${item.id || item.name}`]}
-                        onCheckedChange={(checked) => handleFilterChange(`cost-${item.id || item.name}`, checked)}
-                        className="mt-1"
-                      />
-                      <Label htmlFor={`filter-cost-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
-                        {formatItemLabel(item)}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Debts */}
-              {debts.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-sm text-muted-foreground">{language === 'fr' ? 'Dettes / Sorties' : 'Debts / Outflows'}</h4>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', true)} className="h-6 text-xs px-2">All</Button>
-                      <Button variant="ghost" size="sm" onClick={() => toggleAll(debts, 'debt', false)} className="h-6 text-xs px-2">None</Button>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {debts.map(item => (
-                      <div key={item.id || item.name} className="flex items-start space-x-2">
-                        <Checkbox
-                          id={`filter-debt-${item.id || item.name}`}
-                          checked={!!activeFilters[`debt-${item.id || item.name}`]}
-                          onCheckedChange={(checked) => handleFilterChange(`debt-${item.id || item.name}`, checked)}
-                          className="mt-1"
-                        />
-                        <Label htmlFor={`filter-debt-${item.id || item.name}`} className="text-sm cursor-pointer whitespace-normal">
-                          {formatItemLabel(item, 'debt')}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* MAIN GRAPH & SLIDER AREA - Full Width */}
-        <div className="space-y-6 mb-12">
-
-          {/* Graph */}
-          <Card className="h-[615px]">
-            <CardHeader>
-              <CardTitle>{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[545px]">
+            <CardContent className="h-[550px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 10, right: 100, left: 20, bottom: 40 }} stackOffset="sign">
+                <ComposedChart data={chartData} margin={{ top: 10, right: 100, left: 0, bottom: 20 }} stackOffset="sign">
                   <defs>
                     <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -2306,59 +2183,28 @@ const ScenarioResult = () => {
                       <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="year" />
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
+                  <XAxis dataKey="year" fontSize={10} axisLine={false} tickLine={false} dy={10} />
                   <YAxis
-                    tick={({ x, y, payload }) => (
-                      <text x={x} y={y} dy={4} textAnchor="end" fill={generatingPdf ? "#000000" : (payload.value === 0 ? "#ffffff" : "#888888")} fontSize={12}>
-                        {payload.value === 0 ? "0k" : `${(payload.value / 1000).toFixed(0)}k`}
-                      </text>
-                    )}
+                    hide={false}
+                    fontSize={10}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val) => val === 0 ? "0" : `${(val / 1000).toFixed(0)}k`}
                   />
-                  <ReferenceLine y={0} stroke={generatingPdf ? "#000000" : "#FFFFFF"} strokeWidth={2} />
+                  <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={1} opacity={0.3} />
                   {!generatingPdf && <Tooltip content={<CustomTooltip />} />}
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
-                  {/* Baseline - Existing cumulative balance (dashed gray when Monte Carlo active) */}
                   {showBaseline && (
                     <Area
                       type="monotone"
                       dataKey="cumulativeBalance"
-                      stroke={monteCarloProjections ? "#9ca3af" : (projection.finalBalance >= 0 ? "#10b981" : "#ef4444")}
-                      strokeDasharray={monteCarloProjections ? "5 5" : "0"}
-                      fill={monteCarloProjections ? "none" : (projection.finalBalance >= 0 ? "url(#colorBalance)" : "url(#colorNegative)")}
-                      name={monteCarloProjections
-                        ? (language === 'fr' ? 'Référence (sans investissement)' : 'Baseline (no investment)')
-                        : (language === 'fr' ? 'Solde cumulé' : 'Cumulative Balance')
-                      }
-                      stackId={monteCarloProjections ? undefined : "area"}
-                      strokeWidth={2}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        // Only show label on the last point
-                        if (chartData && index === chartData.length - 1) {
-                          return (
-                            <text x={x} y={y} dx={10} dy={0} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
-                              {Math.round(value).toLocaleString()}
-                            </text>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  )}
-
-
-
-                  {/* Monte Carlo 50th Percentile - Median (now Cyan) */}
-                  {show50thPercentile && monteCarloProjections && (
-                    <Line
-                      type="monotone"
-                      dataKey="mc50"
-                      stroke="#06b6d4" // Cyan
+                      stroke={isInvested ? "#9ca3af" : (projection.finalBalance >= 0 ? "#10b981" : "#ef4444")}
+                      strokeDasharray={isInvested ? "5 5" : "0"}
+                      fill={isInvested ? "none" : (projection.finalBalance >= 0 ? "url(#colorBalance)" : "url(#colorNegative)")}
+                      name={isInvested ? (language === 'fr' ? 'Référence (Cash)' : 'Baseline (Cash)') : (language === 'fr' ? 'Solde cumulé' : 'Cumulative Balance')}
                       strokeWidth={2}
                       dot={false}
-                      name={language === 'fr' ? 'Monte Carlo 50% (Médiane)' : 'Monte Carlo 50% (Median)'}
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
@@ -2373,248 +2219,237 @@ const ScenarioResult = () => {
                     />
                   )}
 
-                  {/* Monte Carlo 25th Percentile - Conservative */}
-                  {show25thPercentile && monteCarloProjections && (
-                    <Line
-                      type="monotone"
-                      dataKey="mc25"
-                      stroke="#f59e0b" // Amber/Orange
-                      strokeWidth={2}
-                      dot={false}
-                      name={language === 'fr' ? 'Monte Carlo 25% (Conservateur)' : 'Monte Carlo 25% (Conservative)'}
+                  {/* MC Lines */}
+                  {show25thPercentile && isInvested && monteCarloProjections && (
+                    <Line type="monotone" dataKey="mc25" stroke="#f59e0b" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 25%' : '25% (Conservative)'}
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
-                              {Math.round(value).toLocaleString()}
-                            </text>
-                          );
+                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                        }
+                        return null;
+                      }}
+                    />
+                  )}
+                  {show10thPercentile && isInvested && monteCarloProjections && (
+                    <Line type="monotone" dataKey="mc10" stroke="#9333ea" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 10% (Pessimiste)' : '10% (Pessimistic)'}
+                      label={(props) => {
+                        const { x, y, value, index } = props;
+                        if (chartData && index === chartData.length - 1) {
+                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                        }
+                        return null;
+                      }}
+                    />
+                  )}
+                  {show5thPercentile && isInvested && monteCarloProjections && (
+                    <Line type="monotone" dataKey="mc5" stroke="#60a5fa" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
+                      label={(props) => {
+                        const { x, y, value, index } = props;
+                        if (chartData && index === chartData.length - 1) {
+                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
                         }
                         return null;
                       }}
                     />
                   )}
 
-                  {/* Monte Carlo 10th Percentile - Very Conservative */}
-                  {show10thPercentile && monteCarloProjections && (
-                    <Line
-                      type="monotone"
-                      dataKey="mc10"
-                      stroke="#3B82F6" // Blue
-                      strokeWidth={2}
-                      dot={false}
-                      name={language === 'fr' ? 'Monte Carlo 10% (Pessimiste)' : 'Monte Carlo 10% (Pessimistic)'}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        if (chartData && index === chartData.length - 1) {
-                          return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
-                              {Math.round(value).toLocaleString()}
-                            </text>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  )}
+                  <Bar dataKey="income" barSize={11} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" />
+                  <Bar dataKey="activatedOwnings" barSize={11} fill="#ec4899" name={language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'} stackId="bars" />
+                  <Bar dataKey="negCosts" barSize={11} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" />
 
-                  {/* Monte Carlo 5th Percentile - Very Pessimistic */}
-                  {show5thPercentile && monteCarloProjections && (
-                    <Line
-                      type="monotone"
-                      dataKey="mc5"
-                      stroke="#9333ea" // Purple
-                      strokeWidth={2}
-                      dot={false}
-                      name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : 'Monte Carlo 5% (Very Pessimistic)'}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        if (chartData && index === chartData.length - 1) {
-                          return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
-                              {Math.round(value).toLocaleString()}
-                            </text>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  )}
-
-                  <Bar dataKey="income" barSize={10} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" />
-                  <Bar dataKey="negCosts" barSize={10} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" />
-
-                  {/* ReferenceLine with Dynamic Logic */}
-                  {(() => {
-                    // Determines the reference date/year to show.
-                    // Priority 1: Slider active value (Option 2) - Immediate Feedback
-                    // Priority 2: Simulation result date (e.g. Option 3 optimal)
-                    // Priority 3: Default input date
-
-                    let refDate = new Date();
-
-                    if (scenarioData?.retirementOption === 'option2' && retirementAge) {
-                      // Calculate date from Slider state immediately
-                      const birthDate = new Date(userData?.birthDate);
-                      const years = Math.floor(retirementAge);
-                      const months = Math.round((retirementAge - years) * 12);
-                      refDate = new Date(birthDate);
-                      refDate.setFullYear(refDate.getFullYear() + years);
-                      refDate.setMonth(refDate.getMonth() + months + 1); // +1 month logic
-                      refDate.setDate(1);
-                    } else {
-                      const defaultDate = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate;
-                      const refDateSrc = projection?.simRetirementDate || defaultDate;
-                      refDate = refDateSrc ? new Date(refDateSrc) : new Date();
-                    }
-
-                    const refYear = !isNaN(refDate.getTime()) ? refDate.getFullYear() : new Date().getFullYear();
-
-                    // If using slider, we might be mid-year. XAxis is categorical (Year integers).
-                    // We can try to approximate the position if the chart supports it, 
-                    // or just snap to the year. For now, snapping to year is safer for categorical axes.
-                    // If XAxis was type="number", we could pass `refYear + (refDate.getMonth()/12)`.
-
-                    return (
-                      <ReferenceLine
-                        x={refYear}
-                        stroke="#f59042"
-                        label={{
-                          position: 'insideTopLeft',
-                          value: `${language === 'fr' ? 'Retraite' : 'Retirement'}: ${refDate.toLocaleDateString()}`,
-                          fill: '#f59042',
-                          fontSize: 12
-                        }}
-                        strokeDasharray="3 3"
-                      />
-                    );
-                  })()}
+                  <ReferenceLine
+                    x={retirementInfo.date.getFullYear()}
+                    stroke="#f59042"
+                    strokeDasharray="3 3"
+                    label={{
+                      position: 'insideTopRight',
+                      dy: 20,
+                      value: `${language === 'fr' ? 'Retraite' : 'Retirement'}: ${retirementInfo.dateStr}`,
+                      fill: '#f59042',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Retirement Age Slider - Only for option2 */}
-          {scenarioData?.retirementOption === 'option2' && retirementAge && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <SlidersHorizontal className="h-5 w-5" />
-                  {language === 'fr' ? 'Ajuster l\'âge de retraite' : 'Adjust Retirement Age'}
-                </CardTitle>
+        {/* BOTTOM SECTION: Boxes 6 & 7 */}
+        <div className="grid grid-cols-12 gap-6 mb-12">
+
+          {/* Box 6: Controls */}
+          <div className={isInvested ? "col-span-4" : "col-span-12"}>
+            <Card className="h-full">
+              <CardHeader className="py-2">
+                <CardTitle className="text-[10px] uppercase tracking-wider text-muted-foreground"></CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Age Display */}
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base">
-                      {language === 'fr' ? 'Âge de retraite:' : 'Retirement Age:'}
-                    </Label>
-                    <span className="text-2xl font-bold">
-                      {(() => {
-                        const years = Math.floor(retirementAge);
-                        const months = Math.round((retirementAge - years) * 12);
-                        if (months === 0) {
-                          return language === 'fr' ? `${years} ans` : `${years} years`;
-                        }
-                        return language === 'fr'
-                          ? `${years} ans ${months} mois`
-                          : `${years} years ${months} months`;
-                      })()}
-                    </span>
+              <CardContent className="space-y-6">
+                {/* Bar Indicators (Static Legend) - Aligned to left */}
+                <div className="space-y-2 mb-6 px-1">
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
+                    {language === 'fr' ? 'Légende des Flux' : 'Cash Flow Legend'}
                   </div>
-
-                  {/* Slider with age labels, ticks and dates */}
-                  <div className="pt-6 flex gap-4 items-start">
-                    {/* Lock Icon */}
-                    <div className="pt-1">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary">
-                        <Lock className="h-4 w-4" />
-                      </Button>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
+                      <span>{language === 'fr' ? 'Revenus annuels' : 'Annual Income'}</span>
                     </div>
-
-                    <div className="flex-1 space-y-2">
-                      {(() => {
-                        const minAge = parseInt(scenarioData?.earlyRetirementAge || '58', 10);
-                        const maxAge = 65;
-                        const range = maxAge - minAge;
-
-                        return (
-                          <>
-                            <Slider
-                              value={[retirementAge]}
-                              onValueChange={(value) => setRetirementAge(value[0])}
-                              min={minAge}
-                              max={maxAge}
-                              step={1 / 12} // Monthly steps (1/12 of a year)
-                              className="flex-1"
-                            />
-
-                            {/* Age markers with Ticks and Dates */}
-                            <div className="relative h-12 text-xs text-gray-500 mt-2">
-                              {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => {
-                                // Calculate date for this integer age tick
-                                const tickDate = new Date(userData?.birthDate);
-                                tickDate.setFullYear(tickDate.getFullYear() + age);
-                                tickDate.setMonth(tickDate.getMonth() + 1); // +1 month logic consistent with retirement date
-                                tickDate.setDate(1);
-
-                                return (
-                                  <div
-                                    key={age}
-                                    className="absolute transform -translate-x-1/2 flex flex-col items-center"
-                                    style={{
-                                      left: `${((age - minAge) / range) * 100}%`,
-                                      top: '-6px' // Position relative to the container below slider
-                                    }}
-                                  >
-                                    {/* Tick Mark */}
-                                    <div className="h-2 w-px bg-gray-400 mb-1"></div>
-
-                                    {/* Age Label */}
-                                    <span className="font-semibold">{age}</span>
-
-                                    {/* Date Label (Vertical or Small) */}
-                                    <span className="text-[10px] text-gray-400 whitespace-nowrap mt-0.5">
-                                      {tickDate.toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        );
-                      })()}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#ef4444]" />
+                      <span>{language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#ec4899]" />
+                      <span>{language === 'fr' ? 'Avoirs non encore disponibles dans la projection' : 'Assets not yet made available in the projection'}</span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Retirement Date */}
-                  <div className="text-sm text-gray-500">
-                    {language === 'fr' ? 'Date de retraite:' : 'Retirement Date:'} {(() => {
-                      const birthDate = new Date(userData?.birthDate);
-                      const retDate = new Date(birthDate);
-                      const years = Math.floor(retirementAge);
-                      const months = Math.round((retirementAge - years) * 12);
-                      retDate.setFullYear(retDate.getFullYear() + years);
-                      retDate.setMonth(retDate.getMonth() + months + 1); // +1 for first of next month
-                      retDate.setDate(1);
-                      return retDate.toLocaleDateString();
-                    })()}
-                  </div>
-
-                  {/* Loading indicator */}
-                  {isRecalculating && (
-                    <div className="text-sm text-blue-500 flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      {language === 'fr' ? 'Recalcul des projections...' : 'Recalculating projections...'}
+                {isInvested && (
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">
+                      {language === 'fr' ? 'Contrôles de Projection' : 'Projection Controls'}
+                    </h4>
+                    {/* Line Toggles */}
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="show-baseline" checked={showBaseline} onCheckedChange={setShowBaseline} />
+                        <Label htmlFor="show-baseline" className="text-xs cursor-pointer flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full border border-white/50" />
+                          {language === 'fr' ? 'Référence (Cash sans rendement)' : 'Baseline (Cash no return)'}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="show-25th" checked={show25thPercentile} onCheckedChange={setShow25thPercentile} />
+                        <Label htmlFor="show-25th" className="text-xs cursor-pointer flex items-center gap-2 text-amber-500">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          {language === 'fr' ? '25% (Conservateur)' : '25% (Conservative)'}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="show-10th" checked={show10thPercentile} onCheckedChange={setShow10thPercentile} />
+                        <Label htmlFor="show-10th" className="text-xs cursor-pointer flex items-center gap-2 text-purple-600">
+                          <div className="w-2 h-2 rounded-full bg-purple-600" />
+                          {language === 'fr' ? '10% (Pessimiste)' : '10% (Pessimistic)'}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="show-5th" checked={show5thPercentile} onCheckedChange={setShow5thPercentile} />
+                        <Label htmlFor="show-5th" className="text-xs cursor-pointer flex items-center gap-2 text-blue-400">
+                          <div className="w-2 h-2 rounded-full bg-blue-400" />
+                          {language === 'fr' ? '5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
+                        </Label>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                )}
+
+
+                <div className={isInvested ? "pt-4 border-t border-muted/20" : ""}>
+                  <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">{language === 'fr' ? 'Avoirs non-activés' : 'Non-activated ownings'}</h4>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="activate-ownings"
+                        checked={activateAllOwnings}
+                        onCheckedChange={(checked) => setActivateAllOwnings(!!checked)}
+                      />
+                      <Label htmlFor="activate-ownings" className="text-xs cursor-pointer font-medium text-pink-500 whitespace-nowrap">
+                        {language === 'fr' ? 'Afficher tous les avoirs, y compris non assignés' : 'Show all assets incl. non made available'}
+                      </Label>
+                    </div>
+
+                    {activateAllOwnings && (
+                      <div className="animate-in fade-in slide-in-from-left-1 duration-200">
+                        <Input
+                          id="activation-date"
+                          type="date"
+                          value={owningsActivationDate}
+                          onChange={(e) => setOwningsActivationDate(e.target.value)}
+                          className="h-8 w-[160px] text-xs bg-background/50 border-pink-500/30 focus-visible:ring-pink-500 text-white py-0 px-3"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          )}
+          </div>
 
+          {/* Box 7: Investment Summary */}
+          {isInvested && (
+            <div className="col-span-8">
+              <Card className="h-full relative overflow-hidden">
+                <CardHeader className="py-4">
+                  <CardTitle className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {language === 'fr' ? 'Investissements utilisés dans la simulation' : 'Investments used in the simulation'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 pr-2">
+                    {(() => {
+                      const investedAssets = getInvestedBookAssets(assets, scenarioData);
+                      const currentYearStr = new Date().toISOString().split('T')[0];
+                      const deathDateStr = userData?.theoreticalDeathDate
+                        ? userData.theoreticalDeathDate
+                        : new Date(new Date().getFullYear() + 30, 11, 31).toISOString().split('T')[0];
+
+                      const formatSwissDate = (dateStr) => {
+                        if (!dateStr) return '';
+                        const d = new Date(dateStr);
+                        if (isNaN(d.getTime())) return dateStr;
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const year = d.getFullYear();
+                        return `${day}.${month}.${year}`;
+                      };
+
+                      return investedAssets.map(asset => {
+                        const productId = scenarioData.investmentSelections[asset.id];
+                        const product = getProductById(productId);
+                        const style = product ? getAssetClassStyle(product.assetClass) : { color: 'text-gray-400', bgColor: 'bg-gray-400/10' };
+
+                        const startDate = asset.availabilityDate || currentYearStr;
+                        const endDate = deathDateStr;
+
+                        return (
+                          <div key={asset.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/5 border border-muted/10">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-1.5 rounded-lg ${style.bgColor} ${style.color}`}>
+                                <LineChartIcon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold leading-tight">{product?.name || asset.name}</p>
+                                <div className="flex gap-2 text-[9px] text-muted-foreground">
+                                  <span className="font-mono">{product?.ticker}</span>
+                                  <span className={style.color}>{product?.assetClass}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-bold">CHF {Math.round(asset.adjustedAmount || asset.amount).toLocaleString()}</p>
+                              <p className="text-[11px] text-muted-foreground font-medium">
+                                {formatSwissDate(startDate)} - {formatSwissDate(endDate)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </CardContent>
+                <div className="absolute bottom-4 right-4">
+                  <Button variant="link" size="sm" onClick={() => navigate('/capital-management')} className="text-primary text-xs flex items-center gap-2">
+                    {language === 'fr' ? 'Accéder à la configuration du capital' : 'Go to Capital management setup'}
+                    <ChevronUp className="h-4 w-4 rotate-90" />
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>
