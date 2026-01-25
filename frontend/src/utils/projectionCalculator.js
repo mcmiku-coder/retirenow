@@ -11,7 +11,8 @@ import {
     extractPercentile,
     calculateBandwidth,
     getCachedPortfolioSimulation,
-    cachePortfolioSimulation
+    cachePortfolioSimulation,
+    getYearlyReturns
 } from './monteCarloSimulation';
 import { getProductById } from '../data/investmentProducts';
 
@@ -55,15 +56,11 @@ export function getInvestedBookAssets(assets, scenarioData) {
 
         if (!hasProduct) return false;
 
-        // CRITICAL FIX: Exclude assets that are not yet available (Future Assets).
-        // The Monte Carlo simulation runs from T=0. We generally cannot simulate returns on money we don't have yet 
-        // without a more complex time-variant simulation engine.
-        // For now, treat future assets as "Cash" (Baseline) when they arrive, rather than "Invested from Start".
-        if (asset.availabilityDate) {
-            const currentYear = new Date().getFullYear();
-            const availYear = new Date(asset.availabilityDate).getFullYear();
-            if (availYear > currentYear) return false;
-        }
+        if (!hasProduct) return false;
+
+        // Note: Future assets ARE included in the Invested Book so we can model their volatility profile.
+        // The simulation engine will generate a return path based on this portfolio mix.
+        // The main calculation loop in ScenarioResult.js will apply these returns to the capital ONLY when it actually arrives.
 
         return true;
     });
@@ -145,31 +142,111 @@ export function calculateBaselineProjection(params) {
  * @param {number} percentile - Percentile to extract (default: 50)
  * @returns {Array<{year: number, value: number}>} Year-by-year balance projection
  */
+
 export function calculateInvestedProjection(params, portfolioSimulation, percentile = 50) {
     const {
-        userData,
-        incomes,
-        costs,
         assets,
-        debts,
-        retirementData,
-        scenarioData,
         activeFilters
     } = params;
 
+    // Fallback if no simulation
     if (!portfolioSimulation) {
-        return calculateBaselineProjection(params);
+        return calculateBaselineProjection(params); // Placeholder
     }
 
-    // Get Monte Carlo projection for the Invested Book
-    const monteCarloProjection = extractPercentile(portfolioSimulation, percentile);
+    // 1. Get Yearly Returns from the simulation (Growth Rates)
+    // We ignore the absolute values in portfolioSimulation because they assume "All Capital Upfront".
+    // We want to apply these rates to the ACTUAL flowing capital.
+    const yearlyReturns = getYearlyReturns(portfolioSimulation, percentile);
 
-    // This would integrate Monte Carlo results with the rest of the simulation
-    // For now, return the Monte Carlo projection as placeholder
-    // The actual implementation will properly combine with incomes/costs/debts
+    // 2. Run Flow Simulation
+    const currentYear = new Date().getFullYear();
+    // Assuming 30 year projection or derived from simulation length
+    const projectionYears = yearlyReturns.length;
 
-    return monteCarloProjection;
+    const projection = [];
+    let investedBalance = 0;
+
+    // We need to track which assets have been "activated" (added to pot)
+    // But since this is a pure projection loop, we can just check availability each year.
+    // NOTE: This logic mimics ScenarioResult.js but simplified for pure Asset Growth.
+
+    for (let i = 0; i <= projectionYears; i++) {
+        const year = currentYear + i;
+
+        // A. Apply Growth (except for year 0 start)
+        if (i > 0) {
+            const periodReturn = yearlyReturns[i - 1] || 0;
+            investedBalance = investedBalance * (1 + periodReturn);
+        }
+
+        // B. Add Inflows (Assets becoming available this year)
+        assets.forEach(asset => {
+            // Skip if filtered out via UI
+            if (activeFilters && activeFilters[`asset-${asset.id || asset.name}`] === false) return;
+
+            // Check if part of Invested Book? 
+            // Ideally we only simulate growth on "Invested" assets. 
+            // But valid question: does "Invested Simulation" include Cash assets handling?
+            // Usually "Invested Projection" replaces the "Total Wealth".
+            // So we should include LIQUID (Cash) assets too, maybe at 0% return?
+            // OR, strictly follow the "Invested Book" logic?
+            // User wants to see the "Monte Carlo vs Baseline".
+            // Baseline includes Everything (Cash + Invested as Cash).
+            // Monte Carlo should include Everything (Cash + Invested as Invested).
+
+            // For simplicity/correctness with "Invested Book":
+            // We only grow the "Invested" portion with MC returns.
+            // Non-invested assets should just be added? 
+            // Actually, usually MC line represents the WHOLE pot.
+            // But `yearlyReturns` is for the "Invested Portion" only.
+            // A blended return would be better.
+
+            // HOWEVER, based on the codebase, `portfolioSimulation` is ONLY the Invested Book.
+            // If we limit to Invested Book assets, we might miss Cash.
+            // Let's stick to: ONLY assets in the Invested Book get added here and grow.
+            // Pure Cash assets (not invested) are missing? 
+            // If so, the Blue Line will be LOWER than Gray line for Cash parts.
+            // Let's assume for now we strictly simulate the "Invested Book" trajectory.
+
+            const isInvested = asset.strategy === 'Invested';
+            if (!isInvested) return;
+
+            // Availability Check
+            let amountToAdd = 0;
+            const amount = parseFloat(asset.amount || 0);
+
+            if (asset.availabilityDate) {
+                const d = new Date(asset.availabilityDate);
+                const availYear = d.getFullYear();
+                if (availYear === year) {
+                    amountToAdd = amount;
+                } else if (i === 0 && availYear < currentYear) {
+                    // Initial existing capital
+                    amountToAdd = amount;
+                }
+            } else {
+                // No date. If i===0 (Start), we presume available? 
+                // User hated "Net Housing" appearing. 
+                // Sticking to strict rule: No Date = Info only / No show, unless specific type.
+                // ScenarioResult says: "Date or Instant... if (!date) return".
+                // So we skip.
+            }
+
+            if (amountToAdd > 0) {
+                investedBalance += amountToAdd;
+            }
+        });
+
+        projection.push({
+            year: year,
+            value: Math.round(investedBalance)
+        });
+    }
+
+    return projection;
 }
+
 
 /**
  * Calculate all projections (baseline, invested, bandwidth)

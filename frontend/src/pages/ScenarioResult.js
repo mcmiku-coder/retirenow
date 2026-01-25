@@ -10,8 +10,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../componen
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, getRealEstateData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
-import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation } from '../utils/projectionCalculator';
-import { extractPercentile, calculateBandwidth, getYearlyReturns } from '../utils/monteCarloSimulation';
+import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateInvestedProjection } from '../utils/projectionCalculator';
+import { extractPercentile, calculateBandwidth } from '../utils/monteCarloSimulation';
 import { Slider } from '../components/ui/slider';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
@@ -164,6 +164,56 @@ const ScenarioResult = () => {
           finalAssets = [...finalAssets, ...bookAssets];
         }
 
+        // AUTO-CORRECT: Fix "Pension/3a" assets that have "Today" as date due to default value bug.
+        // If these assets are set to available in Current Year, move them to Wished Retirement Date.
+        const currentYear = new Date().getFullYear();
+        const targetRetirementDate = location.state?.wishedRetirementDate || sData?.wishedRetirementDate || rData?.retirementLegalDate;
+
+        if (targetRetirementDate) {
+          finalAssets = finalAssets.map(asset => {
+            const nameLower = (asset.name || '').toLowerCase();
+            // Check for pension keywords
+            if (nameLower.includes('supplementary pension') || nameLower.includes('3a') || nameLower.includes('lpp capital')) {
+              const assetDate = asset.availabilityDate ? new Date(asset.availabilityDate) : new Date();
+              // If erroneously set to start now/soon (bug), push to retirement
+              if (assetDate.getFullYear() <= currentYear) {
+                console.log(`[Auto-Fix] Correcting '${asset.name}' date from ${asset.availabilityDate} to ${targetRetirementDate}`);
+                return { ...asset, availabilityDate: targetRetirementDate };
+              }
+            }
+            return asset;
+          });
+        }
+
+        // CRITICAL FIX: Deduplicate Assets to prevent "Ghost" items (Same ID/Name but different dates)
+        // Logs showed both a 2026 version and 2035 version of the same asset.
+        // We prioritize the one with a FUTURE date if duplicates exist.
+        const uniqueAssetsMap = new Map();
+
+        finalAssets.forEach(asset => {
+          const key = asset.name; // Use Name as key because ID might be generated/unstable for splits
+          const existing = uniqueAssetsMap.get(key);
+
+          if (!existing) {
+            uniqueAssetsMap.set(key, asset);
+          } else {
+            // Conflict! Choose the "better" one.
+            // 1. Prefer one with a real Future Date over Today
+            const existingDate = existing.availabilityDate ? new Date(existing.availabilityDate) : new Date(0);
+            const newDate = asset.availabilityDate ? new Date(asset.availabilityDate) : new Date(0);
+            const today = new Date();
+
+            // If new one is in future and existing is today/past, take new one
+            if (newDate > today && existingDate <= today) {
+              uniqueAssetsMap.set(key, asset);
+            }
+            // Else keep existing (or add other tie-breaking logic)
+          }
+        });
+
+        // Convert back to array
+        finalAssets = Array.from(uniqueAssetsMap.values());
+
         // Filter Retirement Pillars: Exclude 'One-time' items (3a, LPP Capital) handled in Assets
         if (rData?.rows) {
           rData.rows = rData.rows.filter(r =>
@@ -175,6 +225,16 @@ const ScenarioResult = () => {
           );
         }
 
+        // CRITICAL: Re-apply "Ghost Filter" to finalIncomes to ensure no retirement items leaked via adjustedIncomes
+        // This handles the case where "Supplementary Pension" was previously saved into adjustedIncomes loop
+        finalIncomes = finalIncomes.filter(i =>
+          !String(i.name || '').toLowerCase().includes('pension') &&
+          !String(i.name || '').toLowerCase().includes('lpp') &&
+          !String(i.name || '').toLowerCase().includes('solde') && // legacy
+          !String(i.name || '').toLowerCase().includes('3a') && // CRITICAL: Filter 3a ghosts too
+          !String(i.id || '').toLowerCase().includes('pension') &&
+          !String(i.id || '').toLowerCase().includes('lpp')
+        );
         setUserData(uData);
         setIncomes(finalIncomes);
         setCosts(finalCosts);
@@ -369,25 +429,28 @@ const ScenarioResult = () => {
       if (asset && activeFilters[`asset-${asset.id || asset.name}`]) {
         const amount = parseFloat(asset.amount || 0);
 
-        // Check availability. If it's "Already available" (no date/future logic), add it now.
-        // If it has a date in the future (relative to currentYear), waiting for the loop.
-        let isAvailableNow = true;
+        // Check availability. 
+        // Logic: 
+        // 1. If "availabilityDate" exists, compare year.
+        // 2. If NO availabilityDate, it is NOT available (unless we define a default, but user said "no availability date...so should not appear").
+        // 3. Exception: If we have an "Already available" flag or similar? The code used "Date" type mostly.
+
+        let isAvailableNow = false;
 
         if (asset.availabilityType === 'Period') {
-          // Periods usually imply income stream over time, NOT a lump sum investment.
-          // IF user marked a Period asset as Invested, that's complex. 
-          // Assuming Invested Assets are usually Date/Lump Sum.
-          // If Period, it flows into income year by year. 
-          // We should probably NOT put Period assets into `investedBalance` lump sum.
+          // Periods are flows, not initial lumps
           isAvailableNow = false;
         } else if (asset.availabilityDate) {
-          const availYear = new Date(asset.availabilityDate).getFullYear();
-          // FIX: If availability is this year (or future), handle it in the loop as a flow.
-          // Only add to initial balance if it is STRICTLY in the past.
-          if (availYear >= currentYear) {
-            isAvailableNow = false;
+          const availDate = new Date(asset.availabilityDate);
+          const availYear = availDate.getFullYear();
+
+          // Available now only if date is strictly in the past (before current simulation start year)
+          // If it's this year (currentYear), it will be added in the loop below as an "Inflow"
+          if (availYear < currentYear) {
+            isAvailableNow = true;
           }
         }
+        // If availabilityDate is missing/empty, it is NEVER available (per user request for Net Housing)
 
         if (isAvailableNow) {
           investedBalance += amount;
@@ -588,7 +651,11 @@ const ScenarioResult = () => {
         }
         // Date or Instant
         else {
-          const date = asset.availabilityDate ? new Date(asset.availabilityDate) : new Date();
+          // STRICT RULE: Asset must have a valid availability date to be processed here
+          if (!asset.availabilityDate) return;
+
+          const date = new Date(asset.availabilityDate);
+
           if (year === date.getFullYear()) {
             // IT BECOMES AVAILABLE THIS YEAR
 
@@ -765,14 +832,13 @@ const ScenarioResult = () => {
         );
 
         if (portfolioSimulation) {
-          // Extract specific percentiles for conservative planning
-          // 10th Percentile = 90% chance of success (Very Conservative)
-          // 25th Percentile = 75% chance of success (Conservative)
-          // 50th Percentile = Median
+          // Extract specific percentiles using Flow-Aware projection
+          // This allows assets (like 2035 Pension) to be added dynamically + Returns applied correctly
+          const params = { assets, activeFilters };
 
-          const p50 = extractPercentile(portfolioSimulation, 50);
-          const p25 = extractPercentile(portfolioSimulation, 25);
-          const p10 = extractPercentile(portfolioSimulation, 10);
+          const p50 = calculateInvestedProjection(params, portfolioSimulation, 50);
+          const p25 = calculateInvestedProjection(params, portfolioSimulation, 25);
+          const p10 = calculateInvestedProjection(params, portfolioSimulation, 10);
 
           setMonteCarloProjections({
             p50,

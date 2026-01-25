@@ -102,27 +102,49 @@ function generateCorrelatedReturns(portfolioAssets) {
  * 
  * @param {Array<Object>} portfolioAssets - Array of {product, weight, amount}
  * @param {number} years - Number of years to simulate
+ * @param {number|null} customInitialCapital - Optional override for starting value
  * @returns {Array<number>} Array of portfolio values for each year (including initial)
  */
-export function generatePortfolioPath(portfolioAssets, years) {
-    const initialValue = portfolioAssets.reduce((sum, asset) => sum + asset.amount, 0);
+export function generatePortfolioPath(portfolioAssets, years, customInitialCapital = null) {
+    const initialValue = customInitialCapital !== null
+        ? customInitialCapital
+        : portfolioAssets.reduce((sum, asset) => sum + asset.amount, 0);
+
     const path = [initialValue];
 
-    // Track each asset's value separately
-    const assetValues = portfolioAssets.map(asset => asset.amount);
+    // Track each asset's value separately. 
+    // IF custom initial capital is 0 (or less than total), we must scale the asset buckets down proportionally 
+    // effectively simulating "buying" the portfolio with the limited capital we have.
+    // However, if Capital is 0, we can't simulate growth on 0. 
+    // We just track the returns relative to 1 (index) or simulate nominal 0?
+    // Wait, if Capital is 0, returns * 0 is 0. 
+    // But in ScenarioResult, we apply these returns to NEW capital coming in. 
+    // So we need this path to represent the INDEX performance, OR we rely on GetYearlyReturns to extract percentages.
+
+    // For the sake of the graph "Blue Line", it needs to show the Liquid Invested Wealth.
+    // If it starts at 0, it stays at 0 until inflow?
+    // Yes! That's what the Baseline does.
+
+    let currentTotal = initialValue;
+
+    // If we start very small/zero, we can't just track individual asset amounts easily if they are not fungible.
+    // Better to simulate the Total Portfolio Value by applying the Weighted Return.
+    // This is mathematically equivalent for rebalanced portfolios.
+    // Let's switch to Weighted Return approach for robustness with 0 start.
 
     for (let year = 1; year <= years; year++) {
         // Generate correlated returns for all assets
         const returns = generateCorrelatedReturns(portfolioAssets);
 
-        // Apply returns to each asset
+        // Calculate Portfolio Weighted Return
+        let portfolioReturn = 0;
         for (let i = 0; i < portfolioAssets.length; i++) {
-            assetValues[i] = assetValues[i] * (1 + returns[i]);
+            portfolioReturn += returns[i] * portfolioAssets[i].weight;
         }
 
-        // Sum to get total portfolio value
-        const portfolioValue = assetValues.reduce((sum, val) => sum + val, 0);
-        path.push(portfolioValue);
+        // Apply to total
+        currentTotal = currentTotal * (1 + portfolioReturn);
+        path.push(currentTotal);
     }
 
     return path;
@@ -151,6 +173,7 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
                 assetId: asset.id,
                 product: product,
                 amount: parseFloat(asset.amount || 0),
+                availabilityDate: asset.availabilityDate, // Pass date for Initial Capital calculation
                 weight: 0 // Will calculate after filtering
             };
         })
@@ -166,7 +189,7 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
         asset.weight = asset.amount / totalAmount;
     });
 
-    console.log(`Running portfolio Monte Carlo with ${portfolioAssets.length} assets, total: ${totalAmount}`);
+    console.log(`Running portfolio Monte Carlo with ${portfolioAssets.length} assets, Model Total: ${totalAmount}`);
 
     // Run simulations
     // We store arrays of values per year to calculate Point-in-Time percentiles
@@ -174,6 +197,8 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
     const yearValues = Array(years + 1).fill(0).map(() => new Float32Array(iterations));
 
     for (let i = 0; i < iterations; i++) {
+        // Pass totalAmount (or let default work) to generate a valid return path
+        // We will extract percentages from this later.
         const path = generatePortfolioPath(portfolioAssets, years);
         for (let y = 0; y <= years; y++) {
             yearValues[y][i] = path[y];
@@ -271,7 +296,7 @@ export function getCachedPortfolioSimulation(investedAssets, scenarioData) {
 
     // Generate cache key from portfolio composition
     const cacheKey = investedAssets
-        .map(asset => `${asset.id}:${scenarioData.investmentSelections[asset.id]}:${asset.amount}`)
+        .map(asset => `${asset.id}:${scenarioData.investmentSelections[asset.id]}:${asset.amount}:${asset.availabilityDate}`)
         .sort()
         .join('|');
 
@@ -294,7 +319,7 @@ export function getCachedPortfolioSimulation(investedAssets, scenarioData) {
  */
 export function cachePortfolioSimulation(investedAssets, scenarioData, simulationResult) {
     const cacheKey = investedAssets
-        .map(asset => `${asset.id}:${scenarioData.investmentSelections[asset.id]}:${asset.amount}`)
+        .map(asset => `${asset.id}:${scenarioData.investmentSelections[asset.id]}:${asset.amount}:${asset.availabilityDate}`)
         .sort()
         .join('|');
 

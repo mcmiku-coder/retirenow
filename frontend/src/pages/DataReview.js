@@ -425,9 +425,9 @@ const DataReview = () => {
                 category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Liquid',
                 preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
                 availabilityType: 'Date',
-                availabilityDate: item.startDate || wishedRetirementDate, // Default to start date (usually retirement date)
+                availabilityDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr, // Default to start date (usually retirement date)
                 ownType: 'Date',
-                ownDate: item.startDate || wishedRetirementDate,
+                ownDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr,
                 strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
                 isRetirement: true // Mark as coming from retirement inputs
               };

@@ -11,7 +11,7 @@ import { Label } from '../components/ui/label';
 import { getScenarioData, saveScenarioData, getUserData } from '../utils/database';
 import { investmentProducts, getAssetClassStyle } from '../data/investmentProducts';
 import PageHeader from '../components/PageHeader';
-import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins } from 'lucide-react';
+import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
 
 const CapitalManagementSetup = () => {
@@ -65,6 +65,30 @@ const CapitalManagementSetup = () => {
         }
     };
 
+    const handleReset = async () => {
+        if (!confirm(language === 'fr'
+            ? 'Voulez-vous vraiment réinitialiser ? Toutes les personnalisations de cet écran seront perdues.'
+            : 'Are you sure you want to reset? All customizations on this screen will be lost.')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const scenarioData = await getScenarioData(user.email, masterKey);
+            // Clear current selections
+            if (scenarioData.investmentSelections) {
+                scenarioData.investmentSelections = {};
+                await saveScenarioData(user.email, masterKey, scenarioData);
+            }
+            // Reload defaults
+            await loadData();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const loadData = async () => {
         if (!user?.email || !masterKey) {
             navigate('/');
@@ -108,7 +132,8 @@ const CapitalManagementSetup = () => {
                         id: `cluster-${index}`,
                         name: cluster.name,
                         amount: cluster.totalAmount,
-                        startDate: new Date().toISOString().split('T')[0],
+                        // Heuristic: Use date of first component, or Today
+                        startDate: cluster.assets[0]?.availabilityDate ? cluster.assets[0].availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0],
                         endDate: userData?.theoreticalDeathDate || '',
                         selectedProduct: null,
                         assets: cluster.assets
@@ -130,7 +155,7 @@ const CapitalManagementSetup = () => {
                         id: asset.id || `asset-${index}`,
                         name: asset.name,
                         amount: parseFloat(asset.adjustedAmount || asset.amount || 0),
-                        startDate: new Date().toISOString().split('T')[0],
+                        startDate: asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0],
                         endDate: userData?.theoreticalDeathDate || '',
                         selectedProduct: null,
                         originalAsset: asset
@@ -550,6 +575,15 @@ const CapitalManagementSetup = () => {
                         )}
 
                         <div className="mt-8 flex justify-end gap-4">
+                            <Button
+                                variant="outline"
+                                onClick={handleReset}
+                                className="mr-auto text-muted-foreground hover:text-foreground"
+                            >
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                {language === 'fr' ? 'Réinitialiser' : 'Reset defaults'}
+                            </Button>
+
                             <Button
                                 variant="outline"
                                 onClick={() => navigate('/data-review')}
