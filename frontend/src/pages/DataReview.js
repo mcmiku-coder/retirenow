@@ -493,7 +493,7 @@ const DataReview = () => {
               name: 'AVS',
               amount: scenarioData.benefitsData.avs.amount,
               adjustedAmount: scenarioData.benefitsData.avs.amount,
-              frequency: scenarioData.benefitsData.avs.frequency || 'Monthly',
+              frequency: 'Yearly',
               startDate: scenarioData.benefitsData.avs.startDate || retirementDateStr,
               endDate: deathDateStr,
               isRetirement: true

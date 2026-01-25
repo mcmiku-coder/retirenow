@@ -54,6 +54,7 @@ const ScenarioResult = () => {
   const [showBaseline, setShowBaseline] = useState(true);
   const [show50thPercentile, setShow50thPercentile] = useState(false);
   const [show10thPercentile, setShow10thPercentile] = useState(true);
+  const [show5thPercentile, setShow5thPercentile] = useState(false); // New Very Pessimistic
   const [show25thPercentile, setShow25thPercentile] = useState(false);
   const [monteCarloProjections, setMonteCarloProjections] = useState(null);
   const [simulationLoading, setSimulationLoading] = useState(false);
@@ -497,7 +498,10 @@ const ScenarioResult = () => {
         const nameLower = (row.name || '').toLowerCase();
         const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
 
-        if (effectiveScenarioData?.retirementOption === 'option2' && isSalary) {
+        if (row.isRetirement) {
+          // Rule: Retirement-related incomes (Annuities, AVS) should be used exactly as provided (start/end)
+          // DataReview already set their start date to either (RetirementDate) or (LegalAge)
+        } else if (effectiveScenarioData?.retirementOption === 'option2' && isSalary) {
           // STRICT RULE: If moving slider, Salary always ends exactly at Retirement Date.
           // This allows both extending (working longer) and capping (retiring earlier)
           // ignoring the static "End Date" saved in the database from the original plan.
@@ -516,7 +520,13 @@ const ScenarioResult = () => {
           }
         }
 
-        const val = calculateYearlyAmount(amount, row.frequency, row.startDate, effectiveEndDate, year);
+        const val = calculateYearlyAmount(
+          amount,
+          (row.isRetirement && nameLower.includes('avs')) ? 'Yearly' : row.frequency,
+          row.startDate,
+          effectiveEndDate,
+          year
+        );
         if (val > 0) {
           yearIncome += val;
           incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
@@ -552,14 +562,8 @@ const ScenarioResult = () => {
             lppProcessed = true;
             // If there is Capital, handle below as One-time
           } else if (nameLower.includes('avs')) {
-            // AVS usually starts at legal age (65).
-            // For Early Retirement option, AVS stays at 65? Or can be advanced (implied logic needed?)
-            // Usually AVS is Age 65. If user entered data in Step 6, it has a start date.
-            // We respect user input date from Step 6 for AVS.
-            // If it was "Retirement Date", we might need to adjust it?
-            // Let's assume AVS date in DB is correct (Legal Age).
-            // If user manually linked it to "Retirement", we'd need to know. 
-            // Default behavior: Keep DB start date.
+            // SKIP AVS here as it is processed in the incomes loop above (isRetirement: true)
+            return;
           } else if (nameLower.includes('3a')) {
             // 3a Payout (Capital)
             // Handled specifically via the 3a Payout Date Rule
@@ -839,11 +843,13 @@ const ScenarioResult = () => {
           const p50 = calculateInvestedProjection(params, portfolioSimulation, 50);
           const p25 = calculateInvestedProjection(params, portfolioSimulation, 25);
           const p10 = calculateInvestedProjection(params, portfolioSimulation, 10);
+          const p5 = calculateInvestedProjection(params, portfolioSimulation, 5);
 
           setMonteCarloProjections({
             p50,
             p25,
             p10,
+            p5,
             details: portfolioSimulation
           });
           console.log('Monte Carlo simulation complete');
@@ -1926,7 +1932,8 @@ const ScenarioResult = () => {
         ...row,
         mc50: calcWealth(monteCarloProjections.p50),
         mc25: calcWealth(monteCarloProjections.p25),
-        mc10: calcWealth(monteCarloProjections.p10)
+        mc10: calcWealth(monteCarloProjections.p10),
+        mc5: calcWealth(monteCarloProjections.p5)
       };
     });
   }, [projection, monteCarloProjections, assets]);
@@ -2101,6 +2108,10 @@ const ScenarioResult = () => {
                   <div className="flex items-center space-x-2">
                     <Checkbox id="show-10th" checked={show10thPercentile} onCheckedChange={setShow10thPercentile} />
                     <Label htmlFor="show-10th" className="text-sm cursor-pointer text-blue-500">{language === 'fr' ? '10% (Pessimiste)' : '10% (Pessimistic)'}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="show-5th" checked={show5thPercentile} onCheckedChange={setShow5thPercentile} />
+                    <Label htmlFor="show-5th" className="text-sm cursor-pointer text-purple-600">{language === 'fr' ? '5% (Très Pessimiste)' : '5% (Very Pessimistic)'}</Label>
                   </div>
                 </div>
               </CardContent>
@@ -2385,7 +2396,7 @@ const ScenarioResult = () => {
                     />
                   )}
 
-                  {/* Monte Carlo 10th Percentile - Very Conservative (Now Blue default) */}
+                  {/* Monte Carlo 10th Percentile - Very Conservative */}
                   {show10thPercentile && monteCarloProjections && (
                     <Line
                       type="monotone"
@@ -2393,7 +2404,30 @@ const ScenarioResult = () => {
                       stroke="#3B82F6" // Blue
                       strokeWidth={2}
                       dot={false}
-                      name={language === 'fr' ? 'Monte Carlo 10% (Très Conservateur)' : 'Monte Carlo 10% (Very Conservative)'}
+                      name={language === 'fr' ? 'Monte Carlo 10% (Pessimiste)' : 'Monte Carlo 10% (Pessimistic)'}
+                      label={(props) => {
+                        const { x, y, value, index } = props;
+                        if (chartData && index === chartData.length - 1) {
+                          return (
+                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
+                              {Math.round(value).toLocaleString()}
+                            </text>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  )}
+
+                  {/* Monte Carlo 5th Percentile - Very Pessimistic */}
+                  {show5thPercentile && monteCarloProjections && (
+                    <Line
+                      type="monotone"
+                      dataKey="mc5"
+                      stroke="#9333ea" // Purple
+                      strokeWidth={2}
+                      dot={false}
+                      name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : 'Monte Carlo 5% (Very Pessimistic)'}
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {

@@ -41,20 +41,21 @@ const RetirementParameters = () => {
     // Option 0 fields (Legal Retirement)
     const [projectedLegalLPPPension, setProjectedLegalLPPPension] = useState('');
     const [projectedLegalLPPCapital, setProjectedLegalLPPCapital] = useState('');
+    const [projectedLegalLPPRate, setProjectedLegalLPPRate] = useState(''); // New LPP Rate state
     const [legalLppPensionFrequency, setLegalLppPensionFrequency] = useState('Yearly');
     const [showLegalLPPPension, setShowLegalLPPPension] = useState(true);
     const [showLegalLPPCapital, setShowLegalLPPCapital] = useState(true);
 
     // Option 2 enhanced - Pension/Capital by age table
     const [pensionByAge, setPensionByAge] = useState({
-        58: { pension: '', capital: '' },
-        59: { pension: '', capital: '' },
-        60: { pension: '', capital: '' },
-        61: { pension: '', capital: '' },
-        62: { pension: '', capital: '' },
-        63: { pension: '', capital: '' },
-        64: { pension: '', capital: '' },
-        65: { pension: '', capital: '' }
+        58: { pension: '', capital: '', rate: '' },
+        59: { pension: '', capital: '', rate: '' },
+        60: { pension: '', capital: '', rate: '' },
+        61: { pension: '', capital: '', rate: '' },
+        62: { pension: '', capital: '', rate: '' },
+        63: { pension: '', capital: '', rate: '' },
+        64: { pension: '', capital: '', rate: '' },
+        65: { pension: '', capital: '', rate: '' }
     });
 
     // Pillars selection state
@@ -77,7 +78,7 @@ const RetirementParameters = () => {
     const [lppSimulationAge, setLppSimulationAge] = useState('');
     // Benefits Table Data State
     const [benefitsData, setBenefitsData] = useState({
-        avs: { amount: '', frequency: 'Monthly', startDate: '' },
+        avs: { amount: '', frequency: 'Yearly', startDate: '' },
         threeA: { amount: '', frequency: 'One-time', startDate: '' },
         lppSup: { amount: '', frequency: 'One-time', startDate: '' }
     });
@@ -129,12 +130,82 @@ const RetirementParameters = () => {
         });
     }, [threeAAccountsCount]);
 
-    // Update pension/capital for a specific age
+    // Update pension/capital/rate for a specific age with 3-way calculation logic
     const updatePensionByAge = (age, field, value) => {
-        setPensionByAge(prev => ({
-            ...prev,
-            [age]: { ...prev[age], [field]: value }
-        }));
+        setPensionByAge(prev => {
+            const current = { ...prev[age], [field]: value };
+            const capital = parseFloat(current.capital) || 0;
+            const pension = parseFloat(current.pension) || 0;
+            const rate = parseFloat(current.rate) || 0;
+
+            // Logic rules:
+            // 1. If user edits Rate:
+            //    - if Capital > 0 -> Recalc Pension (Steady State / Fill)
+            //    - else if Pension > 0 -> Recalc Capital (Fill)
+            // 2. If user edits Capital:
+            //    - if Rate > 0 -> Recalc Pension (Steady State / Fill)
+            //    - else if Pension > 0 -> Recalc Rate (Fill)
+            // 3. If user edits Pension:
+            //    - if Capital > 0 -> Recalc Rate (Steady State / Fill)
+            //    - else if Rate > 0 -> Recalc Capital (Fill)
+
+            if (field === 'rate') {
+                if (capital > 0) {
+                    current.pension = (capital * (rate / 100)).toFixed(0);
+                } else if (pension > 0 && rate > 0) {
+                    current.capital = (pension / (rate / 100)).toFixed(0);
+                }
+            } else if (field === 'capital') {
+                if (rate > 0) {
+                    current.pension = (capital * (rate / 100)).toFixed(0);
+                } else if (pension > 0 && capital > 0) {
+                    current.rate = ((pension / capital) * 100).toFixed(2);
+                }
+            } else if (field === 'pension') {
+                if (capital > 0) {
+                    current.rate = ((pension / capital) * 100).toFixed(2);
+                } else if (rate > 0 && pension > 0) {
+                    current.capital = (pension / (rate / 100)).toFixed(0);
+                }
+            }
+
+            return {
+                ...prev,
+                [age]: current
+            };
+        });
+    };
+
+    // Unified handler for Legal LPP (65y) fields with 3-way calculation
+    const handleLegalLPPChange = (field, value) => {
+        let capital = parseFloat(field === 'capital' ? value : projectedLegalLPPCapital) || 0;
+        let pension = parseFloat(field === 'pension' ? value : projectedLegalLPPPension) || 0;
+        let rate = parseFloat(field === 'rate' ? value : projectedLegalLPPRate) || 0;
+
+        if (field === 'capital') setProjectedLegalLPPCapital(value);
+        if (field === 'pension') setProjectedLegalLPPPension(value);
+        if (field === 'rate') setProjectedLegalLPPRate(value);
+
+        // Recalculate based on rules
+        if (field === 'rate') {
+            if (capital > 0) {
+                setProjectedLegalLPPPension((capital * (rate / 100)).toFixed(0));
+            } else if (pension > 0 && rate > 0) {
+                setProjectedLegalLPPCapital((pension / (rate / 100)).toFixed(0));
+            }
+        } else if (field === 'capital') {
+            if (rate > 0) {
+                setProjectedLegalLPPPension((capital * (rate / 100)).toFixed(0));
+            } else if (pension > 0 && capital > 0) {
+                setProjectedLegalLPPRate(((pension / capital) * 100).toFixed(2));
+            }
+        } else if (field === 'pension') {
+            if (capital > 0) {
+                setProjectedLegalLPPRate(((pension / capital) * 100).toFixed(2));
+            } else if (rate > 0 && pension > 0) {
+                setProjectedLegalLPPCapital((pension / (rate / 100)).toFixed(0));
+            }
+        }
     };
 
     // Calculate early retirement date based on age
@@ -172,10 +243,9 @@ const RetirementParameters = () => {
                     setPensionCapital(scenarioData.pensionCapital || '');
                     setYearlyReturn(scenarioData.yearlyReturn || '0');
                     setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
-                    setProjectedLPPPension(scenarioData.projectedLPPPension || '');
-                    setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
                     setProjectedLegalLPPPension(scenarioData.projectedLegalLPPPension || '');
                     setProjectedLegalLPPCapital(scenarioData.projectedLegalLPPCapital || '');
+                    setProjectedLegalLPPRate(scenarioData.projectedLegalLPPRate || '');
 
                     if (scenarioData.selectedPillars) setSelectedPillars(scenarioData.selectedPillars);
                     if (scenarioData.benefitsData) setBenefitsData(scenarioData.benefitsData);
@@ -269,7 +339,8 @@ const RetirementParameters = () => {
                         scenarioData.preRetirementRows.forEach(row => {
                             dataObj[row.age] = {
                                 pension: row.pension || '',
-                                capital: row.capital || ''
+                                capital: row.capital || '',
+                                rate: row.rate || ''
                             };
                         });
                         setPensionByAge(dataObj);
@@ -335,7 +406,8 @@ const RetirementParameters = () => {
             const preRetirementRows = Object.entries(pensionByAge).map(([age, data]) => ({
                 age: parseInt(age),
                 pension: data.pension || '',
-                capital: data.capital || ''
+                capital: data.capital || '',
+                rate: data.rate || ''
             }));
 
             const updatedScenarioData = {
@@ -350,6 +422,7 @@ const RetirementParameters = () => {
                 preRetirementRows,
                 projectedLegalLPPPension,
                 projectedLegalLPPCapital,
+                projectedLegalLPPRate,
                 selectedPillars,
                 benefitsData,
 
@@ -1003,17 +1076,20 @@ const RetirementParameters = () => {
                                             // ... (simplified reset for brevity, keeping main logic intact)
                                             const defaultDate = retirementLegalDate ? new Date(retirementLegalDate).toISOString().split('T')[0] : '2045-12-01';
                                             setBenefitsData({
-                                                avs: { amount: '', frequency: 'Monthly', startDate: defaultDate },
-                                                threeA: [{ amount: '', frequency: 'One-time', startDate: defaultDate }],
+                                                avs: { amount: '', frequency: 'Yearly', startDate: defaultDate },
+                                                threeA: Array.from({ length: threeAAccountsCount }, () => ({
+                                                    amount: '', frequency: 'One-time', startDate: defaultDate
+                                                })),
                                                 lppSup: { amount: '', frequency: 'One-time', startDate: defaultDate }
                                             });
                                             // Reset LPP inputs
                                             setProjectedLegalLPPPension('');
                                             setProjectedLegalLPPCapital('');
+                                            setProjectedLegalLPPRate('');
                                             // Clear pensionByAge (reset to empty string values)
                                             const resetPensionByAge = {};
                                             Object.keys(pensionByAge).forEach(age => {
-                                                resetPensionByAge[age] = { pension: '', capital: '' };
+                                                resetPensionByAge[age] = { pension: '', capital: '', rate: '' };
                                             });
                                             setPensionByAge(resetPensionByAge);
 
@@ -1135,7 +1211,14 @@ const RetirementParameters = () => {
                                                                         />
                                                                     </td>
                                                                     <td className="px-4 py-3 text-center">
-                                                                        <div className="h-8 w-24 bg-slate-800/50 border border-slate-700 rounded mx-auto" />
+                                                                        <Input
+                                                                            type="number"
+                                                                            step="0.01"
+                                                                            placeholder="0.00"
+                                                                            value={pensionByAge[age]?.rate || ''}
+                                                                            onChange={(e) => updatePensionByAge(age, 'rate', e.target.value)}
+                                                                            className="h-8 w-24 bg-slate-700 border-slate-600 text-white text-right mx-auto"
+                                                                        />
                                                                     </td>
                                                                 </tr>
                                                             );
@@ -1156,7 +1239,7 @@ const RetirementParameters = () => {
                                                                     type="number"
                                                                     placeholder="0"
                                                                     value={projectedLegalLPPCapital}
-                                                                    onChange={(e) => setProjectedLegalLPPCapital(e.target.value)}
+                                                                    onChange={(e) => handleLegalLPPChange('capital', e.target.value)}
                                                                     className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                 />
                                                             </td>
@@ -1165,12 +1248,19 @@ const RetirementParameters = () => {
                                                                     type="number"
                                                                     placeholder="0"
                                                                     value={projectedLegalLPPPension}
-                                                                    onChange={(e) => setProjectedLegalLPPPension(e.target.value)}
+                                                                    onChange={(e) => handleLegalLPPChange('pension', e.target.value)}
                                                                     className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <div className="h-8 w-24 bg-slate-800/50 border border-slate-700 rounded mx-auto" />
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="0.00"
+                                                                    value={projectedLegalLPPRate}
+                                                                    onChange={(e) => handleLegalLPPChange('rate', e.target.value)}
+                                                                    className="h-8 w-24 bg-slate-700 border-slate-600 text-white text-right mx-auto"
+                                                                />
                                                             </td>
                                                         </tr>
                                                     )}
