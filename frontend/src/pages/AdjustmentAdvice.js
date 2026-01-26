@@ -104,20 +104,48 @@ const AdjustmentAdvice = () => {
                 }
                 setCosts(currentCosts);
 
-                // Initialize Adjustment Rows - ALWAYS show these 3 categories
+                // Initialize Adjustment Rows
                 const targetCostKeys = ['Vacation', 'Private transportation', 'Taxes'];
+                const usedIds = new Set();
 
-                const newRows = targetCostKeys.map(englishKey => {
+                // Pre-identify all costs that match our target keys to prevent duplicates in "Other"
+                currentCosts.forEach(c => {
+                    const cName = String(c.name || '').toLowerCase();
+                    const isMatch = targetCostKeys.some(key => {
+                        const translationKey = COST_KEYS[key];
+                        const translatedName = t(`costs.costNames.${translationKey}`).toLowerCase();
+                        const keyLower = key.toLowerCase();
+
+                        return cName === keyLower ||
+                            cName === translatedName ||
+                            (c.name && c.name.startsWith('costs.costNames.') && t(c.name).toLowerCase() === translatedName);
+                    });
+                    if (isMatch) {
+                        // We'll mark it as potentially used, but the adviceRows loop will pick the specific one to display there
+                    }
+                });
+
+                const adviceRows = targetCostKeys.map(englishKey => {
                     const translationKey = COST_KEYS[englishKey];
                     const translatedName = t(`costs.costNames.${translationKey}`);
 
-                    // Find cost by its original English name or its translated name
-                    const cost = currentCosts.find(c =>
-                        !c.isSplit &&
-                        (c.name === englishKey ||
-                            c.name === translatedName ||
-                            (c.name && c.name.startsWith('costs.costNames.') && t(c.name) === translatedName))
-                    );
+                    // Robust matching for existing costs
+                    const cost = currentCosts.find(c => {
+                        if (c.isSplit) return false;
+                        if (usedIds.has(c.id)) return false;
+
+                        const cName = String(c.name || '').toLowerCase();
+                        const keyLower = englishKey.toLowerCase();
+                        const transNameLower = translatedName.toLowerCase();
+
+                        return cName === keyLower ||
+                            cName === transNameLower ||
+                            (c.name && c.name.startsWith('costs.costNames.') && t(c.name).toLowerCase() === transNameLower) ||
+                            // Add fallback for "Private Transport" vs "Private transportation"
+                            (keyLower === 'private transportation' && cName.includes('transport') && cName.includes('private'));
+                    });
+
+                    if (cost) usedIds.add(cost.id);
 
                     const currentAmount = cost ? parseFloat(cost.amount || 0) : 0;
                     const adjustedAmount = cost ? parseFloat(cost.adjustedAmount || cost.amount || 0) : 0;
@@ -135,7 +163,34 @@ const AdjustmentAdvice = () => {
                     };
                 });
 
-                setAdjustRows(newRows);
+                // Final safety check: Mark ANY other costs that might match the names but didn't get picked (e.g. if multiple exist)
+                currentCosts.forEach(c => {
+                    if (usedIds.has(c.id)) return;
+                    const cName = String(c.name || '').toLowerCase();
+                    const isDuplicateAdvice = targetCostKeys.some(key => {
+                        const translationKey = COST_KEYS[key];
+                        const transNameLower = t(`costs.costNames.${translationKey}`).toLowerCase();
+                        return cName === key.toLowerCase() || cName === transNameLower;
+                    });
+                    if (isDuplicateAdvice) usedIds.add(c.id);
+                });
+
+                // Add all other periodic outflows from currentCosts
+                const otherRows = currentCosts
+                    .filter(c => !usedIds.has(c.id))
+                    .map(cost => ({
+                        id: cost.id,
+                        name: getCostName(cost.name),
+                        originalName: cost.name,
+                        originalAmount: parseFloat(cost.amount || 0),
+                        frequency: cost.frequency || 'Monthly',
+                        adjustedAmount: parseFloat(cost.adjustedAmount || cost.amount || 0),
+                        changeAtAge: parseFloat(cost.changeAtAge || 75),
+                        checked: false,
+                        isNew: false
+                    }));
+
+                setAdjustRows([...adviceRows, ...otherRows]);
 
             } catch (error) {
                 console.error('Failed to load data:', error);
@@ -295,8 +350,8 @@ const AdjustmentAdvice = () => {
                 <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-base font-medium text-white px-2 hidden md:grid">
                     <div></div>
                     <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
-                    <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
                     <div>{language === 'fr' ? 'Fréquence' : 'Frequency'}</div>
+                    <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
                     <div>{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</div>
                     <div>{/* Slider */}</div>
                     <div className="text-right">{language === 'fr' ? 'Changement à' : 'Change at'}</div>
@@ -330,9 +385,11 @@ const AdjustmentAdvice = () => {
                         return (
                             <Card key={row.id} className="border-border bg-card">
                                 <CardContent className="p-6">
-                                    <p className="text-green-500 mb-4 text-sm font-medium">
-                                        {getAdviceText(row.originalName)}
-                                    </p>
+                                    {getAdviceText(row.originalName) && (
+                                        <p className="text-green-500 mb-4 text-sm font-medium">
+                                            {getAdviceText(row.originalName)}
+                                        </p>
+                                    )}
 
                                     {/* Desktop Layout */}
                                     <div className="hidden md:grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center">
@@ -343,8 +400,8 @@ const AdjustmentAdvice = () => {
                                             />
                                         </div>
                                         <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
-                                        <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
                                         <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency)}</div>
+                                        <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
                                         <div>
                                             <Input
                                                 type="text"
@@ -361,15 +418,30 @@ const AdjustmentAdvice = () => {
                                                 }}
                                             />
                                         </div>
-                                        <div className="px-2">
-                                            <Slider
-                                                value={[parseFloat(row.adjustedAmount) || 0]}
-                                                min={0}
-                                                max={(parseFloat(row.originalAmount) || 1000) * 1.5}
-                                                step={100}
-                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                                                className="py-2"
-                                            />
+                                        <div className="flex items-center gap-2 pl-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 px-2 text-[10px] bg-green-500/10 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-white transition-colors"
+                                                onClick={() => {
+                                                    const decrement = (parseFloat(row.originalAmount) || 0) * 0.1;
+                                                    const currentAdjusted = parseFloat(row.adjustedAmount) || 0;
+                                                    const newVal = Math.max(0, currentAdjusted - decrement);
+                                                    handleAdjustRowChange(row.id, 'adjustedAmount', Math.round(newVal));
+                                                }}
+                                            >
+                                                -10%
+                                            </Button>
+                                            <div className="flex-1">
+                                                <Slider
+                                                    value={[parseFloat(row.adjustedAmount) || 0]}
+                                                    min={0}
+                                                    max={(parseFloat(row.originalAmount) || 1000) * 1.5}
+                                                    step={100}
+                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                                                    className="py-2"
+                                                />
+                                            </div>
                                         </div>
                                         <div>
                                             <Select
@@ -403,12 +475,12 @@ const AdjustmentAdvice = () => {
 
                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
-                                                <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</span>
-                                                <span>CHF {parseFloat(row.originalAmount).toLocaleString()}</span>
-                                            </div>
-                                            <div>
                                                 <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Fréquence' : 'Frequency'}</span>
                                                 <span>{getTranslatedFrequency(row.frequency)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</span>
+                                                <span>CHF {parseFloat(row.originalAmount).toLocaleString()}</span>
                                             </div>
                                         </div>
 
@@ -427,14 +499,29 @@ const AdjustmentAdvice = () => {
                                                     className="flex-1"
                                                 />
                                             </div>
-                                            <Slider
-                                                value={[parseFloat(row.adjustedAmount) || 0]}
-                                                min={0}
-                                                max={(parseFloat(row.originalAmount) || 1000) * 1.5}
-                                                step={100}
-                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                                                className="py-4"
-                                            />
+                                            <div className="flex items-center gap-3">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-2 text-xs bg-green-500/10 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-white transition-colors shrink-0"
+                                                    onClick={() => {
+                                                        const decrement = (parseFloat(row.originalAmount) || 0) * 0.1;
+                                                        const currentAdjusted = parseFloat(row.adjustedAmount) || 0;
+                                                        const newVal = Math.max(0, currentAdjusted - decrement);
+                                                        handleAdjustRowChange(row.id, 'adjustedAmount', Math.round(newVal));
+                                                    }}
+                                                >
+                                                    -10%
+                                                </Button>
+                                                <Slider
+                                                    value={[parseFloat(row.adjustedAmount) || 0]}
+                                                    min={0}
+                                                    max={(parseFloat(row.originalAmount) || 1000) * 1.5}
+                                                    step={100}
+                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                                                    className="py-4 flex-1"
+                                                />
+                                            </div>
                                         </div>
 
                                         <div className="space-y-2">

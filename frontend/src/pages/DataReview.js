@@ -369,9 +369,14 @@ const DataReview = () => {
             }
           }
 
-          const loadedProjectedOutflows = (scenarioData && (scenarioData.projectedOutflows || scenarioData.desiredOutflows) && (scenarioData.projectedOutflows || scenarioData.desiredOutflows).length > 0)
+          let loadedProjectedOutflows = (scenarioData && (scenarioData.projectedOutflows || scenarioData.desiredOutflows) && (scenarioData.projectedOutflows || scenarioData.desiredOutflows).length > 0)
             ? (scenarioData.projectedOutflows || scenarioData.desiredOutflows)
             : (assetsData.projectedOutflows || assetsData.desiredOutflows || []);
+
+          // Filter out outflows with no amount (empty/undefined/null or '0')
+          loadedProjectedOutflows = loadedProjectedOutflows.filter(outflow =>
+            outflow.amount && outflow.amount !== '' && outflow.amount !== '0'
+          );
 
           setCurrentAssets(loadedCurrentAssets);
           setProjectedOutflows(loadedProjectedOutflows);
@@ -707,7 +712,9 @@ const DataReview = () => {
     const override = incomeDateOverrides[income.name]?.[field];
     if (override) return override;
 
-    const today = new Date().toISOString().split('T')[0];
+    // Fix Timezone Drift: Use local time
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     if (income.name === 'Salary') {
       return field === 'startDate' ? today : wishedRetirementDate;
@@ -746,6 +753,7 @@ const DataReview = () => {
       // Reload income data from database
       const incomeData = await getIncomeData(user.email, masterKey) || [];
       const scenarioData = await getScenarioData(user.email, masterKey);
+      const retirementData = await getRetirementData(user.email, masterKey);
 
       // Process regular incomes
       const processedIncomes = incomeData.map(inc => {
@@ -803,14 +811,58 @@ const DataReview = () => {
             });
           }
         } else if (option === 'option2') {
-          if (scenarioData.projectedLPPPension) {
+          // Option 2: Early retirement logic matched to LoadData
+
+          let earlyRetirementDateStr = retirementLegalDate;
+          if (scenarioData.earlyRetirementAge && birthDate) {
+            const bDate = new Date(birthDate);
+            const earlyRetDate = new Date(bDate);
+            earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
+            // Alignment: Set to 1st of month following birthday (Matches LoadData)
+            earlyRetDate.setDate(1);
+            earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+
+            const y = earlyRetDate.getFullYear();
+            const m = String(earlyRetDate.getMonth() + 1).padStart(2, '0');
+            const d = String(earlyRetDate.getDate()).padStart(2, '0');
+            earlyRetirementDateStr = `${y}-${m}-${d}`;
+          }
+
+          let lppAmount = scenarioData.projectedLPPPension;
+          let earlyAge = scenarioData.earlyRetirementAge;
+
+          // 1. Try to find pension in preRetirementRows (Primary source in LoadData)
+          if (scenarioData.preRetirementRows && earlyAge) {
+            const ageRow = scenarioData.preRetirementRows.find(row => row.age === parseInt(earlyAge));
+            if (ageRow && ageRow.pension) {
+              lppAmount = ageRow.pension;
+            }
+          }
+
+          // 2. Fallback to RetirementData if still missing
+          if ((!lppAmount || lppAmount === '0') && retirementData && retirementData.rows) {
+            console.log('Reset: ScenarioData missing option2 values, checking retirementData...');
+            if (earlyAge) {
+              const match = retirementData.rows.find(row => row.name.includes(` ${earlyAge} `) || row.name.includes(earlyAge.toString()));
+              if (match) lppAmount = match.yearlyPension || match.pension;
+            } else {
+              const match = retirementData.rows.find(row => row.name.startsWith('Retirement at') && parseFloat(row.yearlyPension) > 0);
+              if (match) {
+                const ageMatch = match.name.match(/at (\d+)/);
+                if (ageMatch) earlyAge = ageMatch[1];
+                lppAmount = match.yearlyPension;
+              }
+            }
+          }
+
+          if (lppAmount) {
             processedRetirementIncome.push({
               id: 'projected_lpp_pension',
-              name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge} y`,
-              amount: scenarioData.projectedLPPPension,
-              adjustedAmount: scenarioData.projectedLPPPension,
-              frequency: 'Yearly', // Always Yearly for option2
-              startDate: retirementLegalDate,
+              name: `Projected LPP Pension at ${earlyAge || 'Chosen'}y`,
+              amount: lppAmount,
+              adjustedAmount: lppAmount,
+              frequency: 'Yearly',
+              startDate: earlyRetirementDateStr,
               endDate: deathDate,
               isRetirement: true
             });
@@ -1062,7 +1114,14 @@ const DataReview = () => {
     try {
       const assetsData = await getAssetsData(user.email, masterKey);
       if (assetsData) {
-        setProjectedOutflows(assetsData.projectedOutflows || assetsData.desiredOutflows || []);
+        let defaultOutflows = assetsData.projectedOutflows || assetsData.desiredOutflows || [];
+
+        // Filter out outflows with no amount (empty/undefined/null or '0')
+        defaultOutflows = defaultOutflows.filter(outflow =>
+          outflow.amount && outflow.amount !== '' && outflow.amount !== '0'
+        );
+
+        setProjectedOutflows(defaultOutflows);
         toast.success(language === 'fr' ? 'Sorties projetées réinitialisées' : 'Projected outflows reset to default values');
       }
     } catch (error) {
@@ -1248,7 +1307,11 @@ const DataReview = () => {
       amount: '',
       adjustedAmount: '',
       frequency: 'Monthly',
-      startDate: new Date().toISOString().split('T')[0],
+      // Fix Timezone Drift: Use local time
+      startDate: (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })(),
       endDate: deathDate || '',
       locked: false
     };
@@ -1309,7 +1372,10 @@ const DataReview = () => {
       const currentYear = new Date().getFullYear();
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
       const deathYear = new Date(deathDate).getFullYear();
-      const today = new Date().toISOString().split('T')[0];
+
+      // Fix Timezone Drift: Use local time, not UTC (toISOString)
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       let simulationRetirementDate = wishedRetirementDate;
       let calculatedEarliestDate = null;
@@ -1324,7 +1390,12 @@ const DataReview = () => {
         // Check each month from now until legal retirement
         let checkDate = new Date(startDate);
         while (checkDate <= legalDate) {
-          const testRetirementDate = checkDate.toISOString().split('T')[0];
+          // Fix Timezone: Local YYYY-MM-DD
+          const year = checkDate.getFullYear();
+          const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+          const day = String(checkDate.getDate()).padStart(2, '0');
+          const testRetirementDate = `${year}-${month}-${day}`;
+
           const testBalance = calculateBalanceForRetirementDate(testRetirementDate);
 
           if (testBalance >= 0) {
@@ -1350,9 +1421,15 @@ const DataReview = () => {
           const bDate = new Date(birthDate);
           const earlyRetDate = new Date(bDate);
           earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(earlyRetirementAge));
-          earlyRetDate.setDate(1);
-          earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
-          simulationRetirementDate = earlyRetDate.toISOString().split('T')[0];
+
+          // Fix Timezone Drift: explicitly format as YYYY-MM-DD using local time
+          // toISOString() converts to UTC, which can shift 'Oct 1 00:00' back to 'Sep 30 23:00'
+          const year = earlyRetDate.getFullYear();
+          const month = String(earlyRetDate.getMonth() + 1).padStart(2, '0');
+          const day = String(earlyRetDate.getDate()).padStart(2, '0');
+          simulationRetirementDate = `${year}-${month}-${day}`;
+
+          console.log('Calculated Early Ret Date (Local):', simulationRetirementDate);
         }
       }
 

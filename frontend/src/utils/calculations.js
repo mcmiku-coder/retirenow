@@ -31,58 +31,42 @@ export function calculateYearlyAmount(amount, frequency, startDate, endDate, tar
   }
 
   if (frequency === 'Monthly') {
-    // Month-based calculation
-    let totalAmount = 0;
+    // Robust Month-based pro-rating
+    let totalFraction = 0;
 
-    // Start with the first month
-    const startMonth = overlapStart.getMonth();
-    const startDay = overlapStart.getDate();
-    const endMonth = overlapEnd.getMonth();
-    const endDay = overlapEnd.getDate();
+    let curr = new Date(overlapStart.getFullYear(), overlapStart.getMonth(), 1);
+    const endMonthStart = new Date(overlapEnd.getFullYear(), overlapEnd.getMonth(), 1);
 
-    // If within same month
-    if (overlapStart.getFullYear() === overlapEnd.getFullYear() && startMonth === endMonth) {
-      const daysInMonth = getDaysInMonth(targetYear, startMonth);
-      const activeDays = endDay - startDay + 1;
-      return (activeDays / daysInMonth) * amount;
-    }
+    while (curr <= endMonthStart) {
+      const year = curr.getFullYear();
+      const month = curr.getMonth();
+      const daysInMonth = getDaysInMonth(year, month);
 
-    // First partial month (if not starting on day 1)
-    if (startDay > 1) {
-      const daysInStartMonth = getDaysInMonth(overlapStart.getFullYear(), startMonth);
-      const daysActive = daysInStartMonth - startDay + 1;
-      totalAmount += (daysActive / daysInStartMonth) * amount;
-    } else {
-      // Full first month
-      totalAmount += amount;
-    }
+      // Determine effective start/end days for this specific month
+      let mStartDay = 1;
+      let mEndDay = daysInMonth;
 
-    // Full months in between
-    let currentDate = new Date(overlapStart);
-    currentDate.setDate(1);
-    currentDate.setMonth(currentDate.getMonth() + 1);
-
-    while (currentDate < overlapEnd) {
-      const currentMonth = currentDate.getMonth();
-      const currentYear = currentDate.getFullYear();
-
-      // Check if this is the last month
-      const nextMonth = new Date(currentDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      if (nextMonth > overlapEnd) {
-        // Partial last month
-        const daysInLastMonth = getDaysInMonth(currentYear, currentMonth);
-        totalAmount += (endDay / daysInLastMonth) * amount;
-        break;
-      } else {
-        // Full month
-        totalAmount += amount;
-        currentDate.setMonth(currentDate.getMonth() + 1);
+      // If this is the start month period
+      if (year === overlapStart.getFullYear() && month === overlapStart.getMonth()) {
+        mStartDay = overlapStart.getDate();
       }
+
+      // If this is the end month period
+      if (year === overlapEnd.getFullYear() && month === overlapEnd.getMonth()) {
+        mEndDay = overlapEnd.getDate();
+      }
+
+      const activeDays = mEndDay - mStartDay + 1;
+      // Safety clamp
+      const validDays = Math.max(0, Math.min(activeDays, daysInMonth));
+
+      totalFraction += (validDays / daysInMonth);
+
+      // Next month
+      curr.setMonth(curr.getMonth() + 1);
     }
 
-    return totalAmount;
+    return totalFraction * amount;
   }
 
   if (frequency === 'Yearly') {

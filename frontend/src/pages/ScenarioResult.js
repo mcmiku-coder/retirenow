@@ -65,6 +65,7 @@ const ScenarioResult = () => {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [baselineProjection, setBaselineProjection] = useState(null);
   const [missingPages, setMissingPages] = useState([]);
+  const [showTrendHighlight, setShowTrendHighlight] = useState(false);
 
   // Result State
   const [projection, setProjection] = useState({
@@ -77,7 +78,10 @@ const ScenarioResult = () => {
 
   // Activate All Ownings State
   const [activateAllOwnings, setActivateAllOwnings] = useState(false);
-  const [owningsActivationDate, setOwningsActivationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [owningsActivationDate, setOwningsActivationDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
 
   // Scroll to top
   useEffect(() => {
@@ -110,39 +114,38 @@ const ScenarioResult = () => {
         let finalIncomes = location.state?.adjustedIncomes || sData?.adjustedIncomes || iData || [];
 
         // MERGE: Ensure all current profile incomes (iData) are present in the final list
-        // This handles cases where sData is stale (e.g. user renamed Salary -> Net Salary in Profile but sData still has Salary)
+        const knownIds = new Set(finalIncomes.map(i => i.id || i.name));
+
         if (iData && iData.length > 0) {
           iData.forEach(profileInc => {
-            // Check existence by ID or Name
+            // Re-add profile income if missing (by ID or Name)
+            // Crucial for restoring "Salary" if it was accidentally deleted from simulation state
             const exists = finalIncomes.find(fi =>
               (fi.id && profileInc.id && fi.id === profileInc.id) ||
               (fi.name === profileInc.name)
             );
 
             if (!exists) {
-              // Add missing profile item (e.g. "Net Salary")
               finalIncomes.push({
                 ...profileInc,
-                adjustedAmount: profileInc.amount // Default adjusted to original
+                adjustedAmount: profileInc.amount, // Reset to profile amount
+                isActive: true // Ensure it enters as active
               });
             }
           });
         }
 
-        // CRITICAL: Filter out "ghost" entries
-        // 1. If "Net Salary" exists, remove "Salary" (migration artifact)
-        const hasNetSalary = finalIncomes.some(i => i.name === 'Net Salary');
-        if (hasNetSalary) {
-          finalIncomes = finalIncomes.filter(i => i.name !== 'Salary');
-        }
+        // REMOVED "Net Salary" auto-removal logic. 
+        // If the user has both "Salary" and "Net Salary", we let them manage it in DataReview. 
+        // aggressive filtering caused "Incomes are missing".
 
-        // 2. Filter out 0-value items and generic Pension keywords that shouldn't be in Incomes
+        // 2. Filter out 0-value items.
+        // We removed the aggressive "Pension" filter because it was deleting valid inputs from DataReview.
         finalIncomes = finalIncomes.filter(i =>
           (Math.abs(parseFloat(i.adjustedAmount || i.amount) || 0) > 0) &&
-          !String(i.name || '').toLowerCase().includes('pension') &&
-          !String(i.name || '').toLowerCase().includes('lpp') &&
-          !String(i.id || '').toLowerCase().includes('pension') &&
-          !String(i.id || '').toLowerCase().includes('lpp')
+          // Remove only obvious internal ghosts or legacy items
+          !String(i.name || '').toLowerCase().includes('solde') && // legacy
+          !String(i.id || '').toLowerCase().includes('solde')
         );
 
         let finalCosts = location.state?.adjustedCosts || sData?.adjustedCosts || cData || [];
@@ -309,15 +312,15 @@ const ScenarioResult = () => {
 
         setActiveFilters(filters);
 
-        // Initialize retirement age from scenarioData
-        if (sData && sData.retirementOption === 'option2' && sData.earlyRetirementAge) {
-          setRetirementAge(parseInt(sData.earlyRetirementAge));
-        } else if (sData && sData.retirementOption === 'option0') {
-          setRetirementAge(65); // Legal retirement age
+        // Initialize showTrendHighlight from scenarioData
+        if (sData?.showTrendHighlight !== undefined) {
+          setShowTrendHighlight(sData.showTrendHighlight);
+        } else {
+          // DEFAULT TO TRUE so users see the segments immediately
+          setShowTrendHighlight(true);
         }
 
         setLoading(false);
-
       } catch (error) {
         console.error("Error loading data:", error);
         toast.error(t('common.error'));
@@ -327,6 +330,16 @@ const ScenarioResult = () => {
 
     loadAllData();
   }, [user, masterKey, navigate, location]);
+
+  // INITIALIZATION FIX: Set retirementAge state from scenarioData on load
+  useEffect(() => {
+    if (retirementAge === null && scenarioData?.retirementOption === 'option2') {
+      const explicitAge = parseInt(scenarioData.lppSimulationAge);
+      if (!isNaN(explicitAge) && explicitAge > 0) {
+        setRetirementAge(explicitAge);
+      }
+    }
+  }, [scenarioData, retirementAge]);
 
   // --- CORE SIMULATION FUNCTION ---
   const runSimulation = React.useCallback((simRetirementDate, overrides = {}) => {
@@ -495,6 +508,7 @@ const ScenarioResult = () => {
       let yearActivatedOwnings = 0;
       let yearCosts = 0;
       const incomeBreakdown = {};
+      const activatedOwingsBreakdown = {};
       const costBreakdown = {};
       let amountTransferredToInvested = 0; // Amount moved from 'Cash Flow' to 'Invested Pot'
 
@@ -535,7 +549,10 @@ const ScenarioResult = () => {
           // STRICT RULE: If moving slider, Salary always ends exactly at Retirement Date.
           // This allows both extending (working longer) and capping (retiring earlier)
           // ignoring the static "End Date" saved in the database from the original plan.
-          effectiveEndDate = simRetirementDateObj.toISOString().split('T')[0];
+          const y = simRetirementDateObj.getFullYear();
+          const m = String(simRetirementDateObj.getMonth() + 1).padStart(2, '0');
+          const d = String(simRetirementDateObj.getDate()).padStart(2, '0');
+          effectiveEndDate = `${y}-${m}-${d}`;
 
           // CRITICAL FAIL-SAFE: If we are completely past the retirement year, 
           // and this is work income, force skip. This fixes the persistent salary bug.
@@ -546,7 +563,10 @@ const ScenarioResult = () => {
           // Standard: If no end date, or end date is AFTER retirement, cap it.
           // (Preserve fixed-term contracts that end BEFORE retirement)
           if (!effectiveEndDate || new Date(effectiveEndDate) > simRetirementDateObj) {
-            effectiveEndDate = simRetirementDateObj.toISOString().split('T')[0];
+            const y = simRetirementDateObj.getFullYear();
+            const m = String(simRetirementDateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(simRetirementDateObj.getDate()).padStart(2, '0');
+            effectiveEndDate = `${y}-${m}-${d}`;
           }
         }
 
@@ -579,7 +599,8 @@ const ScenarioResult = () => {
 
           let amount = parseFloat(row.amount) || 0;
           const nameLower = row.name.toLowerCase();
-          let effectiveStartDate = row.startDate || simRetirementDateObj.toISOString().split('T')[0];
+          const simDateStr = `${simRetirementDateObj.getFullYear()}-${String(simRetirementDateObj.getMonth() + 1).padStart(2, '0')}-${String(simRetirementDateObj.getDate()).padStart(2, '0')}`;
+          let effectiveStartDate = row.startDate || simDateStr;
           let effectiveEndDate = row.endDate || `${deathYear}-12-31`;
           let frequency = row.frequency;
 
@@ -588,7 +609,10 @@ const ScenarioResult = () => {
             // Use our calculated dynamic variables
             amount = simLppPension;
             frequency = 'Yearly'; // Pension inputs are now Yearly
-            effectiveStartDate = lppStartDate.toISOString().split('T')[0];
+            const lppY = lppStartDate.getFullYear();
+            const lppM = String(lppStartDate.getMonth() + 1).padStart(2, '0');
+            const lppD = String(lppStartDate.getDate()).padStart(2, '0');
+            effectiveStartDate = `${lppY}-${lppM}-${lppD}`;
             lppProcessed = true;
             // If there is Capital, handle below as One-time
           } else if (nameLower.includes('avs')) {
@@ -613,7 +637,10 @@ const ScenarioResult = () => {
 
       // Fallback: If no standard LPP row was found to override, but we have a simulated pension (Option 3), add it now.
       if (!lppProcessed && simLppPension > 0) {
-        const effectiveStartDate = lppStartDate.toISOString().split('T')[0];
+        const lppY = lppStartDate.getFullYear();
+        const lppM = String(lppStartDate.getMonth() + 1).padStart(2, '0');
+        const lppD = String(lppStartDate.getDate()).padStart(2, '0');
+        const effectiveStartDate = `${lppY}-${lppM}-${lppD}`;
         const effectiveEndDate = `${deathYear}-12-31`;
         const val = calculateYearlyAmount(simLppPension, 'Yearly', effectiveStartDate, effectiveEndDate, year);
         if (val > 0) {
@@ -707,6 +734,8 @@ const ScenarioResult = () => {
               yearActivatedOwnings += amount;
               // Also add to income breakdown for tooltip detail
               incomeBreakdown[`${asset.name} (Activated)`] = (incomeBreakdown[`${asset.name} (Activated)`] || 0) + amount;
+              // Separate breakdown for bar shapes
+              activatedOwingsBreakdown[asset.name] = (activatedOwingsBreakdown[asset.name] || 0) + amount;
             } else {
               // Show it on the INCOME side for visual confirmation
               yearIncome += amount;
@@ -785,6 +814,7 @@ const ScenarioResult = () => {
         annualBalance,
         cumulativeBalance: totalBalance,  // Show total including invested balance
         incomeBreakdown,
+        activatedOwingsBreakdown,
         costBreakdown
       });
     }
@@ -1002,7 +1032,8 @@ const ScenarioResult = () => {
             ...scenarioData,
             activeFilters: activeFilters,
             activateAllOwnings: activateAllOwnings,
-            owningsActivationDate: owningsActivationDate
+            owningsActivationDate: owningsActivationDate,
+            showTrendHighlight: showTrendHighlight
           });
         } catch (err) {
           console.error("Failed to save settings", err);
@@ -1011,7 +1042,7 @@ const ScenarioResult = () => {
       const timeoutId = setTimeout(saveData, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [activeFilters, activateAllOwnings, owningsActivationDate, loading, user, masterKey, scenarioData]);
+  }, [activeFilters, activateAllOwnings, owningsActivationDate, showTrendHighlight, loading, user, masterKey, scenarioData]);
 
   // Generate Comprehensive PDF Report
   const generatePDF = async () => {
@@ -1816,6 +1847,21 @@ const ScenarioResult = () => {
     );
   };
 
+  // Helper to get trend color for bar segments
+  const getTrendColor = (origFill, trend, type) => {
+    if (!showTrendHighlight || !trend || trend === 'stable') return origFill;
+
+    if (type === 'income') {
+      return trend === 'up' ? '#166534' : '#bbf7d0'; // Emerald 800 (Darker) vs Emerald 200 (Lighter)
+    } else if (type === 'negCosts') {
+      // For negative costs: up (-8k > -10k) = Decrease -> Light Red. down (-12k < -10k) = Increase -> Dark Red.
+      return trend === 'up' ? '#fee2e2' : '#991b1b';
+    } else if (type === 'activatedOwnings') {
+      return trend === 'up' ? '#9d174d' : '#fbcfe8'; // Pink 800 vs Pink 200
+    }
+    return origFill;
+  };
+
   // Custom Tooltip Component
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -1917,7 +1963,7 @@ const ScenarioResult = () => {
 
     if (isNaN(initialInvested)) initialInvested = 0;
 
-    return projection.yearlyBreakdown.map((row) => {
+    return projection.yearlyBreakdown.map((row, index) => {
       // Total Wealth from Baseline
       const totalBase = parseFloat(row.cumulativeBalance) || 0;
       const rowYear = parseInt(row.year);
@@ -1979,15 +2025,45 @@ const ScenarioResult = () => {
         return (totalBase - investedInBaseline) + mcInvestedVal;
       };
 
+      // Trend & Color Logic
+      const prevRow = index > 0 ? projection.yearlyBreakdown[index - 1] : null;
+      const getColors = (current, previous, type, baseFill) => {
+        const colors = {};
+        Object.keys(current).forEach(key => {
+          if (!showTrendHighlight || !previous) {
+            colors[key] = baseFill;
+            return;
+          }
+          const curVal = Math.round(current[key] || 0);
+          const prevVal = Math.round(previous[key] || 0);
+
+          if (curVal > prevVal) {
+            if (type === 'income') colors[key] = '#15803d'; // Dark Green
+            else if (type === 'negCosts') colors[key] = '#dc2626'; // Dark Red (Increase)
+            else if (type === 'activatedOwnings') colors[key] = '#be185d'; // Dark Pink
+          } else if (curVal < prevVal) {
+            if (type === 'income') colors[key] = '#dcfce7'; // Light Green
+            else if (type === 'negCosts') colors[key] = '#fee2e2'; // Light Red (Decrease)
+            else if (type === 'activatedOwnings') colors[key] = '#fce7f3'; // Light Pink
+          } else {
+            colors[key] = baseFill;
+          }
+        });
+        return colors;
+      };
+
       return {
         ...row,
+        incomeColors: getColors(row.incomeBreakdown || {}, prevRow?.incomeBreakdown || {}, 'income', '#22c55e'),
+        activatedOwingsColors: getColors(row.activatedOwingsBreakdown || {}, prevRow?.activatedOwingsBreakdown || {}, 'activatedOwnings', '#ec4899'),
+        costColors: getColors(row.costBreakdown || {}, prevRow?.costBreakdown || {}, 'negCosts', '#ef4444'),
         mc50: calcWealth(monteCarloProjections.p50),
         mc25: calcWealth(monteCarloProjections.p25),
         mc10: calcWealth(monteCarloProjections.p10),
         mc5: calcWealth(monteCarloProjections.p5)
       };
     });
-  }, [projection, monteCarloProjections, assets]);
+  }, [projection, monteCarloProjections, assets, showTrendHighlight]);
 
   const isInvested = useMemo(() => hasInvestedBook(scenarioData, assets), [scenarioData, assets]);
   const finalChartRow = chartData && chartData.length > 0 ? chartData[chartData.length - 1] : null;
@@ -2059,6 +2135,109 @@ const ScenarioResult = () => {
       option
     };
   }, [scenarioData, userData, retirementAge, projection.simRetirementDate, location.state]);
+
+  // Custom Bar Shape for conditional coloring
+  const CustomBarShape = (props) => {
+    const { x, y, width, height, payload, dataKey } = props;
+
+    // Safety check - if no payload or tiny height, return null to avoid render issues
+    const absHeight = Math.abs(height);
+    if (!payload || !absHeight || absHeight < 1) return null;
+
+    const baseFill = props.fill;
+    let breakdown = [];
+    let colorMap = null;
+
+    // 1. Identify Data Source based on Key
+    if (dataKey === 'income') {
+      breakdown = Object.entries(payload.incomeBreakdown || {}).filter(([name]) => !name.includes('(Activated)'));
+      colorMap = payload.incomeColors;
+    } else if (dataKey === 'activatedOwnings') {
+      breakdown = Object.entries(payload.activatedOwingsBreakdown || {});
+      colorMap = payload.activatedOwingsColors;
+    } else if (dataKey === 'negCosts') {
+      breakdown = Object.entries(payload.costBreakdown || {});
+      colorMap = payload.costColors;
+    }
+
+    // 2. Normalize Coordinate System
+    // In Recharts Bar:
+    // - Positive Value: y is the TOP. height is POSITIVE (downwards).
+    // - Negative Value: y is the TOP (near 0 axis). height is NEGATIVE (upwards??). 
+    //   WAIT. Recharts usually standardizes to:
+    //   x,y is top-left corner of the RECT. height is always positive in the shape props if simplified?
+    //   NO. Recharts often passes negative height for negative values.
+    //   Let's standardise: 
+    //   If height < 0: The rect starts at y+height (visually top) and has height abs(height).
+    //   If height > 0: The rect starts at y and has height abs(height).
+
+    const rectY = height < 0 ? y + height : y;
+
+    // 3. Filter Active Items (ignore 0s)
+    const activeItems = breakdown.filter(([_, v]) => Math.abs(parseFloat(v) || 0) > 0);
+
+    // If no breakdown, render solid block
+    if (activeItems.length === 0) {
+      return <rect x={x} y={rectY} width={width} height={absHeight} fill={baseFill} />;
+    }
+
+    // 4. Calculate Total for Proportions
+    const totalValue = activeItems.reduce((sum, [_, v]) => sum + Math.abs(parseFloat(v) || 0), 0);
+
+    // Safety for divide by zero
+    if (totalValue === 0) {
+      return <rect x={x} y={rectY} width={width} height={absHeight} fill={baseFill} />;
+    }
+
+    // 5. Render Segments (Stacked Top-Down)
+    // Sort logic: Largest items first? Or consistent order? Descending size is usually visually best.
+    const sortedItems = [...activeItems].sort((a, b) => Math.abs(parseFloat(b[1] || 0)) - Math.abs(parseFloat(a[1] || 0)));
+
+    const elements = [];
+    let accumulatedHeight = 0;
+
+    sortedItems.forEach(([name, value], index) => {
+      const valAbs = Math.abs(parseFloat(value) || 0);
+      const segmentHeight = (valAbs / totalValue) * absHeight;
+
+      // Skip microscopic segments to prevent rendering artifacts
+      if (segmentHeight < 0.5) return;
+
+      // Determine Color
+      const segmentFill = (colorMap && colorMap[name]) ? colorMap[name] : baseFill;
+
+      elements.push(
+        <rect
+          key={`rect-${dataKey}-${index}`}
+          x={x}
+          y={rectY + accumulatedHeight}
+          width={width}
+          height={segmentHeight}
+          fill={segmentFill}
+        />
+      );
+
+      // Add Separator Line (if not last)
+      if (index < sortedItems.length - 1) {
+        elements.push(
+          <line
+            key={`line-${dataKey}-${index}`}
+            x1={x}
+            y1={rectY + accumulatedHeight + segmentHeight}
+            x2={x + width}
+            y2={rectY + accumulatedHeight + segmentHeight} // Draw at bottom of this segment
+            stroke="#ffffff"
+            strokeWidth={1}
+            opacity={0.8}
+          />
+        );
+      }
+
+      accumulatedHeight += segmentHeight;
+    });
+
+    return <g>{elements}</g>;
+  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -2198,15 +2377,32 @@ const ScenarioResult = () => {
                   </div>
                   <div className="flex-1">
                     {(() => {
-                      const minAge = parseInt(scenarioData?.earlyRetirementAge || '58', 10);
+                      const rawEarlyAge = scenarioData?.lppEarliestAge; // Use the actual earliest offered age
+                      const minAge = parseInt(rawEarlyAge || '58', 10);
                       const maxAge = 65;
                       const range = maxAge - minAge;
+
+                      const calculatedCurrentAge = retirementInfo.ageYears + (retirementInfo.ageMonths / 12);
+                      const effectiveCurrentAge = retirementAge || calculatedCurrentAge;
+                      // FORCE CONSTRAINT: Value cannot be less than minAge
+                      const safeValue = Math.max(minAge, effectiveCurrentAge);
+
+                      console.log('Slider Debug:', {
+                        rawEarlyAge,
+                        minAge,
+                        retirementAgeState: retirementAge,
+                        calculatedCurrentAge,
+                        safeValue
+                      });
 
                       return (
                         <div className="relative pt-2 pb-6 w-full">
                           <Slider
-                            value={[retirementAge || retirementInfo.ageYears + (retirementInfo.ageMonths / 12)]}
-                            onValueChange={(value) => setRetirementAge(value[0])}
+                            value={[safeValue]}
+                            onValueChange={(value) => {
+                              const newVal = Math.max(minAge, value[0]); // Double safety
+                              setRetirementAge(newVal);
+                            }}
                             min={minAge}
                             max={maxAge}
                             step={1 / 12}
@@ -2352,9 +2548,9 @@ const ScenarioResult = () => {
                     />
                   )}
 
-                  <Bar dataKey="income" barSize={11} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" />
-                  <Bar dataKey="activatedOwnings" barSize={11} fill="#ec4899" name={language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'} stackId="bars" />
-                  <Bar dataKey="negCosts" barSize={11} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" />
+                  <Bar dataKey="income" barSize={11} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" shape={<CustomBarShape />} />
+                  <Bar dataKey="activatedOwnings" barSize={11} fill="#ec4899" name={language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'} stackId="bars" shape={<CustomBarShape />} />
+                  <Bar dataKey="negCosts" barSize={11} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" shape={<CustomBarShape />} />
 
                   <ReferenceLine
                     x={retirementInfo.date.getFullYear()}
@@ -2404,6 +2600,45 @@ const ScenarioResult = () => {
                       <span>{language === 'fr' ? 'Avoirs non encore disponibles dans la projection' : 'Assets not yet made available in the projection'}</span>
                     </div>
                   </div>
+
+                  <div className="flex items-center space-x-2 pt-4 mt-4 border-t border-muted/20">
+                    <Checkbox
+                      id="show-trends"
+                      checked={showTrendHighlight}
+                      onCheckedChange={(checked) => setShowTrendHighlight(!!checked)}
+                    />
+                    <Label htmlFor="show-trends" className="text-xs cursor-pointer flex flex-col gap-0.5">
+                      <span className="font-semibold text-white">
+                        {language === 'fr' ? 'Mettre en évidence les tendances (an-sur-an)' : 'Highlight year-over-year trends'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground italic">
+                        {language === 'fr'
+                          ? 'Colore les segments selon leur augmentation ou diminution par rapport à l\'année précédente.'
+                          : 'Colors segments based on their increase or decrease compared to the previous year.'}
+                      </span>
+                    </Label>
+                  </div>
+
+                  {showTrendHighlight && (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-muted-foreground bg-black/20 px-2 py-0.5 rounded border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-sm bg-[#15803d]" />
+                        <span>{language === 'fr' ? 'Revenu ↑' : 'Inc. ↑'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-muted-foreground bg-black/20 px-2 py-0.5 rounded border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-sm bg-[#dcfce7]" />
+                        <span>{language === 'fr' ? 'Revenu ↓' : 'Inc. ↓'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-muted-foreground bg-black/20 px-2 py-0.5 rounded border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-sm bg-[#dc2626]" />
+                        <span>{language === 'fr' ? 'Dépense ↑' : 'Cost ↑'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-muted-foreground bg-black/20 px-2 py-0.5 rounded border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-sm bg-[#fee2e2]" />
+                        <span>{language === 'fr' ? 'Dépense ↓' : 'Cost ↓'}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {isInvested && (
@@ -2494,10 +2729,16 @@ const ScenarioResult = () => {
                   <div className="space-y-2 pr-2">
                     {(() => {
                       const investedAssets = getInvestedBookAssets(assets, scenarioData);
-                      const currentYearStr = new Date().toISOString().split('T')[0];
-                      const deathDateStr = userData?.theoreticalDeathDate
-                        ? userData.theoreticalDeathDate
-                        : new Date(new Date().getFullYear() + 30, 11, 31).toISOString().split('T')[0];
+                      const d = new Date();
+                      const currentYearStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                      let deathDateStr;
+                      if (userData?.theoreticalDeathDate) {
+                        deathDateStr = userData.theoreticalDeathDate;
+                      } else {
+                        const dd = new Date(new Date().getFullYear() + 30, 11, 31);
+                        deathDateStr = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+                      }
 
                       const formatSwissDate = (dateStr) => {
                         if (!dateStr) return '';
