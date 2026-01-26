@@ -150,13 +150,12 @@ export const generateComprehensivePDF = async ({
   if (activeAssets.length > 0) {
     autoTable(pdf, {
       startY: yPosition,
-      head: [['Name', 'Original Value', 'Adjusted Value', 'Category', 'Preserve', 'Availability Type', 'Availability Value', 'Strategy', 'Cluster Tag']],
+      head: [['Name', 'Original Value', 'Adjusted Value', 'Category', 'Availability Type', 'Availability Value', 'Strategy', 'Cluster Tag']],
       body: activeAssets.map(a => [
         a.name,
         formatNumber(parseFloat(a.amount)),
         formatNumber(parseFloat(a.adjustedAmount || a.amount)),
         a.category || '',
-        a.preserve || '',
         a.availabilityType || '',
         a.availabilityDate || a.availabilityTimeframe || '',
         a.strategy || '',

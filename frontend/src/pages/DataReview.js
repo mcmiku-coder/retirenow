@@ -68,7 +68,7 @@ const DataReview = () => {
   const [nonLiquidAssets, setNonLiquidAssets] = useState('');
   const [futureInflows, setFutureInflows] = useState([]);
   const [currentAssets, setCurrentAssets] = useState([]);
-  const [desiredOutflows, setDesiredOutflows] = useState([]);
+  const [projectedOutflows, setProjectedOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Adjustment button handler
@@ -188,12 +188,16 @@ const DataReview = () => {
 
           setFutureInflows(assetsData.futureInflows || []);
 
-          // Load current assets and desired outflows for display
-          // Load current assets and desired outflows for display
+          // Load current assets and projected outflows for display
           // Prioritize scenarioData overrides if they exist
           let loadedCurrentAssets = (scenarioData && scenarioData.currentAssets && scenarioData.currentAssets.length > 0)
             ? scenarioData.currentAssets
             : (assetsData.currentAssets || []);
+
+          // Filter out assets with no amount (empty/undefined/null or '0')
+          loadedCurrentAssets = loadedCurrentAssets.filter(asset =>
+            asset.amount && asset.amount !== '' && asset.amount !== '0'
+          );
 
 
           const option = scenarioData.retirementOption || 'option1';
@@ -317,8 +321,7 @@ const DataReview = () => {
                 preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
                 availabilityType: 'Date',
                 availabilityDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr, // Default to start date (usually retirement date)
-                ownType: 'Date',
-                ownDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr,
+                availabilityDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr, // Default to start date (usually retirement date)
                 strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
                 isRetirement: true // Mark as coming from retirement inputs
               };
@@ -366,12 +369,12 @@ const DataReview = () => {
             }
           }
 
-          const loadedDesiredOutflows = (scenarioData && scenarioData.desiredOutflows && scenarioData.desiredOutflows.length > 0)
-            ? scenarioData.desiredOutflows
-            : (assetsData.desiredOutflows || []);
+          const loadedProjectedOutflows = (scenarioData && (scenarioData.projectedOutflows || scenarioData.desiredOutflows) && (scenarioData.projectedOutflows || scenarioData.desiredOutflows).length > 0)
+            ? (scenarioData.projectedOutflows || scenarioData.desiredOutflows)
+            : (assetsData.projectedOutflows || assetsData.desiredOutflows || []);
 
           setCurrentAssets(loadedCurrentAssets);
-          setDesiredOutflows(loadedDesiredOutflows);
+          setProjectedOutflows(loadedProjectedOutflows);
         }
 
         // Process retirement income from scenarioData.benefitsData
@@ -620,7 +623,7 @@ const DataReview = () => {
           adjustedIncomes: incomes,
           adjustedCosts: costs,
           currentAssets: currentAssets,
-          desiredOutflows: desiredOutflows
+          projectedOutflows: projectedOutflows
         });
       } catch (error) {
         console.error('Failed to auto-save scenario data:', error);
@@ -630,7 +633,7 @@ const DataReview = () => {
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
-  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, desiredOutflows, user, masterKey, loading]);
+  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, projectedOutflows, user, masterKey, loading]);
 
   // Recalculate totals when currentAssets changes
   useEffect(() => {
@@ -1037,12 +1040,12 @@ const DataReview = () => {
         }
       }
 
-      setCurrentAssets(loadedCurrentAssets);
+      setCurrentAssets(loadedCurrentAssets.filter(asset => parseFloat(asset.amount) > 0));
 
       // Autosave the reset state
       await saveScenarioData(user.email, masterKey, {
         ...scenarioData,
-        currentAssets: loadedCurrentAssets,
+        currentAssets: loadedCurrentAssets.filter(asset => parseFloat(asset.amount) > 0),
         liquidAssets,
         nonLiquidAssets,
         investedBook: [] // CLEAR GHOSTS: Reset investment customizations when assets are reset
@@ -1055,15 +1058,15 @@ const DataReview = () => {
     }
   };
 
-  const resetDebtsToDefaults = async () => {
+  const resetOutflowsToDefaults = async () => {
     try {
       const assetsData = await getAssetsData(user.email, masterKey);
       if (assetsData) {
-        setDesiredOutflows(assetsData.desiredOutflows || []);
-        toast.success(language === 'fr' ? 'Dettes réinitialisées aux valeurs par défaut' : 'Debts reset to default values');
+        setProjectedOutflows(assetsData.projectedOutflows || assetsData.desiredOutflows || []);
+        toast.success(language === 'fr' ? 'Sorties projetées réinitialisées' : 'Projected outflows reset to default values');
       }
     } catch (error) {
-      console.error('Error resetting debts:', error);
+      console.error('Error resetting outflows:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
     }
   };
@@ -1113,29 +1116,29 @@ const DataReview = () => {
     setCurrentAssets(updatedAssets);
   };
 
-  // Debt update and delete functions
-  const updateDebt = (id, field, value) => {
-    setDesiredOutflows(desiredOutflows.map(debt =>
-      debt.id === id ? { ...debt, [field]: value } : debt
+  // Outflow update and delete functions
+  const updateOutflow = (id, field, value) => {
+    setProjectedOutflows(projectedOutflows.map(outflow =>
+      outflow.id === id ? { ...outflow, [field]: value } : outflow
     ));
   };
 
-  const deleteDebt = (id) => {
-    setDesiredOutflows(desiredOutflows.filter(debt => debt.id !== id));
+  const deleteOutflow = (id) => {
+    setProjectedOutflows(projectedOutflows.filter(outflow => outflow.id !== id));
   };
 
-  const addDebt = () => {
+  const addOutflow = () => {
     const newId = Date.now();
-    const newDebt = {
+    const newOutflow = {
       id: newId,
-      name: language === 'fr' ? 'Nouvelle dette' : 'New debt',
+      name: language === 'fr' ? 'Nouvelle sortie' : 'New outflow',
       amount: '',
       adjustedAmount: '',
       madeAvailableDate: new Date().toISOString().split('T')[0],
       madeAvailableTimeframe: '',
       locked: false
     };
-    setDesiredOutflows([...desiredOutflows, newDebt]);
+    setProjectedOutflows([...projectedOutflows, newOutflow]);
   };
 
 
@@ -1540,7 +1543,7 @@ const DataReview = () => {
           adjustedIncomes: incomes,
           adjustedCosts: costs,
           adjustedAssets: currentAssets,
-          adjustedDebts: desiredOutflows,
+          adjustedOutflows: projectedOutflows,
           incomeDateOverrides
         }
       });
@@ -1647,11 +1650,7 @@ const DataReview = () => {
   const applyAdjustments = () => {
     // Logic to update costs based on answers
     // This is a heuristic approach based on typical Swiss values or simply modifying existing values
-    // For this implementation, we will apply multipliers to existing costs if they match categories,
-    // or add them if missing? The request says "adjust automatically", implying modifying the existing COST list.
-
-    // We map answers to multipliers or fixed values.
-    // NOTE: This modifies 'adjustedAmount' in the 'costs' state.
+    // For this implementation, we will apply multipliers to existing COST list.
 
     let newCosts = [...costs];
 
@@ -1750,7 +1749,7 @@ const DataReview = () => {
                 ...incomes.map(i => i.clusterTag),
                 ...costs.map(c => c.clusterTag),
                 ...currentAssets.map(a => a.clusterTag),
-                ...desiredOutflows.map(d => d.clusterTag)
+                ...projectedOutflows.map(d => d.clusterTag)
               ])
             ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
               <option key={tag} value={tag} />
@@ -1966,10 +1965,6 @@ const DataReview = () => {
                         <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
                         <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                        {/* Own Type Column Moved */}
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Propre Type' : 'Own Type'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Propre Valeur' : 'Own Value'}</th>
-                        {/* Preserve Column Removed */}
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
                         <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
                         <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
@@ -2025,51 +2020,6 @@ const DataReview = () => {
                                   <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </td>
-                            {/* Preserve Cell Removed */}
-                            {/* Own Type Column Moved */}
-                            <td className="p-3">
-                              <Select
-                                value={asset.ownType || 'Date'}
-                                onValueChange={(value) => updateAsset(asset.id, 'ownType', value)}
-                              >
-                                <SelectTrigger className="max-w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            {/* Own Value Column Moved */}
-                            <td className="p-3">
-                              {asset.ownType === 'Period' ? (
-                                <Select
-                                  value={asset.ownTimeframe || 'Select'}
-                                  onValueChange={(value) => updateAsset(asset.id, 'ownTimeframe', value === 'Select' ? '' : value)}
-                                >
-                                  <SelectTrigger className="max-w-[150px]">
-                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
-                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input
-                                  type="date"
-                                  value={asset.ownDate || ''}
-                                  onChange={(e) => updateAsset(asset.id, 'ownDate', e.target.value)}
-                                  className="max-w-[140px]"
-                                />
-                              )}
                             </td>
                             <td className="p-3">
                               <Select
@@ -2234,7 +2184,7 @@ const DataReview = () => {
                         return (
                           <tr
                             key={cost.id}
-                            className={`border - b hover: bg - muted / 30 ${groupStyles} ${childStyles} `}
+                            className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles} `}
                           >
                             <td className="p-3 font-medium text-white">
                               <div className="flex items-center gap-2">
@@ -2341,10 +2291,10 @@ const DataReview = () => {
 
 
 
-            {/* Debts Table */}
+            {/* Projected Outflows Table */}
             <Card>
               <CardHeader>
-                <CardTitle>{language === 'fr' ? 'Dettes actuelles ou futures' : 'Current or future Debts'}</CardTitle>
+                <CardTitle>{language === 'fr' ? 'Sorties projetées actuelles ou futures' : 'Current or future Projected Outflows'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -2361,26 +2311,26 @@ const DataReview = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {desiredOutflows.map((debt) => {
-                        const originalAmount = parseFloat(debt.amount) || 0;
-                        const adjustedAmount = parseFloat(debt.adjustedAmount || debt.amount) || 0;
+                      {projectedOutflows.map((outflow) => {
+                        const originalAmount = parseFloat(outflow.amount) || 0;
+                        const adjustedAmount = parseFloat(outflow.adjustedAmount || outflow.amount) || 0;
                         const isDecreased = adjustedAmount < originalAmount;
                         const isIncreased = adjustedAmount > originalAmount;
 
                         return (
-                          <tr key={debt.id} className="border-b hover:bg-muted/30">
-                            <td className="p-3 font-medium text-white">{debt.name}</td>
+                          <tr key={outflow.id} className="border-b hover:bg-muted/30">
+                            <td className="p-3 font-medium text-white">{outflow.name}</td>
                             <td className="text-right p-3 text-muted-foreground">
                               CHF {originalAmount.toLocaleString()}
                             </td>
                             <td className="text-right p-3">
                               <Input
                                 type="text"
-                                value={(debt.adjustedAmount !== undefined ? debt.adjustedAmount : debt.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                value={(outflow.adjustedAmount !== undefined ? outflow.adjustedAmount : outflow.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
                                 onChange={(e) => {
                                   const rawValue = e.target.value.replace(/'/g, '');
                                   if (!isNaN(rawValue)) {
-                                    updateDebt(debt.id, 'adjustedAmount', rawValue);
+                                    updateOutflow(outflow.id, 'adjustedAmount', rawValue);
                                   }
                                 }}
                                 className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
@@ -2388,8 +2338,8 @@ const DataReview = () => {
                             </td>
                             <td className="p-3">
                               <Select
-                                value={debt.madeAvailableType || (debt.madeAvailableTimeframe ? 'Period' : 'Date')}
-                                onValueChange={(value) => updateDebt(debt.id, 'madeAvailableType', value)}
+                                value={outflow.madeAvailableType || (outflow.madeAvailableTimeframe ? 'Period' : 'Date')}
+                                onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableType', value)}
                               >
                                 <SelectTrigger className="max-w-[120px]">
                                   <SelectValue />
@@ -2401,10 +2351,10 @@ const DataReview = () => {
                               </Select>
                             </td>
                             <td className="p-3">
-                              {(debt.madeAvailableType === 'Period' || (!debt.madeAvailableType && debt.madeAvailableTimeframe)) ? (
+                              {(outflow.madeAvailableType === 'Period' || (!outflow.madeAvailableType && outflow.madeAvailableTimeframe)) ? (
                                 <Select
-                                  value={debt.madeAvailableTimeframe || 'Select'}
-                                  onValueChange={(value) => updateDebt(debt.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                                  value={outflow.madeAvailableTimeframe || 'Select'}
+                                  onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
                                 >
                                   <SelectTrigger className="max-w-[150px]">
                                     <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
@@ -2422,8 +2372,8 @@ const DataReview = () => {
                               ) : (
                                 <Input
                                   type="date"
-                                  value={debt.madeAvailableDate || ''}
-                                  onChange={(e) => updateDebt(debt.id, 'madeAvailableDate', e.target.value)}
+                                  value={outflow.madeAvailableDate || ''}
+                                  onChange={(e) => updateOutflow(outflow.id, 'madeAvailableDate', e.target.value)}
                                   className="max-w-[140px]"
                                 />
                               )}
@@ -2433,19 +2383,19 @@ const DataReview = () => {
                                 type="text"
                                 list="cluster-options"
                                 placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                                value={debt.clusterTag || ''}
-                                onChange={(e) => updateDebt(debt.id, 'clusterTag', e.target.value)}
+                                value={outflow.clusterTag || ''}
+                                onChange={(e) => updateOutflow(outflow.id, 'clusterTag', e.target.value)}
                                 className="max-w-[150px]"
                               />
                             </td>
                             <td className="p-3">
                               <div className="flex gap-2 justify-center">
                                 <Button
-                                  onClick={() => deleteDebt(debt.id)}
+                                  onClick={() => deleteOutflow(outflow.id)}
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  title="Delete this debt"
+                                  title="Delete this outflow"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -2459,16 +2409,16 @@ const DataReview = () => {
                 </div>
                 <div className="mt-4 flex gap-2">
                   <Button
-                    onClick={addDebt}
+                    onClick={addOutflow}
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
                   >
                     <Plus className="h-4 w-4" />
-                    {language === 'fr' ? '+ ajouter une dette' : '+ add debt'}
+                    {language === 'fr' ? '+ ajouter une sortie' : '+ add outflow'}
                   </Button>
                   <Button
-                    onClick={resetDebtsToDefaults}
+                    onClick={resetOutflowsToDefaults}
                     variant="outline"
                     size="sm"
                   >

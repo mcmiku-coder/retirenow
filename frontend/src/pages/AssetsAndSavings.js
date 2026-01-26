@@ -18,7 +18,7 @@ const AssetsOverview = () => {
     const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const [currentAssets, setCurrentAssets] = useState([]);
-    const [desiredOutflows, setDesiredOutflows] = useState([]);
+    const [projectedOutflows, setProjectedOutflows] = useState([]);
     const [theoreticalDeathDate, setTheoreticalDeathDate] = useState('');
     const [nextAssetId, setNextAssetId] = useState(4);
     const [nextOutflowId, setNextOutflowId] = useState(3);
@@ -51,17 +51,18 @@ const AssetsOverview = () => {
 
                 if (savedData && savedData.currentAssets && savedData.currentAssets.length > 0) {
                     setCurrentAssets(savedData.currentAssets);
-                    setDesiredOutflows(savedData.desiredOutflows || getDefaultOutflows(deathDate));
+                    setProjectedOutflows(savedData.projectedOutflows || savedData.desiredOutflows || getDefaultOutflows(deathDate));
                     const maxAssetId = Math.max(...savedData.currentAssets.map(r => r.id));
                     setNextAssetId(maxAssetId + 1);
-                    if (savedData.desiredOutflows && savedData.desiredOutflows.length > 0) {
-                        const maxOutflowId = Math.max(...savedData.desiredOutflows.map(r => r.id));
+                    if ((savedData.projectedOutflows || savedData.desiredOutflows) && (savedData.projectedOutflows || savedData.desiredOutflows).length > 0) {
+                        const outflows = savedData.projectedOutflows || savedData.desiredOutflows;
+                        const maxOutflowId = Math.max(...outflows.map(r => r.id));
                         setNextOutflowId(maxOutflowId + 1);
                     }
                 } else {
                     // Initialize with default rows
                     setCurrentAssets(getDefaultAssets(today));
-                    setDesiredOutflows(getDefaultOutflows(deathDate));
+                    setProjectedOutflows(getDefaultOutflows(deathDate));
                 }
             } catch (error) {
                 console.error('Error loading assets data:', error);
@@ -81,8 +82,6 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Liquid',
             preserve: 'No',
-            ownType: 'Date',
-            ownDate: today,
             availabilityType: 'Date',
             availabilityDate: today,
             availabilityTimeframe: '',
@@ -94,8 +93,6 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Illiquid',
             preserve: 'No',
-            ownType: 'Date',
-            ownDate: today,
             availabilityType: 'Date',
             availabilityDate: today,
             availabilityTimeframe: '',
@@ -107,8 +104,6 @@ const AssetsOverview = () => {
             amount: '',
             category: 'Illiquid',
             preserve: 'No',
-            ownType: 'Date',
-            ownDate: '',
             availabilityType: 'Date',
             availabilityDate: '',
             availabilityTimeframe: '',
@@ -177,8 +172,6 @@ const AssetsOverview = () => {
                     amount: Math.round(reData.totals.assetValue).toString(),
                     category: 'Illiquid',
                     preserve: 'Yes',
-                    ownType: 'Date',
-                    ownDate: today,
                     availabilityType: 'Date',
                     availabilityDate: '',
                     availabilityTimeframe: '',
@@ -197,7 +190,7 @@ const AssetsOverview = () => {
         try {
             const dataToSave = {
                 currentAssets: newAssets,
-                desiredOutflows
+                projectedOutflows
             };
             await saveAssetsData(user.email, masterKey, dataToSave);
 
@@ -217,15 +210,15 @@ const AssetsOverview = () => {
         }
     };
 
-    // Desired Outflows functions
+    // Projected Outflows functions
     const updateOutflow = (id, field, value) => {
-        setDesiredOutflows(desiredOutflows.map(row =>
+        setProjectedOutflows(projectedOutflows.map(row =>
             row.id === id ? { ...row, [field]: value } : row
         ));
     };
 
     const addOutflow = () => {
-        setDesiredOutflows([...desiredOutflows, {
+        setProjectedOutflows([...projectedOutflows, {
             id: nextOutflowId,
             name: '',
             amount: '',
@@ -238,19 +231,19 @@ const AssetsOverview = () => {
     };
 
     const deleteOutflow = (id) => {
-        setDesiredOutflows(desiredOutflows.filter(row => row.id !== id));
+        setProjectedOutflows(projectedOutflows.filter(row => row.id !== id));
     };
 
     const resetOutflows = async () => {
         const newOutflows = getDefaultOutflows(theoreticalDeathDate);
-        setDesiredOutflows(newOutflows);
+        setProjectedOutflows(newOutflows);
         setNextOutflowId(3);
 
         // Save to database immediately
         try {
             const dataToSave = {
                 currentAssets,
-                desiredOutflows: newOutflows
+                projectedOutflows: newOutflows
             };
             await saveAssetsData(user.email, masterKey, dataToSave);
             toast.success(language === 'fr' ? 'Sorties réinitialisées' : 'Outflows reset to defaults');
@@ -267,7 +260,7 @@ const AssetsOverview = () => {
         try {
             const dataToSave = {
                 currentAssets,
-                desiredOutflows
+                projectedOutflows
             };
 
             await saveAssetsData(user.email, masterKey, dataToSave);
@@ -299,8 +292,8 @@ const AssetsOverview = () => {
             <PageHeader
                 title={language === 'fr' ? 'Vue d\'overview et perspective des actifs' : 'Asset overview and perspective'}
                 subtitle={language === 'fr'
-                    ? 'Définissez vos actifs actuels, entrées attendues et sorties souhaitées'
-                    : 'Define your current assets, expected inflows, and desired outflows'}
+                    ? 'Définissez vos actifs actuels, entrées attendues et sorties projetées'
+                    : 'Define your current assets, expected inflows, and projected outflows'}
             />
 
             <div className="w-[80%] mx-auto px-4">
@@ -322,8 +315,6 @@ const AssetsOverview = () => {
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Propre Type' : 'Own Type'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Propre Valeur' : 'Own Value'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
@@ -368,47 +359,6 @@ const AssetsOverview = () => {
                                                                 <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
                                                             </SelectContent>
                                                         </Select>
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Select
-                                                            value={row.ownType || 'Date'}
-                                                            onValueChange={(value) => updateAsset(row.id, 'ownType', value)}
-                                                            disabled={row.locked}
-                                                        >
-                                                            <SelectTrigger className="min-w-[120px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </td>
-                                                    <td className="p-2">
-                                                        {row.ownType === 'Period' ? (
-                                                            <Select
-                                                                value={row.ownTimeframe}
-                                                                onValueChange={(value) => updateAsset(row.id, 'ownTimeframe', value)}
-                                                                disabled={row.locked}
-                                                            >
-                                                                <SelectTrigger className="min-w-[180px]">
-                                                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {timeframeOptions.map(opt => (
-                                                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        ) : (
-                                                            <Input
-                                                                type="date"
-                                                                value={row.ownDate || ''}
-                                                                onChange={(e) => updateAsset(row.id, 'ownDate', e.target.value)}
-                                                                disabled={row.locked}
-                                                                className="min-w-[140px]"
-                                                            />
-                                                        )}
                                                     </td>
                                                     <td className="p-2">
                                                         <Select
@@ -477,11 +427,11 @@ const AssetsOverview = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Desired Outflows */}
+                        {/* Projected Outflows */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>
-                                    {language === 'fr' ? 'Sorties souhaitées' : 'Desired outflows'}
+                                    {language === 'fr' ? 'Sorties projetées' : 'Projected outflows'}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -497,7 +447,7 @@ const AssetsOverview = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {desiredOutflows.map((row) => (
+                                            {projectedOutflows.map((row) => (
                                                 <tr key={row.id} className="border-b hover:bg-muted/30">
                                                     <td className="p-2">
                                                         <Input

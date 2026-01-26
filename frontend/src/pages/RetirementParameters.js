@@ -1109,10 +1109,15 @@ const RetirementParameters = () => {
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <Input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="0"
-                                                            value={benefitsData.avs.amount}
-                                                            onChange={(e) => updateBenefitData('avs', 'amount', e.target.value)}
+                                                            value={benefitsData.avs.amount ? benefitsData.avs.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                            onChange={(e) => {
+                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                if (!isNaN(rawValue)) {
+                                                                    updateBenefitData('avs', 'amount', rawValue);
+                                                                }
+                                                            }}
                                                             className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                         />
                                                     </td>
@@ -1138,10 +1143,15 @@ const RetirementParameters = () => {
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <Input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="0"
-                                                            value={account.amount}
-                                                            onChange={(e) => updateBenefitData('threeA', 'amount', e.target.value, idx)}
+                                                            value={account.amount ? account.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                            onChange={(e) => {
+                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                if (!isNaN(rawValue)) {
+                                                                    updateBenefitData('threeA', 'amount', rawValue, idx);
+                                                                }
+                                                            }}
                                                             className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                         />
                                                     </td>
@@ -1174,19 +1184,29 @@ const RetirementParameters = () => {
                                                                     </td>
                                                                     <td className="px-4 py-3 text-center">
                                                                         <Input
-                                                                            type="number"
+                                                                            type="text"
                                                                             placeholder="0"
-                                                                            value={pensionByAge[age]?.capital || ''}
-                                                                            onChange={(e) => updatePensionByAge(age, 'capital', e.target.value)}
+                                                                            value={pensionByAge[age]?.capital ? pensionByAge[age].capital.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                                            onChange={(e) => {
+                                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                                if (!isNaN(rawValue)) {
+                                                                                    updatePensionByAge(age, 'capital', rawValue);
+                                                                                }
+                                                                            }}
                                                                             className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                         />
                                                                     </td>
                                                                     <td className="px-4 py-3 text-center">
                                                                         <Input
-                                                                            type="number"
+                                                                            type="text"
                                                                             placeholder="0"
-                                                                            value={pensionByAge[age]?.pension || ''}
-                                                                            onChange={(e) => updatePensionByAge(age, 'pension', e.target.value)}
+                                                                            value={pensionByAge[age]?.pension ? pensionByAge[age].pension.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                                            onChange={(e) => {
+                                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                                if (!isNaN(rawValue)) {
+                                                                                    updatePensionByAge(age, 'pension', rawValue);
+                                                                                }
+                                                                            }}
                                                                             className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                         />
                                                                     </td>
@@ -1216,19 +1236,29 @@ const RetirementParameters = () => {
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <Input
-                                                                    type="number"
+                                                                    type="text"
                                                                     placeholder="0"
-                                                                    value={projectedLegalLPPCapital}
-                                                                    onChange={(e) => handleLegalLPPChange('capital', e.target.value)}
+                                                                    value={projectedLegalLPPCapital ? projectedLegalLPPCapital.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                                    onChange={(e) => {
+                                                                        const rawValue = e.target.value.replace(/'/g, '');
+                                                                        if (!isNaN(rawValue)) {
+                                                                            handleLegalLPPChange('capital', rawValue);
+                                                                        }
+                                                                    }}
                                                                     className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                 />
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <Input
-                                                                    type="number"
+                                                                    type="text"
                                                                     placeholder="0"
-                                                                    value={projectedLegalLPPPension}
-                                                                    onChange={(e) => handleLegalLPPChange('pension', e.target.value)}
+                                                                    value={projectedLegalLPPPension ? projectedLegalLPPPension.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                                    onChange={(e) => {
+                                                                        const rawValue = e.target.value.replace(/'/g, '');
+                                                                        if (!isNaN(rawValue)) {
+                                                                            handleLegalLPPChange('pension', rawValue);
+                                                                        }
+                                                                    }}
                                                                     className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                                 />
                                                             </td>
@@ -1257,10 +1287,15 @@ const RetirementParameters = () => {
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             <Input
-                                                                type="number"
+                                                                type="text"
                                                                 placeholder="0"
-                                                                value={pensionCapital}
-                                                                onChange={(e) => setPensionCapital(e.target.value)}
+                                                                value={pensionCapital ? pensionCapital.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                                onChange={(e) => {
+                                                                    const rawValue = e.target.value.replace(/'/g, '');
+                                                                    if (!isNaN(rawValue)) {
+                                                                        setPensionCapital(rawValue);
+                                                                    }
+                                                                }}
                                                                 className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                             />
                                                         </td>
@@ -1290,10 +1325,15 @@ const RetirementParameters = () => {
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <Input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="0"
-                                                            value={benefitsData.lppSup.amount}
-                                                            onChange={(e) => updateBenefitData('lppSup', 'amount', e.target.value)}
+                                                            value={benefitsData.lppSup.amount ? benefitsData.lppSup.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                            onChange={(e) => {
+                                                                const rawValue = e.target.value.replace(/'/g, '');
+                                                                if (!isNaN(rawValue)) {
+                                                                    updateBenefitData('lppSup', 'amount', rawValue);
+                                                                }
+                                                            }}
                                                             className="h-8 w-32 bg-slate-700 border-slate-600 text-white text-right mx-auto"
                                                         />
                                                     </td>

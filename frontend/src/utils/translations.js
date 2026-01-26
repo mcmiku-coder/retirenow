@@ -287,7 +287,7 @@ export const translations = {
     // Scenario Page
     scenario: {
       title: "Retirement Scenario Simulator",
-      subtitle: "Now add savings information, possible future inflows, transmission objective and set the desired retirement date. Run the simulator and see what happens!",
+      subtitle: "Now add savings information, possible future inflows, transmission objective and set the projected retirement date. Run the simulator and see what happens!",
       wishedRetirement: "My Wished Retirement Date",
       legalRetirementDate: "Legal retirement date",
       month: "Month",
@@ -750,7 +750,7 @@ export const translations = {
     // Scenario Page
     scenario: {
       title: "Simulateur de scénarios de retraite",
-      subtitle: "Ajoutez maintenant les informations d'épargne, les entrées futures possibles, l'objectif de transmission et définissez la date de retraite souhaitée. Lancez le simulateur et voyez ce qui se passe !",
+      subtitle: "Ajoutez maintenant les informations d'épargne, les entrées futures possibles, l'objectif de transmission et définissez la date de retraite projetée. Lancez le simulateur et voyez ce qui se passe !",
       wishedRetirement: "Ma date de retraite souhaitée",
       legalRetirementDate: "Date de retraite légale",
       month: "Mois",

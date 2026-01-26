@@ -1994,6 +1994,24 @@ const ScenarioResult = () => {
   const finalBaselineBalance = projection.finalBalance;
   const final5Balance = (isInvested && finalChartRow) ? finalChartRow.mc5 : null;
 
+  // Calculate the offset for the zero line in the gradient
+  const getGradientOffset = (dataKeys) => {
+    if (!chartData || chartData.length === 0) return 0.5;
+
+    const series = chartData.map(i => dataKeys.map(k => i[k] || 0)).flat();
+
+    const dataMax = Math.max(...series);
+    const dataMin = Math.min(...series);
+
+    if (dataMax <= 0) return 0;
+    if (dataMin >= 0) return 1;
+
+    return dataMax / (dataMax - dataMin);
+  };
+
+  const mc5Off = getGradientOffset(['mc5']);
+  const baselineOff = getGradientOffset(['cumulativeBalance']);
+
   // Verdict calculation
   const canQuitVerdict = isInvested ? (final5Balance >= 0) : (finalBaselineBalance >= 0);
 
@@ -2019,7 +2037,13 @@ const ScenarioResult = () => {
 
     let ageYears = 0;
     let ageMonths = 0;
-    if (userData?.birthDate && retireDate) {
+
+    // Use explicit retirementAge if available (Option 2 slider) to ensure precision and avoid round-trip drift
+    if (option === 'option2' && retirementAge) {
+      ageYears = Math.floor(retirementAge);
+      ageMonths = Math.round((retirementAge - ageYears) * 12);
+    }
+    else if (userData?.birthDate && retireDate) {
       const birth = new Date(userData.birthDate);
       const diffTime = Math.abs(retireDate - birth);
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
@@ -2092,7 +2116,7 @@ const ScenarioResult = () => {
           {/* Box 1: Verdict Image */}
           <div className="col-span-1">
             <Card className="overflow-hidden border-2 shadow-sm h-full flex flex-col min-h-[180px]">
-              <div className={`h-2 w-full ${canQuitVerdict ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className={`h-2 w-full ${canQuitVerdict ? 'bg-green-500' : 'bg-primary'}`} />
               <CardContent className="flex-1 p-0 flex items-center justify-center bg-muted/5">
                 <img
                   src={canQuitVerdict ? '/yes_quit.png' : '/no_quit.png'}
@@ -2121,7 +2145,7 @@ const ScenarioResult = () => {
                   <h4 className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2 text-center">
                     {language === 'fr' ? 'Simulation Monte-carlo sur investissements' : 'Monte-carlo simulation on investments'}
                   </h4>
-                  <p className="text-xl font-bold text-blue-400">
+                  <p className={`text-xl font-bold ${final5Balance >= 0 ? 'text-green-400' : 'text-primary'}`}>
                     CHF {Math.round(final5Balance).toLocaleString()}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-1 text-center">
@@ -2140,10 +2164,10 @@ const ScenarioResult = () => {
 
               {/* Box 3: Baseline */}
               <Card className={`${isInvested ? '' : 'col-span-2'} bg-green-900/10 border-green-500/20 flex flex-col items-center justify-center p-4`}>
-                <h4 className="text-xs uppercase tracking-wider text-green-400 font-bold mb-2 text-center">
+                <h4 className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2 text-center">
                   {language === 'fr' ? 'Simulation avec cash seulement (sans investissement)' : 'Simulation with only cash (no investment)'}
                 </h4>
-                <p className="text-xl font-bold text-green-400">
+                <p className={`text-xl font-bold ${finalBaselineBalance >= 0 ? 'text-green-400' : 'text-primary'}`}>
                   CHF {Math.round(finalBaselineBalance).toLocaleString()}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
@@ -2163,7 +2187,7 @@ const ScenarioResult = () => {
                     {language === 'fr' ? 'Ajuster l\'âge de retraite' : 'Adjust Retirement Age'}
                   </span>
                   <span className="text-primary font-bold text-xl">
-                    {retirementInfo.ageYears} {language === 'fr' ? 'ans' : 'years'} {retirementInfo.ageMonths > 0 && `${retirementInfo.ageMonths} ${language === 'fr' ? 'mois' : 'months'}`}
+                    {retirementInfo.ageYears} {language === 'fr' ? 'ans' : 'years'} {retirementInfo.ageMonths > 0 && `${retirementInfo.ageMonths} ${language === 'fr' ? 'mois' : (retirementInfo.ageMonths > 1 ? 'months' : 'month')}`}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -2177,25 +2201,44 @@ const ScenarioResult = () => {
                       const minAge = parseInt(scenarioData?.earlyRetirementAge || '58', 10);
                       const maxAge = 65;
                       const range = maxAge - minAge;
+
                       return (
-                        <div className="relative pt-2 pb-6">
+                        <div className="relative pt-2 pb-6 w-full">
                           <Slider
                             value={[retirementAge || retirementInfo.ageYears + (retirementInfo.ageMonths / 12)]}
                             onValueChange={(value) => setRetirementAge(value[0])}
                             min={minAge}
                             max={maxAge}
                             step={1 / 12}
-                            className="w-full"
-                            thumbClassName="bg-primary border-primary"
+                            className="w-full relative z-20"
+                            thumbClassName="bg-primary border-primary cursor-grab active:cursor-grabbing"
                             disabled={scenarioData?.retirementOption !== 'option2'}
                           />
-                          <div className="absolute w-full flex justify-between text-xl font-bold text-muted-foreground mt-4 px-1">
-                            {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => (
-                              <div key={age} className="flex flex-col items-center">
-                                <div className="h-2 w-px bg-muted-foreground/30 mb-1" />
-                                <span>{age}</span>
-                              </div>
-                            ))}
+
+                          {/* Labels Container - Full width to match slider context exactly */}
+                          <div className="absolute top-2 left-0 w-full h-6 z-10 pointer-events-none">
+                            {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => {
+                              const percent = ((age - minAge) / range) * 100;
+                              // Check if this age roughly matches current value (within 0.5 range)
+                              const currentValue = retirementAge || (retirementInfo.ageYears + retirementInfo.ageMonths / 12);
+                              const isSelected = Math.abs(currentValue - age) < 0.5;
+
+                              return (
+                                <div
+                                  key={age}
+                                  className="absolute top-0 flex flex-col items-center transform -translate-x-1/2 transition-all duration-300"
+                                  style={{ left: `${percent}%` }}
+                                >
+                                  {/* Tick mark - aligned with center of thumb */}
+                                  <div className={`w-0.5 mt-1.5 transition-all duration-300 ${isSelected ? 'bg-primary h-2.5' : 'bg-muted-foreground/30 h-1.5'}`} />
+
+                                  {/* Label number */}
+                                  <span className={`text-sm mt-1 select-none transition-colors duration-300 ${isSelected ? 'text-primary font-bold' : 'text-muted-foreground'}`}>
+                                    {age}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -2217,6 +2260,18 @@ const ScenarioResult = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 10, right: 100, left: 0, bottom: 20 }} stackOffset="sign">
                   <defs>
+                    <linearGradient id="splitColorBaseline" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset={baselineOff} stopColor="#10b981" stopOpacity={1} />
+                      <stop offset={baselineOff} stopColor="#ef4444" stopOpacity={1} />
+                    </linearGradient>
+                    <linearGradient id="splitColorArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset={baselineOff} stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset={baselineOff} stopColor="#ef4444" stopOpacity={0.4} />
+                    </linearGradient>
+                    <linearGradient id="splitColorMC5" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset={mc5Off} stopColor="#10b981" stopOpacity={1} />
+                      <stop offset={mc5Off} stopColor="#ef4444" stopOpacity={1} />
+                    </linearGradient>
                     <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
@@ -2235,16 +2290,16 @@ const ScenarioResult = () => {
                     tickLine={false}
                     tickFormatter={(val) => val === 0 ? "0" : `${(val / 1000).toFixed(0)}k`}
                   />
-                  <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={1} opacity={0.3} />
+                  <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={2} />
                   {!generatingPdf && <Tooltip content={<CustomTooltip />} />}
 
                   {showBaseline && (
                     <Area
                       type="monotone"
                       dataKey="cumulativeBalance"
-                      stroke={isInvested ? "#9ca3af" : (projection.finalBalance >= 0 ? "#10b981" : "#ef4444")}
+                      stroke={isInvested ? "#9ca3af" : "url(#splitColorBaseline)"}
                       strokeDasharray={isInvested ? "5 5" : "0"}
-                      fill={isInvested ? "none" : (projection.finalBalance >= 0 ? "url(#colorBalance)" : "url(#colorNegative)")}
+                      fill={isInvested ? "none" : "url(#splitColorArea)"}
                       name={isInvested ? (language === 'fr' ? 'Référence (Cash)' : 'Baseline (Cash)') : (language === 'fr' ? 'Solde cumulé' : 'Cumulative Balance')}
                       strokeWidth={2}
                       dot={false}
@@ -2252,7 +2307,7 @@ const ScenarioResult = () => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
                           return (
-                            <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">
+                            <text x={x} y={y} dx={10} dy={4} fill={isInvested ? "#9ca3af" : (value >= 0 ? "#10b981" : "#ef4444")} fontSize={16} fontWeight="bold" textAnchor="start">
                               {Math.round(value).toLocaleString()}
                             </text>
                           );
@@ -2268,7 +2323,7 @@ const ScenarioResult = () => {
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                          return <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
                         }
                         return null;
                       }}
@@ -2279,14 +2334,14 @@ const ScenarioResult = () => {
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                          return <text x={x} y={y} dx={10} dy={4} fill="#9333ea" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
                         }
                         return null;
                       }}
                     />
                   )}
                   {show5thPercentile && isInvested && monteCarloProjections && (
-                    <Line type="monotone" dataKey="mc5" stroke="#60a5fa" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
+                    <Line type="monotone" dataKey="mc5" stroke="url(#splitColorMC5)" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
@@ -2359,6 +2414,17 @@ const ScenarioResult = () => {
                     {/* Line Toggles */}
                     <div className="space-y-3">
                       <div className="flex items-center space-x-2">
+                        <Checkbox id="show-5th" checked={true} disabled />
+                        <Label htmlFor="show-5th" className="text-xs flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-400" />
+                          <span className="text-blue-400 font-medium">Monte-Carlo Simulation (5% Very Pessimistic)</span>
+                          <span className="text-white"> - Dynamic color line </span>
+                          <span className="text-green-500 font-bold">Green</span>
+                          <span className="text-white"> - </span>
+                          <span className="text-primary font-bold">Red</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
                         <Checkbox id="show-baseline" checked={showBaseline} onCheckedChange={setShowBaseline} />
                         <Label htmlFor="show-baseline" className="text-xs cursor-pointer flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full border border-white/50" />
@@ -2377,13 +2443,6 @@ const ScenarioResult = () => {
                         <Label htmlFor="show-10th" className="text-xs cursor-pointer flex items-center gap-2 text-purple-600">
                           <div className="w-2 h-2 rounded-full bg-purple-600" />
                           {language === 'fr' ? '10% (Pessimiste)' : '10% (Pessimistic)'}
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="show-5th" checked={show5thPercentile} onCheckedChange={setShow5thPercentile} />
-                        <Label htmlFor="show-5th" className="text-xs cursor-pointer flex items-center gap-2 text-blue-400">
-                          <div className="w-2 h-2 rounded-full bg-blue-400" />
-                          {language === 'fr' ? '5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
                         </Label>
                       </div>
                     </div>
