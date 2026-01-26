@@ -21,7 +21,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 
@@ -64,6 +64,7 @@ const ScenarioResult = () => {
   const [retirementAge, setRetirementAge] = useState(null); // Will be set from scenarioData
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [baselineProjection, setBaselineProjection] = useState(null);
+  const [missingPages, setMissingPages] = useState([]);
 
   // Result State
   const [projection, setProjection] = useState({
@@ -230,6 +231,30 @@ const ScenarioResult = () => {
           !String(i.id || '').toLowerCase().includes('pension') &&
           !String(i.id || '').toLowerCase().includes('lpp')
         );
+
+        // Detect missing pages
+        const missing = [];
+        if (finalIncomes.length === 0) missing.push(language === 'fr' ? 'Revenus' : 'Income');
+        if (finalCosts.length === 0) missing.push(language === 'fr' ? 'Dépenses' : 'Expenses');
+
+        // Robust check for Retirement Parameters: covers both Option 0/2 (preRetirementRows, legal) 
+        // and Benefits (AVS, 3a, LPP Sup) in scenarioData, with fallback to legacy rData.
+        const hasRetirementInScenario = sData && (
+          (sData.preRetirementRows && sData.preRetirementRows.some(row => (parseFloat(row.pension) || 0) > 0 || (parseFloat(row.capital) || 0) > 0)) ||
+          (parseFloat(sData.projectedLegalLPPPension) || 0) > 0 ||
+          (parseFloat(sData.projectedLegalLPPCapital) || 0) > 0 ||
+          (sData.benefitsData && (
+            (sData.benefitsData.avs && (parseFloat(sData.benefitsData.avs.amount) || 0) > 0) ||
+            (Array.isArray(sData.benefitsData.threeA) && sData.benefitsData.threeA.some(a => (parseFloat(a.amount) || 0) > 0)) ||
+            (sData.benefitsData.lppSup && (parseFloat(sData.benefitsData.lppSup.amount) || 0) > 0)
+          ))
+        );
+
+        if (!hasRetirementInScenario && (!rData || !rData.rows || rData.rows.length === 0)) {
+          missing.push(language === 'fr' ? 'Paramètres de retraite' : 'Retirement Parameters');
+        }
+        setMissingPages(missing);
+
         setUserData(uData);
         setIncomes(finalIncomes);
         setCosts(finalCosts);
@@ -2048,12 +2073,24 @@ const ScenarioResult = () => {
       />
 
       <div className="max-w-[80%] w-full mx-auto px-4">
+        {/* Missing Data Warning Banner */}
+        {missingPages.length > 0 && (
+          <div className="mb-8 bg-amber-500/10 border border-amber-500/20 rounded-xl p-10 flex items-center gap-10 text-amber-500 animate-in fade-in slide-in-from-top-1">
+            <AlertTriangle className="h-20 w-20 shrink-0" />
+            <div className="text-2xl leading-relaxed">
+              <span className="font-bold uppercase block mb-3 text-3xl">
+                {language === 'fr' ? 'Données manquantes' : 'Missing Data'}
+              </span>
+              {t('result.missingDataWarning').replace('{pages}', missingPages.join(', '))}
+            </div>
+          </div>
+        )}
 
         {/* TOP LAYOUT: Boxes 1, 4, 2, 3, 5 */}
         <div className="grid grid-cols-12 gap-6 mb-6">
 
           {/* Box 1: Verdict Image */}
-          <div className="col-span-2">
+          <div className="col-span-1">
             <Card className="overflow-hidden border-2 shadow-sm h-full flex flex-col min-h-[180px]">
               <div className={`h-2 w-full ${canQuitVerdict ? 'bg-green-500' : 'bg-red-500'}`} />
               <CardContent className="flex-1 p-0 flex items-center justify-center bg-muted/5">
@@ -2067,7 +2104,7 @@ const ScenarioResult = () => {
           </div>
 
           {/* Box 4 (Title) and Boxes 2 & 3 (Balances) */}
-          <div className="col-span-5 flex flex-col gap-4">
+          <div className="col-span-7 flex flex-col gap-4">
             {/* Box 4: Title */}
             <Card className="flex items-center justify-center p-3 h-[46px]">
               <span className="text-sm font-semibold text-white">
@@ -2081,7 +2118,7 @@ const ScenarioResult = () => {
               {/* Box 2: Monte Carlo (Situation 1 only) */}
               {isInvested ? (
                 <Card className="bg-blue-900/10 border-blue-500/20 flex flex-col items-center justify-center p-4">
-                  <h4 className="text-[10px] uppercase tracking-wider text-blue-400 font-bold mb-2 text-center">
+                  <h4 className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2 text-center">
                     {language === 'fr' ? 'Simulation Monte-carlo sur investissements' : 'Monte-carlo simulation on investments'}
                   </h4>
                   <p className="text-xl font-bold text-blue-400">
@@ -2090,6 +2127,12 @@ const ScenarioResult = () => {
                   <p className="text-[10px] text-muted-foreground mt-1 text-center">
                     {language === 'fr' ? 'Solde final projeté (5%)' : 'Projected Final Balance (5%)'}
                   </p>
+                  <button
+                    onClick={() => navigate('/monte-carlo-help')}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-2 transition-colors self-end"
+                  >
+                    {t('result.helpMonteCarloLink')}
+                  </button>
                 </Card>
               ) : (
                 <div className="hidden" /> // Box 2 not displayed in Situation 2
@@ -2097,7 +2140,7 @@ const ScenarioResult = () => {
 
               {/* Box 3: Baseline */}
               <Card className={`${isInvested ? '' : 'col-span-2'} bg-green-900/10 border-green-500/20 flex flex-col items-center justify-center p-4`}>
-                <h4 className="text-[10px] uppercase tracking-wider text-green-400 font-bold mb-2 text-center">
+                <h4 className="text-xs uppercase tracking-wider text-green-400 font-bold mb-2 text-center">
                   {language === 'fr' ? 'Simulation avec cash seulement (sans investissement)' : 'Simulation with only cash (no investment)'}
                 </h4>
                 <p className="text-xl font-bold text-green-400">
@@ -2111,7 +2154,7 @@ const ScenarioResult = () => {
           </div>
 
           {/* Box 5: Slider (Compact) */}
-          <div className="col-span-5">
+          <div className="col-span-4">
             <Card className="h-full">
               <CardHeader className="py-3">
                 <CardTitle className="text-xs uppercase tracking-wider flex items-center justify-between">

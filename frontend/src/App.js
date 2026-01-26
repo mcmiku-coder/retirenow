@@ -7,6 +7,7 @@ import PageHeader from './components/PageHeader';
 import AppHeader from './components/AppHeader';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
+import MonteCarloHelp from './pages/MonteCarloHelp';
 import Admin from './pages/Admin';
 import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
@@ -25,6 +26,8 @@ import ScenarioResult from './pages/ScenarioResult';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ExpenseWizard from './pages/ExpenseWizard';
+import SecurityDetails from './pages/SecurityDetails';
 
 import { trackPageVisit } from './utils/analytics';
 import './App.css';
@@ -77,7 +80,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/information" element={<Information />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/security" element={<SecurityDetails />} />
+        <Route path="/monte-carlo-help" element={<MonteCarloHelp />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -100,6 +104,11 @@ function AppRoutes() {
         <Route path="/costs" element={
           <ProtectedRoute>
             <Costs />
+          </ProtectedRoute>
+        } />
+        <Route path="/expense-wizard" element={
+          <ProtectedRoute>
+            <ExpenseWizard />
           </ProtectedRoute>
         } />
         <Route path="/real-estate" element={

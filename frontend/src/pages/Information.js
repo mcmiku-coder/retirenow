@@ -3,14 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
-import {
   ArrowLeft, Shield, User, Calendar, Wallet, PiggyBank,
   LineChart, Landmark, Sliders, ClipboardCheck, FileText, Home,
   ArrowRight, Lock, Key, RefreshCw, Server, HardDrive, Database, Download
@@ -302,78 +294,13 @@ const Information = () => {
 
             {/* New Button Section */}
             <div className="shrink-0">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 transition-colors">
-                    {t('infoPage.securityModal.button')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl bg-card border-border">
-                  <DialogHeader>
-                    <DialogTitle className="text-3xl font-bold flex items-center gap-3 text-emerald-600 dark:text-emerald-400 font-sans">
-                      <Shield className="h-9 w-9" />
-                      {t('infoPage.securityModal.title')}
-                    </DialogTitle>
-                    <DialogDescription className="text-xl font-medium pt-3 text-muted-foreground/90">
-                      {t('infoPage.securityModal.architecture')}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="grid gap-8 py-6">
-                    {/* 1. Local Encryption */}
-                    <div className="flex gap-5 items-start">
-                      <div className="mt-1 bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-emerald-500 shrink-0">
-                        <HardDrive className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl text-foreground mb-1 font-sans">{t('infoPage.securityModal.localEncryptionTitle')}</h4>
-                        <p className="text-muted-foreground text-start leading-relaxed text-base">
-                          {t('infoPage.securityModal.localEncryptionDesc')}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 2. Master Key */}
-                    <div className="flex gap-5 items-start">
-                      <div className="mt-1 bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-blue-500 shrink-0">
-                        <Key className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl text-foreground mb-1 font-sans">{t('infoPage.securityModal.masterKeyTitle')}</h4>
-                        <p className="text-muted-foreground text-start leading-relaxed text-base">
-                          {t('infoPage.securityModal.masterKeyDesc')}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 3. Password Reset */}
-                    <div className="flex gap-5 items-start">
-                      <div className="mt-1 bg-slate-100 dark:bg-slate-800 p-3 rounded-xl text-orange-500 shrink-0">
-                        <RefreshCw className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl text-foreground mb-1 font-sans">{t('infoPage.securityModal.passwordResetTitle')}</h4>
-                        <p className="text-muted-foreground text-start leading-relaxed text-base">
-                          {t('infoPage.securityModal.passwordResetDesc')}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 4. Privacy */}
-                    <div className="flex gap-5 items-start">
-                      <div className="mt-1 bg-slate-100 dark:bg-slate-800 p-3 rounded-lg text-purple-500 shrink-0">
-                        <Download className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xl text-foreground mb-1 font-sans">{t('infoPage.securityModal.privacyTitle')}</h4>
-                        <p className="text-muted-foreground text-start leading-relaxed text-base">
-                          {t('infoPage.securityModal.privacyDesc')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/security')}
+                className="border-emerald-500/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/50 transition-colors"
+              >
+                {t('infoPage.securityModal.button')}
+              </Button>
             </div>
           </div>
         </div>

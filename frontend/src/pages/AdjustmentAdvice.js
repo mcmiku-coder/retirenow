@@ -9,6 +9,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { ChevronLeft } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { getCostData, getUserData, saveScenarioData, getScenarioData } from '../utils/database';
 
@@ -271,71 +272,149 @@ const AdjustmentAdvice = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col pt-20 pb-12 bg-background text-foreground">
-            <div className="w-full max-w-[95%] mx-auto mb-6 px-4">
+        <div className="min-h-screen bg-background pb-20 pt-8 flex flex-col">
+            <div className="w-full mb-2">
                 <PageHeader
                     title={language === 'fr' ? 'Conseils d\'ajustement' : 'Adjustment Advice'}
-                    description={language === 'fr' ? 'Ajustez vos dépenses futures en fonction de l\'évolution de votre mode de vie' : 'Adjust your future expenses based on lifestyle changes'}
-                    showBackButton={true}
-                    onBack={() => navigate('/data-review')}
+                    subtitle={language === 'fr' ? 'Ajustez vos dépenses futures en fonction de l\'évolution de votre mode de vie' : 'Adjust your future expenses based on lifestyle changes'}
+                    leftContent={
+                        <Button
+                            variant="ghost"
+                            onClick={() => navigate('/data-review')}
+                            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-lg font-medium"
+                        >
+                            <ChevronLeft className="h-5 w-5" />
+                            {t('nav.back')}
+                        </Button>
+                    }
                 />
+            </div>
 
-                <div className="w-full max-w-7xl mx-auto mt-8">
-                    {/* Header Row */}
-                    <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-base font-medium text-white px-2 hidden md:grid">
-                        <div></div>
-                        <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
-                        <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
-                        <div>{language === 'fr' ? 'Fréquence' : 'Frequency'}</div>
-                        <div>{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</div>
-                        <div>{/* Slider */}</div>
-                        <div className="text-right">{language === 'fr' ? 'Changement à' : 'Change at'}</div>
-                    </div>
+            <div className="max-w-[95%] xl:max-w-7xl mx-auto px-4 w-full">
+                {/* Header Row */}
+                <div className="grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 mb-4 text-base font-medium text-white px-2 hidden md:grid">
+                    <div></div>
+                    <div>{language === 'fr' ? 'Nom' : 'Name'}</div>
+                    <div>{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</div>
+                    <div>{language === 'fr' ? 'Fréquence' : 'Frequency'}</div>
+                    <div>{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</div>
+                    <div>{/* Slider */}</div>
+                    <div className="text-right">{language === 'fr' ? 'Changement à' : 'Change at'}</div>
+                </div>
 
-                    <div className="space-y-6">
-                        {adjustRows.length === 0 && (
-                            <div className="text-center text-muted-foreground py-12 bg-card rounded-lg border border-border">
-                                {language === 'fr' ? 'Aucun coût pertinent trouvé à ajuster.' : 'No relevant costs found to adjust.'}
-                            </div>
-                        )}
+                <div className="space-y-6">
+                    {adjustRows.length === 0 && (
+                        <div className="text-center text-muted-foreground py-12 bg-card rounded-lg border border-border">
+                            {language === 'fr' ? 'Aucun coût pertinent trouvé à ajuster.' : 'No relevant costs found to adjust.'}
+                        </div>
+                    )}
 
-                        {adjustRows.map(row => {
-                            const birthYear = new Date(birthDate).getFullYear();
-                            const deathYear = new Date(deathDate).getFullYear();
-                            const currentYear = new Date().getFullYear();
-                            const currentAge = currentYear - birthYear;
-                            const deathAge = deathYear - birthYear;
-                            const maxAge = deathAge - 1;
-                            const startAge = currentAge + 1;
-                            const ageOptions = [];
-                            // Populate age dropdown (from next year until death)
-                            if (startAge < maxAge) {
-                                for (let y = startAge; y <= maxAge; y++) {
-                                    ageOptions.push(y);
-                                }
-                            } else {
-                                ageOptions.push(startAge);
+                    {adjustRows.map(row => {
+                        const birthYear = new Date(birthDate).getFullYear();
+                        const deathYear = new Date(deathDate).getFullYear();
+                        const currentYear = new Date().getFullYear();
+                        const currentAge = currentYear - birthYear;
+                        const deathAge = deathYear - birthYear;
+                        const maxAge = deathAge - 1;
+                        const startAge = currentAge + 1;
+                        const ageOptions = [];
+                        // Populate age dropdown (from next year until death)
+                        if (startAge < maxAge) {
+                            for (let y = startAge; y <= maxAge; y++) {
+                                ageOptions.push(y);
                             }
+                        } else {
+                            ageOptions.push(startAge);
+                        }
 
-                            return (
-                                <Card key={row.id} className="border-border bg-card">
-                                    <CardContent className="p-6">
-                                        <p className="text-green-500 mb-4 text-sm font-medium">
-                                            {getAdviceText(row.originalName)}
-                                        </p>
+                        return (
+                            <Card key={row.id} className="border-border bg-card">
+                                <CardContent className="p-6">
+                                    <p className="text-green-500 mb-4 text-sm font-medium">
+                                        {getAdviceText(row.originalName)}
+                                    </p>
 
-                                        {/* Desktop Layout */}
-                                        <div className="hidden md:grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center">
-                                            <div className="flex items-center justify-center">
-                                                <Checkbox
-                                                    checked={row.checked}
-                                                    onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
-                                                />
-                                            </div>
-                                            <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
-                                            <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
-                                            <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency)}</div>
+                                    {/* Desktop Layout */}
+                                    <div className="hidden md:grid grid-cols-[40px,1.5fr,1fr,1fr,1fr,1.5fr,1fr] gap-4 items-center">
+                                        <div className="flex items-center justify-center">
+                                            <Checkbox
+                                                checked={row.checked}
+                                                onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
+                                            />
+                                        </div>
+                                        <div className="font-medium text-foreground truncate" title={row.name}>{row.name}</div>
+                                        <div className="text-muted-foreground">CHF {parseFloat(row.originalAmount).toLocaleString()}</div>
+                                        <div className="text-muted-foreground">{getTranslatedFrequency(row.frequency)}</div>
+                                        <div>
+                                            <Input
+                                                type="text"
+                                                value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                                                onChange={(e) => {
+                                                    const rawValue = e.target.value.replace(/'/g, '');
+                                                    if (!isNaN(rawValue)) {
+                                                        handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
+                                                    }
+                                                }}
+                                                className="h-9 text-right"
+                                                style={{
+                                                    backgroundColor: parseFloat(row.adjustedAmount) < parseFloat(row.originalAmount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(row.adjustedAmount) > parseFloat(row.originalAmount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="px-2">
+                                            <Slider
+                                                value={[parseFloat(row.adjustedAmount) || 0]}
+                                                min={0}
+                                                max={(parseFloat(row.originalAmount) || 1000) * 1.5}
+                                                step={100}
+                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                                                className="py-2"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Select
+                                                value={row.changeAtAge?.toString()}
+                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
+                                                disabled={!row.checked}
+                                            >
+                                                <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
+                                                    <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
+                                                    {ageOptions.map(age => (
+                                                        <SelectItem key={age} value={age.toString()}>
+                                                            {age} {language === 'fr' ? 'ans' : 'years'}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile Layout */}
+                                    <div className="md:hidden space-y-4">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <Checkbox
+                                                checked={row.checked}
+                                                onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
+                                            />
+                                            <span className="font-medium text-lg">{row.name}</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
                                             <div>
+                                                <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</span>
+                                                <span>CHF {parseFloat(row.originalAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Fréquence' : 'Frequency'}</span>
+                                                <span>{getTranslatedFrequency(row.frequency)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <span className="text-sm text-muted-foreground">{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</span>
+                                            <div className="flex gap-4">
                                                 <Input
                                                     type="text"
                                                     value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
@@ -345,129 +424,59 @@ const AdjustmentAdvice = () => {
                                                             handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
                                                         }
                                                     }}
-                                                    className="h-9 text-right"
-                                                    style={{
-                                                        backgroundColor: parseFloat(row.adjustedAmount) < parseFloat(row.originalAmount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(row.adjustedAmount) > parseFloat(row.originalAmount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                                                    }}
+                                                    className="flex-1"
                                                 />
                                             </div>
-                                            <div className="px-2">
-                                                <Slider
-                                                    value={[parseFloat(row.adjustedAmount) || 0]}
-                                                    min={0}
-                                                    max={(parseFloat(row.originalAmount) || 1000) * 1.5}
-                                                    step={100}
-                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                                                    className="py-2"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Select
-                                                    value={row.changeAtAge?.toString()}
-                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
-                                                    disabled={!row.checked}
-                                                >
-                                                    <SelectTrigger className={`h-8 bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
-                                                        <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
-                                                        {ageOptions.map(age => (
-                                                            <SelectItem key={age} value={age.toString()}>
-                                                                {age} {language === 'fr' ? 'ans' : 'years'}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                            <Slider
+                                                value={[parseFloat(row.adjustedAmount) || 0]}
+                                                min={0}
+                                                max={(parseFloat(row.originalAmount) || 1000) * 1.5}
+                                                step={100}
+                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
+                                                className="py-4"
+                                            />
                                         </div>
 
-                                        {/* Mobile Layout */}
-                                        <div className="md:hidden space-y-4">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <Checkbox
-                                                    checked={row.checked}
-                                                    onCheckedChange={(checked) => handleAdjustRowChange(row.id, 'checked', checked)}
-                                                />
-                                                <span className="font-medium text-lg">{row.name}</span>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Montant actuel' : 'Current Amount'}</span>
-                                                    <span>CHF {parseFloat(row.originalAmount).toLocaleString()}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground block mb-1">{language === 'fr' ? 'Fréquence' : 'Frequency'}</span>
-                                                    <span>{getTranslatedFrequency(row.frequency)}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <span className="text-sm text-muted-foreground">{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</span>
-                                                <div className="flex gap-4">
-                                                    <Input
-                                                        type="text"
-                                                        value={row.adjustedAmount ? row.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                                                        onChange={(e) => {
-                                                            const rawValue = e.target.value.replace(/'/g, '');
-                                                            if (!isNaN(rawValue)) {
-                                                                handleAdjustRowChange(row.id, 'adjustedAmount', rawValue);
-                                                            }
-                                                        }}
-                                                        className="flex-1"
-                                                    />
-                                                </div>
-                                                <Slider
-                                                    value={[parseFloat(row.adjustedAmount) || 0]}
-                                                    min={0}
-                                                    max={(parseFloat(row.originalAmount) || 1000) * 1.5}
-                                                    step={100}
-                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'adjustedAmount', val[0])}
-                                                    className="py-4"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <span className="text-sm text-muted-foreground">{language === 'fr' ? 'Changement à l\'âge de' : 'Change at age'}</span>
-                                                <Select
-                                                    value={row.changeAtAge?.toString()}
-                                                    onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
-                                                    disabled={!row.checked}
-                                                >
-                                                    <SelectTrigger className={`w-full bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
-                                                        <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
-                                                        {ageOptions.map(age => (
-                                                            <SelectItem key={age} value={age.toString()}>
-                                                                {age} {language === 'fr' ? 'ans' : 'years'}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                        <div className="space-y-2">
+                                            <span className="text-sm text-muted-foreground">{language === 'fr' ? 'Changement à l\'âge de' : 'Change at age'}</span>
+                                            <Select
+                                                value={row.changeAtAge?.toString()}
+                                                onValueChange={(val) => handleAdjustRowChange(row.id, 'changeAtAge', parseInt(val))}
+                                                disabled={!row.checked}
+                                            >
+                                                <SelectTrigger className={`w-full bg-background border-input text-foreground ${!row.checked ? 'opacity-50' : ''}`}>
+                                                    <SelectValue placeholder={language === 'fr' ? 'Age' : 'Age'} />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-popover border-border text-popover-foreground max-h-60">
+                                                    {ageOptions.map(age => (
+                                                        <SelectItem key={age} value={age.toString()}>
+                                                            {age} {language === 'fr' ? 'ans' : 'years'}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
 
-                    <div className="flex justify-center gap-4 mt-8 pb-8">
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate('/data-review')}
-                            className="px-8"
-                        >
-                            {language === 'fr' ? 'Annuler' : 'Cancel'}
-                        </Button>
-                        <Button
-                            onClick={applyTableAdjustments}
-                            className="px-12 bg-[#EF5343] hover:bg-[#d94334] text-white"
-                        >
-                            {language === 'fr' ? 'Appliquer les ajustements' : 'Apply Adjustments'}
-                        </Button>
-                    </div>
+                <div className="flex justify-center gap-4 mt-8 pb-8">
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate('/data-review')}
+                        className="px-8"
+                    >
+                        {language === 'fr' ? 'Annuler' : 'Cancel'}
+                    </Button>
+                    <Button
+                        onClick={applyTableAdjustments}
+                        className="px-12 bg-[#EF5343] hover:bg-[#d94334] text-white"
+                    >
+                        {language === 'fr' ? 'Appliquer les ajustements' : 'Apply Adjustments'}
+                    </Button>
                 </div>
             </div>
         </div>

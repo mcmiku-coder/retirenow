@@ -93,7 +93,8 @@ export const translations = {
       checkEmail: "Please check your email to confirm your account.",
       verificationSuccess: "Email verified! You can now log in.",
       verificationFailed: "Invalid or expired verification link.",
-      verifying: "Verifying your email..."
+      verifying: "Verifying your email...",
+      forgotPassword: "Forgot password?"
     },
 
     // Personal Info Page
@@ -201,7 +202,7 @@ export const translations = {
       // Help modal
       helpModal: {
         title: "Help me fill the table",
-        intro: "These questions will prefill the amounts with approximate consistent values. Review the values and adapt them to your best knowledge.",
+        intro: "These questions will prefill the amounts with approximate values. Review the values and adapt them to your best knowledge.",
         question1: "Do you own a car?",
         question2: "What are your vacation costs like?",
         question2_high: "High",
@@ -353,7 +354,10 @@ export const translations = {
       annualBalance: "Annual Balance",
       cumulativeBalance: "Cumulative Balance",
       reviewData: "Review My Data",
-      startOver: "Start Over"
+      startOver: "Start Over",
+      missingDataWarning: "Warning: key data is missing to compute a simulation, please complete missing information on {pages} before rerunning an accurate simulation",
+      helpMonteCarloLink: "Help on Monte-Carlo",
+      monteCarloHelpTitle: "Monte-Carlo Simulations Explanations"
     },
 
     // Navigation
@@ -552,7 +556,8 @@ export const translations = {
       checkEmail: "Veuillez vérifier votre email pour confirmer votre compte.",
       verificationSuccess: "Email vérifié ! Vous pouvez maintenant vous connecter.",
       verificationFailed: "Lien de vérification invalide ou expiré.",
-      verifying: "Vérification de votre email..."
+      verifying: "Vérification de votre email...",
+      forgotPassword: "Mot de passe oublié ?"
     },
 
     // Personal Info Page
@@ -660,7 +665,7 @@ export const translations = {
       // Help modal
       helpModal: {
         title: "Aide pour remplir la table",
-        intro: "Ces questions pré-rempliront les montants avec des valeurs approximatives cohérentes. Vérifiez les valeurs et adaptez-les selon vos connaissances.",
+        intro: "Ces questions pré-rempliront les montants avec des valeurs approximatives. Vérifiez les valeurs et adaptez-les selon vos connaissances.",
         question1: "Possédez-vous une voiture ?",
         question2: "Comment sont vos coûts de vacances ?",
         question2_high: "Élevés",
@@ -812,7 +817,10 @@ export const translations = {
       annualBalance: "Solde annuel",
       cumulativeBalance: "Solde cumulé",
       reviewData: "Revoir mes données",
-      startOver: "Recommencer"
+      startOver: "Recommencer",
+      missingDataWarning: "Attention : des données clés manquent pour calculer une simulation, veuillez compléter les informations manquantes sur {pages} avant de relancer une simulation précise",
+      helpMonteCarloLink: "Aide sur Monte-Carlo",
+      monteCarloHelpTitle: "Explications des simulations Monte-Carlo"
     },
 
     // Navigation
