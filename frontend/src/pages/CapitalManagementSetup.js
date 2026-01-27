@@ -10,7 +10,9 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { getScenarioData, saveScenarioData, getUserData } from '../utils/database';
 import { investmentProducts, getAssetClassStyle } from '../data/investmentProducts';
+import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
 
@@ -27,6 +29,8 @@ const CapitalManagementSetup = () => {
     const [assetClassFilter, setAssetClassFilter] = useState(null); // null = show all
     const [highlightedPeriod, setHighlightedPeriod] = useState({}); // { productId: 'loss' | 'gain' | null }
     const [deathDate, setDeathDate] = useState('');
+    const [legalRetirementDate, setLegalRetirementDate] = useState('');
+    const [wishedRetirementDate, setWishedRetirementDate] = useState('');
 
     const [isSaving, setIsSaving] = useState(false);
 
@@ -100,9 +104,15 @@ const CapitalManagementSetup = () => {
             const scenarioData = await getScenarioData(user.email, masterKey);
             const userData = await getUserData(user.email, masterKey);
 
-            setDeathDate(userData?.theoreticalDeathDate || '');
+            if (userData) {
+                setDeathDate(userData.theoreticalDeathDate || '');
+                const legalDate = getLegalRetirementDate(userData.birthDate, userData.gender);
+                setLegalRetirementDate(legalDate.toISOString().split('T')[0]);
+            }
 
             if (scenarioData) {
+                setWishedRetirementDate(scenarioData.wishedRetirementDate || (userData ? getLegalRetirementDate(userData.birthDate, userData.gender).toISOString().split('T')[0] : ''));
+
                 // Get only liquid assets marked as 'Invested'
                 const liquidInvestedAssets = (scenarioData.currentAssets || []).filter(
                     asset => asset.category === 'Liquid' && asset.strategy === 'Invested'
@@ -506,8 +516,8 @@ const CapitalManagementSetup = () => {
                                         <tr>
                                             <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
                                             <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</th>
-                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de début' : 'Start Date'}</th>
-                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Date de fin' : 'End Date'}</th>
+                                            <th className="text-left p-3 font-semibold min-w-[240px]">{language === 'fr' ? 'Date de début' : 'Start Date'}</th>
+                                            <th className="text-left p-3 font-semibold min-w-[240px]">{language === 'fr' ? 'Date de fin' : 'End Date'}</th>
                                             <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Produit' : 'Product'}</th>
                                             <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Produit sélectionné' : 'Selected Product'}</th>
                                             <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
@@ -526,19 +536,24 @@ const CapitalManagementSetup = () => {
                                                     />
                                                 </td>
                                                 <td className="p-3">
-                                                    <Input
-                                                        type="date"
+                                                    <DateInputWithShortcuts
                                                         value={row.startDate}
                                                         onChange={(e) => updateRow(index, 'startDate', e.target.value)}
-                                                        className="max-w-[150px]"
+                                                        className="min-w-[200px]"
+                                                        retirementDate={wishedRetirementDate}
+                                                        legalDate={legalRetirementDate}
+                                                        mode="start"
                                                     />
                                                 </td>
                                                 <td className="p-3">
-                                                    <Input
-                                                        type="date"
+                                                    <DateInputWithShortcuts
                                                         value={row.endDate}
                                                         onChange={(e) => updateRow(index, 'endDate', e.target.value)}
-                                                        className="max-w-[150px]"
+                                                        className="min-w-[200px]"
+                                                        retirementDate={wishedRetirementDate}
+                                                        legalDate={legalRetirementDate}
+                                                        deathDate={deathDate}
+                                                        mode="end"
                                                     />
                                                 </td>
                                                 <td className="p-3 text-center">

@@ -9,8 +9,10 @@ import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { getAssetsData, saveAssetsData, getUserData, getRealEstateData } from '../utils/database';
+import { getAssetsData, saveAssetsData, getUserData, getRealEstateData, getScenarioData } from '../utils/database';
+import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 import { Plus, Trash2 } from 'lucide-react';
 
 const AssetsOverview = () => {
@@ -20,6 +22,8 @@ const AssetsOverview = () => {
     const [currentAssets, setCurrentAssets] = useState([]);
     const [projectedOutflows, setProjectedOutflows] = useState([]);
     const [theoreticalDeathDate, setTheoreticalDeathDate] = useState('');
+    const [legalRetirementDate, setLegalRetirementDate] = useState('');
+    const [wishedRetirementDate, setWishedRetirementDate] = useState('');
     const [nextAssetId, setNextAssetId] = useState(4);
     const [nextOutflowId, setNextOutflowId] = useState(3);
     const [loading, setLoading] = useState(true);
@@ -45,6 +49,14 @@ const AssetsOverview = () => {
                 const userData = await getUserData(user.email, masterKey);
                 const deathDate = userData?.theoreticalDeathDate || '';
                 setTheoreticalDeathDate(deathDate);
+
+                if (userData) {
+                    const legalDate = getLegalRetirementDate(userData.birthDate, userData.gender);
+                    setLegalRetirementDate(legalDate.toISOString().split('T')[0]);
+                }
+
+                const scenarioData = await getScenarioData(user.email, masterKey);
+                setWishedRetirementDate(scenarioData?.wishedRetirementDate || (userData ? getLegalRetirementDate(userData.birthDate, userData.gender).toISOString().split('T')[0] : ''));
 
                 const savedData = await getAssetsData(user.email, masterKey);
                 const today = new Date().toISOString().split('T')[0];
@@ -390,11 +402,13 @@ const AssetsOverview = () => {
                                                                 </SelectContent>
                                                             </Select>
                                                         ) : (
-                                                            <Input
-                                                                type="date"
+                                                            <DateInputWithShortcuts
                                                                 value={row.availabilityDate}
                                                                 onChange={(e) => updateAsset(row.id, 'availabilityDate', e.target.value)}
-                                                                className="min-w-[140px]"
+                                                                className="w-fit"
+                                                                retirementDate={wishedRetirementDate}
+                                                                legalDate={legalRetirementDate}
+                                                                mode="start"
                                                             />
                                                         )}
                                                     </td>
@@ -501,11 +515,14 @@ const AssetsOverview = () => {
                                                                 </SelectContent>
                                                             </Select>
                                                         ) : (
-                                                            <Input
-                                                                type="date"
+                                                            <DateInputWithShortcuts
                                                                 value={row.madeAvailableDate}
                                                                 onChange={(e) => updateOutflow(row.id, 'madeAvailableDate', e.target.value)}
-                                                                className="min-w-[140px]"
+                                                                className="w-fit"
+                                                                retirementDate={wishedRetirementDate}
+                                                                legalDate={legalRetirementDate}
+                                                                deathDate={theoreticalDeathDate}
+                                                                mode="end"
                                                             />
                                                         )}
                                                     </td>

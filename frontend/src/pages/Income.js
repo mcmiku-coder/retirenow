@@ -7,9 +7,10 @@ import { Input } from '../components/ui/input';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { saveIncomeData, getIncomeData, getUserData } from '../utils/database';
+import { saveIncomeData, getIncomeData, getUserData, getScenarioData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 
 const Income = () => {
   const navigate = useNavigate();
@@ -33,6 +34,11 @@ const Income = () => {
   const [nextId, setNextId] = useState(5);
   const [loading, setLoading] = useState(false);
 
+  // Date shortcut states
+  const [wishedRetirementDate, setWishedRetirementDate] = useState('');
+  const [retirementLegalDate, setRetirementLegalDate] = useState('');
+  const [deathDate, setDeathDate] = useState('');
+
   useEffect(() => {
     if (!user || !masterKey) {
       navigate('/');
@@ -47,28 +53,38 @@ const Income = () => {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
-        } else {
-          // Pre-fill dates based on retirement data
-          const userData = await getUserData(user.email, masterKey);
-          if (userData) {
+        }
+
+        // Pre-fill dates based on retirement data
+        const userData = await getUserData(user.email, masterKey);
+        const scenarioData = await getScenarioData(user.email, masterKey);
+
+        if (userData) {
+          // Calculate retirement date
+          const birthDate = new Date(userData.birthDate);
+          const retirementDate = new Date(birthDate);
+          retirementDate.setFullYear(retirementDate.getFullYear() + 65);
+          retirementDate.setMonth(retirementDate.getMonth() + 1);
+          const retirementDateStr = retirementDate.toISOString().split('T')[0];
+
+          // Use the theoretical death date from API
+          const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
+
+          // Set state for shortcuts
+          setRetirementLegalDate(retirementDateStr);
+          setDeathDate(deathDateStr);
+          setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
+
+          // Only set default rows if no data exists
+          if (!data || data.length === 0) {
             const today = new Date().toISOString().split('T')[0];
-
-            // Calculate retirement date
-            const birthDate = new Date(userData.birthDate);
-            const retirementDate = new Date(birthDate);
-            retirementDate.setFullYear(retirementDate.getFullYear() + 65);
-            retirementDate.setMonth(retirementDate.getMonth() + 1);
-            const retirementDateStr = retirementDate.toISOString().split('T')[0];
-
-            // Use the theoretical death date from API (already in ISO format)
-            const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
-
             setRows([
               { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
             ]);
             setNextId(2);
           }
         }
+
       } catch (error) {
         console.error('Error loading income data:', error);
       }
@@ -263,22 +279,27 @@ const Income = () => {
                       </RadioGroup>
                     </td>
                     <td className="p-2">
-                      <Input
+                      <DateInputWithShortcuts
                         data-testid={`income-start-${index}`}
-                        type="date"
                         value={row.startDate}
                         onChange={(e) => updateRow(row.id, 'startDate', e.target.value)}
-                        className="min-w-[140px]"
+                        className="w-fit"
+                        retirementDate={wishedRetirementDate}
+                        legalDate={retirementLegalDate}
+                        mode="start"
                       />
                     </td>
                     <td className="p-2">
-                      <Input
+                      <DateInputWithShortcuts
                         data-testid={`income-end-${index}`}
-                        type="date"
                         value={row.endDate}
                         onChange={(e) => updateRow(row.id, 'endDate', e.target.value)}
                         disabled={row.frequency === 'One-time'}
-                        className="min-w-[140px]"
+                        className="w-fit"
+                        retirementDate={wishedRetirementDate}
+                        legalDate={retirementLegalDate}
+                        deathDate={deathDate}
+                        mode="end"
                       />
                     </td>
                     <td className="p-2">

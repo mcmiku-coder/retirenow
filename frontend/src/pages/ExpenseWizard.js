@@ -171,20 +171,23 @@ const ExpenseWizard = () => {
                 <RadioGroup
                     value={helpAnswers[field]}
                     onValueChange={(val) => setHelpAnswers({ ...helpAnswers, [field]: val })}
-                    className="flex flex-wrap gap-8 shrink-0"
+                    className="grid grid-cols-3 gap-4 w-full md:w-[600px] shrink-0"
                 >
-                    {options.map((option) => (
-                        <div key={String(option.value)} className="flex items-center gap-3">
+                    {options.map((option, index) => (
+                        <div
+                            key={String(option.value)}
+                            className={`flex items-center gap-3 justify-end ${options.length === 2 && index === 0 ? 'col-start-2' : ''}`}
+                        >
                             <Label
                                 htmlFor={`${field}-${option.value}`}
-                                className="text-lg font-medium text-white cursor-pointer hover:text-[#EF5343] transition-colors"
+                                className="text-lg font-medium text-white cursor-pointer hover:text-[#EF5343] transition-colors text-right"
                             >
                                 {option.label}
                             </Label>
                             <RadioGroupItem
                                 value={option.value}
                                 id={`${field}-${option.value}`}
-                                className="w-6 h-6 border-2 border-slate-700 data-[state=checked]:border-[#EF5343] data-[state=checked]:text-[#EF5343] bg-slate-900/50"
+                                className="w-6 h-6 border-2 border-slate-700 data-[state=checked]:border-[#EF5343] data-[state=checked]:text-[#EF5343] bg-slate-900/50 shrink-0"
                             />
                         </div>
                     ))}

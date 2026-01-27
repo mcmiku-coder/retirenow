@@ -10,7 +10,7 @@ import PageHeader from '../components/PageHeader';
 
 const SecurityDetails = () => {
     const navigate = useNavigate();
-    const { t, language } = useLanguage();
+    const { t, language, switchLanguage } = useLanguage();
 
     const securitySections = [
         {
@@ -48,25 +48,50 @@ const SecurityDetails = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-background pb-20 pt-8 flex flex-col">
-            <div className="w-full mb-8">
-                <PageHeader
-                    title={t('infoPage.securityModal.title')}
-                    subtitle={t('infoPage.securityModal.architecture')}
-                    leftContent={
-                        <Button
-                            variant="ghost"
-                            onClick={() => navigate('/information')}
-                            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-lg font-medium"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                            {t('nav.back')}
-                        </Button>
-                    }
-                />
+        <div className="min-h-screen bg-background pb-20 pt-8 flex flex-col relative overflow-x-hidden">
+            {/* Language Selector - Top Right Absolute */}
+            <div className="absolute top-6 right-6 z-50">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 w-[100px] justify-center shadow-sm">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => switchLanguage('en')} // Note: switchLanguage needs to be extracted from useLanguage
+                        className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'en' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+                    >
+                        EN
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => switchLanguage('fr')}
+                        className={`h-7 px-3 text-xs font-medium rounded-md transition-all ${language === 'fr' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800'}`}
+                    >
+                        FR
+                    </Button>
+                </div>
             </div>
 
             <div className="max-w-4xl mx-auto px-4 w-full">
+                {/* Navigation */}
+                <Button
+                    variant="ghost"
+                    onClick={() => navigate('/information')}
+                    className="mb-8 group flex items-center gap-2 text-muted-foreground hover:text-foreground pl-0"
+                >
+                    <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                    {t('nav.back')}
+                </Button>
+
+                {/* Header Section */}
+                <div className="text-center mb-12 space-y-4">
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-sans text-foreground">
+                        {t('infoPage.securityModal.title')}
+                    </h1>
+                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                        {t('infoPage.securityModal.architecture')}
+                    </p>
+                </div>
+
                 <div className="grid gap-6">
                     {securitySections.map((section) => {
                         const Icon = section.icon;
@@ -92,15 +117,7 @@ const SecurityDetails = () => {
                     })}
                 </div>
 
-                <div className="mt-12 p-8 rounded-3xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col items-center text-center">
-                    <Shield className="h-12 w-12 text-emerald-500 mb-4" />
-                    <h4 className="text-xl font-bold text-foreground mb-2">
-                        {t('infoPage.securityTitle')}
-                    </h4>
-                    <p className="text-muted-foreground max-w-2xl">
-                        {t('infoPage.securityDesc')}
-                    </p>
-                </div>
+
             </div>
         </div>
     );

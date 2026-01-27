@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
@@ -53,7 +54,10 @@ const getTranslatedFrequency = (frequency, t) => {
   }
 };
 
+
+
 const DataReview = () => {
+
   const navigate = useNavigate();
   const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
@@ -1936,19 +1940,23 @@ const DataReview = () => {
                             <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
                             <td className="p-3">
                               {isStandardIncome ? (
-                                <Input
+                                <DateInputWithShortcuts
                                   data-testid={`income - start - date - ${index} `}
-                                  type="date"
                                   value={currentStartDate || ''}
                                   onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
-                                  className="max-w-[150px]"
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  mode="start"
                                 />
                               ) : (
-                                <Input
-                                  type="date"
+                                <DateInputWithShortcuts
                                   value={income.startDate || ''}
                                   onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
-                                  className="max-w-[150px]"
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  mode="start"
                                 />
                               )}
                             </td>
@@ -1956,15 +1964,27 @@ const DataReview = () => {
                               {income.name === '3a' ? (
                                 null
                               ) : isStandardIncome ? (
-                                <Input
+                                <DateInputWithShortcuts
                                   data-testid={`income - end - date - ${index} `}
-                                  type="date"
                                   value={currentEndDate || ''}
                                   onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
-                                  className="max-w-[150px]"
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  deathDate={deathDate}
+                                  mode="end"
                                 />
                               ) : (
-                                (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null : <Input type="date" value={income.endDate || ""} onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)} className="max-w-[150px]" />
+                                (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null :
+                                  <DateInputWithShortcuts
+                                    value={income.endDate || ""}
+                                    onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)}
+                                    className="w-fit"
+                                    retirementDate={wishedRetirementDate}
+                                    legalDate={retirementLegalDate}
+                                    deathDate={deathDate}
+                                    mode="end"
+                                  />
                               )}
                             </td>
 
@@ -2132,11 +2152,13 @@ const DataReview = () => {
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Input
-                                  type="date"
+                                <DateInputWithShortcuts
                                   value={asset.availabilityDate || ''}
                                   onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                                  className="max-w-[140px]"
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  mode="start"
                                 />
                               )}
                             </td>
@@ -2294,16 +2316,28 @@ const DataReview = () => {
                             </td>
                             <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
                             <td className="p-3">
-                              <Input
+                              <DateInputWithShortcuts
                                 data-testid={`cost - start - date - ${index} `}
-                                type="date"
                                 value={cost.startDate || ''}
                                 onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
-                                className="max-w-[150px]"
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                mode="start"
                               />
                             </td>
                             <td className="p-3">
-                              {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null : <Input data-testid={`cost - end - date - ${index} `} type="date" value={cost.endDate || ""} onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)} className="max-w-[150px]" />}
+                              {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null :
+                                <DateInputWithShortcuts
+                                  data-testid={`cost - end - date - ${index} `}
+                                  value={cost.endDate || ""}
+                                  onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)}
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  deathDate={deathDate}
+                                  mode="end"
+                                />}
                             </td>
                             <td className="p-3">
                               <Input
@@ -2447,11 +2481,13 @@ const DataReview = () => {
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Input
-                                  type="date"
+                                <DateInputWithShortcuts
                                   value={outflow.madeAvailableDate || ''}
                                   onChange={(e) => updateOutflow(outflow.id, 'madeAvailableDate', e.target.value)}
-                                  className="max-w-[140px]"
+                                  className="w-fit"
+                                  retirementDate={wishedRetirementDate}
+                                  legalDate={retirementLegalDate}
+                                  mode="start"
                                 />
                               )}
                             </td>

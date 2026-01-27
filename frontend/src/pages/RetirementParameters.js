@@ -14,6 +14,7 @@ import { getUserData, getScenarioData, saveScenarioData, getRetirementData } fro
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Trash2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 
 const RetirementParameters = () => {
     const navigate = useNavigate();
@@ -1088,7 +1089,7 @@ const RetirementParameters = () => {
                                         <thead className="text-xs bg-slate-800 text-white">
                                             <tr>
                                                 <th className="px-4 py-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                                                <th className="px-4 py-3 text-center font-semibold">{language === 'fr' ? 'Date de disponibilité' : 'Availability date'}</th>
+                                                <th className="px-4 py-3 text-center font-semibold min-w-[280px]">{language === 'fr' ? 'Date de disponibilité' : 'Availability date'}</th>
                                                 <th className="px-4 py-3 text-center">Capital</th>
                                                 <th className="px-4 py-3 text-center">{language === 'fr' ? 'Rente annuelle' : 'Yearly pension'}</th>
                                                 <th className="px-4 py-3 text-center">{language === 'fr' ? 'Taux de conversion' : 'Conversion rate'}</th>
@@ -1134,11 +1135,13 @@ const RetirementParameters = () => {
                                                         3a ({idx + 1})
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
-                                                        <Input
-                                                            type="date"
+                                                        <DateInputWithShortcuts
                                                             value={account.startDate}
                                                             onChange={(e) => updateBenefitData('threeA', 'startDate', e.target.value, idx)}
-                                                            className="h-8 w-36 bg-slate-700 border-slate-600 text-white mx-auto"
+                                                            className="w-fit mx-auto"
+                                                            retirementDate={wishedRetirementDate}
+                                                            legalDate={retirementLegalDate}
+                                                            mode="start"
                                                         />
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
@@ -1316,11 +1319,13 @@ const RetirementParameters = () => {
                                                         {language === 'fr' ? 'Plan de pension supplémentaire' : 'Supplementary LPP Pension plan'}
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
-                                                        <Input
-                                                            type="date"
+                                                        <DateInputWithShortcuts
                                                             value={benefitsData.lppSup.startDate}
                                                             onChange={(e) => updateBenefitData('lppSup', 'startDate', e.target.value)}
-                                                            className="h-8 w-36 bg-slate-700 border-slate-600 text-white mx-auto"
+                                                            className="w-fit mx-auto"
+                                                            retirementDate={wishedRetirementDate}
+                                                            legalDate={retirementLegalDate}
+                                                            mode="start"
                                                         />
                                                     </td>
                                                     <td className="px-4 py-3 text-center">

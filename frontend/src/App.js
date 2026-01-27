@@ -49,7 +49,7 @@ const PageTracker = () => {
 // Global header component that shows on appropriate pages
 const GlobalHeader = () => {
   const location = useLocation();
-  const hiddenPaths = ['/', '/admin', '/information'];
+  const hiddenPaths = ['/', '/admin', '/information', '/security'];
 
   if (hiddenPaths.includes(location.pathname)) {
     return null;

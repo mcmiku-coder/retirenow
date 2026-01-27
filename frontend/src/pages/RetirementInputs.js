@@ -49,6 +49,7 @@ const RetirementInputs = () => {
                 const legalDateStr = legalDate.toISOString().split('T')[0];
                 setLegalRetirementDate(legalDateStr);
 
+
                 // 2. Try to load existing Retirement Data
                 const savedData = await getRetirementData(user.email, masterKey);
 
@@ -231,7 +232,7 @@ const RetirementInputs = () => {
                             <table className="w-full min-w-[700px]">
                                 <thead className="bg-muted/50">
                                     <tr className="border-b">
-                                        <th className="text-left p-2 w-1/3">{t('income.name')}</th>
+                                        <th className="text-left p-2 w-1/4">{t('income.name')}</th>
                                         <th className="text-left p-2 w-1/6">{t('income.startDate')}</th>
                                         <th className="text-left p-2 w-1/6">{t('income.amount')}</th>
                                         <th className="text-left p-2 w-1/3">{t('income.frequency')}</th>

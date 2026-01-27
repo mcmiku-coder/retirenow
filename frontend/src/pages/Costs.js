@@ -8,9 +8,10 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { saveCostData, getCostData, getUserData, getIncomeData } from '../utils/database';
+import { saveCostData, getCostData, getUserData, getIncomeData, getScenarioData } from '../utils/database';
 import { Trash2, Plus, HelpCircle, Home } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 
 // Cost name keys for translation
 const COST_KEYS = {
@@ -34,6 +35,11 @@ const Costs = () => {
   const [nextId, setNextId] = useState(11);
   const [loading, setLoading] = useState(false);
   const [salaryAmount, setSalaryAmount] = useState(0);
+
+  // Date shortcut states
+  const [wishedRetirementDate, setWishedRetirementDate] = useState('');
+  const [retirementLegalDate, setRetirementLegalDate] = useState('');
+  const [deathDate, setDeathDate] = useState('');
 
   // Get translated cost name
   const getCostName = (englishName) => {
@@ -86,9 +92,32 @@ const Costs = () => {
           setRows(data);
           const maxId = Math.max(...data.map(r => r.id));
           setNextId(maxId + 1);
-        } else {
-          const defaultRows = await getDefaultRows();
-          setRows(defaultRows);
+        }
+
+        // Always fetch user/scenario data to initialize shortcuts
+        const userData = await getUserData(user.email, masterKey);
+        const scenarioData = await getScenarioData(user.email, masterKey);
+
+        if (userData) {
+          // Calculate retirement date
+          const birthDate = new Date(userData.birthDate);
+          const retirementDate = new Date(birthDate);
+          retirementDate.setFullYear(retirementDate.getFullYear() + 65);
+          retirementDate.setMonth(retirementDate.getMonth() + 1);
+          const retirementDateStr = retirementDate.toISOString().split('T')[0];
+
+          // Use the theoretical death date from API
+          const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
+
+          // Set state for shortcuts
+          setRetirementLegalDate(retirementDateStr);
+          setDeathDate(deathDateStr);
+          setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
+
+          if (!data || data.length === 0) {
+            const defaultRows = await getDefaultRows();
+            setRows(defaultRows);
+          }
         }
       } catch (error) {
         console.error('Error loading cost data:', error);
@@ -232,7 +261,7 @@ const Costs = () => {
                   <th className="text-left p-2 font-semibold">{t('costs.name')}</th>
                   <th className="text-left p-2 font-semibold">{t('costs.amount')}</th>
                   <th className="text-left p-2 font-semibold">{t('costs.frequency')}</th>
-                  <th className="text-left p-2 font-semibold">{t('costs.category')}</th>
+                  {/* <th className="text-left p-2 font-semibold">{t('costs.category')}</th> */}
                   <th className="text-left p-2 font-semibold">{t('costs.startDate')}</th>
                   <th className="text-left p-2 font-semibold">{t('costs.endDate')}</th>
                   <th className="text-left p-2 font-semibold w-12">{t('costs.actions')}</th>
@@ -319,8 +348,8 @@ const Costs = () => {
                         </div>
                       </RadioGroup>
                     </td>
-                    <td className="p-2">
-                      {row.categoryLocked ? (
+                    {/* <td className="p-2">
+                       {row.categoryLocked ? (
                         <Input
                           data-testid={`cost-category-${index}`}
                           value={getCategoryLabel(row.category)}
@@ -342,24 +371,29 @@ const Costs = () => {
                           </SelectContent>
                         </Select>
                       )}
-                    </td>
+                    </td> */}
                     <td className="p-2">
-                      <Input
+                      <DateInputWithShortcuts
                         data-testid={`cost-start-${index}`}
-                        type="date"
                         value={row.startDate}
                         onChange={(e) => updateRow(row.id, 'startDate', e.target.value)}
-                        className="min-w-[140px]"
+                        className="w-fit"
+                        retirementDate={wishedRetirementDate}
+                        legalDate={retirementLegalDate}
+                        mode="start"
                       />
                     </td>
                     <td className="p-2">
-                      <Input
+                      <DateInputWithShortcuts
                         data-testid={`cost-end-${index}`}
-                        type="date"
                         value={row.endDate}
                         onChange={(e) => updateRow(row.id, 'endDate', e.target.value)}
                         disabled={row.frequency === 'One-time'}
-                        className="min-w-[140px]"
+                        className="w-fit"
+                        retirementDate={wishedRetirementDate}
+                        legalDate={retirementLegalDate}
+                        deathDate={deathDate}
+                        mode="end"
                       />
                     </td>
                     <td className="p-2">
