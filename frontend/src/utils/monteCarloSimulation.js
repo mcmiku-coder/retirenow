@@ -7,23 +7,15 @@
  */
 
 import { getProductById, getCorrelation } from '../data/investmentProducts';
+import {
+    generateNormalRandom,
+    generateStudentT,
+    initializeRandomSeed,
+    DISTRIBUTION_CONFIG,
+    CORRELATION_STRESS_CONFIG,
+    stressCorrelationMatrix
+} from './monteCarloUtils';
 
-/**
- * Generate a random number from a standard normal distribution (mean=0, std=1)
- * Uses Box-Muller transform for accurate normal distribution
- * 
- * @returns {number} Random value from standard normal distribution
- */
-function generateNormalRandom() {
-    let u1 = 0, u2 = 0;
-    // Ensure we don't get 0 which would cause log(0)
-    while (u1 === 0) u1 = Math.random();
-    while (u2 === 0) u2 = Math.random();
-
-    // Box-Muller transform
-    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    return z0;
-}
 
 /**
  * Perform Cholesky decomposition on a correlation matrix
@@ -58,9 +50,10 @@ function choleskyDecomposition(matrix) {
  * Generate correlated random returns for multiple assets
  * 
  * @param {Array<Object>} portfolioAssets - Array of {product, weight, amount}
+ * @param {Object} config - Distribution configuration
  * @returns {Array<number>} Array of correlated random returns (one per asset)
  */
-function generateCorrelatedReturns(portfolioAssets) {
+function generateCorrelatedReturns(portfolioAssets, config = DISTRIBUTION_CONFIG) {
     const n = portfolioAssets.length;
 
     // Build correlation matrix
@@ -88,9 +81,13 @@ function generateCorrelatedReturns(portfolioAssets) {
     }
 
     // Convert to returns using each asset's mean and volatility
+    // Use configured distribution (Student-t or Normal)
     const returns = portfolioAssets.map((asset, i) => {
         const mu = asset.product.metrics.avgReturn / 100;
         const sigma = asset.product.metrics.avgVolatility / 100;
+
+        // correlatedZ[i] is already the random component
+        // For Student-t, the fat tails are already in the correlatedZ values
         return mu + sigma * correlatedZ[i];
     });
 
@@ -103,9 +100,10 @@ function generateCorrelatedReturns(portfolioAssets) {
  * @param {Array<Object>} portfolioAssets - Array of {product, weight, amount}
  * @param {number} years - Number of years to simulate
  * @param {number|null} customInitialCapital - Optional override for starting value
+ * @param {Object} config - Distribution configuration
  * @returns {Array<number>} Array of portfolio values for each year (including initial)
  */
-export function generatePortfolioPath(portfolioAssets, years, customInitialCapital = null) {
+export function generatePortfolioPath(portfolioAssets, years, customInitialCapital = null, config = DISTRIBUTION_CONFIG) {
     const initialValue = customInitialCapital !== null
         ? customInitialCapital
         : portfolioAssets.reduce((sum, asset) => sum + asset.amount, 0);
@@ -134,7 +132,7 @@ export function generatePortfolioPath(portfolioAssets, years, customInitialCapit
 
     for (let year = 1; year <= years; year++) {
         // Generate correlated returns for all assets
-        const returns = generateCorrelatedReturns(portfolioAssets);
+        const returns = generateCorrelatedReturns(portfolioAssets, config);
 
         // Calculate Portfolio Weighted Return
         let portfolioReturn = 0;
@@ -157,9 +155,10 @@ export function generatePortfolioPath(portfolioAssets, years, customInitialCapit
  * @param {Object} scenarioData - Scenario data with investmentSelections
  * @param {number} years - Number of years to simulate
  * @param {number} iterations - Number of simulations to run (default: 10000)
+ * @param {Object} config - Simulation configuration (distribution, seed, stress)
  * @returns {Object} Simulation results with paths and percentiles
  */
-export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, years, iterations = 10000) {
+export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, years, iterations = 10000, config = {}) {
     // Build portfolio from invested assets
     const portfolioAssets = investedAssets
         .map(asset => {
@@ -191,6 +190,20 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
 
     console.log(`Running portfolio Monte Carlo with ${portfolioAssets.length} assets, Model Total: ${totalAmount}`);
 
+    // Merge config with defaults
+    const effectiveConfig = {
+        distribution: config.distribution || DISTRIBUTION_CONFIG,
+        correlationStress: config.correlationStress || CORRELATION_STRESS_CONFIG,
+        seed: config.seed || null,
+        iterations: iterations
+    };
+
+    // Initialize PRNG with seed if provided
+    if (effectiveConfig.seed !== null) {
+        initializeRandomSeed(effectiveConfig.seed);
+        console.log(`Using deterministic seed: ${effectiveConfig.seed}`);
+    }
+
     // Run simulations
     // We store arrays of values per year to calculate Point-in-Time percentiles
     // Structure: yearValues[yearIndex] = [val_sim1, val_sim2, ...]
@@ -199,7 +212,7 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
     for (let i = 0; i < iterations; i++) {
         // Pass totalAmount (or let default work) to generate a valid return path
         // We will extract percentages from this later.
-        const path = generatePortfolioPath(portfolioAssets, years);
+        const path = generatePortfolioPath(portfolioAssets, years, null, effectiveConfig.distribution);
         for (let y = 0; y <= years; y++) {
             yearValues[y][i] = path[y];
         }
@@ -231,7 +244,13 @@ export function runPortfolioMonteCarloSimulation(investedAssets, scenarioData, y
         totalAmount: totalAmount,
         simulations: [], // We no longer return raw paths to save memory
         percentiles: percentiles,
-        timestamp: Date.now()
+        metadata: {
+            seed: effectiveConfig.seed,
+            distribution: effectiveConfig.distribution,
+            correlationStress: effectiveConfig.correlationStress,
+            iterations: iterations,
+            timestamp: Date.now()
+        }
     };
 }
 

@@ -116,6 +116,7 @@ class PasswordResetConfirm(BaseModel):
 class TokenResponse(BaseModel):
     token: Optional[str] = None
     email: str
+    role: Optional[str] = None  # NEW: User role ("user" or "admin")
     message: Optional[str] = None
     master_key: Optional[str] = None  # Added for master key encryption
 
@@ -132,9 +133,14 @@ class LifeExpectancyResponse(BaseModel):
 class AdminLoginRequest(BaseModel):
     admin_key: str
 
+class AdminPromoteRequest(BaseModel):
+    email: EmailStr
+    admin_key: str  # Require admin key for security during transition
+
 class AdminUserResponse(BaseModel):
     user_id: str
     email: str
+    role: Optional[str] = "user"  # NEW: Show user role
     created_at: Optional[str] = None
     login_count: int = 0
     last_login: Optional[str] = None
@@ -379,8 +385,36 @@ async def health_check():
 
 # Admin Routes
 def verify_admin_key(admin_key: str) -> bool:
-    """Verify the admin secret key"""
+    """Verify the admin secret key (legacy - for transition only)"""
     return admin_key == ADMIN_SECRET_KEY
+
+async def get_current_user_from_token(token: str):
+    """Extract and verify user from JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email = payload.get('email')
+        if not email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user = await db.access.find_one({"email": email}, {"_id": 0, "password": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Middleware to require admin role"""
+    token = credentials.credentials
+    user = await get_current_user_from_token(token)
+    
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return user
 
 @api_router.post("/admin/login")
 async def admin_login(request: AdminLoginRequest):
@@ -389,12 +423,42 @@ async def admin_login(request: AdminLoginRequest):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     return {"success": True, "message": "Admin access granted"}
 
-@api_router.post("/admin/users", response_model=AdminStatsResponse)
-async def get_all_users(request: AdminLoginRequest):
-    """Get all registered users with analytics (admin only)"""
+@api_router.post("/admin/promote")
+async def promote_user_to_admin(request: AdminPromoteRequest):
+    """Promote an existing user to admin role (transition endpoint)"""
+    # Verify admin key for security
     if not verify_admin_key(request.admin_key):
         raise HTTPException(status_code=401, detail="Invalid admin key")
     
+    # Find user
+    user = await db.access.find_one({"email": request.email}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if already admin
+    if user.get("role") == "admin":
+        return {"success": True, "message": "User is already an admin", "email": request.email}
+    
+    # Promote to admin
+    result = await db.access.update_one(
+        {"email": request.email},
+        {"$set": {"role": "admin"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to promote user")
+    
+    logger.info(f"User promoted to admin: {request.email}")
+    return {
+        "success": True, 
+        "message": "User promoted to admin successfully",
+        "email": request.email,
+        "role": "admin"
+    }
+
+@api_router.post("/admin/users", response_model=AdminStatsResponse)
+async def get_all_users(admin_user: dict = Depends(require_admin)):
+    """Get all registered users with analytics (admin only)"""
     try:
         # Get all users from the access collection
         users_cursor = db.access.find({}, {"_id": 0, "password": 0})
@@ -404,6 +468,7 @@ async def get_all_users(request: AdminLoginRequest):
             AdminUserResponse(
                 user_id=user.get("user_id", ""),
                 email=user.get("email", ""),
+                role=user.get("role", "user"),  # Include role
                 created_at=user.get("created_at", None),
                 login_count=user.get("login_count", 0),
                 last_login=user.get("last_login", None),
@@ -427,11 +492,8 @@ async def get_all_users(request: AdminLoginRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.delete("/admin/users/{user_id}")
-async def delete_user(user_id: str, request: AdminLoginRequest):
+async def delete_user(user_id: str, admin_user: dict = Depends(require_admin)):
     """Delete a user by ID (admin only)"""
-    if not verify_admin_key(request.admin_key):
-        raise HTTPException(status_code=401, detail="Invalid admin key")
-    
     try:
         # Delete from all collections
         result = await db.access.delete_one({"user_id": user_id})
@@ -441,19 +503,17 @@ async def delete_user(user_id: str, request: AdminLoginRequest):
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="User not found")
             
-        logger.info(f"User {user_id} deleted by admin")
+        logger.info(f"Admin {admin_user.get('email')} deleted user {user_id}")
         return {"success": True, "message": "User deleted successfully"}
-        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error deleting user: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/admin/stats")
-async def get_admin_stats(request: AdminLoginRequest):
+async def get_admin_stats(admin_user: dict = Depends(require_admin)):
     """Get admin statistics (admin only)"""
-    if not verify_admin_key(request.admin_key):
-        raise HTTPException(status_code=401, detail="Invalid admin key")
-    
     try:
         # Count users
         total_users = await db.access.count_documents({})
@@ -464,6 +524,41 @@ async def get_admin_stats(request: AdminLoginRequest):
         }
     except Exception as e:
         print(f"Error fetching stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@api_router.post("/admin/users/{user_id}/toggle-admin")
+async def toggle_user_admin_role(user_id: str, admin_user: dict = Depends(require_admin)):
+    """Toggle admin role for a user (admin only)"""
+    try:
+        # Find the target user
+        target_user = await db.access.find_one({"user_id": user_id}, {"_id": 0})
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Toggle role
+        current_role = target_user.get("role", "user")
+        new_role = "admin" if current_role == "user" else "user"
+        
+        # Update role
+        result = await db.access.update_one(
+            {"user_id": user_id},
+            {"$set": {"role": new_role}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update role")
+        
+        logger.info(f"Admin {admin_user.get('email')} changed {target_user.get('email')} role from {current_role} to {new_role}")
+        return {
+            "success": True,
+            "message": f"User role changed to {new_role}",
+            "email": target_user.get("email"),
+            "role": new_role
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling admin role: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -487,6 +582,7 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
         "user_id": str(uuid.uuid4()),
         "email": user.email,
         "password": hashed_pw,
+        "role": "user",  # NEW: Default role is "user", can be promoted to "admin"
         "created_at": current_time,
         "last_login": current_time,
         "login_count": 0,
@@ -617,6 +713,7 @@ async def login(user: UserLogin, request: Request):
     return TokenResponse(
         token=token, 
         email=user.email,
+        role=user_doc.get("role", "user"),  # Include role in response
         master_key=master_key
     )
 

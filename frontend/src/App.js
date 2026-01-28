@@ -8,7 +8,7 @@ import AppHeader from './components/AppHeader';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
 import MonteCarloHelp from './pages/MonteCarloHelp';
-import Admin from './pages/Admin';
+import AdminApp from './pages/admin/AdminApp';
 import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
 import Income from './pages/Income';
@@ -49,9 +49,10 @@ const PageTracker = () => {
 // Global header component that shows on appropriate pages
 const GlobalHeader = () => {
   const location = useLocation();
-  const hiddenPaths = ['/', '/admin', '/information', '/security'];
+  const hiddenPaths = ['/', '/information', '/security'];
 
-  if (hiddenPaths.includes(location.pathname)) {
+  // Hide on admin routes
+  if (hiddenPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
     return null;
   }
 
@@ -82,7 +83,6 @@ function AppRoutes() {
         <Route path="/information" element={<Information />} />
         <Route path="/security" element={<SecurityDetails />} />
         <Route path="/monte-carlo-help" element={<MonteCarloHelp />} />
-        <Route path="/admin" element={<Admin />} />
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -152,6 +152,7 @@ function AppRoutes() {
             <ScenarioResult />
           </ProtectedRoute>
         } />
+        <Route path="/admin/*" element={<AdminApp />} />
         <Route path="/settings" element={
           <ProtectedRoute>
             <Settings />

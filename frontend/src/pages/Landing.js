@@ -78,8 +78,8 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="landing-page">
-      {/* Language Selector - Top Right */}
-      <div className="absolute top-6 right-6 z-50">
+      {/* Language Selector & Admin Access - Top Right */}
+      <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
         <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 w-[100px] justify-center">
           <Button
             variant="ghost"
@@ -98,6 +98,16 @@ const Landing = () => {
             FR
           </Button>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/admin')}
+          className="h-9 w-9 p-0 rounded-lg bg-slate-900/50 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all"
+          title={language === 'en' ? 'Admin Access' : 'Accès administrateur'}
+        >
+          <Lock className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="max-w-4xl w-full">

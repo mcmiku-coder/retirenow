@@ -1,0 +1,4 @@
+# Admin Promotion Model
+class AdminPromoteRequest(BaseModel):
+    email: EmailStr
+    admin_key: str  # Require admin key for security during transition

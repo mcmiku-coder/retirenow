@@ -9,14 +9,16 @@ import { encryptDataWithMasterKey, decryptDataWithMasterKey } from './encryption
 class EncryptedDatabase extends Dexie {
   constructor() {
     super('QuitRetirementDB');
-    this.version(6).stores({  // Incremented version for master key migration
-      userData: 'email, encryptedData, iv',  // Removed salt (no longer needed)
+    this.version(7).stores({  // Version 7: Added instrumentData and simulationConfig
+      userData: 'email, encryptedData, iv',
       incomeData: 'email, encryptedData, iv',
       costData: 'email, encryptedData, iv',
       scenarioData: 'email, encryptedData, iv',
       retirementData: 'email, encryptedData, iv',
       assetsData: 'email, encryptedData, iv',
-      realEstateData: 'email, encryptedData, iv'
+      realEstateData: 'email, encryptedData, iv',
+      instrumentData: 'email, encryptedData, iv',  // NEW: Encrypted instrument time series
+      simulationConfig: 'email, encryptedData, iv'  // NEW: User simulation salt
     });
   }
 }
@@ -430,6 +432,104 @@ export async function initializeUserDB(email, masterKey) {
   } catch (error) {
     console.error('Failed to initialize user database:', error);
     throw new Error(`Local storage initialization failed: ${error.message}`);
+  }
+}
+
+/**
+ * Save encrypted instrument data (time series)
+ * Data structure: { instruments: Array<{id, name, assetClass, timeSeries, frequency}> }
+ */
+export async function saveInstrumentData(email, masterKey, instrumentsData) {
+  if (!email || !masterKey) {
+    throw new Error('Email and master key are required');
+  }
+
+  try {
+    const encrypted = await encryptDataWithMasterKey(instrumentsData, masterKey);
+
+    await db.instrumentData.put({
+      email: email,
+      encryptedData: encrypted.encryptedData,
+      iv: encrypted.iv
+    });
+  } catch (error) {
+    console.error('saveInstrumentData error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get encrypted instrument data (time series)
+ */
+export async function getInstrumentData(email, masterKey) {
+  if (!email || !masterKey) {
+    throw new Error('Email and master key are required');
+  }
+
+  try {
+    const record = await db.instrumentData.get(email);
+    if (!record) {
+      return null;
+    }
+
+    const decrypted = await decryptDataWithMasterKey({
+      encryptedData: record.encryptedData,
+      iv: record.iv
+    }, masterKey);
+
+    return decrypted;
+  } catch (error) {
+    console.error('getInstrumentData error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save user simulation configuration (encrypted salt)
+ * Data structure: { salt: string }
+ */
+export async function saveSimulationConfig(email, masterKey, config) {
+  if (!email || !masterKey) {
+    throw new Error('Email and master key are required');
+  }
+
+  try {
+    const encrypted = await encryptDataWithMasterKey(config, masterKey);
+
+    await db.simulationConfig.put({
+      email: email,
+      encryptedData: encrypted.encryptedData,
+      iv: encrypted.iv
+    });
+  } catch (error) {
+    console.error('saveSimulationConfig error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user simulation configuration (encrypted salt)
+ */
+export async function getSimulationConfig(email, masterKey) {
+  if (!email || !masterKey) {
+    throw new Error('Email and master key are required');
+  }
+
+  try {
+    const record = await db.simulationConfig.get(email);
+    if (!record) {
+      return null;
+    }
+
+    const decrypted = await decryptDataWithMasterKey({
+      encryptedData: record.encryptedData,
+      iv: record.iv
+    }, masterKey);
+
+    return decrypted;
+  } catch (error) {
+    console.error('getSimulationConfig error:', error);
+    throw error;
   }
 }
 
