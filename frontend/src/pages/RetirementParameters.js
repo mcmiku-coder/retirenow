@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { toast } from 'sonner';
 import { getUserData, getScenarioData, saveScenarioData, getRetirementData } from '../utils/database';
+import { getSimulationAge, getLPPDataForAge, getCompatibleData } from '../utils/retirementDataMigration';
 import WorkflowNavigation from '../components/WorkflowNavigation';
 import { Calendar, Trash2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
@@ -238,7 +239,55 @@ const RetirementParameters = () => {
                     setRetirementLegalDate(userData.retirementLegalDate);
                 }
 
-                if (scenarioData) {
+                if (retirementData?.version === 2) {
+                    const q = retirementData.questionnaire;
+                    const bd = retirementData.benefitsData;
+
+                    setLppSimulationAge(q.simulationAge);
+                    setLppEarliestAge(q.lppEarliestAge);
+                    setLppEarlyRetirementOption(q.isWithinPreRetirement === 'yes' ? 'Yes' : 'No');
+
+                    setSelectedPillars({
+                        avs: q.hasAVS,
+                        lpp: q.hasLPP,
+                        lppSup: q.hasSupplementaryPension,
+                        threeA: q.threeACount > 0
+                    });
+
+                    let threeAData = bd.threeA;
+                    if (!Array.isArray(threeAData)) threeAData = [];
+
+                    setBenefitsData({
+                        avs: bd.avs || { amount: '', frequency: 'Yearly', startDate: '' },
+                        threeA: threeAData,
+                        lppSup: bd.lppSup || { amount: '', frequency: 'One-time', startDate: '' }
+                    });
+
+                    setThreeAAccountsCount(q.threeACount);
+
+                    if (bd.lppByAge) {
+                        setPensionByAge(bd.lppByAge);
+                    }
+
+                    // SKIPPING REDUNDANT SCREEN:
+                    // Since we have valid V2 inputs from the previous page, we skip the "Edit Mode" (Checkboxes)
+                    // and show the Table view directly.
+                    setIsBenefitEditMode(false);
+
+                    if (scenarioData) {
+                        setWishedRetirementDate(scenarioData.wishedRetirementDate || retirementData.retirementLegalDate || '');
+                        setRetirementOption(scenarioData.retirementOption || '');
+                        setYearlyReturn(scenarioData.yearlyReturn || '0');
+                        setPensionCapital(scenarioData.pensionCapital || '');
+
+                        setProjectedLegalLPPPension(scenarioData.projectedLegalLPPPension || '');
+                        setProjectedLegalLPPCapital(scenarioData.projectedLegalLPPCapital || '');
+                        setProjectedLegalLPPRate(scenarioData.projectedLegalLPPRate || '');
+                    } else {
+                        setWishedRetirementDate(retirementData.retirementLegalDate || '');
+                    }
+
+                } else if (scenarioData) {
                     setWishedRetirementDate(scenarioData.wishedRetirementDate || retirementData?.retirementLegalDate || '');
                     setRetirementOption(scenarioData.retirementOption || '');
                     setPensionCapital(scenarioData.pensionCapital || '');

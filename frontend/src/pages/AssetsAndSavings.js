@@ -276,7 +276,7 @@ const AssetsOverview = () => {
             };
 
             await saveAssetsData(user.email, masterKey, dataToSave);
-            navigate('/retirement-parameters'); // Updated: skip removed retirement-inputs page
+            navigate('/retirement-inputs'); // Navigate to new retirement benefits questionnaire
         } catch (error) {
             console.error('Error saving assets data:', error);
             toast.error(t('common.saveFailed'));

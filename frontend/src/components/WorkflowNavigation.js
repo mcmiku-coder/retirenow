@@ -19,7 +19,7 @@ const WorkflowNavigation = () => {
             branch: { path: '/real-estate', icon: Home, labelKey: 'Real Estate' }
         },
         { path: '/assets-savings', icon: PiggyBank, id: 5, labelKey: 'assetsAndSavings.title' },
-        { path: '/retirement-parameters', icon: Landmark, id: 6, labelKey: 'retirementInputs.title' },
+        { path: '/retirement-inputs', icon: Landmark, id: 6, labelKey: 'retirementInputs.title' },
         {
             path: '/data-review',
             icon: Sliders,

@@ -16,7 +16,10 @@ import Costs from './pages/Costs';
 import RealEstate from './pages/RealEstate';
 import VerifyEmail from './pages/VerifyEmail';
 
-// RetirementInputs page removed - data now collected in RetirementParameters
+// Feature flag for new retirement benefits questionnaire
+const USE_NEW_RETIREMENT_QUESTIONNAIRE = true;
+
+import RetirementBenefitsQuestionnaire from './pages/RetirementBenefitsQuestionnaire';
 import AssetsAndSavings from './pages/AssetsAndSavings';
 import RetirementParameters from './pages/RetirementParameters';
 import DataReview from './pages/DataReview';
@@ -127,6 +130,13 @@ function AppRoutes() {
             <AssetsAndSavings />
           </ProtectedRoute>
         } />
+        {USE_NEW_RETIREMENT_QUESTIONNAIRE && (
+          <Route path="/retirement-inputs" element={
+            <ProtectedRoute>
+              <RetirementBenefitsQuestionnaire />
+            </ProtectedRoute>
+          } />
+        )}
         <Route path="/retirement-parameters" element={
           <ProtectedRoute>
             <RetirementParameters />
