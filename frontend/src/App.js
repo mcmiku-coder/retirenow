@@ -21,7 +21,7 @@ const USE_NEW_RETIREMENT_QUESTIONNAIRE = true;
 
 import RetirementBenefitsQuestionnaire from './pages/RetirementBenefitsQuestionnaire';
 import AssetsAndSavings from './pages/AssetsAndSavings';
-import RetirementParameters from './pages/RetirementParameters';
+
 import DataReview from './pages/DataReview';
 import AdjustmentAdvice from './pages/AdjustmentAdvice';
 import CapitalManagementSetup from './pages/CapitalManagementSetup';
@@ -137,11 +137,7 @@ function AppRoutes() {
             </ProtectedRoute>
           } />
         )}
-        <Route path="/retirement-parameters" element={
-          <ProtectedRoute>
-            <RetirementParameters />
-          </ProtectedRoute>
-        } />
+
         <Route path="/data-review" element={
           <ProtectedRoute>
             <DataReview />

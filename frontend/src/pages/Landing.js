@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { validatePassword } from '../utils/encryption';
-import { Lock, Mail, Globe } from 'lucide-react';
+import { Lock, Mail, Globe, Eye, EyeOff } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
@@ -21,6 +21,7 @@ const Landing = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [registerSuccess, setRegisterSuccess] = useState(false);
@@ -227,13 +228,24 @@ const Landing = () => {
                     <Input
                       data-testid="password-input"
                       id="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t('auth.passwordPlaceholder')}
                       required
-                      className="pl-10"
+                      className="pl-10 pr-10"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
                 <div className="flex justify-end">

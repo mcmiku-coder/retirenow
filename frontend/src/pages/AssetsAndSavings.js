@@ -558,7 +558,7 @@ const AssetsOverview = () => {
                         {/* Continue Button */}
                         <div className="flex justify-center mt-6">
                             <Button type="submit" size="lg" className="px-12 text-lg" disabled={loading}>
-                                {language === 'fr' ? 'Continuer vers les options de simulation et saisie des prestations de retraite' : 'Continue to simulation options and retirement benefits inputs'}
+                                {language === 'fr' ? 'Continuer vers les prestations de retraite' : 'Continue to retirement benefits'}
                             </Button>
                         </div>
                     </form>

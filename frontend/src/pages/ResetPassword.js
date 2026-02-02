@@ -7,6 +7,7 @@ import { Label } from "../components/ui/label";
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const ResetPassword = () => {
     const { language } = useLanguage();
@@ -16,6 +17,8 @@ const ResetPassword = () => {
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
@@ -120,25 +123,53 @@ const ResetPassword = () => {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="password">{language === 'fr' ? 'Nouveau mot de passe' : 'New Password'}</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                minLength={8}
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    minLength={8}
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="confirm">{language === 'fr' ? 'Confirmer le mot de passe' : 'Confirm Password'}</Label>
-                            <Input
-                                id="confirm"
-                                type="password"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                minLength={8}
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="confirm"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    required
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    minLength={8}
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showConfirmPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-2">
