@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
@@ -32,16 +32,31 @@ const RetirementBenefitsQuestionnaire = () => {
     const [currentAge, setCurrentAge] = useState(30);
 
     // V2 Schema State
-    const [questionnaire, setQuestionnaire] = useState({
-        hasLPP: false,
-        lppEarliestAge: null,
-        simulationAge: '',
-        isWithinPreRetirement: '',
-        benefitType: '',
-        hasAVS: true,
-        librePassageCount: '',
-        threeACount: '',
-        hasSupplementaryPension: false
+    const location = useLocation(); // Ensure location is available here or moved up if not
+
+    const [questionnaire, setQuestionnaire] = useState(() => {
+        const initialState = {
+            hasLPP: false,
+            lppEarliestAge: null,
+            simulationAge: '',
+            isWithinPreRetirement: '',
+            benefitType: '',
+            hasAVS: true,
+            librePassageCount: '',
+            threeACount: '',
+            hasSupplementaryPension: false
+        };
+
+        // AUTOMATION FIX: Lazy Init from Navigation State
+        if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+            initialState.simulationAge = parseInt(location.state.earlyRetirementAge);
+            // We assume LPP context if early retirement is active
+            initialState.hasLPP = true;
+            // We can't know isWithinPreRetirement yet without lppEarliestAge, 
+            // but we can default to 'yes' if we assume keeping valid state.
+            // Better to let useEffect handle it or force it if we force earliest age.
+        }
+        return initialState;
     });
 
     const [benefitsData, setBenefitsData] = useState({
@@ -50,7 +65,8 @@ const RetirementBenefitsQuestionnaire = () => {
         threeA: [{ amount: '', startDate: '' }],
         lppSup: null,
         lppByAge: {},
-        lppCurrentCapital: ''
+        lppCurrentCapital: '',
+        lppCurrentCapitalDate: ''
     });
 
     // Initialize data on mount
@@ -84,11 +100,39 @@ const RetirementBenefitsQuestionnaire = () => {
                 if (savedData) {
                     // Migrate to v2 if needed
                     const v2Data = migrateToV2(savedData, userDataResult);
-                    setQuestionnaire(v2Data.questionnaire);
+
+                    // AUTOMATION FIX: Merge DB data but preserve Navigation State for Age
+                    if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+                        const navAge = parseInt(location.state.earlyRetirementAge);
+                        console.log('Automated Sequence: Restoring Age from State', navAge);
+                        setQuestionnaire({
+                            ...v2Data.questionnaire,
+                            simulationAge: navAge, // FORCE PERSISTENCE
+                            // Ensure LPP is enabled if age is provided (implied pre-retirement context)
+                            hasLPP: v2Data.questionnaire.hasLPP !== false // Keep existing or default true? Let's safeguard.
+                        });
+                        // Also ensure earliest age is compatible
+                        if (v2Data.questionnaire.lppEarliestAge) {
+                            const dbEarliest = parseInt(v2Data.questionnaire.lppEarliestAge);
+                            if (dbEarliest > navAge) {
+                                // Update local questionnaire state only (will save later)
+                                setQuestionnaire(prev => ({ ...prev, lppEarliestAge: 58 }));
+                            }
+                        }
+                    } else {
+                        setQuestionnaire(v2Data.questionnaire);
+                    }
+
                     setBenefitsData(v2Data.benefitsData);
                 } else {
                     // Create empty v2 schema
                     const emptyData = createEmptyV2Schema(userDataResult);
+
+                    // AUTOMATION FIX (Unlikely case: no data but automation active)
+                    if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+                        emptyData.questionnaire.simulationAge = parseInt(location.state.earlyRetirementAge);
+                    }
+
                     setQuestionnaire(emptyData.questionnaire);
                     setBenefitsData(emptyData.benefitsData);
                 }
@@ -102,7 +146,34 @@ const RetirementBenefitsQuestionnaire = () => {
         };
 
         initializeData();
-    }, [user, masterKey, navigate]);
+    }, [user, masterKey, navigate, location.state]);
+
+    // Helper to calculate date when user reaches a specific age
+    const getDateAtAge = useCallback((targetAge) => {
+        if (!userData?.birthDate || !targetAge) return '';
+        const birthDate = new Date(userData.birthDate);
+        const targetDate = new Date(birthDate);
+        targetDate.setFullYear(birthDate.getFullYear() + targetAge);
+        return targetDate.toISOString().split('T')[0];
+    }, [userData]);
+
+    // Helper for compound interest projection
+    const calculateProjection = useCallback((currentStr, rateStr, dateStr) => {
+        if (!currentStr || !dateStr) return '';
+        const rate = parseFloat(rateStr) || 0;
+        const current = parseFloat(currentStr.toString().replace(/'/g, ''));
+        if (isNaN(current)) return '';
+
+        const today = new Date();
+        const target = new Date(dateStr);
+        const diffTime = target - today;
+        const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+
+        if (diffYears <= 0) return Math.round(current).toString();
+
+        const projected = current * Math.pow(1 + rate, diffYears);
+        return Math.round(projected).toString();
+    }, []);
 
     // Auto-calculate Q3 (isWithinPreRetirement) when Q2a or Q2b changes
     useEffect(() => {
@@ -111,7 +182,12 @@ const RetirementBenefitsQuestionnaire = () => {
             return;
         }
 
-        if (questionnaire.lppEarliestAge === null || questionnaire.lppEarliestAge === 'unknown' || !questionnaire.simulationAge) {
+        if (questionnaire.lppEarliestAge === 'unknown') {
+            setQuestionnaire(prev => ({ ...prev, isWithinPreRetirement: 'unknown' }));
+            return;
+        }
+
+        if (questionnaire.lppEarliestAge === null || !questionnaire.simulationAge) {
             setQuestionnaire(prev => ({ ...prev, isWithinPreRetirement: '' }));
             return;
         }
@@ -137,7 +213,7 @@ const RetirementBenefitsQuestionnaire = () => {
             if (currentCount < questionnaire.threeACount) {
                 // Add new accounts
                 const toAdd = questionnaire.threeACount - currentCount;
-                const defaultDate = newThreeA[0]?.startDate || legalRetirementDate;
+                const defaultDate = newThreeA[0]?.startDate || getDateAtAge(questionnaire.simulationAge) || legalRetirementDate;
                 for (let i = 0; i < toAdd; i++) {
                     newThreeA.push({ amount: '', startDate: defaultDate });
                 }
@@ -161,7 +237,7 @@ const RetirementBenefitsQuestionnaire = () => {
             if (currentCount < questionnaire.librePassageCount) {
                 // Add new accounts
                 const toAdd = questionnaire.librePassageCount - currentCount;
-                const defaultDate = legalRetirementDate;
+                const defaultDate = getDateAtAge(questionnaire.simulationAge) || legalRetirementDate;
                 for (let i = 0; i < toAdd; i++) {
                     newLibre.push({ amount: '', startDate: defaultDate });
                 }
@@ -191,9 +267,56 @@ const RetirementBenefitsQuestionnaire = () => {
                 }
             }
 
+            // CLEANUP: Remove keys strictly below earliestAge to prevent stale data
+            Object.keys(newLppByAge).forEach(key => {
+                if (parseInt(key) < earliestAge) {
+                    delete newLppByAge[key];
+                }
+            });
+
             return { ...prev, lppByAge: newLppByAge };
         });
     }, [questionnaire.hasLPP, questionnaire.lppEarliestAge, questionnaire.isWithinPreRetirement]);
+
+    // Update 3a, Libre-Passage, and LPP Current dates when simulation age changes
+    useEffect(() => {
+        if (!questionnaire.simulationAge) return;
+
+        const newDate = getDateAtAge(questionnaire.simulationAge);
+        if (!newDate) return;
+
+        setBenefitsData(prev => {
+            // Helper to recalc item projection
+            const recalcItem = (item) => {
+                const effectiveRate = item.isInvested ? (item.returnRate || 0) : 0;
+                const projected = calculateProjection(item.currentAmount, effectiveRate, newDate);
+                return { ...item, startDate: newDate, amount: projected || item.amount };
+            };
+
+            const newLibre = prev.librePassages.map(recalcItem);
+            const newThreeA = prev.threeA.map(recalcItem);
+
+            // Recalc LPP Current
+            const lppRate = prev.lppCurrentInvested ? (prev.lppCurrentReturn || 0) : 0;
+            const lppProjected = calculateProjection(prev.lppCurrentInitialAmount, lppRate, newDate);
+
+            // Recalc LPP Sup
+            const lppSupRate = prev.lppSup?.isInvested ? (prev.lppSup?.returnRate || 0) : 0;
+            const lppSupProjected = calculateProjection(prev.lppSup?.amount, lppSupRate, prev.lppSup?.startDate || newDate);
+
+            return {
+                ...prev,
+                threeA: newThreeA,
+                librePassages: newLibre,
+                lppCurrentCapitalDate: newDate,
+                lppCurrentCapital: lppProjected || prev.lppCurrentCapital,
+                lppSup: {
+                    ...prev.lppSup,
+                    projectedAmount: lppSupProjected || prev.lppSup?.amount
+                }
+            };
+        });
+    }, [questionnaire.simulationAge, getDateAtAge, calculateProjection]);
 
     // Helper functions
     const calculateAge = (birthDate) => {
@@ -210,6 +333,57 @@ const RetirementBenefitsQuestionnaire = () => {
 
     const updateQuestionnaire = (field, value) => {
         setQuestionnaire(prev => ({ ...prev, [field]: value }));
+    };
+
+    // Helper to update projection when dependencies change
+    const updateWithProjection = (type, index, field, value) => {
+        setBenefitsData(prev => {
+            const newData = { ...prev };
+
+            // Handle array updates (librePassages, threeA)
+            if (Array.isArray(newData[type])) {
+                const updatedArray = [...newData[type]];
+                const item = { ...updatedArray[index], [field]: value };
+
+                // Recalculate projection if relevant fields change
+                if (['currentAmount', 'returnRate', 'startDate', 'isInvested'].includes(field)) {
+                    const isInvested = field === 'isInvested' ? value : item.isInvested;
+                    const baseRate = field === 'returnRate' ? value : item.returnRate;
+                    const rate = isInvested ? baseRate : 0;
+
+                    const current = field === 'currentAmount' ? value : item.currentAmount;
+                    const date = field === 'startDate' ? value : item.startDate;
+
+                    const projected = calculateProjection(current, rate, date);
+                    item.amount = projected;
+                }
+
+                updatedArray[index] = item;
+                newData[type] = updatedArray;
+                return newData;
+            }
+            return newData;
+        });
+    };
+
+    // Helper for LPP Current update
+    const updateLppCurrentProjection = (field, value) => {
+        setBenefitsData(prev => {
+            const updates = { [field]: value };
+
+            // Determine current values for calc
+            const invested = field === 'lppCurrentInvested' ? value : prev.lppCurrentInvested;
+            const baseRate = field === 'lppCurrentReturn' ? value : prev.lppCurrentReturn;
+            const rate = invested ? baseRate : 0;
+
+            const current = field === 'lppCurrentInitialAmount' ? value : prev.lppCurrentInitialAmount;
+            const date = field === 'lppCurrentCapitalDate' ? value : (prev.lppCurrentCapitalDate || new Date().toISOString().split('T')[0]);
+
+            const projected = calculateProjection(current, rate, date);
+            updates.lppCurrentCapital = projected;
+
+            return { ...prev, ...updates };
+        });
     };
 
     const updateBenefitData = (type, field, value, index = null) => {
@@ -245,10 +419,26 @@ const RetirementBenefitsQuestionnaire = () => {
 
         try {
             // Build v2 data
+            // Build v2 data
+            // CLEANUP: Ensure mutually exclusive LPP data
+            const cleanBenefitsData = { ...benefitsData };
+
+            if (questionnaire.isWithinPreRetirement === 'yes') {
+                // Path A: Pension by Age selected. Clear LPP Current Capital data.
+                cleanBenefitsData.lppCurrentCapital = '';
+                cleanBenefitsData.lppCurrentCapitalDate = '';
+                cleanBenefitsData.lppCurrentReturn = '';
+                cleanBenefitsData.lppCurrentInvested = false;
+                cleanBenefitsData.lppCurrentInitialAmount = '';
+            } else if (questionnaire.hasLPP) {
+                // Path B: Current Capital selected (No or Unknown). Clear LPP By Age data.
+                cleanBenefitsData.lppByAge = {};
+            }
+
             const v2Data = {
                 version: 2,
                 questionnaire,
-                benefitsData
+                benefitsData: cleanBenefitsData
             };
 
             // Validate
@@ -295,7 +485,7 @@ const RetirementBenefitsQuestionnaire = () => {
                 }
 
                 // 3. Map preRetirementRows
-                const preRetirementRows = Object.entries(benefitsData.lppByAge || {}).map(([age, data]) => ({
+                const preRetirementRows = Object.entries(cleanBenefitsData.lppByAge || {}).map(([age, data]) => ({
                     age: parseInt(age),
                     pension: data.pension || '',
                     capital: data.capital || '',
@@ -304,17 +494,17 @@ const RetirementBenefitsQuestionnaire = () => {
 
                 // 4. Projected Values
                 let projPension = '', projCapital = '';
-                if (questionnaire.simulationAge && benefitsData.lppByAge && benefitsData.lppByAge[questionnaire.simulationAge]) {
-                    projPension = benefitsData.lppByAge[questionnaire.simulationAge].pension || '';
-                    projCapital = benefitsData.lppByAge[questionnaire.simulationAge].capital || '';
+                if (questionnaire.simulationAge && cleanBenefitsData.lppByAge && cleanBenefitsData.lppByAge[questionnaire.simulationAge]) {
+                    projPension = cleanBenefitsData.lppByAge[questionnaire.simulationAge].pension || '';
+                    projCapital = cleanBenefitsData.lppByAge[questionnaire.simulationAge].capital || '';
                 }
 
                 // 5. Legal Retirement Values (Age 65)
                 let legalPension = '', legalCapital = '', legalRate = '';
-                if (benefitsData.lppByAge && benefitsData.lppByAge[65]) {
-                    legalPension = benefitsData.lppByAge[65].pension || '';
-                    legalCapital = benefitsData.lppByAge[65].capital || '';
-                    legalRate = benefitsData.lppByAge[65].rate || '';
+                if (cleanBenefitsData.lppByAge && cleanBenefitsData.lppByAge[65]) {
+                    legalPension = cleanBenefitsData.lppByAge[65].pension || '';
+                    legalCapital = cleanBenefitsData.lppByAge[65].capital || '';
+                    legalRate = cleanBenefitsData.lppByAge[65].rate || '';
                 }
 
                 const updatedScenario = {
@@ -341,7 +531,7 @@ const RetirementBenefitsQuestionnaire = () => {
                         lppSup: questionnaire.hasSupplementaryPension,
                         threeA: questionnaire.threeACount > 0
                     },
-                    benefitsData,
+                    benefitsData: cleanBenefitsData,
                     threeAAccountsCount: questionnaire.threeACount
                 };
 
@@ -396,14 +586,7 @@ const RetirementBenefitsQuestionnaire = () => {
         return ages;
     };
 
-    // Helper to calculate date when user reaches a specific age
-    const getDateAtAge = (targetAge) => {
-        if (!userData?.birthDate || !targetAge) return '';
-        const birthDate = new Date(userData.birthDate);
-        const targetDate = new Date(birthDate);
-        targetDate.setFullYear(birthDate.getFullYear() + targetAge);
-        return targetDate.toISOString().split('T')[0];
-    };
+
 
     const handleReset = () => {
         setQuestionnaire(prev => ({
@@ -425,7 +608,8 @@ const RetirementBenefitsQuestionnaire = () => {
             threeA: [],
             lppSup: null,
             lppByAge: {},
-            lppCurrentCapital: ''
+            lppCurrentCapital: '',
+            lppCurrentCapitalDate: ''
         });
 
         toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to defaults');
@@ -433,7 +617,7 @@ const RetirementBenefitsQuestionnaire = () => {
 
     return (
         <div className="min-h-screen py-8 px-4">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-8 mt-8">
                     <h1 className="text-4xl sm:text-5xl font-bold mb-4">
                         {language === 'fr'
@@ -482,14 +666,14 @@ const RetirementBenefitsQuestionnaire = () => {
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="simulationAgeMain" className="text-base font-semibold">
                                     {language === 'fr'
-                                        ? 'À quel âge souhaitez-vous simuler la faisabilité de votre retraite ?'
-                                        : 'At what age would you like to simulate your retirement feasibility?'}
+                                        ? 'À quel âge souhaitez-vous simuler votre retraite ?'
+                                        : 'At what age would you like to simulate your retirement?'}
                                 </Label>
                                 <Select
                                     value={questionnaire.simulationAge ? String(questionnaire.simulationAge) : ''}
                                     onValueChange={(value) => updateQuestionnaire('simulationAge', parseInt(value))}
                                 >
-                                    <SelectTrigger id="simulationAgeMain" className="w-[220px] justify-end gap-2">
+                                    <SelectTrigger id="simulationAgeMain" className={`w-[220px] justify-end gap-2 ${questionnaire.simulationAge ? 'border-green-500 border-2' : ''}`}>
                                         <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -547,7 +731,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             </span>
                                         )}
                                         {questionnaire.isWithinPreRetirement === 'unknown' && (
-                                            <span className="text-amber-600">
+                                            <span className="text-red-500 font-bold">
                                                 {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
                                             </span>
                                         )}
@@ -555,8 +739,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                 </div>
                             )}
 
-                            {/* Q4: Benefit type - Only if LPP = Yes */}
-                            {questionnaire.hasLPP && (
+                            {/* Q4: Benefit type - Only if LPP = Yes AND pre-retirement is possible */}
+                            {questionnaire.hasLPP && questionnaire.isWithinPreRetirement === 'yes' && (
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="benefitType" className="text-base font-semibold">
                                         {language === 'fr'
@@ -695,27 +879,32 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <thead>
                                                     <tr className="border-b">
                                                         <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium">
-                                                            {language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}
+                                                        <th className="text-left p-2 text-sm font-medium w-32"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-24"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                            {language === 'fr' ? 'Montant' : 'Amount'}
                                                         </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[250px]"></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <tr className="border-b last:border-0">
                                                         <td className="p-2 text-sm font-medium">
-                                                            {language === 'fr' ? 'Pension AVS annuelle' : 'AVS yearly pension'}
+                                                            {language === 'fr' ? 'Rente AVS annuelle (CHF)' : 'AVS yearly pension (CHF)'}
                                                         </td>
                                                         <td className="p-2">
                                                             <Input
-                                                                type="date"
-                                                                value={legalRetirementDate}
-                                                                disabled
-                                                                className="w-full"
+                                                                type="text"
+                                                                value={legalRetirementDate.split('-').reverse().join('.')}
+                                                                readOnly
+                                                                className="w-full bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                             />
                                                         </td>
+                                                        <td className="p-2"></td>
+                                                        <td className="p-2"></td>
                                                         <td className="p-2">
                                                             <Input
                                                                 type="text"
@@ -730,6 +919,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                 className="w-full text-right"
                                                             />
                                                         </td>
+                                                        <td className="p-2"></td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -743,11 +933,20 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <thead>
                                                     <tr className="border-b">
                                                         <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium">
-                                                            {language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                            {language === 'fr' ? 'Investi?' : 'Invested?'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                            {benefitsData.librePassages.some(lp => lp.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                            {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                            {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
                                                 </thead>
@@ -760,24 +959,70 @@ const RetirementBenefitsQuestionnaire = () => {
                                                             <td className="p-2">
                                                                 <DateInputWithShortcuts
                                                                     value={lp.startDate || getDateAtAge(questionnaire.simulationAge)}
-                                                                    onChange={(e) => updateBenefitData('librePassages', 'startDate', e.target.value, index)}
+                                                                    onChange={(e) => updateWithProjection('librePassages', index, 'startDate', e.target.value)}
                                                                     retirementDate={getDateAtAge(questionnaire.simulationAge)}
                                                                     legalDate={legalRetirementDate}
                                                                     mode="start"
                                                                 />
                                                             </td>
                                                             <td className="p-2">
+                                                                <RadioGroup
+                                                                    value={lp.isInvested ? 'yes' : 'no'}
+                                                                    onValueChange={(val) => updateWithProjection('librePassages', index, 'isInvested', val === 'yes')}
+                                                                    className="flex gap-4"
+                                                                >
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <RadioGroupItem value="yes" id={`lp-yes-${index}`} />
+                                                                        <Label htmlFor={`lp-yes-${index}`}>{language === 'fr' ? 'Oui' : 'Yes'}</Label>
+                                                                    </div>
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <RadioGroupItem value="no" id={`lp-no-${index}`} />
+                                                                        <Label htmlFor={`lp-no-${index}`}>{language === 'fr' ? 'Non' : 'No'}</Label>
+                                                                    </div>
+                                                                </RadioGroup>
+                                                            </td>
+                                                            <td className="p-2">
+                                                                {lp.isInvested && (
+                                                                    <Select
+                                                                        value={lp.returnRate}
+                                                                        onValueChange={(val) => updateWithProjection('librePassages', index, 'returnRate', val)}
+                                                                    >
+                                                                        <SelectTrigger className="w-full">
+                                                                            <SelectValue placeholder="Select..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="0.0025">0.25%</SelectItem>
+                                                                            <SelectItem value="0.005">0.5%</SelectItem>
+                                                                            <SelectItem value="0.0075">0.75%</SelectItem>
+                                                                            <SelectItem value="0.01">1.0%</SelectItem>
+                                                                            <SelectItem value="0.0125">1.25%</SelectItem>
+                                                                            <SelectItem value="0.015">1.5%</SelectItem>
+                                                                            <SelectItem value="0.02">2.0%</SelectItem>
+                                                                            <SelectItem value="0.025">2.5%</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2">
                                                                 <Input
                                                                     type="text"
                                                                     placeholder=""
-                                                                    value={(lp.amount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                    value={(lp.currentAmount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
                                                                     onChange={(e) => {
                                                                         const rawValue = e.target.value.replace(/'/g, '');
                                                                         if (!isNaN(rawValue) || rawValue === '') {
-                                                                            updateBenefitData('librePassages', 'amount', rawValue, index);
+                                                                            updateWithProjection('librePassages', index, 'currentAmount', rawValue);
                                                                         }
                                                                     }}
                                                                     className="w-full text-right"
+                                                                />
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <Input
+                                                                    type="text"
+                                                                    value={(lp.amount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                    readOnly
+                                                                    className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                                 />
                                                             </td>
                                                         </tr>
@@ -794,11 +1039,20 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <thead>
                                                     <tr className="border-b">
                                                         <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium">
-                                                            {language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                            {language === 'fr' ? 'Investi?' : 'Invested?'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                            {benefitsData.threeA.some(acc => acc.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                            {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                            {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
                                                 </thead>
@@ -811,24 +1065,70 @@ const RetirementBenefitsQuestionnaire = () => {
                                                             <td className="p-2">
                                                                 <DateInputWithShortcuts
                                                                     value={account.startDate || getDateAtAge(questionnaire.simulationAge)}
-                                                                    onChange={(e) => updateBenefitData('threeA', 'startDate', e.target.value, index)}
+                                                                    onChange={(e) => updateWithProjection('threeA', index, 'startDate', e.target.value)}
                                                                     retirementDate={getDateAtAge(questionnaire.simulationAge)}
                                                                     legalDate={legalRetirementDate}
                                                                     mode="start"
                                                                 />
                                                             </td>
                                                             <td className="p-2">
+                                                                <RadioGroup
+                                                                    value={account.isInvested ? 'yes' : 'no'}
+                                                                    onValueChange={(val) => updateWithProjection('threeA', index, 'isInvested', val === 'yes')}
+                                                                    className="flex gap-4"
+                                                                >
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <RadioGroupItem value="yes" id={`3a-yes-${index}`} />
+                                                                        <Label htmlFor={`3a-yes-${index}`}>{language === 'fr' ? 'Oui' : 'Yes'}</Label>
+                                                                    </div>
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <RadioGroupItem value="no" id={`3a-no-${index}`} />
+                                                                        <Label htmlFor={`3a-no-${index}`}>{language === 'fr' ? 'Non' : 'No'}</Label>
+                                                                    </div>
+                                                                </RadioGroup>
+                                                            </td>
+                                                            <td className="p-2">
+                                                                {account.isInvested && (
+                                                                    <Select
+                                                                        value={account.returnRate}
+                                                                        onValueChange={(val) => updateWithProjection('threeA', index, 'returnRate', val)}
+                                                                    >
+                                                                        <SelectTrigger className="w-full">
+                                                                            <SelectValue placeholder="Select..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="0.0025">0.25%</SelectItem>
+                                                                            <SelectItem value="0.005">0.5%</SelectItem>
+                                                                            <SelectItem value="0.0075">0.75%</SelectItem>
+                                                                            <SelectItem value="0.01">1.0%</SelectItem>
+                                                                            <SelectItem value="0.0125">1.25%</SelectItem>
+                                                                            <SelectItem value="0.015">1.5%</SelectItem>
+                                                                            <SelectItem value="0.02">2.0%</SelectItem>
+                                                                            <SelectItem value="0.025">2.5%</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2">
                                                                 <Input
                                                                     type="text"
                                                                     placeholder=""
-                                                                    value={(account.amount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                    value={(account.currentAmount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
                                                                     onChange={(e) => {
                                                                         const rawValue = e.target.value.replace(/'/g, '');
                                                                         if (!isNaN(rawValue) || rawValue === '') {
-                                                                            updateBenefitData('threeA', 'amount', rawValue, index);
+                                                                            updateWithProjection('threeA', index, 'currentAmount', rawValue);
                                                                         }
                                                                     }}
                                                                     className="w-full text-right"
+                                                                />
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <Input
+                                                                    type="text"
+                                                                    value={(account.amount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                    readOnly
+                                                                    className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                                 />
                                                             </td>
                                                         </tr>
@@ -845,11 +1145,20 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <thead>
                                                     <tr className="border-b">
                                                         <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium">
-                                                            {language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                            {language === 'fr' ? 'Investi?' : 'Invested?'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                            {benefitsData.lppSup?.isInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                            {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                            {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
                                                 </thead>
@@ -860,20 +1169,80 @@ const RetirementBenefitsQuestionnaire = () => {
                                                         </td>
                                                         <td className="p-2">
                                                             <DateInputWithShortcuts
-                                                                value={benefitsData.lppSup?.startDate || legalRetirementDate}
+                                                                value={benefitsData.lppSup?.startDate || getDateAtAge(questionnaire.simulationAge) || legalRetirementDate}
                                                                 onChange={(e) => {
-                                                                    setBenefitsData(prev => ({
-                                                                        ...prev,
-                                                                        lppSup: {
-                                                                            amount: prev.lppSup?.amount || '',
-                                                                            startDate: e.target.value
-                                                                        }
-                                                                    }));
+                                                                    const date = e.target.value;
+                                                                    setBenefitsData(prev => {
+                                                                        const rate = prev.lppSup?.isInvested ? (prev.lppSup?.returnRate || 0) : 0;
+                                                                        const projected = calculateProjection(prev.lppSup?.amount, rate, date);
+                                                                        return {
+                                                                            ...prev,
+                                                                            lppSup: { ...prev.lppSup, startDate: date, projectedAmount: projected }
+                                                                        };
+                                                                    });
                                                                 }}
                                                                 retirementDate={getDateAtAge(questionnaire.simulationAge)}
                                                                 legalDate={legalRetirementDate}
                                                                 mode="start"
                                                             />
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <RadioGroup
+                                                                value={benefitsData.lppSup?.isInvested ? 'yes' : 'no'}
+                                                                onValueChange={(val) => {
+                                                                    setBenefitsData(prev => {
+                                                                        const isInvested = val === 'yes';
+                                                                        const rate = isInvested ? (prev.lppSup?.returnRate || 0) : 0;
+                                                                        const effectiveDate = prev.lppSup?.startDate || getDateAtAge(questionnaire.simulationAge) || legalRetirementDate;
+                                                                        const projected = calculateProjection(prev.lppSup?.amount, rate, effectiveDate);
+                                                                        return {
+                                                                            ...prev,
+                                                                            lppSup: { ...prev.lppSup, isInvested, projectedAmount: projected }
+                                                                        };
+                                                                    });
+                                                                }}
+                                                                className="flex gap-4"
+                                                            >
+                                                                <div className="flex items-center space-x-1">
+                                                                    <RadioGroupItem value="yes" id="lppSup-yes" />
+                                                                    <Label htmlFor="lppSup-yes">{language === 'fr' ? 'Oui' : 'Yes'}</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-1">
+                                                                    <RadioGroupItem value="no" id="lppSup-no" />
+                                                                    <Label htmlFor="lppSup-no">{language === 'fr' ? 'Non' : 'No'}</Label>
+                                                                </div>
+                                                            </RadioGroup>
+                                                        </td>
+                                                        <td className="p-2">
+                                                            {benefitsData.lppSup?.isInvested && (
+                                                                <Select
+                                                                    value={benefitsData.lppSup?.returnRate}
+                                                                    onValueChange={(val) => {
+                                                                        setBenefitsData(prev => {
+                                                                            const effectiveDate = prev.lppSup?.startDate || getDateAtAge(questionnaire.simulationAge) || legalRetirementDate;
+                                                                            const projected = calculateProjection(prev.lppSup?.amount, val, effectiveDate);
+                                                                            return {
+                                                                                ...prev,
+                                                                                lppSup: { ...prev.lppSup, returnRate: val, projectedAmount: projected }
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger className="w-full">
+                                                                        <SelectValue placeholder="Select..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="0.0025">0.25%</SelectItem>
+                                                                        <SelectItem value="0.005">0.5%</SelectItem>
+                                                                        <SelectItem value="0.0075">0.75%</SelectItem>
+                                                                        <SelectItem value="0.01">1.0%</SelectItem>
+                                                                        <SelectItem value="0.0125">1.25%</SelectItem>
+                                                                        <SelectItem value="0.015">1.5%</SelectItem>
+                                                                        <SelectItem value="0.02">2.0%</SelectItem>
+                                                                        <SelectItem value="0.025">2.5%</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
                                                         </td>
                                                         <td className="p-2">
                                                             <Input
@@ -883,16 +1252,26 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                 onChange={(e) => {
                                                                     const rawValue = e.target.value.replace(/'/g, '');
                                                                     if (!isNaN(rawValue) || rawValue === '') {
-                                                                        setBenefitsData(prev => ({
-                                                                            ...prev,
-                                                                            lppSup: {
-                                                                                amount: rawValue,
-                                                                                startDate: prev.lppSup?.startDate || legalRetirementDate
-                                                                            }
-                                                                        }));
+                                                                        setBenefitsData(prev => {
+                                                                            const rate = prev.lppSup?.isInvested ? (prev.lppSup?.returnRate || 0) : 0;
+                                                                            const effectiveDate = prev.lppSup?.startDate || getDateAtAge(questionnaire.simulationAge) || legalRetirementDate;
+                                                                            const projected = calculateProjection(rawValue, rate, effectiveDate);
+                                                                            return {
+                                                                                ...prev,
+                                                                                lppSup: { ...prev.lppSup, amount: rawValue, projectedAmount: projected }
+                                                                            };
+                                                                        });
                                                                     }
                                                                 }}
                                                                 className="w-full text-right"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <Input
+                                                                type="text"
+                                                                value={(benefitsData.lppSup?.projectedAmount || benefitsData.lppSup?.amount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                readOnly
+                                                                className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                             />
                                                         </td>
                                                     </tr>
@@ -936,71 +1315,162 @@ const RetirementBenefitsQuestionnaire = () => {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {getLppAges().map(age => (
-                                                            <tr key={age} className="border-b last:border-0">
-                                                                <td className="p-2 font-medium">{age}</td>
-                                                                <td className="p-2">
-                                                                    <Input
-                                                                        type="date"
-                                                                        value={getDateAtAge(age)}
-                                                                        disabled
-                                                                        className="w-full"
-                                                                    />
-                                                                </td>
-                                                                {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
+                                                        {getLppAges().map(age => {
+                                                            const isTargetAge = age === questionnaire.simulationAge;
+                                                            return (
+                                                                <tr key={age} className={`border-b last:border-0 ${isTargetAge ? 'bg-muted/50' : ''}`}>
+                                                                    <td className="p-2 font-medium">{age}</td>
                                                                     <td className="p-2">
                                                                         <Input
                                                                             type="text"
-                                                                            placeholder=""
-                                                                            value={(benefitsData.lppByAge[age]?.pension || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
-                                                                            onChange={(e) => {
-                                                                                const rawValue = e.target.value.replace(/'/g, '');
-                                                                                if (!isNaN(rawValue) || rawValue === '') {
-                                                                                    updateLppByAge(age, 'pension', rawValue);
-                                                                                }
-                                                                            }}
-                                                                            className="w-full text-right"
+                                                                            value={getDateAtAge(age) ? getDateAtAge(age).split('-').reverse().join('.') : ''}
+                                                                            readOnly
+                                                                            className="w-full bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                                         />
                                                                     </td>
-                                                                )}
-                                                                {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="text"
-                                                                            placeholder=""
-                                                                            value={(benefitsData.lppByAge[age]?.capital || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
-                                                                            onChange={(e) => {
-                                                                                const rawValue = e.target.value.replace(/'/g, '');
-                                                                                if (!isNaN(rawValue) || rawValue === '') {
-                                                                                    updateLppByAge(age, 'capital', rawValue);
-                                                                                }
-                                                                            }}
-                                                                            className="w-full text-right"
-                                                                        />
-                                                                    </td>
-                                                                )}
-                                                            </tr>
-                                                        ))}
+                                                                    {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
+                                                                        <td className="p-2">
+                                                                            <Input
+                                                                                type="text"
+                                                                                placeholder=""
+                                                                                value={(benefitsData.lppByAge[age]?.pension || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                                onChange={(e) => {
+                                                                                    const rawValue = e.target.value.replace(/'/g, '');
+                                                                                    if (!isNaN(rawValue) || rawValue === '') {
+                                                                                        updateLppByAge(age, 'pension', rawValue);
+                                                                                    }
+                                                                                }}
+                                                                                className={`w-full text-right ${isTargetAge
+                                                                                    ? (benefitsData.lppByAge[age]?.pension !== '' ? 'border-green-500 border-2' : 'border-red-500 border-2')
+                                                                                    : ''}`}
+                                                                            />
+                                                                        </td>
+                                                                    )}
+                                                                    {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
+                                                                        <td className="p-2">
+                                                                            <Input
+                                                                                type="text"
+                                                                                placeholder=""
+                                                                                value={(benefitsData.lppByAge[age]?.capital || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                                onChange={(e) => {
+                                                                                    const rawValue = e.target.value.replace(/'/g, '');
+                                                                                    if (!isNaN(rawValue) || rawValue === '') {
+                                                                                        updateLppByAge(age, 'capital', rawValue);
+                                                                                    }
+                                                                                }}
+                                                                                className={`w-full text-right ${isTargetAge
+                                                                                    ? (benefitsData.lppByAge[age]?.capital !== '' ? 'border-green-500 border-2' : 'border-red-500 border-2')
+                                                                                    : ''}`}
+                                                                            />
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            );
+                                                        })}
                                                     </tbody>
                                                 </table>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* LPP Current Capital - Sub-situation II (Q3 = No) */}
-                                    {questionnaire.hasLPP && questionnaire.isWithinPreRetirement === 'no' && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="lppCurrentCapital" className="text-sm font-medium">
-                                                {language === 'fr' ? 'Capital actuel du plan de pension LPP (CHF)' : 'LPP pension plan current capital (CHF)'}
-                                            </Label>
-                                            <Input
-                                                id="lppCurrentCapital"
-                                                type="number"
-                                                placeholder=""
-                                                value={benefitsData.lppCurrentCapital}
-                                                onChange={(e) => setBenefitsData(prev => ({ ...prev, lppCurrentCapital: e.target.value }))}
-                                                className="max-w-xs"
-                                            />
+                                    {/* LPP Current Capital - Sub-situation II (Q3 = No or Unknown) */}
+                                    {questionnaire.hasLPP && (questionnaire.isWithinPreRetirement === 'no' || questionnaire.isWithinPreRetirement === 'unknown') && (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse">
+                                                <thead>
+                                                    <tr className="border-b">
+                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                            {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                            {language === 'fr' ? 'Investi?' : 'Invested?'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                            {benefitsData.lppCurrentInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                            {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
+                                                        </th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                            {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr className="border-b last:border-0">
+                                                        <td className="p-2 text-sm font-medium">
+                                                            {language === 'fr' ? 'Capital actuel du plan de pension LPP (CHF)' : 'LPP pension plan current capital (CHF)'}
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <DateInputWithShortcuts
+                                                                value={benefitsData.lppCurrentCapitalDate || new Date().toISOString().split('T')[0]}
+                                                                onChange={(e) => updateLppCurrentProjection('lppCurrentCapitalDate', e.target.value)}
+                                                                retirementDate={getDateAtAge(questionnaire.simulationAge)}
+                                                                legalDate={legalRetirementDate}
+                                                                mode="start"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <RadioGroup
+                                                                value={benefitsData.lppCurrentInvested ? 'yes' : 'no'}
+                                                                onValueChange={(val) => updateLppCurrentProjection('lppCurrentInvested', val === 'yes')}
+                                                                className="flex gap-4"
+                                                            >
+                                                                <div className="flex items-center space-x-1">
+                                                                    <RadioGroupItem value="yes" id="lpp-yes" />
+                                                                    <Label htmlFor="lpp-yes">{language === 'fr' ? 'Oui' : 'Yes'}</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-1">
+                                                                    <RadioGroupItem value="no" id="lpp-no" />
+                                                                    <Label htmlFor="lpp-no">{language === 'fr' ? 'Non' : 'No'}</Label>
+                                                                </div>
+                                                            </RadioGroup>
+                                                        </td>
+                                                        <td className="p-2">
+                                                            {benefitsData.lppCurrentInvested && (
+                                                                <Select
+                                                                    value={benefitsData.lppCurrentReturn}
+                                                                    onValueChange={(val) => updateLppCurrentProjection('lppCurrentReturn', val)}
+                                                                >
+                                                                    <SelectTrigger className="w-full">
+                                                                        <SelectValue placeholder="Select..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="0.005">0.5%</SelectItem>
+                                                                        <SelectItem value="0.01">1.0%</SelectItem>
+                                                                        <SelectItem value="0.015">1.5%</SelectItem>
+                                                                        <SelectItem value="0.02">2.0%</SelectItem>
+                                                                        <SelectItem value="0.025">2.5%</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <Input
+                                                                type="text"
+                                                                placeholder=""
+                                                                value={(benefitsData.lppCurrentInitialAmount || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                onChange={(e) => {
+                                                                    const rawValue = e.target.value.replace(/'/g, '');
+                                                                    if (!isNaN(rawValue) || rawValue === '') {
+                                                                        updateLppCurrentProjection('lppCurrentInitialAmount', rawValue);
+                                                                    }
+                                                                }}
+                                                                className="w-full text-right"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <Input
+                                                                type="text"
+                                                                value={(benefitsData.lppCurrentCapital || '').toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                readOnly
+                                                                className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
                                 </CardContent>

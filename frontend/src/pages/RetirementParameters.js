@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
@@ -19,7 +19,79 @@ import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 
 const RetirementParameters = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, masterKey } = useAuth();
+
+    // AUTOMATION FIX: Enforcer & Polling Clicker
+    // AUTOMATION FIX: Enforcer & Polling Clicker (ROBUST)
+    useEffect(() => {
+        // ALWAYS log on render to confirm component is alive
+        console.log('RetirementParameters Automation Check:', {
+            loading,
+            hasState: !!location.state,
+            isAutomated: location.state?.autoAutomateFullSequence,
+            currentAge: location.state?.earlyRetirementAge
+        });
+
+        if (!loading && location.state?.autoAutomateFullSequence) {
+            console.log('Automated Sequence: Enforcing State & Navigation ACTIVE');
+
+            // 1. Force State Override (The Enforcer)
+            if (location.state.earlyRetirementAge) {
+                const targetAge = parseInt(location.state.earlyRetirementAge);
+                setLppSimulationAge(prev => {
+                    const current = parseInt(prev);
+                    if (current !== targetAge) {
+                        console.log(`Automated Sequence: Correcting Age ${current} -> ${targetAge}`);
+                        return targetAge;
+                    }
+                    return prev;
+                });
+                setLppEarlyRetirementOption('Yes');
+            }
+
+            // 2. Poll for Button (The Clicker) - Indefinite until success
+            const intervalId = setInterval(() => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const continueBtn = buttons.reverse().find(b => {
+                    const txt = (b.textContent || '').toLowerCase().trim();
+                    return txt === 'continue' || txt === 'continuer' ||
+                        txt === 'run simulation' || txt === 'lancer la simulation' ||
+                        txt.includes('continuer') || txt.includes('continue');
+                });
+
+                if (continueBtn) {
+                    console.log('Automated Sequence: Clicking Button', continueBtn.textContent);
+                    continueBtn.click();
+                    // Clear interval to prevent double-clicks, but rely on navigation to stop execution
+                    clearInterval(intervalId);
+                    toast.success('Automating step...');
+                } else {
+                    console.log('Automated Sequence: Button not found yet, retrying...');
+                }
+            }, 500); // 500ms poll
+
+            // Safety timeout (30s)
+            const timeoutId = setTimeout(() => {
+                console.error('Automated Sequence: Timeout reached (30s), stopping clicker.');
+                clearInterval(intervalId);
+                toast.error('Automation timed out');
+            }, 30000);
+
+            return () => {
+                clearInterval(intervalId);
+                clearTimeout(timeoutId);
+            };
+        }
+    }, [location.state, loading]);
+
+    // DEBUG: Confirm received Age
+    useEffect(() => {
+        if (location.state?.earlyRetirementAge) {
+            console.log('DEBUG: RetirementParameters MOUNTED with Age:', location.state.earlyRetirementAge);
+            toast.info(`Inputs Page Loaded. Target Age: ${location.state.earlyRetirementAge}`);
+        }
+    }, []);
     const { t, language } = useLanguage();
     const [wishedRetirementDate, setWishedRetirementDate] = useState('');
     const [retirementLegalDate, setRetirementLegalDate] = useState('');
@@ -74,10 +146,33 @@ const RetirementParameters = () => {
     const [threeAAccountsCount, setThreeAAccountsCount] = useState(1);
     const [lppSupBenefitStrategy, setLppSupBenefitStrategy] = useState('Only Capital');
 
-    // New LPP Conditional Logic State
-    const [lppEarlyRetirementOption, setLppEarlyRetirementOption] = useState('');
-    const [lppEarliestAge, setLppEarliestAge] = useState('');
-    const [lppSimulationAge, setLppSimulationAge] = useState('');
+    const [lppEarlyRetirementOption, setLppEarlyRetirementOption] = useState(() => {
+        if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+            return 'Yes';
+        }
+        return '';
+    });
+    // AUTOMATION FIX: Ensure Earliest Age is compatible with Target Age
+    const [lppEarliestAge, setLppEarliestAge] = useState(() => {
+        if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+            const target = parseInt(location.state.earlyRetirementAge);
+            // Default to 58, but if target is lower than typical earliest, force 58.
+            // Actually, we just need to make sure the dropdown range includes target.
+            // Typically dropdown starts at 'lppEarliestAge'. 
+            // If target is 59, and earliest is 60, target is hidden.
+            // So return 58 to be safe.
+            return 58;
+        }
+        return '';
+    });
+    const [lppSimulationAge, setLppSimulationAge] = useState(() => {
+        // AUTOMATION FIX: Initialize directly from navigation state
+        if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+            console.log('Automated Sequence: Initialized Age from State', location.state.earlyRetirementAge);
+            return parseInt(location.state.earlyRetirementAge);
+        }
+        return '';
+    });
     // Benefits Table Data State
     const [benefitsData, setBenefitsData] = useState({
         avs: { amount: '', frequency: 'Yearly', startDate: '' },
@@ -243,9 +338,23 @@ const RetirementParameters = () => {
                     const q = retirementData.questionnaire;
                     const bd = retirementData.benefitsData;
 
-                    setLppSimulationAge(q.simulationAge);
-                    setLppEarliestAge(q.lppEarliestAge);
-                    setLppEarlyRetirementOption(q.isWithinPreRetirement === 'yes' ? 'Yes' : 'No');
+                    // AUTOMATION GUARD: Only load from DB if automation is NOT active.
+                    // If active, our lazy initialization (or final override) handles it.
+                    if (!location.state?.autoAutomateFullSequence) {
+                        setLppSimulationAge(q.simulationAge);
+                        setLppEarlyRetirementOption(q.isWithinPreRetirement === 'yes' ? 'Yes' : 'No');
+                        setLppEarliestAge(q.lppEarliestAge);
+                    } else {
+                        // AUTOMATION ACTIVE:
+                        // Ensure lppEarliestAge is compatible (if DB says 60 but we want 58, force 58)
+                        const dbEarliest = parseInt(q.lppEarliestAge || 58);
+                        const target = parseInt(location.state.earlyRetirementAge);
+                        setLppEarliestAge(Math.min(dbEarliest, target));
+                    }
+
+                    // Force Override block removed (lazy init handles it, and we have a final check at end)
+
+                    // Note: Selected Pillars might still need update from DB, but age is protected.
 
                     setSelectedPillars({
                         avs: q.hasAVS,
@@ -292,7 +401,15 @@ const RetirementParameters = () => {
                     setRetirementOption(scenarioData.retirementOption || '');
                     setPensionCapital(scenarioData.pensionCapital || '');
                     setYearlyReturn(scenarioData.yearlyReturn || '0');
-                    setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
+
+                    // AUTOMATION GUARD
+                    if (!location.state?.autoAutomateFullSequence) {
+                        setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
+                        // Note: lppSimulationAge is handled via earlyRetirementAge usually in this block?
+                        // Wait, in this block 'earlyRetirementAge' state variable is used (Option 2 old logic?)
+                        // But we also have 'lppSimulationAge' state further down.
+                    }
+
                     setProjectedLegalLPPPension(scenarioData.projectedLegalLPPPension || '');
                     setProjectedLegalLPPCapital(scenarioData.projectedLegalLPPCapital || '');
                     setProjectedLegalLPPRate(scenarioData.projectedLegalLPPRate || '');
@@ -306,7 +423,11 @@ const RetirementParameters = () => {
                     if (scenarioData.lppSupBenefitStrategy) setLppSupBenefitStrategy(scenarioData.lppSupBenefitStrategy);
                     if (scenarioData.lppEarlyRetirementOption) setLppEarlyRetirementOption(scenarioData.lppEarlyRetirementOption);
                     if (scenarioData.lppEarliestAge) setLppEarliestAge(scenarioData.lppEarliestAge);
-                    if (scenarioData.lppSimulationAge) setLppSimulationAge(scenarioData.lppSimulationAge);
+
+                    // AUTOMATION GUARD
+                    if (!location.state?.autoAutomateFullSequence && scenarioData.lppSimulationAge) {
+                        setLppSimulationAge(scenarioData.lppSimulationAge);
+                    }
                     if (scenarioData.isBenefitEditMode !== undefined) setIsBenefitEditMode(scenarioData.isBenefitEditMode);
 
                     // Load Option 2 specific state
@@ -397,6 +518,17 @@ const RetirementParameters = () => {
                     }
                 } else if (retirementData) {
                     setWishedRetirementDate(retirementData.retirementLegalDate || '');
+                }
+
+                // AUTOMATION FIX: Final Unconditional Override from Navigation State
+                // Ensures that regardless of which block (V2 or ScenarioData) ran, state wins.
+                if (location.state?.autoAutomateFullSequence && location.state.earlyRetirementAge) {
+                    const overrideAge = parseInt(location.state.earlyRetirementAge);
+                    console.log('Automated Sequence: FINAL Override Age to', overrideAge);
+                    setLppSimulationAge(overrideAge);
+                    // Ensure earliest age is compatible
+                    setLppEarliestAge(prev => (prev && parseInt(prev) > overrideAge) ? overrideAge : prev || 58);
+                    setLppEarlyRetirementOption('Yes');
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -494,7 +626,13 @@ const RetirementParameters = () => {
             };
 
             await saveScenarioData(userEmail, masterKey, updatedScenarioData);
-            navigate('/data-review');
+            await saveScenarioData(userEmail, masterKey, updatedScenarioData);
+            navigate('/data-review', {
+                state: {
+                    ...location.state, // Pass through all automation flags
+                    autoAutomateFullSequence: location.state?.autoAutomateFullSequence
+                }
+            });
         } catch (error) {
             console.error('Error saving data:', error);
             toast.error('Error saving data');
@@ -636,7 +774,8 @@ const RetirementParameters = () => {
                                                                     <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Please select'} />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    {Array.from({ length: 64 - (lppEarliestAge || 58) + 1 }, (_, i) => (lppEarliestAge || 58) + i).map(age => (
+                                                                    {/* User Logic: Bracket between user age + 1 and 65 (Defaulting 58 as safe min for now if age unknown) */}
+                                                                    {Array.from({ length: 65 - 58 + 1 }, (_, i) => 58 + i).map(age => (
                                                                         <SelectItem key={age} value={age.toString()}>{age}</SelectItem>
                                                                     ))}
                                                                 </SelectContent>

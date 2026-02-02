@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
@@ -15,7 +15,20 @@ import WorkflowNavigation from '../components/WorkflowNavigation';
 
 const RetirementInputs = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, masterKey } = useAuth();
+
+    // AUTOMATION FIX: Auto-submit if flag is present
+    useEffect(() => {
+        if (location.state?.autoAutomateFullSequence) {
+            console.log('Automated Sequence: Inputs -> Parameters');
+            // Small delay to ensure state builds
+            setTimeout(() => {
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.click();
+            }, 100);
+        }
+    }, [location.state]);
     const { t, language } = useLanguage();
     const [loading, setLoading] = useState(false);
 
@@ -196,7 +209,13 @@ const RetirementInputs = () => {
             };
 
             await saveRetirementData(user.email, masterKey, dataToSave);
-            navigate('/retirement-parameters');
+            await saveRetirementData(user.email, masterKey, dataToSave);
+            navigate('/retirement-parameters', {
+                state: {
+                    ...location.state, // Pass through all automation flags
+                    autoAutomateFullSequence: location.state?.autoAutomateFullSequence
+                }
+            });
         } catch (error) {
             console.error('Save error:', error);
             toast.error(t('retirementInputs.saveFailed'));

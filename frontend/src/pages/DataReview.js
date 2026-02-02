@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
@@ -61,6 +61,8 @@ const DataReview = () => {
   const navigate = useNavigate();
   const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
+  const location = useLocation();
+
   const [wishedRetirementDate, setWishedRetirementDate] = useState('');
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
@@ -74,6 +76,27 @@ const DataReview = () => {
   const [currentAssets, setCurrentAssets] = useState([]);
   const [projectedOutflows, setProjectedOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // AUTOMATION FIX: Auto-run simulation if flag is present
+  useEffect(() => {
+    if (location.state?.autoAutomateFullSequence && !loading) {
+      console.log('Automated Sequence: DataReview -> Result');
+      toast.info(language === 'fr' ? 'Finalisation du calcul...' : 'Finalizing calculation...');
+
+      // Wait for data load + small delay
+      setTimeout(() => {
+        const runBtn = document.querySelector('button[data-testid="can-i-quit-btn"]');
+        if (runBtn) {
+          runBtn.click();
+        } else {
+          // Fallback if testid missing
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const btn = buttons.find(b => b.textContent.includes('Lancer') || b.textContent.includes('Run'));
+          if (btn) btn.click();
+        }
+      }, 500);
+    }
+  }, [location.state, loading]);
 
   // Adjustment button handler
   const handleSuggestionClick = () => {
@@ -138,7 +161,21 @@ const DataReview = () => {
         const userData = await getUserData(user.email, masterKey);
         const incomeData = await getIncomeData(user.email, masterKey) || [];
         const costData = await getCostData(user.email, masterKey) || [];
-        const scenarioData = await getScenarioData(user.email, masterKey);
+        let scenarioData = await getScenarioData(user.email, masterKey);
+
+        // Fix Persistence/Race Condition: If we navigated here with updated data (e.g. from Slider/Prompt), use it!
+        if (location.state?.scenarioData) {
+          console.log('Using scenarioData from navigation state to prevent stale read');
+          scenarioData = {
+            ...(scenarioData || {}),
+            ...location.state.scenarioData
+          };
+
+          // CRITICAL OVERRIDE: Use explicit age if provided
+          if (location.state.overrideEarlyRetirementAge) {
+            scenarioData.earlyRetirementAge = location.state.overrideEarlyRetirementAge.toString();
+          }
+        }
         const rData = await getRetirementData(user.email, masterKey);
         setRetirementData(rData);
 
@@ -171,6 +208,15 @@ const DataReview = () => {
         setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
         setRetirementOption(scenarioData?.retirementOption || 'option1');
         setDeathDate(deathDateStr);
+
+        // Initialize Option-specific fields from ScenarioData (Fix persistence issue)
+        if (scenarioData) {
+          setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
+          setProjectedLPPPension(scenarioData.projectedLPPPension || '');
+          setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
+          setPensionCapital(scenarioData.pensionCapital || '');
+          setYearlyReturn(scenarioData.yearlyReturn || '0');
+        }
 
         // Load assets data from assetsData store
 
@@ -310,6 +356,32 @@ const DataReview = () => {
               });
             }
 
+            // 3. Check for Libre Passage from benefitsData
+            if (scenarioData.benefitsData.librePassages && Array.isArray(scenarioData.benefitsData.librePassages)) {
+              scenarioData.benefitsData.librePassages.forEach((item, index) => {
+                if (item.amount) {
+                  oneTimeItems.push({
+                    id: `librePassage_${index}`,
+                    name: item.name || `Libre-Passage (${index + 1})`,
+                    amount: item.amount,
+                    startDate: item.startDate || wishedRetirementDate,
+                    frequency: 'One-time'
+                  });
+                }
+              });
+            }
+
+            // 4. Check for LPP Current Capital from benefitsData
+            if (scenarioData.benefitsData.lppCurrentCapital) {
+              oneTimeItems.push({
+                id: 'lppCurrentCapital',
+                name: 'LPP pension plan current capital',
+                amount: scenarioData.benefitsData.lppCurrentCapital,
+                startDate: scenarioData.benefitsData.lppCurrentCapitalDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
             // Process and inject them
             oneTimeItems.forEach(item => {
               const existingIndex = loadedCurrentAssets.findIndex(a => a.id === item.id);
@@ -445,8 +517,10 @@ const DataReview = () => {
             }
 
             // Get pension value from preRetirementRows for the selected age
-            let pensionValue = scenarioData.projectedLPPPension; // Fallback to old single value
-            if (scenarioData.preRetirementRows && scenarioData.earlyRetirementAge) {
+            let pensionValue = scenarioData.projectedLPPPension;
+
+            // Only use preRetirementRows lookup if explicit projection is missing
+            if ((pensionValue === undefined || pensionValue === null || pensionValue === '') && scenarioData.preRetirementRows && scenarioData.earlyRetirementAge) {
               const ageRow = scenarioData.preRetirementRows.find(row => row.age === parseInt(scenarioData.earlyRetirementAge));
               if (ageRow && ageRow.pension) {
                 pensionValue = ageRow.pension;
@@ -1017,6 +1091,32 @@ const DataReview = () => {
                 name: 'Supplementary Pension capital',
                 amount: scenarioData.benefitsData.lppSup.amount,
                 startDate: scenarioData.benefitsData.lppSup.startDate || wishedRetirementDate,
+                frequency: 'One-time'
+              });
+            }
+
+            // 3. Check for Libre Passage from benefitsData
+            if (scenarioData.benefitsData.librePassages && Array.isArray(scenarioData.benefitsData.librePassages)) {
+              scenarioData.benefitsData.librePassages.forEach((item, index) => {
+                if (item.amount) {
+                  oneTimeItems.push({
+                    id: `librePassage_${index}`,
+                    name: item.name || `Libre-Passage (${index + 1})`,
+                    amount: item.amount,
+                    startDate: item.startDate || wishedRetirementDate,
+                    frequency: 'One-time'
+                  });
+                }
+              });
+            }
+
+            // 4. Check for LPP Current Capital from benefitsData
+            if (scenarioData.benefitsData.lppCurrentCapital) {
+              oneTimeItems.push({
+                id: 'lppCurrentCapital',
+                name: 'LPP pension plan current capital',
+                amount: scenarioData.benefitsData.lppCurrentCapital,
+                startDate: scenarioData.benefitsData.lppCurrentCapitalDate || wishedRetirementDate,
                 frequency: 'One-time'
               });
             }
@@ -1611,6 +1711,7 @@ const DataReview = () => {
       // Navigate to result with full simulation data
       navigate('/result', {
         state: {
+          ...location.state, // Pass through automation flags (autoAutomateFullSequence, earlyRetirementAge)
           finalBalance,
           balanceBeforeTransmission: cumulativeBalance,
           transmissionAmount: 0,
@@ -1939,7 +2040,14 @@ const DataReview = () => {
                             </td>
                             <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
                             <td className="p-3">
-                              {isStandardIncome ? (
+                              {income.name === 'AVS' ? (
+                                <Input
+                                  type="text"
+                                  value={retirementLegalDate.split('-').reverse().join('.')}
+                                  readOnly
+                                  className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
+                                />
+                              ) : isStandardIncome ? (
                                 <DateInputWithShortcuts
                                   data-testid={`income - start - date - ${index} `}
                                   value={currentStartDate || ''}
@@ -1961,7 +2069,14 @@ const DataReview = () => {
                               )}
                             </td>
                             <td className="p-3">
-                              {income.name === '3a' ? (
+                              {income.name === 'AVS' ? (
+                                <Input
+                                  type="text"
+                                  value={deathDate.split('-').reverse().join('.')}
+                                  readOnly
+                                  className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
+                                />
+                              ) : income.name === '3a' ? (
                                 null
                               ) : isStandardIncome ? (
                                 <DateInputWithShortcuts

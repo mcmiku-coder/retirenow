@@ -2,7 +2,7 @@ import React from 'react';
 
 const PageHeader = ({ title, subtitle, leftContent, rightContent }) => {
   return (
-    <div className="w-full border-y border-blue-600/60 py-6 mb-10 bg-background/50 backdrop-blur-sm">
+    <div className="w-full border-y border-primary py-6 mb-10 bg-background/50 backdrop-blur-sm">
       <div className="w-full max-w-7xl mx-auto px-6 relative flex items-center justify-center min-h-[48px]">
         {leftContent && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 pl-6">

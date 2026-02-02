@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
-import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, getRealEstateData } from '../utils/database';
+import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, saveRetirementData, getRealEstateData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
 import { toast } from 'sonner';
 import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateInvestedProjection } from '../utils/projectionCalculator';
@@ -75,6 +76,14 @@ const ScenarioResult = () => {
     balanceBeforeTransmission: 0,
     transmissionAmount: 0
   });
+
+  // MISSING DATA MODAL STATE
+  const [missingDataDialog, setMissingDataDialog] = useState({
+    isOpen: false,
+    type: null, // 'pension' | 'capital'
+    age: null
+  });
+  const [missingDataValue, setMissingDataValue] = useState('');
 
   // Activate All Ownings State
   const [activateAllOwnings, setActivateAllOwnings] = useState(false);
@@ -224,16 +233,10 @@ const ScenarioResult = () => {
           );
         }
 
-        // CRITICAL: Re-apply "Ghost Filter" to finalIncomes to ensure no retirement items leaked via adjustedIncomes
-        // This handles the case where "Supplementary Pension" was previously saved into adjustedIncomes loop
-        finalIncomes = finalIncomes.filter(i =>
-          !String(i.name || '').toLowerCase().includes('pension') &&
-          !String(i.name || '').toLowerCase().includes('lpp') &&
-          !String(i.name || '').toLowerCase().includes('solde') && // legacy
-          !String(i.name || '').toLowerCase().includes('3a') && // CRITICAL: Filter 3a ghosts too
-          !String(i.id || '').toLowerCase().includes('pension') &&
-          !String(i.id || '').toLowerCase().includes('lpp')
-        );
+        // 2026-01-31: REMOVED GHOST FILTER on finalIncomes.
+        // This was removing valid "LPP" and "Pension" items that users entered in DataReview.
+        // We now rely on specific logic (like Option 3 rows) to filter themselves if needed,
+        // but generally if it's in `finalIncomes` (which comes from `adjustedIncomes`), it should stay.
 
         // Detect missing pages
         const missing = [];
@@ -356,7 +359,15 @@ const ScenarioResult = () => {
     const simActivateOwnings = overrides.hasOwnProperty('activateAllOwnings') ? overrides.activateAllOwnings : activateAllOwnings;
     const simOwningsDate = overrides.hasOwnProperty('owningsActivationDate') ? overrides.owningsActivationDate : owningsActivationDate;
 
-    const simRetirementDateObj = new Date(simRetirementDate);
+    const simRetirementDateObj = (() => {
+      // Robust Parser for "DD.MM.YYYY" (Swiss format) as seen in user data
+      if (typeof simRetirementDate === 'string' && simRetirementDate.includes('.')) {
+        const parts = simRetirementDate.split('.');
+        // Presume DD.MM.YYYY
+        if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+      return new Date(simRetirementDate);
+    })();
     const currentYear = new Date().getFullYear();
     const birthDate = new Date(userData.birthDate);
 
@@ -542,13 +553,15 @@ const ScenarioResult = () => {
         const nameLower = (row.name || '').toLowerCase();
         const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
 
-        if (row.isRetirement) {
+        if (row.isRetirement && !isSalary) {
           // Rule: Retirement-related incomes (Annuities, AVS) should be used exactly as provided (start/end)
           // DataReview already set their start date to either (RetirementDate) or (LegalAge)
-        } else if (effectiveScenarioData?.retirementOption === 'option2' && isSalary) {
-          // STRICT RULE: If moving slider, Salary always ends exactly at Retirement Date.
+        } else if (isSalary) {
+          // STRICT RULE: Work-related income ("Salary") ALWAYS ends exactly at Retirement Date.
           // This allows both extending (working longer) and capping (retiring earlier)
           // ignoring the static "End Date" saved in the database from the original plan.
+          // This applies to Option 2 (Slider) AND ANY OTHER OPTION where Salary is expected to stop at retirement.
+
           const y = simRetirementDateObj.getFullYear();
           const m = String(simRetirementDateObj.getMonth() + 1).padStart(2, '0');
           const d = String(simRetirementDateObj.getDate()).padStart(2, '0');
@@ -557,17 +570,16 @@ const ScenarioResult = () => {
           // CRITICAL FAIL-SAFE: If we are completely past the retirement year, 
           // and this is work income, force skip. This fixes the persistent salary bug.
           if (year > simRetirementDateObj.getFullYear()) {
+            // For safety, let's verify it's not a tiny overlap year
+            // If effectiveEndDate is fully in the past relative to THIS year's start (Jan 1), skip.
+            // simRetirementDateObj is exact end date.
+            // If year=2032, and retirement=2027. Skip.
             return;
           }
         } else {
-          // Standard: If no end date, or end date is AFTER retirement, cap it.
-          // (Preserve fixed-term contracts that end BEFORE retirement)
-          if (!effectiveEndDate || new Date(effectiveEndDate) > simRetirementDateObj) {
-            const y = simRetirementDateObj.getFullYear();
-            const m = String(simRetirementDateObj.getMonth() + 1).padStart(2, '0');
-            const d = String(simRetirementDateObj.getDate()).padStart(2, '0');
-            effectiveEndDate = `${y}-${m}-${d}`;
-          }
+          // Standard: Other Incomes (Rental, etc)
+          // If no end date, or end date is AFTER retirement, DO NOT CAP (Passive income continues).
+          // BUT: If user explicitly set an end date earlier, respect it.
         }
 
         const val = calculateYearlyAmount(
@@ -588,6 +600,33 @@ const ScenarioResult = () => {
       // Or do we rely on DB rows?
       // "RetirementParameters" usually saves "preRetirementRows" but doesn't overwrite the `retirementData` table used by `getRetirementData`.
       // However, `ScenarioResult` uses `retirementData.rows`.
+
+      // CRITICIAL FIX: Option 2 (Slider) must explicitly add the "Projected LPP" if not already covered.
+      if (effectiveScenarioData?.retirementOption === 'option2' || effectiveScenarioData?.retirementOption === 'option1') {
+        // If we have projected values from the slider logic (simLppPension, simLppCapital)
+        // We need to inject them as cash flows if they aren't already in effectiveIncomes.
+        // BUT: synchroniseSimulationState ADDS them to adjustedIncomes.
+        // So they *should* be in effectiveIncomes.
+        // IF they are missing (filtered out?), we force add them here.
+
+        if (simLppPension > 0) {
+          const pStart = simRetirementDateObj;
+          // Check if we already processed a "Projected LPP Pension" in the income loop above
+          // The income loop uses "effectiveIncomes" which comes from "incomes" state.
+          // If "Projected LPP Pension" was in DataReview, it is in "incomes".
+          // But if it was filtered out by "ghost filter", we need to add it here.
+          // To avoid double counting, let's check if we saw it in incomeBreakdown.
+          const alreadyCounted = Object.keys(incomeBreakdown).some(k => k.toLowerCase().includes('lpp') && k.toLowerCase().includes('pension'));
+
+          if (!alreadyCounted) {
+            const val = calculateYearlyAmount(simLppPension, 'Yearly', pStart, null, year);
+            if (val > 0) {
+              yearIncome += val;
+              incomeBreakdown['Projected LPP Pension (Sim)'] = val;
+            }
+          }
+        }
+      }
       // We must override the "LPP" entry in `retirementData.rows` with our dynamic `simLppPension`.
 
       let lppProcessed = false;
@@ -599,6 +638,16 @@ const ScenarioResult = () => {
 
           let amount = parseFloat(row.amount) || 0;
           const nameLower = row.name.toLowerCase();
+
+          // CRITICAL FIX: Kill Ghost Salaries in Retirement Data (they belong in Loop 1)
+          if (nameLower.includes('salary') || nameLower.includes('salaire')) return;
+
+          // CRITICAL FIX: Deduplicate LPP (If already added in Loop 1 or Injection Logic)
+          if (nameLower.includes('lpp') && nameLower.includes('pension')) {
+            const alreadyCounted = Object.keys(incomeBreakdown).some(k => k.toLowerCase().includes('lpp') && k.toLowerCase().includes('pension'));
+            if (alreadyCounted) return;
+          }
+
           const simDateStr = `${simRetirementDateObj.getFullYear()}-${String(simRetirementDateObj.getMonth() + 1).padStart(2, '0')}-${String(simRetirementDateObj.getDate()).padStart(2, '0')}`;
           let effectiveStartDate = row.startDate || simDateStr;
           let effectiveEndDate = row.endDate || `${deathYear}-12-31`;
@@ -635,19 +684,8 @@ const ScenarioResult = () => {
         });
       }
 
-      // Fallback: If no standard LPP row was found to override, but we have a simulated pension (Option 3), add it now.
-      if (!lppProcessed && simLppPension > 0) {
-        const lppY = lppStartDate.getFullYear();
-        const lppM = String(lppStartDate.getMonth() + 1).padStart(2, '0');
-        const lppD = String(lppStartDate.getDate()).padStart(2, '0');
-        const effectiveStartDate = `${lppY}-${lppM}-${lppD}`;
-        const effectiveEndDate = `${deathYear}-12-31`;
-        const val = calculateYearlyAmount(simLppPension, 'Yearly', effectiveStartDate, effectiveEndDate, year);
-        if (val > 0) {
-          yearIncome += val;
-          incomeBreakdown['LPP Pension'] = (incomeBreakdown['LPP Pension'] || 0) + val;
-        }
-      }
+      // Fallback Logic Removed (Lines 669-681) to prevent "LPP Pension" duplicates.
+      // Injection Logic (lines 604+) handles this correctly.
 
       // Handle 3a Capital Payout (Special Rule)
       // We find the 3a amount from retirementData (or benefitsData state passed?)
@@ -677,6 +715,15 @@ const ScenarioResult = () => {
       effectiveAssets.forEach(asset => {
         const id = asset.id || asset.name;
         if (!activeFilters[`asset-${id}`]) return;
+
+        // CRITICAL FIX: Kill Ghost Salary/Pension items misclassified as Assets
+        const nameLower = (asset.name || '').toLowerCase();
+        if (nameLower.includes('salary') || (nameLower.includes('lpp') && nameLower.includes('pension'))) {
+          // These belong in Incomes or Retirement loops, not here as assets (unless specifically invested LPP Capital?)
+          // But "LPP Pension" is definitely not an investable asset.
+          // And "Salary" is definitely not an asset.
+          return;
+        }
 
         const amount = Math.abs(parseFloat(asset.adjustedAmount || asset.amount) || 0);
         const isInvested = investedAssetIds.includes(id);
@@ -879,7 +926,8 @@ const ScenarioResult = () => {
 
     } else {
       // Standard Single Simulation
-      const targetDate = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate || new Date().toISOString();
+      // FIX: Prioritize scenarioData (dynamic slider) over location.state (static initial)
+      const targetDate = scenarioData?.wishedRetirementDate || location.state?.wishedRetirementDate || new Date().toISOString();
       const result = runSimulation(targetDate);
       if (result) setProjection(result);
     }
@@ -942,68 +990,330 @@ const ScenarioResult = () => {
   }, [userData, scenarioData, assets, loading, language]);
 
   // Debounced recalculation when retirement age changes
+  // MODIFIED: We now use onValueCommit for "heavy" updates (State Sync).
+  // This effect is kept for pure visual feedback if needed, but we disable the heavy recalculation here to avoid double-firing.
   useEffect(() => {
-    if (!retirementAge || !scenarioData || loading) return;
-
-    const timer = setTimeout(() => {
-      recalculateProjections(retirementAge);
-    }, 1000); // 1 second debounce
-
-    return () => clearTimeout(timer);
+    // Disabled in favor of onValueCommit -> synchronizeSimulationState
+    // If we want instant visual feedback, we can keep a lightweight recalc, but let's stick to the robust commited change.
   }, [retirementAge]);
 
-  // Recalculate projections for selected retirement age
-  const recalculateProjections = async (age) => {
-    if (!scenarioData || scenarioData.retirementOption !== 'option2') return;
+  // NEW SLIDER SYNC LOGIC
+  const synchronizeSimulationState = async (newAge, overrideScenarioData = null) => {
+    // START: Fix Stale State
+    const effectiveScenarioData = overrideScenarioData || scenarioData;
+    if (!effectiveScenarioData || !userData) return;
+    // END: Fix Stale State
+
+    // 0. Ensure Types
+    const numericAge = Number(newAge);
+
+    // 1. Calculate Date
+    const birthDate = new Date(userData.birthDate);
+    const retirementDate = new Date(birthDate);
+    const years = Math.floor(numericAge);
+    const months = Math.round((numericAge - years) * 12);
+    retirementDate.setFullYear(retirementDate.getFullYear() + years);
+    retirementDate.setMonth(retirementDate.getMonth() + months + 1);
+    retirementDate.setDate(1);
+    const newRetirementDateStr = retirementDate.toISOString().split('T')[0];
+
+    // 2. Check LPP Logic
+    // Fix: strict numeric comparison
+    const earliestPreRetirementAge = parseInt(effectiveScenarioData.questionnaire?.lppEarliestAge || 58);
+    const isPreRetirement = numericAge >= earliestPreRetirementAge;
+
+    // 3. Check for Missing Data (Blocking)
+    if (isPreRetirement) {
+      // Pension Path: Check lppByAge for this specific age floor
+      const ageKey = Math.floor(numericAge).toString();
+      const lppByAge = effectiveScenarioData.benefitsData?.lppByAge || {};
+      const entry = lppByAge[ageKey];
+
+      // If missing or zero pension
+      if (!entry || (!entry.pension && !entry.capital)) {
+        setMissingDataDialog({
+          isOpen: true,
+          type: 'pension',
+          age: Math.floor(numericAge)
+        });
+        return; // STOP HERE
+      }
+    } else {
+      // Capital Path: Check lppCurrentCapital
+      const currentCapital = effectiveScenarioData.benefitsData?.lppCurrentCapital;
+      // Check if missing or 0
+      if (!currentCapital || parseFloat(currentCapital) <= 0) {
+        setMissingDataDialog({
+          isOpen: true,
+          type: 'capital',
+          age: numericAge
+        });
+        return; // STOP HERE
+      }
+    }
+
+    // 4. Update Questionnaire State
+    const updatedQuestionnaire = {
+      ...effectiveScenarioData.questionnaire,
+      simulationAge: numericAge,
+      isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
+    };
 
     setIsRecalculating(true);
 
     try {
-      // 1. Lookup pension/capital for selected age from preRetirementRows
-      let pensionValue = '';
-      let capitalValue = '';
+      // 5. Update Scenario Data (Sync Salary End Dates + LPP Values)
 
-      if (scenarioData.preRetirementRows && Array.isArray(scenarioData.preRetirementRows)) {
-        const ageRow = scenarioData.preRetirementRows.find(row => row.age === Math.floor(age));
-        if (ageRow) {
-          pensionValue = ageRow.pension || '';
-          capitalValue = ageRow.capital || '';
+      // Update Work Incomes End Date
+      const updatedIncomes = incomes.map(item => {
+        const nameLower = (item.name || '').toLowerCase();
+        const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
+
+        if (isSalary && !item.isRetirement) {
+          return {
+            ...item,
+            endDate: newRetirementDateStr,
+            adjustedAmount: item.adjustedAmount
+          };
         }
+
+        // CRITICAL FIX: Update "Projected LPP Pension" Row
+        // Identifying marks: ID includes 'lpp' and 'pension', or Name includes 'Projected LPP'
+        const isLppPension = (item.id && String(item.id).toLowerCase().includes('lpp') && String(item.id).toLowerCase().includes('pension')) ||
+          (item.name && String(item.name).toLowerCase().includes('lpp') && String(item.name).toLowerCase().includes('pension'));
+
+        if (isLppPension) {
+          // Recalculate pension for this age if we have data
+          // We use the 'newPension' calculated below? 
+          // WAIT: We calculate newPension AFTER this map loop in the original code. 
+          // We need to move the pension lookup BEFORE this map loop or access it here.
+
+          // Accessing effectiveScenarioData here is safe.
+          let dynamicPension = 0;
+          let dynamicAge = Math.floor(numericAge);
+
+          if (numericAge >= (effectiveScenarioData.questionnaire?.lppEarliestAge || 58)) {
+            const ageKey = dynamicAge.toString();
+            const entry = effectiveScenarioData.benefitsData?.lppByAge?.[ageKey];
+            dynamicPension = entry?.pension || 0;
+          }
+
+          if (dynamicPension > 0) {
+            return {
+              ...item,
+              name: language === 'fr' ? `Rente LPP projetée à ${dynamicAge} ans` : `Projected LPP Pension at ${dynamicAge}y`,
+              amount: dynamicPension,
+              adjustedAmount: dynamicPension,
+              startDate: newRetirementDateStr,
+              // Ensure it is treated as a retirement income
+              isRetirement: true
+            };
+          }
+        }
+
+        return item;
+      });
+
+      // Determine correct projected LPP values based on path
+      let newPension = '';
+      let newCapital = '';
+
+      if (isPreRetirement) {
+        const ageKey = Math.floor(numericAge).toString();
+        const entry = effectiveScenarioData.benefitsData?.lppByAge?.[ageKey];
+        newPension = entry?.pension || '';
+        newCapital = entry?.capital || '';
+      } else {
+        newCapital = effectiveScenarioData.benefitsData?.lppCurrentCapital || '';
       }
 
-      // 2. Calculate retirement date for selected age
-      const birthDate = new Date(userData.birthDate);
-      const retirementDate = new Date(birthDate);
-      const years = Math.floor(age);
-      const months = Math.round((age - years) * 12);
-      retirementDate.setFullYear(retirementDate.getFullYear() + years);
-      retirementDate.setMonth(retirementDate.getMonth() + months + 1);
-      retirementDate.setDate(1);
-      const retirementDateStr = retirementDate.toISOString().split('T')[0];
+      // Determine Retirement Option & Legal Age
+      const gender = userData.gender || 'male';
+      const legalAge = gender === 'female' ? 64 : 65;
+      let newOption = effectiveScenarioData.retirementOption || 'option1';
 
-      // 3. Create updated scenario object to use immediately (avoiding state lag)
+      if (numericAge < legalAge) {
+        newOption = 'option2';
+      } else if (numericAge === legalAge) {
+        if (newOption !== 'option1') newOption = 'option0';
+      }
+
+      console.log('DEBUG: Sync Logic', { numericAge, legalAge, newOption });
+
       const updatedScenarioData = {
-        ...scenarioData,
-        projectedLPPPension: pensionValue,
-        projectedLPPCapital: capitalValue,
-        wishedRetirementDate: retirementDateStr
+        ...effectiveScenarioData,
+        questionnaire: updatedQuestionnaire,
+        projectedLPPPension: newPension,
+        projectedLPPCapital: newCapital,
+        wishedRetirementDate: newRetirementDateStr,
+        retirementOption: newOption,
+        // CRITICAL FIX: Ensure Early Retirement Age is synced to numericAge if Option 2
+        earlyRetirementAge: newOption === 'option2' ? numericAge.toString() : (effectiveScenarioData.earlyRetirementAge || ''),
+        adjustedIncomes: updatedIncomes
       };
 
-      // Update actual state effectively
-      setScenarioData(updatedScenarioData);
+      // 6. Save & Set Scenario Data (Intermediate Step)
+      await saveScenarioData(user.email, masterKey, updatedScenarioData);
 
-      // 4. Run regular simulation with FRESH scenario data
-      // This is the single source of truth for the chart (Area + MC lines)
-      const result = runSimulation(retirementDateStr, { scenarioData: updatedScenarioData });
-      if (result) setProjection(result);
+      // 7. CRITICAL: GLOBAL SYNC & REDIRECT (User Request)
+      // We must update the core 'retirementData' so that the "Retirement Inputs" page reflects this change.
+      // Then we redirect to DataReview to ensure a clean slate simulation (Option 0/Standard).
+
+      const rData = (await getRetirementData(user.email, masterKey)) || {};
+
+      // Ensure V2 structure exists
+      if (!rData.questionnaire) rData.questionnaire = {};
+
+      // Update Core Plan
+      rData.questionnaire = {
+        ...rData.questionnaire,
+        simulationAge: newAge,
+        isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
+      };
+
+      // Also ensure Benefits Data (LPP) is synced if provided via ScenarioData (e.g. from handleMissingDataSubmit)
+      // Note: handleMissingDataSubmit updates effectiveScenarioData.benefitsData first.
+      if (effectiveScenarioData.benefitsData) {
+        rData.benefitsData = {
+          ...(rData.benefitsData || {}),
+          ...effectiveScenarioData.benefitsData
+        };
+      }
+
+      await saveRetirementData(user.email, masterKey, rData);
+
+
+
+      console.log('DEBUG: Dynamic Update - In-place refresh', { newAge });
+
+      // Dynamic Update: Update local state to trigger re-render
+      // CRITICAL: We must update the 'incomes' state because the chart relies on it for salary end-dates.
+      setIncomes(updatedIncomes);
+      setScenarioData(updatedScenarioData);
+      setRetirementAge(newAge); // Ensure slider reflects it visually if driven by this state
+
+      // Update other states if needed for consistency (though chart mainly depends on incomes/assets/costs)
+      // setCosts(finalCosts??) - costs usually don't change endDate dynamically in this logic yet, but safe to keep existing.
+
+      // Trigger a force refresh of the simulation calculation if needed
+      // (The useEffect dependencies should handle this if 'incomes' or 'scenarioData' changes)
+
+      // Visual feedback
+      toast.success(language === 'fr' ? 'Simulation mise à jour' : 'Simulation updated');
+
+      // NO REDIRECT - Keep user on page for dynamic experience
 
     } catch (error) {
-      console.error('Error recalculating projections:', error);
-      toast.error(language === 'fr' ? 'Erreur lors du recalcul' : 'Error recalculating');
+      console.error('Error synchronizing simulation:', error);
+      toast.error(language === 'fr' ? 'Erreur de mise à jour' : 'Update failed');
     } finally {
       setIsRecalculating(false);
     }
   };
+
+  const handleMissingDataSubmit = async () => {
+    // CAPTURE AGE EARLY to prevent state staleness issues
+    const dialogAge = missingDataDialog.age;
+    const val = parseFloat(missingDataValue);
+    if (isNaN(val) || val < 0) return;
+
+    const updatedBenefitsData = { ...scenarioData.benefitsData };
+
+    if (missingDataDialog.type === 'pension') {
+      const ageKey = missingDataDialog.age.toString();
+      updatedBenefitsData.lppByAge = {
+        ...updatedBenefitsData.lppByAge,
+        [ageKey]: {
+          ...updatedBenefitsData.lppByAge?.[ageKey],
+          pension: val,
+          // Heuristic: if capital missing, estimate or leave blank? User asked for pension.
+          capital: updatedBenefitsData.lppByAge?.[ageKey]?.capital || ''
+        }
+      };
+    } else {
+      updatedBenefitsData.lppCurrentCapital = val;
+    }
+
+    const updatedScenarioData = {
+      ...scenarioData,
+      benefitsData: updatedBenefitsData,
+      // CRITICAL FIX: Explicitly update top-level fields immediately to prevent stale data in DataReview
+      ...(missingDataDialog.type === 'pension' ? { projectedLPPPension: val } : { projectedLPPCapital: val })
+    };
+
+    try {
+      // Update Scenario Data First
+      await saveScenarioData(user.email, masterKey, updatedScenarioData);
+      setScenarioData(updatedScenarioData); // Update Local State immediately
+
+      // SYNC TO GLOBAL RETIREMENT DATA (Persist the new LPP value)
+      const rData = (await getRetirementData(user.email, masterKey)) || {};
+      if (!rData.benefitsData) rData.benefitsData = {};
+
+      // Merge LPP By Age
+      if (missingDataDialog.type === 'pension') {
+        const ageKey = missingDataDialog.age.toString();
+        rData.benefitsData.lppByAge = {
+          ...(rData.benefitsData.lppByAge || {}),
+          [ageKey]: updatedBenefitsData.lppByAge[ageKey]
+        };
+      } else {
+        rData.benefitsData.lppCurrentCapital = updatedBenefitsData.lppCurrentCapital;
+      }
+
+      await saveRetirementData(user.email, masterKey, rData);
+
+      // Cleanup moved to end to prevent state staleness
+
+      // Resume Sync (which will now Redirect)
+      // PASS THE UPDATED SCENARIO DATA explicitly to avoid stale state check
+      // CRITICAL FIX: Use the age from the dialog (which captured the slider value correctly) 
+      // instead of potentially stale retirementAge state
+      const resumeAge = missingDataDialog.age || retirementAge;
+
+      console.log('DEBUG: handleMissingDataSubmit - Resuming Simulation', {
+        dialogAge: missingDataDialog.age,
+        stateAge: retirementAge,
+        resumeAge: resumeAge,
+        projectedLPPPension: updatedScenarioData.projectedLPPPension
+      });
+
+      // AUTOMATION FIX LOOP PREVENTION:
+      if (location.state?.autoAutomateFullSequence) {
+        console.log('DEBUG: Already in Automation Sequence - Resuming locally to prevent loop.');
+        setMissingDataDialog({ isOpen: false, type: null, age: null });
+        setMissingDataValue('');
+        await synchronizeSimulationState(resumeAge, updatedScenarioData);
+        toast.success(language === 'fr' ? 'Données mises à jour.' : 'Data updated.');
+        return;
+      }
+
+      // AUTOMATION FIX: Redirect to Inputs -> Parameters -> DataReview -> Result
+      toast.success(language === 'fr' ? 'Redirection pour recalcul...' : 'Redirecting for recalculation...');
+
+      setMissingDataDialog({ isOpen: false, type: null, age: null });
+      setMissingDataValue('');
+
+      setTimeout(() => {
+        navigate('/retirement-inputs', {
+          state: {
+            autoAutomateFullSequence: true,
+            // Pass all critical data
+            wishedRetirementDate: updatedScenarioData.wishedRetirementDate,
+            retirementOption: updatedScenarioData.retirementOption,
+            earlyRetirementAge: resumeAge
+          }
+        });
+      }, 500);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to save data');
+    }
+  };
+
+  // Keep old function for reference or delete? 
+  // We can leave it but it is unused now.
+  const recalculateProjections = async (age) => { };
 
   const handleFilterChange = (key, checked) => {
     setActiveFilters(prev => ({
@@ -2310,7 +2620,7 @@ const ScenarioResult = () => {
           <div className="col-span-7 flex flex-col gap-4">
             {/* Box 4: Title */}
             <Card className="flex items-center justify-center p-3 h-[46px]">
-              <span className="text-sm font-semibold text-white">
+              <span className="text-[17px] font-semibold text-white">
                 {language === 'fr'
                   ? `Simulation à la date de retraite choisie le ${retirementInfo.dateStr} (${retirementInfo.ageYears} ans)`
                   : `Simulation at chosen retirement date ${retirementInfo.dateStr} (${retirementInfo.ageYears} years old)`}
@@ -2325,7 +2635,7 @@ const ScenarioResult = () => {
                     {language === 'fr' ? 'Simulation Monte-carlo sur investissements' : 'Monte-carlo simulation on investments'}
                   </h4>
                   <p className={`text-xl font-bold ${final5Balance >= 0 ? 'text-green-400' : 'text-primary'}`}>
-                    CHF {Math.round(final5Balance).toLocaleString()}
+                    CHF {Math.round(final5Balance).toLocaleString('de-CH')}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-1 text-center">
                     {language === 'fr' ? 'Solde final projeté (5%)' : 'Projected Final Balance (5%)'}
@@ -2342,12 +2652,12 @@ const ScenarioResult = () => {
               )}
 
               {/* Box 3: Baseline */}
-              <Card className={`${isInvested ? '' : 'col-span-2'} bg-green-900/10 border-green-500/20 flex flex-col items-center justify-center p-4`}>
+              <Card className={`${isInvested ? '' : 'col-span-2'} flex flex-col items-center justify-center p-4`}>
                 <h4 className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2 text-center">
                   {language === 'fr' ? 'Simulation avec cash seulement (sans investissement)' : 'Simulation with only cash (no investment)'}
                 </h4>
                 <p className={`text-xl font-bold ${finalBaselineBalance >= 0 ? 'text-green-400' : 'text-primary'}`}>
-                  CHF {Math.round(finalBaselineBalance).toLocaleString()}
+                  CHF {Math.round(finalBaselineBalance).toLocaleString('de-CH')}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1 text-center">
                   {language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance'}
@@ -2372,13 +2682,16 @@ const ScenarioResult = () => {
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-center pt-10 pb-8">
                 <div className="flex gap-4 items-center px-2">
-                  <div className="h-10 w-10 bg-muted/10 border border-muted/20 rounded-lg flex items-center justify-center p-1 text-muted-foreground">
-                    <LockKeyhole className="h-full w-full" strokeWidth={1.5} />
-                  </div>
+
                   <div className="flex-1">
                     {(() => {
-                      const rawEarlyAge = scenarioData?.lppEarliestAge; // Use the actual earliest offered age
-                      const minAge = parseInt(rawEarlyAge || '58', 10);
+                      // Calculate real current age for slider lower bound
+                      const birthObj = new Date(userData?.birthDate || new Date());
+                      const nowObj = new Date();
+                      const diffMs = nowObj - birthObj;
+                      const realCurrentAge = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
+
+                      const minAge = Math.min(64, realCurrentAge + 1);
                       const maxAge = 65;
                       const range = maxAge - minAge;
 
@@ -2388,7 +2701,6 @@ const ScenarioResult = () => {
                       const safeValue = Math.max(minAge, effectiveCurrentAge);
 
                       console.log('Slider Debug:', {
-                        rawEarlyAge,
                         minAge,
                         retirementAgeState: retirementAge,
                         calculatedCurrentAge,
@@ -2400,15 +2712,19 @@ const ScenarioResult = () => {
                           <Slider
                             value={[safeValue]}
                             onValueChange={(value) => {
-                              const newVal = Math.max(minAge, value[0]); // Double safety
-                              setRetirementAge(newVal);
+                              const newVal = Math.max(minAge, value[0]);
+                              setRetirementAge(newVal); // Visual update only
+                            }}
+                            onValueCommit={(value) => {
+                              const newVal = Math.max(minAge, value[0]);
+                              synchronizeSimulationState(newVal); // Heavy Update
                             }}
                             min={minAge}
                             max={maxAge}
-                            step={1 / 12}
+                            step={1}
                             className="w-full relative z-20"
                             thumbClassName="bg-primary border-primary cursor-grab active:cursor-grabbing"
-                            disabled={scenarioData?.retirementOption !== 'option2'}
+                            disabled={scenarioData?.retirementOption !== 'option2' && scenarioData?.retirementOption !== 'option0'}
                           />
 
                           {/* Labels Container - Full width to match slider context exactly */}
@@ -2504,7 +2820,7 @@ const ScenarioResult = () => {
                         if (chartData && index === chartData.length - 1) {
                           return (
                             <text x={x} y={y} dx={10} dy={4} fill={isInvested ? "#9ca3af" : (value >= 0 ? "#10b981" : "#ef4444")} fontSize={16} fontWeight="bold" textAnchor="start">
-                              {Math.round(value).toLocaleString()}
+                              {Math.round(value).toLocaleString('de-CH')}
                             </text>
                           );
                         }
@@ -2519,7 +2835,7 @@ const ScenarioResult = () => {
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                          return <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
                         }
                         return null;
                       }}
@@ -2530,7 +2846,7 @@ const ScenarioResult = () => {
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill="#9333ea" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                          return <text x={x} y={y} dx={10} dy={4} fill="#9333ea" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
                         }
                         return null;
                       }}
@@ -2541,7 +2857,7 @@ const ScenarioResult = () => {
                       label={(props) => {
                         const { x, y, value, index } = props;
                         if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString()}</text>;
+                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
                         }
                         return null;
                       }}
@@ -2795,6 +3111,37 @@ const ScenarioResult = () => {
           )}
         </div>
       </div>
+      <Dialog open={missingDataDialog.isOpen} onOpenChange={(open) => !open && setMissingDataDialog(prev => ({ ...prev, isOpen: false }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{language === 'fr' ? 'Données Manquantes' : 'Missing Data'}</DialogTitle>
+            <DialogDescription>
+              {missingDataDialog.type === 'pension'
+                ? (language === 'fr' ? `Pour simuler une retraite à ${missingDataDialog.age} ans, nous avons besoin de votre rente LPP projetée.` : `To simulate retirement at ${missingDataDialog.age}, we need your Projected LPP Pension.`)
+                : (language === 'fr' ? `Pour une retraite anticipée, nous avons besoin de votre capital LPP actuel.` : `To simulate early retirement, we need your LPP Current Capital.`)
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="missing-data-amount">{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</Label>
+            <Input
+              id="missing-data-amount"
+              type="number"
+              value={missingDataValue}
+              onChange={(e) => setMissingDataValue(e.target.value)}
+              placeholder="ex: 50000"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMissingDataDialog({ isOpen: false, type: null, age: null })}>
+              {language === 'fr' ? 'Annuler' : 'Cancel'}
+            </Button>
+            <Button onClick={handleMissingDataSubmit}>
+              {language === 'fr' ? 'Sauvegarder et Continuer' : 'Save & Continue'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
