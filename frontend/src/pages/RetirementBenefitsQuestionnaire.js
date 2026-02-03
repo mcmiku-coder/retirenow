@@ -689,8 +689,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
                                         {language === 'fr'
-                                            ? 'Quel est l\'âge de pré-retraite le plus précoce possible dans votre plan de pension ?'
-                                            : 'What is the earliest pre-retirement age possible in your pension plan?'}
+                                            ? 'Âge de pré-retraite le plus précoce possible dans votre plan de pension'
+                                            : 'Earliest pre-retirement age possible in your pension plan'}
                                     </Label>
                                     <Select
                                         value={questionnaire.lppEarliestAge || ''}
@@ -716,8 +716,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                 <div className="flex items-center justify-between">
                                     <Label className="text-base font-semibold">
                                         {language === 'fr'
-                                            ? 'Cet âge est-il dans la tranche de pré-retraite possible dans votre plan de pension LPP ?'
-                                            : 'Is this age within the pre-retirement bracket possible within your LPP pension plan?'}
+                                            ? 'Âge dans la tranche de pré-retraite possible dans votre plan de pension LPP'
+                                            : 'Age within the pre-retirement bracket possible within your LPP pension plan'}
                                     </Label>
                                     <div className="w-[220px] text-base font-medium">
                                         {questionnaire.isWithinPreRetirement === 'yes' && (
@@ -744,8 +744,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="benefitType" className="text-base font-semibold">
                                         {language === 'fr'
-                                            ? 'Quel type de prestation choisirez-vous (le cas échéant) ?'
-                                            : 'What type of benefit will you choose (if applicable)?'}
+                                            ? 'Type de prestation à choisir (le cas échéant)'
+                                            : 'Type of benefit to choose (if applicable)'}
                                     </Label>
                                     <Select
                                         value={questionnaire.benefitType}
@@ -867,27 +867,39 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* Dynamic Benefit Input Fields */}
                             <Card className="bg-muted/30">
                                 <CardHeader>
-                                    <CardTitle className="text-base">
+                                    <CardTitle className="text-lg">
                                         {language === 'fr' ? 'Montants des prestations' : 'Benefit Amounts'}
                                     </CardTitle>
+                                    <div className="flex flex-col gap-1 text-sm mt-2">
+                                        <span className="text-red-500">
+                                            {language === 'fr'
+                                                ? "Les champs à bordure rouge indiquent les valeurs nécessaires pour effectuer la simulation choisie"
+                                                : "Red border fields indicate necessary values to perform the chosen simulation"}
+                                        </span>
+                                        <span className="text-green-500">
+                                            {language === 'fr'
+                                                ? "Les champs à bordure verte indiquent des valeurs optionnelles permettant d'effectuer des changements de simulation"
+                                                : "Green border fields indicate optional values that will allow performing simulation changes"}
+                                        </span>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     {/* AVS Yearly Pension */}
                                     {questionnaire.hasAVS && (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
+                                            <table className="w-full border-collapse table-fixed">
                                                 <thead>
                                                     <tr className="border-b">
-                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-48"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[240px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-32"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-24"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                        <th className="text-left p-2 text-sm font-medium w-28"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-20"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
                                                             {language === 'fr' ? 'Montant' : 'Amount'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[250px]"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-40"></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -916,7 +928,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                         updateBenefitData('avs', 'amount', rawValue);
                                                                     }
                                                                 }}
-                                                                className="w-full text-right"
+                                                                className={`w-full text-right ${benefitsData.avs.amount ? 'border-green-500 border-2' : 'border-red-500 border-2'}`}
                                                             />
                                                         </td>
                                                         <td className="p-2"></td>
@@ -929,23 +941,23 @@ const RetirementBenefitsQuestionnaire = () => {
                                     {/* Libre-Passage Capitals */}
                                     {questionnaire.librePassageCount > 0 && (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
+                                            <table className="w-full border-collapse table-fixed">
                                                 <thead>
                                                     <tr className="border-b">
-                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-48"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[240px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                        <th className="text-left p-2 text-sm font-medium w-28">
                                                             {language === 'fr' ? 'Investi?' : 'Invested?'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                        <th className="text-left p-2 text-sm font-medium w-20">
                                                             {benefitsData.librePassages.some(lp => lp.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
                                                             {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
                                                             {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
@@ -1014,7 +1026,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                             updateWithProjection('librePassages', index, 'currentAmount', rawValue);
                                                                         }
                                                                     }}
-                                                                    className="w-full text-right"
+                                                                    className={`w-full text-right ${lp.currentAmount ? 'border-green-500 border-2' : 'border-red-500 border-2'}`}
                                                                 />
                                                             </td>
                                                             <td className="p-2">
@@ -1035,23 +1047,23 @@ const RetirementBenefitsQuestionnaire = () => {
                                     {/* 3a Capitals */}
                                     {questionnaire.threeACount > 0 && (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
+                                            <table className="w-full border-collapse table-fixed">
                                                 <thead>
                                                     <tr className="border-b">
-                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-48"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[240px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                        <th className="text-left p-2 text-sm font-medium w-28">
                                                             {language === 'fr' ? 'Investi?' : 'Invested?'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                        <th className="text-left p-2 text-sm font-medium w-20">
                                                             {benefitsData.threeA.some(acc => acc.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
                                                             {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
                                                             {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
@@ -1120,7 +1132,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                             updateWithProjection('threeA', index, 'currentAmount', rawValue);
                                                                         }
                                                                     }}
-                                                                    className="w-full text-right"
+                                                                    className={`w-full text-right ${account.currentAmount ? 'border-green-500 border-2' : 'border-red-500 border-2'}`}
                                                                 />
                                                             </td>
                                                             <td className="p-2">
@@ -1141,23 +1153,23 @@ const RetirementBenefitsQuestionnaire = () => {
                                     {/* Supplementary Pension Plan Capital */}
                                     {questionnaire.hasSupplementaryPension && (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
+                                            <table className="w-full border-collapse table-fixed">
                                                 <thead>
                                                     <tr className="border-b">
-                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-48"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[240px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                        <th className="text-left p-2 text-sm font-medium w-28">
                                                             {language === 'fr' ? 'Investi?' : 'Invested?'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                        <th className="text-left p-2 text-sm font-medium w-20">
                                                             {benefitsData.lppSup?.isInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
                                                             {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
                                                             {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
@@ -1263,7 +1275,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                         });
                                                                     }
                                                                 }}
-                                                                className="w-full text-right"
+                                                                className={`w-full text-right ${benefitsData.lppSup?.amount ? 'border-green-500 border-2' : 'border-red-500 border-2'}`}
                                                             />
                                                         </td>
                                                         <td className="p-2">
@@ -1293,7 +1305,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             </div>
 
                                             <div className="overflow-x-auto">
-                                                <table className="w-full border-collapse">
+                                                <table className="w-full border-collapse table-fixed">
                                                     <thead>
                                                         <tr className="border-b">
                                                             <th className="text-left p-2 text-sm font-medium">
@@ -1376,23 +1388,23 @@ const RetirementBenefitsQuestionnaire = () => {
                                     {/* LPP Current Capital - Sub-situation II (Q3 = No or Unknown) */}
                                     {questionnaire.hasLPP && (questionnaire.isWithinPreRetirement === 'no' || questionnaire.isWithinPreRetirement === 'unknown') && (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse">
+                                            <table className="w-full border-collapse table-fixed">
                                                 <thead>
                                                     <tr className="border-b">
-                                                        <th className="text-left p-2 text-sm font-medium w-64"></th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[220px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-48"></th>
+                                                        <th className="text-left p-2 text-sm font-medium w-[240px]">
                                                             {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-32">
+                                                        <th className="text-left p-2 text-sm font-medium w-28">
                                                             {language === 'fr' ? 'Investi?' : 'Invested?'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-24">
+                                                        <th className="text-left p-2 text-sm font-medium w-20">
                                                             {benefitsData.lppCurrentInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-40">
+                                                        <th className="text-left p-2 text-sm font-medium w-32">
                                                             {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                         </th>
-                                                        <th className="text-left p-2 text-sm font-medium w-[250px]">
+                                                        <th className="text-left p-2 text-sm font-medium w-40">
                                                             {language === 'fr' ? 'Valeur projetée à date' : 'Projected Value at Availability'}
                                                         </th>
                                                     </tr>
@@ -1457,7 +1469,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                         updateLppCurrentProjection('lppCurrentInitialAmount', rawValue);
                                                                     }
                                                                 }}
-                                                                className="w-full text-right"
+                                                                className={`w-full text-right ${benefitsData.lppCurrentInitialAmount ? 'border-green-500 border-2' : 'border-red-500 border-2'}`}
                                                             />
                                                         </td>
                                                         <td className="p-2">

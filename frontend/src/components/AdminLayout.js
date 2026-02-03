@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Palette, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -37,10 +37,10 @@ export default function AdminLayout({ children, onLogout }) {
             description: 'Global catalog'
         },
         {
-            path: '/admin/templates',
-            icon: FileText,
-            label: 'Templates',
-            description: 'Coming soon'
+            path: '/admin/config',
+            icon: Palette,
+            label: 'White Label',
+            description: 'Design & content'
         }
     ];
 
@@ -102,8 +102,8 @@ export default function AdminLayout({ children, onLogout }) {
                                 size="sm"
                                 onClick={() => switchLanguage('en')}
                                 className={`flex-1 h-8 px-3 text-xs font-medium rounded-md transition-all ${language === 'en'
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
                                     }`}
                             >
                                 EN
@@ -113,8 +113,8 @@ export default function AdminLayout({ children, onLogout }) {
                                 size="sm"
                                 onClick={() => switchLanguage('fr')}
                                 className={`flex-1 h-8 px-3 text-xs font-medium rounded-md transition-all ${language === 'fr'
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
                                     }`}
                             >
                                 FR

@@ -27,7 +27,7 @@ const DateInputWithShortcuts = ({
                 type="date"
                 value={value || ''}
                 onChange={onChange}
-                className="w-full min-w-[130px]"
+                className="w-[140px]"
                 {...props}
             />
             <div className="flex gap-1 items-center shrink-0">

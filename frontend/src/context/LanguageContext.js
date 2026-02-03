@@ -12,6 +12,8 @@ export const LanguageProvider = ({ children }) => {
     return 'fr';
   });
 
+  const [overrides, setOverrides] = useState({});
+
   // Save language preference to localStorage
   useEffect(() => {
     localStorage.setItem('app_language', language);
@@ -19,9 +21,19 @@ export const LanguageProvider = ({ children }) => {
 
   // Get translation function
   const t = (path) => {
+    // 1. Check for overrides (Language specific)
+    if (overrides[language] && overrides[language][path]) {
+      return overrides[language][path];
+    }
+    // 2. Check for overrides (Global - legacy)
+    if (overrides[path]) {
+      return overrides[path];
+    }
+
+    // 3. Standard Translation Lookup
     const keys = path.split('.');
     let value = translations[language];
-    
+
     for (const key of keys) {
       if (value && value[key] !== undefined) {
         value = value[key];
@@ -38,7 +50,7 @@ export const LanguageProvider = ({ children }) => {
         break;
       }
     }
-    
+
     return value;
   };
 
@@ -49,7 +61,7 @@ export const LanguageProvider = ({ children }) => {
   };
 
   return (
-    <LanguageContext.Provider value={{ language, switchLanguage, t }}>
+    <LanguageContext.Provider value={{ language, switchLanguage, t, setOverrides }}>
       {children}
     </LanguageContext.Provider>
   );

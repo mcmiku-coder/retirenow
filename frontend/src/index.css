@@ -4,7 +4,7 @@
 
 body {
     margin: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    font-family: var(--theme-font), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
         "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
         sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -29,13 +29,28 @@ input[type=number] {
 
 @layer base {
     :root {
+        /* Defaults (matches Inter/Blue theme) - overridden by JS */
+        --theme-font: 'Inter', -apple-system, sans-serif;
+        --theme-primary: #2563eb;
+        --theme-secondary: #475569;
+        --theme-background: #ffffff;
+        --theme-surface: #f8fafc;
+        --theme-text: #0f172a;
+        --theme-border: #e2e8f0;
+
         --background: 0 0% 100%;
         --foreground: 0 0% 3.9%;
         --card: 0 0% 100%;
         --card-foreground: 0 0% 3.9%;
         --popover: 0 0% 100%;
         --popover-foreground: 0 0% 3.9%;
+
+        /* Map tailwind colors to theme variables */
+        /* Note: Tailwind requires HSL for opacity support, but for simplicity we use HEX direct injection for white-labeling */
+        /* We'll use the --theme-* vars directly in components where possible, or mapped below */
+
         --primary: 0 0% 9%;
+        /* We might need to convert HEX to HSL dynamically if we keep Tailwind HSL vars */
         --primary-foreground: 0 0% 98%;
         --secondary: 0 0% 96.1%;
         --secondary-foreground: 0 0% 9%;
@@ -99,4 +114,40 @@ input[type=number] {
 .dark input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0.8);
     cursor: pointer;
+}
+
+/* 
+   Scope the White Labeling theme variables only to the public part of the app.
+   Admin panel will remain using the default system dark theme.
+*/
+.public-theme {
+    /* Map Tailwind/ShadCN variables to our dynamic HSL theme variables */
+    --primary: var(--theme-primary-hsl);
+    --primary-foreground: 0 0% 98%;
+    /* Keep white text for generic contrast */
+
+    --secondary: var(--theme-secondary-hsl);
+    --secondary-foreground: 0 0% 98%;
+
+    --background: var(--theme-background-hsl);
+    --foreground: var(--theme-text-hsl);
+
+    --card: var(--theme-surface-hsl);
+    --card-foreground: var(--theme-cardForeground-hsl);
+
+    --popover: var(--theme-surface-hsl);
+    --popover-foreground: var(--theme-cardForeground-hsl);
+
+    --muted: var(--theme-muted-hsl);
+    --muted-foreground: var(--theme-mutedForeground-hsl);
+
+    --accent: var(--theme-accent-hsl);
+    --accent-foreground: var(--theme-accentForeground-hsl);
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: var(--theme-border-hsl);
+    --input: var(--theme-input-hsl);
+    --ring: var(--theme-ring-hsl);
 }

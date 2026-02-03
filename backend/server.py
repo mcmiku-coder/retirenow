@@ -224,6 +224,43 @@ def decrypt_master_key(encrypted_key: str) -> str:
         raise Exception("Server encryption not configured")
     return fernet.decrypt(encrypted_key.encode()).decode()
 
+
+# White Labeling / App Config
+class AppConfig(BaseModel):
+    theme: str = "Default"
+    font: str = "Inter"
+    colors: dict = {}  # { "primary": "#...", "secondary": "#..." }
+    images: dict = {}  # { "logo": "url", "background": "url" }
+    textOverrides: dict = {}  # { "landing.title": "My Custom Title" }
+    
+class AdminConfigResponse(BaseModel):
+    message: str
+    config: AppConfig
+
+@api_router.get("/config", response_model=AppConfig)
+async def get_app_config():
+    """Get the public application configuration (White Labeling)"""
+    config = await db.app_config.find_one({"_id": "main_config"})
+    if not config:
+        # Return default config if none exists
+        return AppConfig()
+    return AppConfig(**config)
+
+@api_router.post("/admin/config", response_model=AdminConfigResponse)
+async def update_app_config(new_config: AppConfig, admin_key: str):
+    """Update application configuration (Admin only)"""
+    if admin_key != ADMIN_SECRET_KEY:
+         raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Update or insert the single config document
+    await db.app_config.update_one(
+        {"_id": "main_config"},
+        {"$set": new_config.dict()},
+        upsert=True
+    )
+    
+    return AdminConfigResponse(message="Configuration updated successfully", config=new_config)
+
 def create_token(email: str) -> str:
     payload = {
         'email': email,

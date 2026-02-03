@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from './components/ui/sonner';
 import PageHeader from './components/PageHeader';
 import AppHeader from './components/AppHeader';
@@ -169,16 +170,30 @@ function AppRoutes() {
   );
 }
 
+// Helper component to handle theme scoping
+const ThemeScope = ({ children }) => {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  return (
+    <div className={`App dark min-h-screen bg-background text-foreground ${!isAdmin ? 'public-theme' : ''}`}>
+      {children}
+    </div>
+  );
+};
+
 function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <div className="App dark min-h-screen bg-background text-foreground">
-            <AppRoutes />
-            <Toaster position="top-center" />
-          </div>
-        </BrowserRouter>
+        <ThemeProvider>
+          <BrowserRouter>
+            <ThemeScope>
+              <AppRoutes />
+              <Toaster position="top-center" />
+            </ThemeScope>
+          </BrowserRouter>
+        </ThemeProvider>
       </AuthProvider>
     </LanguageProvider>
   );
