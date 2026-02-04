@@ -32,6 +32,10 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ExpenseWizard from './pages/ExpenseWizard';
 import SecurityDetails from './pages/SecurityDetails';
+import TermsOfService from './pages/legal/TermsOfService';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import Disclaimer from './pages/legal/Disclaimer';
+import Footer from './components/Footer';
 
 import { trackPageVisit } from './utils/analytics';
 import './App.css';
@@ -165,7 +169,11 @@ function AppRoutes() {
             <Settings />
           </ProtectedRoute>
         } />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/disclaimer" element={<Disclaimer />} />
       </Routes>
+      <Footer />
     </>
   );
 }

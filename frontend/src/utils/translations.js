@@ -425,7 +425,7 @@ export const translations = {
 
     // Real Estate Calculator
     realEstate: {
-      title: "Housing Expenses Calculator",
+      title: "Lodging expenses calculator",
       subtitle: "Detailed breakdown of your mortgage, property value, and maintenance costs.",
       mortgageDetails: "Mortgage Details",
       marketValue: "Property Market Value",
@@ -446,10 +446,19 @@ export const translations = {
       totalCostsMonthly: "Total Costs (Monthly)",
       netAssetValue: "Net Housing Asset Value",
       carriedToCosts: "Carried to Costs Page",
-      carriedToAssets: "Carried to Assets Page",
       cancel: "Cancel",
       applySave: "Apply & Save",
-      saving: "Saving...",
+      carriedToAssets: "Carried to Assets",
+
+      // Lodging Situation
+      lodgingSituation: "Lodging situation",
+      owner: "Owner",
+      tenant: "Tenant",
+      howManyProperties: "How many properties?",
+      rent: "Rent",
+      rentAmount: "Rent Amount",
+      rentExplanation: "Monthly rent including charges",
+
       defaultMortgageName: "Primary Mortgage",
       defaultPropertyName: "Main Property",
       defaultMaintenance: {
@@ -459,11 +468,13 @@ export const translations = {
         taxes: "Taxes",
         renovation: "Renovation funding",
         garden: "Garden"
-      }
+      },
+      property: "Property"
     }
   },
 
   fr: {
+
     // Landing Page
     landing: {
       title: "quit?",
@@ -495,13 +506,13 @@ export const translations = {
       step2Title: "Retraite et espérance de vie",
       step2Desc: "Visualisez votre date de retraite légale et votre espérance de vie basée sur des données statistiques.",
       step3Title: "Sources de revenus",
-      step3Desc: "Saisissez vos sources de revenus : Salaire Net et tout autre revenu personnalisé. Spécifiez les montants, les fréquences et les periodes de versements pour chaque source.",
+      step3Desc: "Saisissez vos sources de revenus : Salaire Net et tout autre revenu personnalisé. Spécifiez les montants, les fréquences et les périodes de versements pour chaque source.",
       step4Title: "Dépenses",
       step4Desc: "Listez vos dépenses par catégorie : Logement, Impôts, Assurance Maladie, Alimentation, Transport, Loisirs, etc. Utilisez l'assistant pour estimer les coûts selon votre style de vie.",
       step4SpinOffTitle: "Dépenses de Logement",
       step4SpinOffDesc: "Cette option permet d'estimer en détail vos dépenses d'habitation que vous soyez locataire ou propriétaire.",
       step5Title: "Actifs et épargne",
-      step5Desc: "Saisissez vos actifs liquides et non-liquides, vos rentrées futurs possibles (héritage, etc).",
+      step5Desc: "Saisissez vos actifs liquides et non-liquides, vos rentrées futures possibles (héritage, etc).",
       step6Title: "Données de prévoyance et choix du modèle de simulation",
       step6Desc: "Saisissez vos données AVS, LPP et 3a. Précisez les montants, les fréquences et les dates pour chaque source.",
       step7Title: "Revue des données avant simulation",
@@ -887,7 +898,7 @@ export const translations = {
     },
     // Real Estate Calculator
     realEstate: {
-      title: "Calculateur de Dépenses Immobilières",
+      title: "Calculateur de frais de logement",
       subtitle: "Détail de votre hypothèque, valeur immobilière et frais d'entretien.",
       mortgageDetails: "Détails de l'Hypothèque",
       marketValue: "Valeur Vénale du Bien",
@@ -912,6 +923,14 @@ export const translations = {
       cancel: "Annuler",
       applySave: "Appliquer & Sauvegarder",
       saving: "Enregistrement...",
+      // Lodging Situation
+      lodgingSituation: "Situation de logement",
+      owner: "Propriétaire",
+      tenant: "Locataire",
+      howManyProperties: "Combien de propriétés ?",
+      rent: "Loyer",
+      rentAmount: "Montant du loyer",
+      rentExplanation: "Loyer mensuel charges comprises",
       defaultMortgageName: "Hypothèque principale",
       defaultPropertyName: "Propriété principale",
       defaultMaintenance: {
@@ -921,7 +940,8 @@ export const translations = {
         taxes: "Impôts",
         renovation: "Fonds de rénovation",
         garden: "Jardin"
-      }
+      },
+      property: "Propriété"
     }
   }
 };

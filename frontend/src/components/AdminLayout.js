@@ -12,7 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
  * - Vertical navigation
  * - Language toggle and logout on same line at bottom
  */
-export default function AdminLayout({ children, onLogout }) {
+export default function AdminLayout({ children, onLogout, adminUser }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { language, switchLanguage } = useLanguage();
@@ -94,6 +94,19 @@ export default function AdminLayout({ children, onLogout }) {
 
                 {/* Bottom Section: Language Toggle & Logout on same line */}
                 <div className="p-4 border-t border-slate-700">
+                    {/* User Info */}
+                    {adminUser && (
+                        <div className="mb-4 px-1">
+                            <p className="text-sm font-medium text-white truncate" title={adminUser.email}>
+                                {adminUser.email}
+                            </p>
+                            <p className="text-xs text-slate-500 flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                Online
+                            </p>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                         {/* Language Toggle */}
                         <div className="flex-1 flex items-center gap-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700">

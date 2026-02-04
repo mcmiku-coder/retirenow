@@ -80,7 +80,7 @@ export default function AdminApp() {
 
     // If authenticated, show admin layout with routes
     return (
-        <AdminLayout onLogout={handleLogout}>
+        <AdminLayout onLogout={handleLogout} adminUser={adminUser}>
             <Routes>
                 <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/dashboard" element={<AdminDashboard token={token} adminUser={adminUser} stats={stats} />} />

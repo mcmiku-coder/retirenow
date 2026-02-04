@@ -7,13 +7,17 @@ import {
     getRetirementData,
     getAssetsData,
     getRealEstateData,
+    getInstrumentData,     // NEW
+    getSimulationConfig,   // NEW
     saveUserData,
     saveIncomeData,
     saveCostData,
     saveScenarioData,
     saveRetirementData,
     saveAssetsData,
-    saveRealEstateData
+    saveRealEstateData,
+    saveInstrumentData,    // NEW
+    saveSimulationConfig   // NEW
 } from './database';
 
 import { encryptDataWithMasterKey, decryptDataWithMasterKey } from './encryption-v2';
@@ -24,7 +28,6 @@ import { encryptDataWithMasterKey, decryptDataWithMasterKey } from './encryption
  * 
  * We re-encrypt the export with the master key to ensure it's portable 
  * (though data in DB is already encrypted, we decrypt then re-encrypt into a single blob for simplicity and versioning).
- * OR simpler: We export the raw decrypted data in a JSON structure, then encrypt the whole JSON string with the master key.
  */
 export const exportBackup = async (email, masterKey) => {
     try {
@@ -36,7 +39,9 @@ export const exportBackup = async (email, masterKey) => {
             scenarioData,
             retirementData,
             assetsData,
-            realEstateData
+            realEstateData,
+            instrumentData,     // NEW
+            simulationConfig    // NEW
         ] = await Promise.all([
             getUserData(email, masterKey),
             getIncomeData(email, masterKey),
@@ -44,12 +49,14 @@ export const exportBackup = async (email, masterKey) => {
             getScenarioData(email, masterKey),
             getRetirementData(email, masterKey),
             getAssetsData(email, masterKey),
-            getRealEstateData(email, masterKey)
+            getRealEstateData(email, masterKey),
+            getInstrumentData(email, masterKey),    // NEW
+            getSimulationConfig(email, masterKey)   // NEW
         ]);
 
         // 2. Structure the backup payload
         const backupPayload = {
-            version: 1,
+            version: 2, // Updated version
             timestamp: new Date().toISOString(),
             email: email, // Metadata only, actual restoration relies on current user
             data: {
@@ -59,15 +66,14 @@ export const exportBackup = async (email, masterKey) => {
                 scenarioData,
                 retirementData,
                 assetsData,
-                realEstateData
+                realEstateData,
+                instrumentData,     // NEW
+                simulationConfig    // NEW
             }
         };
 
         // 3. Encrypt the entire payload with the master key
         // This ensures that even if you have the file, you need the master key (password) to unlock it.
-        // Wait, if we use the master key, it means the backup is tied to the password.
-        // If the user RESETS their password (and thus keeps the master key), the backup is still valid.
-        // Perfect.
         const encryptedBackup = await encryptDataWithMasterKey(backupPayload, masterKey);
 
         // 4. Create and trigger download
@@ -109,7 +115,6 @@ export const importBackup = async (file, email, masterKey) => {
 
                 // 1. Decrypt the backup
                 // This will fail if the master key doesn't match (e.g. user completely changed account/key)
-                // But since we use stable Master Keys now, it works across password resets.
                 const decryptedPayload = await decryptDataWithMasterKey(encryptedBackup, masterKey);
 
                 if (!decryptedPayload || !decryptedPayload.data) {
@@ -127,7 +132,10 @@ export const importBackup = async (file, email, masterKey) => {
                     data.scenarioData ? saveScenarioData(email, masterKey, data.scenarioData) : Promise.resolve(),
                     data.retirementData ? saveRetirementData(email, masterKey, data.retirementData) : Promise.resolve(),
                     data.assetsData ? saveAssetsData(email, masterKey, data.assetsData) : Promise.resolve(),
-                    data.realEstateData ? saveRealEstateData(email, masterKey, data.realEstateData) : Promise.resolve()
+                    data.realEstateData ? saveRealEstateData(email, masterKey, data.realEstateData) : Promise.resolve(),
+                    // NEW: Import instrumentData and simulationConfig if present (backward compatibility)
+                    data.instrumentData ? saveInstrumentData(email, masterKey, data.instrumentData) : Promise.resolve(),
+                    data.simulationConfig ? saveSimulationConfig(email, masterKey, data.simulationConfig) : Promise.resolve()
                 ]);
 
                 resolve(true);
