@@ -12,6 +12,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import { saveRetirementData, getRetirementData, getUserData, getScenarioData, saveScenarioData } from '../utils/database';
 import { getLegalRetirementDate } from '../utils/calculations';
+import PageHeader from '../components/PageHeader';
 import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 import {
     migrateToV2,
@@ -19,7 +20,7 @@ import {
     createEmptyV2Schema,
     validateV2Schema
 } from '../utils/retirementDataMigration';
-import { Info, Plus, Trash2 } from 'lucide-react';
+import { Info, Plus, Trash2, HelpCircle } from 'lucide-react';
 
 const RetirementBenefitsQuestionnaire = () => {
     const navigate = useNavigate();
@@ -616,21 +617,22 @@ const RetirementBenefitsQuestionnaire = () => {
     };
 
     return (
-        <div className="min-h-screen py-8 px-4">
-            <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-8 mt-8">
-                    <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-                        {language === 'fr'
-                            ? 'Retirement benefits and simulation age input'
-                            : 'Retirement benefits and simulation age input'}
-                    </h1>
-                    <p className="text-lg text-muted-foreground">
-                        {language === 'fr'
-                            ? 'Sélectionnez les piliers de retraite dont vous bénéficierez et comment vous prévoyez de les utiliser'
-                            : 'Select the retirement pillars that you will benefit from and how you plan to use them'}
-                    </p>
-                </div>
-
+        <div className="min-h-screen py-8">
+            <PageHeader
+                title={t('retirementBenefits.title')}
+                subtitle={t('retirementBenefits.subtitle')}
+                rightContent={
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate('/retirement-benefits-help')}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                    >
+                        <HelpCircle className="h-4 w-4" />
+                        {t('retirementBenefits.helpButton')}
+                    </Button>
+                }
+            />
+            <div className="max-w-7xl mx-auto px-4">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Main Card */}
                     <Card>
@@ -1491,18 +1493,20 @@ const RetirementBenefitsQuestionnaire = () => {
                     </Card>
 
                     {/* Action Buttons */}
-                    <div className="flex justify-between">
+                    <div className="relative flex justify-center items-center mt-8">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleReset}
+                            className="absolute left-0"
                         >
                             {language === 'fr' ? 'Réinitialiser' : 'Reset to defaults'}
                         </Button>
                         <Button
                             type="submit"
                             disabled={saving}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            size="lg"
+                            className="px-12 text-lg"
                         >
                             {saving
                                 ? (language === 'fr' ? 'Enregistrement...' : 'Saving...')
@@ -1510,8 +1514,8 @@ const RetirementBenefitsQuestionnaire = () => {
                         </Button>
                     </div>
                 </form>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 };
 

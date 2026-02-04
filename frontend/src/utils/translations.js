@@ -128,6 +128,21 @@ export const translations = {
       continue: "Continue to Income"
     },
 
+    // Retirement Benefits Page
+    retirementBenefits: {
+      title: "Retirement benefits and simulation age input",
+      subtitle: "Select the retirement pillars that you will benefit from and how you plan to use them",
+      helpButton: "Help me fill this page"
+    },
+
+
+    // Retirement Benefits Help Page
+    retirementBenefitsHelp: {
+      title: "Help me fill the benefit and simulation input page",
+      subtitle: "Guidance on how to complete your retirement benefits information",
+      contentPlaceholder: "Content coming soon..."
+    },
+
     // Income Page
     income: {
       title: "Current income sources",
@@ -600,6 +615,19 @@ export const translations = {
       theoreticalDeathDesc: "Utilisée pour les projections financières",
       years: "ans",
       continue: "Continuer vers les revenus"
+    },
+    // Retirement Benefits Page
+    retirementBenefits: {
+      title: "Prestations de retraite et âge de simulation",
+      subtitle: "Sélectionnez les piliers de retraite dont vous bénéficierez et comment vous prévoyez de les utiliser",
+      helpButton: "Aidez-moi à remplir cette page"
+    },
+
+    // Retirement Benefits Help Page
+    retirementBenefitsHelp: {
+      title: "Aidez-moi à remplir la page des prestations et simulation",
+      subtitle: "Guide pour compléter vos informations de retraite",
+      contentPlaceholder: "Contenu à venir..."
     },
 
     // Income Page

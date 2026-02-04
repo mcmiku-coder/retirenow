@@ -17,10 +17,10 @@ import Costs from './pages/Costs';
 import RealEstate from './pages/RealEstate';
 import VerifyEmail from './pages/VerifyEmail';
 
-// Feature flag for new retirement benefits questionnaire
-const USE_NEW_RETIREMENT_QUESTIONNAIRE = true;
+
 
 import RetirementBenefitsQuestionnaire from './pages/RetirementBenefitsQuestionnaire';
+import RetirementBenefitsHelp from './pages/RetirementBenefitsHelp';
 import AssetsAndSavings from './pages/AssetsAndSavings';
 
 import DataReview from './pages/DataReview';
@@ -135,13 +135,16 @@ function AppRoutes() {
             <AssetsAndSavings />
           </ProtectedRoute>
         } />
-        {USE_NEW_RETIREMENT_QUESTIONNAIRE && (
-          <Route path="/retirement-inputs" element={
-            <ProtectedRoute>
-              <RetirementBenefitsQuestionnaire />
-            </ProtectedRoute>
-          } />
-        )}
+        <Route path="/retirement-inputs" element={
+          <ProtectedRoute>
+            <RetirementBenefitsQuestionnaire />
+          </ProtectedRoute>
+        } />
+        <Route path="/retirement-benefits-help" element={
+          <ProtectedRoute>
+            <RetirementBenefitsHelp />
+          </ProtectedRoute>
+        } />
 
         <Route path="/data-review" element={
           <ProtectedRoute>
@@ -208,3 +211,4 @@ function App() {
 }
 
 export default App;
+// Force re-compile to clear HMR error
