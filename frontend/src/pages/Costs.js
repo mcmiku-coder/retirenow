@@ -294,9 +294,9 @@ const Costs = () => {
                             type="button"
                             onClick={() => navigate('/real-estate')}
                             className="flex-1 h-full px-2 text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white whitespace-nowrap"
-                            title={language === 'fr' ? 'Calculateur logement' : 'Housing calculator'}
+                            title={language === 'fr' ? 'Calculateur frais de logement' : 'Lodging expenses calculator'}
                           >
-                            {language === 'fr' ? 'Calculateur logement' : 'Housing calculator'}
+                            {language === 'fr' ? 'Calculateur frais de logement' : 'Lodging expenses calculator'}
                           </Button>
                           <Input
                             data-testid={`cost-amount-${index}`}

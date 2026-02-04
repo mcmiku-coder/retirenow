@@ -75,6 +75,8 @@ const RealEstate = () => {
         if (lodgingSituation === 'owner') {
             const count = parseInt(propertyCount);
             ensureDefaultsForCount(count);
+        } else if (lodgingSituation === 'tenant') {
+            ensureTenantDefaults();
         }
     }, [propertyCount, lodgingSituation]);
 
@@ -95,10 +97,12 @@ const RealEstate = () => {
 
         for (let i = 1; i <= count; i++) {
             // Check Maintenance
-            const hasMaintenance = newMaintenance.some(r => (r.propertyId || 1) === i);
+            const hasMaintenance = newMaintenance.some(r => (r.propertyId ?? 1) === i);
             if (!hasMaintenance) {
                 const defaults = [
-                    'electricity', 'heating', 'insurance', 'taxes', 'renovation', 'garden'
+                    'heating', 'electricity', 'contentInsurance', 'buildingInsurance',
+                    'fireInsurance', 'otherInsurance', 'propertyTax', 'buildingMaintenance',
+                    'gardenMaintenance', 'renovation'
                 ];
                 defaults.forEach(key => {
                     newMaintenance.push({
@@ -113,7 +117,7 @@ const RealEstate = () => {
             }
 
             // Check Mortgage (Ensure at least 1 row)
-            const hasMortgage = newMortgage.some(r => (r.propertyId || 1) === i);
+            const hasMortgage = newMortgage.some(r => (r.propertyId ?? 1) === i);
             if (!hasMortgage) {
                 newMortgage.push({
                     id: nextMortId++,
@@ -127,7 +131,7 @@ const RealEstate = () => {
             }
 
             // Check Asset (Ensure at least 1 row)
-            const hasAsset = newAssets.some(r => (r.propertyId || 1) === i);
+            const hasAsset = newAssets.some(r => (r.propertyId ?? 1) === i);
             if (!hasAsset) {
                 newAssets.push({
                     id: nextAssetId++,
@@ -146,11 +150,91 @@ const RealEstate = () => {
         }
     };
 
+    const ensureTenantDefaults = () => {
+        setMaintenanceRows(prevRows => {
+            // Check if we already have rows for tenant (propertyId = 0)
+            if (prevRows.some(r => (r.propertyId ?? 1) === 0)) {
+                return prevRows;
+            }
+
+            const defaults = [
+                'utilities', 'parking', 'electricity', 'contentInsurance', 'otherInsurance'
+            ];
+
+            const maxId = prevRows.length > 0 ? Math.max(...prevRows.map(r => r.id)) : 0;
+            let nextId = maxId + 1;
+
+            const newRows = defaults.map(key => ({
+                id: nextId++,
+                propertyId: 0,
+                name: t(`realEstate.defaultTenant.${key}`),
+                amount: '',
+                frequency: 'Yearly'
+            }));
+
+            return [...prevRows, ...newRows];
+        });
+    };
+
+    const resetOwnerDefaults = (propId) => {
+        const id = parseInt(propId);
+        const defaults = [
+            'heating', 'electricity', 'contentInsurance', 'buildingInsurance',
+            'fireInsurance', 'otherInsurance', 'propertyTax', 'buildingMaintenance',
+            'gardenMaintenance', 'renovation'
+        ];
+
+        setMaintenanceRows(prevRows => {
+            // Remove existing rows for this property
+            const otherRows = prevRows.filter(r => (r.propertyId ?? 1) !== id);
+
+            const maxId = otherRows.length > 0 ? Math.max(...otherRows.map(r => r.id)) : 0;
+            let nextId = maxId + 1;
+
+            const newRows = defaults.map(key => ({
+                id: nextId++,
+                propertyId: id,
+                name: t(`realEstate.defaultMaintenance.${key}`),
+                amount: '',
+                frequency: 'Yearly'
+            }));
+
+            return [...otherRows, ...newRows];
+        });
+        toast.success(t('realEstate.resetDefaultsSuccess'));
+    };
+
+    const resetTenantDefaults = () => {
+        // Clear all Prop 1 rows and re-initialize with defaults
+        const defaults = [
+            'utilities', 'parking', 'electricity', 'contentInsurance', 'otherInsurance'
+        ];
+
+        setMaintenanceRows(prevRows => {
+            // Remove existing tenant rows
+            const otherRows = prevRows.filter(r => (r.propertyId ?? 1) !== 0);
+
+            const maxId = otherRows.length > 0 ? Math.max(...otherRows.map(r => r.id)) : 0;
+            let nextId = maxId + 1;
+
+            const newRows = defaults.map(key => ({
+                id: nextId++,
+                propertyId: 0,
+                name: t(`realEstate.defaultTenant.${key}`),
+                amount: '',
+                frequency: 'Yearly'
+            }));
+
+            return [...otherRows, ...newRows];
+        });
+        toast.success(t('realEstate.resetDefaultsSuccess'));
+    };
+
     const loadData = async () => {
         try {
             const data = await getRealEstateData(user.email, masterKey);
             if (data) {
-                const addPropId = (rows) => (rows || []).map(r => ({ ...r, propertyId: r.propertyId || 1 }));
+                const addPropId = (rows) => (rows || []).map(r => ({ ...r, propertyId: r.propertyId !== undefined ? r.propertyId : 1 }));
                 setMortgageRows(addPropId(data.mortgageRows));
                 setAssetRows(addPropId(data.assetRows));
                 setMaintenanceRows(addPropId(data.maintenanceRows));
@@ -194,7 +278,7 @@ const RealEstate = () => {
             // Simplest: Tenant uses rows with propertyId=1.
 
             let maintenanceSum = 0;
-            maintenanceRows.filter(r => (r.propertyId || 1) === 1).forEach(row => {
+            maintenanceRows.filter(r => (r.propertyId ?? 1) === 0).forEach(row => {
                 const amount = parseFloat(row.amount) || 0;
                 maintenanceSum += (row.frequency === 'Monthly' ? amount * 12 : amount);
             });
@@ -249,7 +333,7 @@ const RealEstate = () => {
 
         let mortgageP = 0;
         let mortgageY = 0;
-        mortgageRows.filter(r => (r.propertyId || 1) === id).forEach(row => {
+        mortgageRows.filter(r => (r.propertyId ?? 1) === id).forEach(row => {
             const amount = parseFloat(row.amount) || 0;
             const rate = parseFloat(row.rate) || 0;
             mortgageP += amount;
@@ -257,12 +341,12 @@ const RealEstate = () => {
         });
 
         let marketV = 0;
-        assetRows.filter(r => (r.propertyId || 1) === id).forEach(row => {
+        assetRows.filter(r => (r.propertyId ?? 1) === id).forEach(row => {
             marketV += parseFloat(row.amount) || 0;
         });
 
         let maintY = 0;
-        maintenanceRows.filter(r => (r.propertyId || 1) === id).forEach(row => {
+        maintenanceRows.filter(r => (r.propertyId ?? 1) === id).forEach(row => {
             const amount = parseFloat(row.amount) || 0;
             maintY += (row.frequency === 'Monthly' ? amount * 12 : amount);
         });
@@ -390,18 +474,22 @@ const RealEstate = () => {
         const defaults = {
             'Primary Mortgage': 'realEstate.defaultMortgageName',
             'Main Property': 'realEstate.defaultPropertyName',
-            'Electricity': 'realEstate.defaultMaintenance.electricity',
             'Heating': 'realEstate.defaultMaintenance.heating',
-            'Insurance': 'realEstate.defaultMaintenance.insurance',
-            'Taxes': 'realEstate.defaultMaintenance.taxes',
-            'Renovation funding': 'realEstate.defaultMaintenance.renovation',
-            'Garden': 'realEstate.defaultMaintenance.garden'
+            'Electricity': 'realEstate.defaultMaintenance.electricity',
+            'Content insurance': 'realEstate.defaultMaintenance.contentInsurance',
+            'Building insurance': 'realEstate.defaultMaintenance.buildingInsurance',
+            'Fire insurance': 'realEstate.defaultMaintenance.fireInsurance',
+            'Other insurances': 'realEstate.defaultMaintenance.otherInsurance',
+            'Property tax': 'realEstate.defaultMaintenance.propertyTax',
+            'Building maintenance': 'realEstate.defaultMaintenance.buildingMaintenance',
+            'Garden maintenance': 'realEstate.defaultMaintenance.gardenMaintenance',
+            'Renovation fund': 'realEstate.defaultMaintenance.renovation'
         };
         return defaults[name] ? t(defaults[name]) : name;
     };
 
     const renderKeyFigures = (data, isZone1 = false) => (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 gap-6 ${lodgingSituation === 'tenant' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
             <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="pt-4 pb-4">
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('realEstate.totalCostsYearly')}</h3>
@@ -414,27 +502,29 @@ const RealEstate = () => {
             <Card className="bg-primary/10 border-primary/30">
                 <CardContent className="pt-4 pb-4">
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('realEstate.totalCostsMonthly')}</h3>
-                    <div className="text-2xl font-bold text-primary">
+                    <div className="text-xl font-bold text-primary">
                         CHF {data.monthlyCost.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{t('realEstate.carriedToCosts')}</p>
                 </CardContent>
             </Card>
 
-            <Card className="bg-green-500/10 border-green-500/30">
-                <CardContent className="pt-4 pb-4">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('realEstate.netAssetValue')}</h3>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        CHF {data.assetValue.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{t('realEstate.carriedToAssets')}</p>
-                </CardContent>
-            </Card>
+            {lodgingSituation !== 'tenant' && (
+                <Card className="bg-green-500/10 border-green-500/30">
+                    <CardContent className="pt-4 pb-4">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('realEstate.netAssetValue')}</h3>
+                        <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                            CHF {data.assetValue.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{t('realEstate.carriedToAssets')}</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 
-    // Tenant Maintenance Rows (Use Prop 1)
-    const tenantMaintenanceRows = maintenanceRows.filter(r => (r.propertyId || 1) === 1);
+    // Tenant Maintenance Rows (Use Prop 0)
+    const tenantMaintenanceRows = maintenanceRows.filter(r => (r.propertyId ?? 1) === 0);
 
     return (
         <div className="min-h-screen py-6 bg-background space-y-8">
@@ -609,11 +699,24 @@ const RealEstate = () => {
                                                 </TableCell>
                                             </TableRow>
                                         ))}
+                                        <TableRow className="font-bold">
+                                            <TableCell>{t('realEstate.total')}</TableCell>
+                                            <TableCell className="text-right">CHF {
+                                                tenantMaintenanceRows.reduce((sum, r) => sum + (r.frequency === 'Monthly' ? (parseFloat(r.amount) || 0) * 12 : (parseFloat(r.amount) || 0)), 0).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                                            }</TableCell>
+                                            <TableCell></TableCell>
+                                            <TableCell></TableCell>
+                                        </TableRow>
                                     </TableBody>
                                 </Table>
-                                <Button variant="outline" size="sm" className="mt-4" onClick={() => addRow(setMaintenanceRows, { name: '', amount: '', frequency: 'Yearly' }, 1)}>
-                                    <Plus className="h-4 w-4 mr-2" /> {t('realEstate.addLine')}
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="mt-4" onClick={() => addRow(setMaintenanceRows, { name: '', amount: '', frequency: 'Yearly' }, 0)}>
+                                        <Plus className="h-4 w-4 mr-2" /> {t('realEstate.addLine')}
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="mt-4" onClick={resetTenantDefaults}>
+                                        {t('realEstate.resetDefaults')}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </>
@@ -621,10 +724,14 @@ const RealEstate = () => {
 
                 {/* 4. OWNER VIEW: TABS */}
                 {lodgingSituation === 'owner' && (
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                        <TabsList>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-b-0 rounded-none gap-2">
                             {Array.from({ length: parseInt(propertyCount) }, (_, i) => i + 1).map(num => (
-                                <TabsTrigger key={num} value={num.toString()} className="px-8 text-lg">
+                                <TabsTrigger
+                                    key={num}
+                                    value={num.toString()}
+                                    className="relative h-12 px-8 text-lg font-medium rounded-t-md rounded-b-none border-t border-x border-border/50 bg-background/50 text-muted-foreground data-[state=active]:bg-card/30 data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-0 -mb-[1px] z-10"
+                                >
                                     {t('realEstate.property')} {num}
                                 </TabsTrigger>
                             ))}
@@ -633,13 +740,13 @@ const RealEstate = () => {
                         {Array.from({ length: parseInt(propertyCount) }, (_, i) => i + 1).map(num => {
                             const tabId = num;
                             const propTotals = getPropertyTotals(tabId);
-                            const propMortgages = mortgageRows.filter(r => (r.propertyId || 1) === tabId);
-                            const propAssets = assetRows.filter(r => (r.propertyId || 1) === tabId);
-                            const propMaintenance = maintenanceRows.filter(r => (r.propertyId || 1) === tabId);
+                            const propMortgages = mortgageRows.filter(r => (r.propertyId ?? 1) === tabId);
+                            const propAssets = assetRows.filter(r => (r.propertyId ?? 1) === tabId);
+                            const propMaintenance = maintenanceRows.filter(r => (r.propertyId ?? 1) === tabId);
 
                             return (
                                 <TabsContent key={num} value={num.toString()} className="mt-0">
-                                    <div className="border border-border/50 rounded-lg p-6 space-y-8 bg-card/30">
+                                    <div className="border border-border/50 rounded-lg p-6 space-y-8 bg-card/30 relative z-0">
 
                                         {/* ZONE 1: PROPERTY SPECIFIC TOTALS */}
                                         {renderKeyFigures(propTotals, true)}
@@ -699,7 +806,7 @@ const RealEstate = () => {
                                                                 </TableRow>
                                                             );
                                                         })}
-                                                        <TableRow className="bg-muted/50 font-bold">
+                                                        <TableRow className="font-bold">
                                                             <TableCell>{t('realEstate.total')}</TableCell>
                                                             <TableCell className="text-right">CHF {propTotals.mortgageTotal.toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
                                                             <TableCell colSpan={2}></TableCell>
@@ -815,7 +922,7 @@ const RealEstate = () => {
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
-                                                        <TableRow className="bg-muted/50 font-bold">
+                                                        <TableRow className="font-bold">
                                                             <TableCell>{t('realEstate.total')}</TableCell>
                                                             <TableCell className="text-right">CHF {
                                                                 propMaintenance.reduce((sum, r) => sum + (r.frequency === 'Monthly' ? (parseFloat(r.amount) || 0) * 12 : (parseFloat(r.amount) || 0)), 0).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -825,9 +932,14 @@ const RealEstate = () => {
                                                         </TableRow>
                                                     </TableBody>
                                                 </Table>
-                                                <Button variant="outline" size="sm" className="mt-4" onClick={() => addRow(setMaintenanceRows, { name: '', amount: '', frequency: 'Yearly' }, tabId)}>
-                                                    <Plus className="h-4 w-4 mr-2" /> {t('realEstate.addLine')}
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button variant="outline" size="sm" className="mt-4" onClick={() => addRow(setMaintenanceRows, { name: '', amount: '', frequency: 'Yearly' }, tabId)}>
+                                                        <Plus className="h-4 w-4 mr-2" /> {t('realEstate.addLine')}
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="mt-4" onClick={() => resetOwnerDefaults(tabId)}>
+                                                        {t('realEstate.resetDefaults')}
+                                                    </Button>
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     </div>

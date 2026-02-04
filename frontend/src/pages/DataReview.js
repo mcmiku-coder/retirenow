@@ -618,10 +618,23 @@ const DataReview = () => {
         // STEP 3: Apply adjusted versions if they exist
         let finalIncomes;
         if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
-          // Use adjusted versions, but ensure retirement income is current
-          // Remove old retirement income from adjusted, add fresh retirement income
-          const adjustedRegularIncomes = scenarioData.adjustedIncomes.filter(inc => !inc.isRetirement);
-          finalIncomes = [...adjustedRegularIncomes, ...processedRetirementIncome];
+          // Merge logic for Incomes: Source of truth is originalRegularIncomes
+          const mergedIncomes = originalRegularIncomes.map(freshInc => {
+            const savedInc = scenarioData.adjustedIncomes.find(si => si.id === freshInc.id);
+            return {
+              ...freshInc,
+              amount: freshInc.amount,
+              adjustedAmount: savedInc ? savedInc.adjustedAmount : freshInc.amount,
+              // Keep startDate/endDate overrides if they were adjusted in Scenario?
+              // For now, let's assume Scenario adjustments to date take precedence if we want that,
+              // OR we want fresh dates from input.
+              // Given the sync issue, let's prefer fresh data for structural fields, and only keep 'adjustedAmount' and maybe specific scenario overrides.
+              // However, the override logic for Salary (Opt2) happens later/earlier.
+              // Let's stick to safe merge: fresh amount is key.
+            };
+          });
+
+          finalIncomes = [...mergedIncomes, ...processedRetirementIncome];
         } else {
           // No adjustments yet, use original data
           finalIncomes = allOriginalIncomes;
@@ -671,7 +684,21 @@ const DataReview = () => {
         }));
 
         if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
-          setCosts(scenarioData.adjustedCosts);
+          // Merge logic: Source of truth is originalCosts (fresh data).
+          // We only want to keep the 'adjustedAmount' from the saved scenario data.
+          const mergedCosts = originalCosts.map(freshCost => {
+            const savedCost = scenarioData.adjustedCosts.find(sc => sc.id === freshCost.id);
+            return {
+              ...freshCost,
+              // If we have a saved version, keep its adjusted Amount (unless user wants to reset? usually we keep adjustments)
+              // But we MUST use the fresh 'amount' (Original Value)
+              amount: freshCost.amount,
+              adjustedAmount: savedCost ? savedCost.adjustedAmount : freshCost.amount,
+              // Also keep other override flags if they exist in savedCost? 
+              // Usually we only care about adjustedAmount for simulation.
+            };
+          });
+          setCosts(mergedCosts);
         } else {
           setCosts(originalCosts);
         }

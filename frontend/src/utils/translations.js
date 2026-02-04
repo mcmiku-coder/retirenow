@@ -477,13 +477,26 @@ export const translations = {
       defaultMortgageName: "Primary Mortgage",
       defaultPropertyName: "Main Property",
       defaultMaintenance: {
-        electricity: "Electricity",
         heating: "Heating",
-        insurance: "Insurance",
-        taxes: "Taxes",
-        renovation: "Renovation funding",
-        garden: "Garden"
+        electricity: "Electricity",
+        contentInsurance: "Content insurance",
+        buildingInsurance: "Building insurance",
+        fireInsurance: "Fire insurance",
+        otherInsurance: "Other insurances",
+        propertyTax: "Property tax",
+        buildingMaintenance: "Building maintenance",
+        gardenMaintenance: "Garden maintenance",
+        renovation: "Renovation fund"
       },
+      defaultTenant: {
+        utilities: "Utilities charges",
+        parking: "Parking",
+        electricity: "Electricity",
+        contentInsurance: "Content insurance",
+        otherInsurance: "Other insurances"
+      },
+      resetDefaults: "Reset to defaults",
+      resetDefaultsSuccess: "Defaults restored. Please click 'Apply & Save' to persist changes.",
       property: "Property"
     }
   },
@@ -962,13 +975,26 @@ export const translations = {
       defaultMortgageName: "Hypothèque principale",
       defaultPropertyName: "Propriété principale",
       defaultMaintenance: {
-        electricity: "Électricité",
         heating: "Chauffage",
-        insurance: "Assurance",
-        taxes: "Impôts",
-        renovation: "Fonds de rénovation",
-        garden: "Jardin"
+        electricity: "Électricité",
+        contentInsurance: "Assurance ménage",
+        buildingInsurance: "Assurance bâtiment",
+        fireInsurance: "Assurance incendie",
+        otherInsurance: "Autres assurances",
+        propertyTax: "Taxe foncière",
+        buildingMaintenance: "Entretien immeuble",
+        gardenMaintenance: "Entretien jardin",
+        renovation: "Fonds de rénovation"
       },
+      defaultTenant: {
+        utilities: "Charges",
+        parking: "Parking",
+        electricity: "Électricité",
+        contentInsurance: "Assurance ménage",
+        otherInsurance: "Autres assurances"
+      },
+      resetDefaults: "Réinitialiser aux valeurs par défaut",
+      resetDefaultsSuccess: "Valeurs par défaut restaurées. Veuillez cliquer sur 'Appliquer & Sauvegarder'.",
       property: "Propriété"
     }
   }
