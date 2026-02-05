@@ -24,6 +24,34 @@ import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import DetailedChart from '../components/DetailedChart';
+
+// PDF Generation Imports
+import {
+  generateCoverPage,
+  generateTableOfContents,
+  generateSimulationSummary
+} from '../utils/pdfPageGenerators';
+
+import {
+  generatePersonalInfo,
+  generateIncomeAssets,
+  generateCostDebts
+} from '../utils/pdfPageGenerators2';
+
+import {
+  generateSimulationChoice,
+  generateRetirementBenefits,
+  generateDataReview
+} from '../utils/pdfPageGenerators3';
+
+import {
+  generateLandscapeGraph,
+  generateYearByYearBreakdown,
+  generateLodgingAnnex,
+  generateInvestmentInfo,
+  generateLegalWarnings
+} from '../utils/pdfPageGenerators4';
 
 
 const ScenarioResult = () => {
@@ -1389,782 +1417,154 @@ const ScenarioResult = () => {
     }
   }, [activeFilters, activateAllOwnings, owningsActivationDate, showTrendHighlight, loading, user, masterKey, scenarioData]);
 
-  // Generate Comprehensive PDF Report
+  // Generate PDF Report
   const generatePDF = async () => {
     try {
       setGeneratingPdf(true);
 
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let yPosition = 20;
 
-      // Helper function to format numbers without special characters
-      const formatNumber = (num) => {
-        // Handle NaN, null, undefined, or invalid numbers
-        if (isNaN(num) || num === null || num === undefined) {
-          return '0';
-        }
-        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+      // Page tracking object
+      const pageNumbers = {};
+      let currentPage = 1;
+
+      // ===== PAGE 1: COVER PAGE =====
+      await generateCoverPage(pdf, language);
+      currentPage++;
+
+      // ===== PAGE 2: TABLE OF CONTENTS (blank for now, will populate at end) =====
+      pdf.addPage(); // Add blank page 2
+      currentPage++;
+
+      // ===== PAGE 3: SIMULATION SUMMARY =====
+      pageNumbers.summary = currentPage;
+      const yearlyData = projection?.yearlyBreakdown || [];
+      const finalBalance = yearlyData.length > 0
+        ? yearlyData[yearlyData.length - 1].cumulativeBalance
+        : projection?.finalBalance || 0;
+
+      const summaryData = {
+        finalBalance,
+        retirementAge: scenarioData?.retirementAge || 65,
+        yearsInRetirement: yearlyData.length || 0,
+        deathDate: userData?.theoreticalDeathDate,
+        peakWealth: Math.max(...(yearlyData.map(p => p.cumulativeBalance) || [0])),
+        totalPages: 14 // Will be updated
       };
 
-      // Helper to format dates
-      const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString();
+      await generateSimulationSummary(pdf, summaryData, language, currentPage);
+      currentPage++;
+
+      // ===== PAGE 4: PERSONAL INFO =====
+      pageNumbers.personal = currentPage;
+      generatePersonalInfo(pdf, userData, scenarioData, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 5: INCOME & ASSETS =====
+      pageNumbers.incomeAssets = currentPage;
+      generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 6: COSTS & DEBTS =====
+      pageNumbers.costDebts = currentPage;
+      generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 7: SIMULATION CHOICE =====
+      pageNumbers.simChoice = currentPage;
+      generateSimulationChoice(pdf, scenarioData, userData, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 8: RETIREMENT BENEFITS =====
+      pageNumbers.benefits = currentPage;
+      generateRetirementBenefits(pdf, scenarioData, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 9: DATA REVIEW =====
+      pageNumbers.dataReview = currentPage;
+      const allData = {
+        income: incomes.filter(i => activeFilters[`income-${i.id || i.name}`]),
+        assets: assets.filter(a => activeFilters[`asset-${a.id || a.name}`]),
+        costs: costs.filter(c => activeFilters[`cost-${c.id || c.name}`]),
+        debts: debts.filter(d => activeFilters[`debt-${d.id || d.name}`])
       };
+      generateDataReview(pdf, allData, language, currentPage, summaryData.totalPages);
+      currentPage++;
 
-      // ===== PAGE 1: HEADER, SIMULATION OPTION, GRAPH =====
+      // ===== PAGE 10: LANDSCAPE GRAPH =====
+      pageNumbers.graph = currentPage;
 
-      // Header
-      pdf.setFontSize(18);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Can I Quit? - Retirement Simulation Report', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 10;
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 15;
+      // Use the hidden detailed graph for specific high-res capture
+      const graphElement = document.querySelector('#pdf-detailed-graph .recharts-wrapper') || document.querySelector('#pdf-detailed-graph');
 
-      // Simulation Option - Full Explanation
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Chosen Simulation Option', 15, yPosition);
-      yPosition += 8;
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
+      // Fallback to minimal wait to ensure render
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      const option = scenarioData?.retirementOption || 'option1';
-      const retireDate = new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate);
-      const birthDate = new Date(userData.birthDate);
-      const retireAge = retireDate.getFullYear() - birthDate.getFullYear();
+      await generateLandscapeGraph(pdf, graphElement, summaryData, language, currentPage, summaryData.totalPages);
+      currentPage++;
 
-      let optionText = '';
-      if (option === 'option0') {
-        optionText = `Option 0: Legal Retirement Date (Age 65)`;
-      } else if (option === 'option1') {
-        optionText = `Option 1: Early Retirement with LPP Pension at Age ${retireAge}`;
-        if (scenarioData?.pensionCapital) {
-          optionText += `\nCurrent Pension Capital: CHF ${formatNumber(scenarioData.pensionCapital)}`;
-        }
-      } else if (option === 'option2') {
-        optionText = `Option 2: Early Retirement with LPP Capital at Age ${retireAge}`;
-        if (scenarioData?.projectedLPPCapital) {
-          optionText += `\nProjected LPP Capital: CHF ${formatNumber(scenarioData.projectedLPPCapital)}`;
-        }
-      } else if (option === 'option3') {
-        optionText = `Option 3: Calculate earliest possible retirement (balance > 0)`;
+      // ===== PAGE 11: YEAR-BY-YEAR BREAKDOWN =====
+      pageNumbers.breakdown = currentPage;
+      generateYearByYearBreakdown(pdf, yearlyData, language, currentPage, summaryData.totalPages);
+      currentPage++;
+
+      // ===== PAGE 12: LODGING ANNEX =====
+      pageNumbers.lodging = currentPage;
+      generateLodgingAnnex(pdf, realEstateData, language, currentPage, summaryData.totalPages);
+
+      // Lodging annex may add multiple pages for owners with multiple properties
+      const propertiesCount = realEstateData?.lodgingSituation === 'owner'
+        ? (realEstateData?.properties?.length || 1)
+        : 1;
+      currentPage += propertiesCount;
+
+      // ===== PAGE 13: INVESTMENT INFO (CONDITIONAL) =====
+      // Get investment data from assets or a separate state if available
+      const investmentAssets = assets.filter(a => a.category === 'investment' || a.strategy);
+      if (investmentAssets && investmentAssets.length > 0) {
+        pageNumbers.investments = currentPage;
+        generateInvestmentInfo(pdf, investmentAssets, language, currentPage, summaryData.totalPages);
+        currentPage++;
       }
 
-      const lines = pdf.splitTextToSize(optionText, pageWidth - 30);
+      // ===== PAGE 14: LEGAL WARNINGS =====
+      pageNumbers.warnings = currentPage;
+      generateLegalWarnings(pdf, language, currentPage, summaryData.totalPages);
+      currentPage++;
 
-      // Set blue color for the option text (RGB: 59, 130, 246 - blue-500)
-      pdf.setTextColor(59, 130, 246);
-      pdf.text(lines, 15, yPosition);
-      pdf.setTextColor(0, 0, 0); // Reset to black
+      // Update total pages
+      pageNumbers.total = currentPage - 1;
+      summaryData.totalPages = pageNumbers.total;
 
-      yPosition += lines.length * 5 + 5;
+      // ===== GENERATE TABLE OF CONTENTS =====
+      // We need to draw TOC on page 2, but setPage() doesn't reorder pages in the output
+      // Solution: Draw TOC on page 2, then manually reorder the internal pages array
 
-      pdf.text(`Name: ${userData?.firstName || ''} ${userData?.lastName || ''}`, 15, yPosition);
-      yPosition += 6;
-      pdf.text(`Birth Date: ${formatDate(userData?.birthDate)}`, 15, yPosition);
-      yPosition += 6;
-      pdf.text(`Retirement Date: ${formatDate(retireDate)}`, 15, yPosition);
-      yPosition += 6;
-      pdf.text(`Final Balance: CHF ${formatNumber(projection.finalBalance)}`, 15, yPosition);
-      yPosition += 6;
-      pdf.text(`Status: ${projection.canQuit ? 'Positive' : 'Negative'}`, 15, yPosition);
-      yPosition += 12;
+      console.log('Total pages before TOC:', pdf.internal.getNumberOfPages());
 
+      // Navigate to page 2 (the blank page we created earlier)
+      pdf.setPage(2);
 
-      // Capture Graph
-      try {
-        const chartElement = document.querySelector('.recharts-wrapper');
-        if (chartElement) {
-          // Wait for state update to trigger re-render
-          await new Promise(resolve => setTimeout(resolve, 500)); // Increased timeout for stability
+      // Draw TOC content on page 2
+      generateTableOfContents(pdf, pageNumbers, language);
 
-          const canvas = await html2canvas(chartElement, {
-            backgroundColor: '#ffffff',
-            scale: 2,
-            useCORS: true, // Enable CORS for images
-            allowTaint: true,
-            logging: false,
-            ignoreElements: (element) => element.tagName === 'IMG' || element.tagName === 'IMAGE' // Explicitly ignore external images to prevent crash
-          });
+      console.log('Total pages after TOC:', pdf.internal.getNumberOfPages());
+      console.log('TOC drawn on page 2');
 
-          const imgData = canvas.toDataURL('image/png');
-          const imgWidth = pageWidth - 30;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // The TOC is now on page 2, but we need to ensure page 2 is in portrait mode
+      // Check if any landscape pages affected page 2's orientation
+      const pages = pdf.internal.pages;
+      console.log('Pages array length:', pages.length);
 
-          if (yPosition + imgHeight > pageHeight - 20) {
-            pdf.addPage();
-            yPosition = 20;
-          }
-
-          pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
-        }
-      } catch (chartError) {
-        console.error('Failed to capture chart for PDF (continuing without it):', chartError);
-        pdf.setFontSize(10);
-        pdf.setTextColor(255, 0, 0);
-        pdf.text('Chart could not be generated in PDF', 15, yPosition);
-        pdf.setTextColor(0, 0, 0);
-        yPosition += 10;
-      }
-
-
-      // ===== PAGES 2-N: ALL DATA REVIEW TABLES WITH ALL COLUMNS =====
-
-      pdf.addPage();
-      yPosition = 20;
-
-      // Periodic Inflows Table (ALL columns)
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Periodic Inflows - Can be adjusted for simulation', 15, yPosition);
-      yPosition += 8;
-
-      const activeIncomes = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
-      if (activeIncomes.length > 0) {
-        autoTable(pdf, {
-          startY: yPosition,
-          head: [['Name', 'Original', 'Adjusted', 'Frequency', 'Start Date', 'End Date', 'Cluster']],
-          body: activeIncomes.map(i => [
-            i.name,
-            formatNumber(parseFloat(i.amount)),
-            formatNumber(parseFloat(i.adjustedAmount || i.amount)),
-            i.frequency,
-            formatDate(i.startDate),
-            formatDate(i.endDate),
-            i.clusterTag || ''
-          ]),
-          theme: 'grid',
-          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
-          styles: { fontSize: 7 },
-          columnStyles: {
-            1: { halign: 'right' }, // Original
-            2: { halign: 'right' }  // Adjusted
-          },
-          didParseCell: function (data) {
-            // Adjusted column is index 2
-            if (data.section === 'body' && data.column.index === 2) {
-              const rowIndex = data.row.index;
-              const income = activeIncomes[rowIndex];
-              const original = parseFloat(income.amount) || 0;
-              const adjusted = parseFloat(income.adjustedAmount || income.amount) || 0;
-
-              if (adjusted < original) {
-                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
-              } else if (adjusted > original) {
-                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
-              }
-            }
-          }
-        });
-        yPosition = pdf.lastAutoTable.finalY + 10;
-      }
-
-      // Current or Future Assets Table (ALL columns)
-      if (yPosition > pageHeight - 40) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Current or Future Assets', 15, yPosition);
-      yPosition += 8;
-
-      const activeAssets = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
-
-      // Use activeAssets directly as Net Housing Value is now provided by data source
-      const pdfAssets = activeAssets;
-
-      if (pdfAssets.length > 0) {
-        autoTable(pdf, {
-          startY: yPosition,
-          head: [['Name', 'Original', 'Adjusted', 'Category', 'Preserve', 'Avail.Type', 'Avail.Details', 'Strategy', 'Cluster']],
-          body: pdfAssets.map(a => {
-            // Use amount for both original and adjusted if adjustedAmount is missing
-            const originalAmount = parseFloat(a.amount) || 0;
-            const adjustedAmount = parseFloat(a.adjustedAmount || a.amount) || 0;
-
-            // Infer availability type if not explicitly set
-            let availType = a.availabilityType || '';
-            if (!availType && a.availabilityTimeframe) availType = 'Period';
-            if (!availType && a.availabilityDate) availType = 'Date';
-
-            // Get availability details
-            let availDetails = '';
-            if (a.availabilityDate) {
-              availDetails = formatDate(a.availabilityDate);
-            } else if (a.availabilityTimeframe) {
-              availDetails = a.availabilityTimeframe;
-            }
-
-            const row = [
-              a.name || '',
-              formatNumber(originalAmount),
-              formatNumber(adjustedAmount),
-              a.category || '',
-              a.preserve || '',
-              availType,
-              availDetails,
-              a.strategy || '',
-              a.clusterTag || ''
-            ];
-
-            return row;
-          }),
-          theme: 'grid',
-          headStyles: { fillColor: [60, 60, 60], fontSize: 7 },
-          styles: { fontSize: 6 },
-          columnStyles: {
-            1: { halign: 'right' }, // Original
-            2: { halign: 'right' }  // Adjusted
-          },
-          didParseCell: function (data) {
-            // Adjusted column is index 2
-            if (data.section === 'body' && data.column.index === 2) {
-              const rowIndex = data.row.index;
-              const asset = pdfAssets[rowIndex];
-              if (asset) {
-                const original = parseFloat(asset.amount) || 0;
-                const adjusted = parseFloat(asset.adjustedAmount || asset.amount) || 0;
-
-                if (adjusted < original) {
-                  data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
-                }
-              }
-            }
-          }
-        });
-        yPosition = pdf.lastAutoTable.finalY + 10;
-      }
-
-      // Periodic Outflows Table (ALL columns)
-      if (yPosition > pageHeight - 40) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Periodic Outflows - Can be adjusted for simulation', 15, yPosition);
-      yPosition += 8;
-
-      const activeCosts = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
-      if (activeCosts.length > 0) {
-        autoTable(pdf, {
-          startY: yPosition,
-          head: [['Name', 'Original', 'Adjusted', 'Frequency', 'Start Date', 'End Date', 'Cluster']],
-          body: activeCosts.map(c => [
-            c.name,
-            formatNumber(parseFloat(c.amount)),
-            formatNumber(parseFloat(c.adjustedAmount || c.amount)),
-            c.frequency,
-            formatDate(c.startDate),
-            formatDate(c.endDate),
-            c.clusterTag || ''
-          ]),
-          theme: 'grid',
-          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
-          styles: { fontSize: 7 },
-          columnStyles: {
-            1: { halign: 'right' }, // Original
-            2: { halign: 'right' }  // Adjusted
-          },
-          didParseCell: function (data) {
-            // Adjusted column is index 2
-            if (data.section === 'body' && data.column.index === 2) {
-              const rowIndex = data.row.index;
-              const cost = activeCosts[rowIndex];
-              const original = parseFloat(cost.amount) || 0;
-              const adjusted = parseFloat(cost.adjustedAmount || cost.amount) || 0;
-
-              if (adjusted < original) {
-                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
-              } else if (adjusted > original) {
-                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
-              }
-            }
-          }
-        });
-        yPosition = pdf.lastAutoTable.finalY + 10;
-      }
-
-      // Current or Future Debts Table (ALL columns)
-      if (yPosition > pageHeight - 40) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Current or Future Debts', 15, yPosition);
-      yPosition += 8;
-
-      const activeDebts = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
-      if (activeDebts.length > 0) {
-        autoTable(pdf, {
-          startY: yPosition,
-          head: [['Name', 'Original', 'Adjusted', 'Avail.Type', 'Avail.Details', 'Cluster']],
-          body: activeDebts.map(d => {
-            // Infer availability type if not explicitly set
-            let availType = d.madeAvailableType || '';
-            if (!availType && d.madeAvailableTimeframe) availType = 'Period';
-            if (!availType && d.madeAvailableDate) availType = 'Date';
-
-            // Get availability details
-            let availDetails = '';
-            if (d.madeAvailableDate) {
-              availDetails = formatDate(d.madeAvailableDate);
-            } else if (d.madeAvailableTimeframe) {
-              availDetails = d.madeAvailableTimeframe;
-            }
-
-            return [
-              d.name,
-              formatNumber(parseFloat(d.amount)),
-              formatNumber(parseFloat(d.adjustedAmount || d.amount)),
-              availType,
-              availDetails,
-              d.clusterTag || ''
-            ];
-          }),
-          theme: 'grid',
-          headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
-          styles: { fontSize: 7 },
-          columnStyles: {
-            1: { halign: 'right' }, // Original
-            2: { halign: 'right' }  // Adjusted
-          },
-          didParseCell: function (data) {
-            // Adjusted column is index 2
-            if (data.section === 'body' && data.column.index === 2) {
-              const rowIndex = data.row.index;
-              const debt = activeDebts[rowIndex];
-              const original = parseFloat(debt.amount) || 0;
-              const adjusted = parseFloat(debt.adjustedAmount || debt.amount) || 0;
-
-              if (adjusted < original) {
-                data.cell.styles.textColor = [34, 197, 94]; // Green - reduction
-              } else if (adjusted > original) {
-                data.cell.styles.textColor = [239, 68, 68]; // Red - increase
-              }
-            }
-          }
-        });
-      }
-
-      // ===== LAST PAGE: LANDSCAPE YEAR-BY-YEAR BREAKDOWN =====
-
-      pdf.addPage('a4', 'landscape');
-      const landscapeWidth = pdf.internal.pageSize.getWidth();
-
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Year-by-Year Breakdown', 15, 15);
-
-      // Build headers explicitly based on the active lists order to match Data Review
-      const headers = ['Year'];
-
-      // 1. Incomes
-      let activeIncomeItems = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
-
-      // Apply Option 3 Pre-retirement filter for PDF (Same logic as UI)
-      if (scenarioData?.retirementOption === 'option3' && projection?.simRetirementDate) {
-        const birthDate = new Date(userData.birthDate);
-        const simDate = new Date(projection.simRetirementDate);
-        const ageAtRetirement = (simDate.getFullYear() - birthDate.getFullYear()) + ((simDate.getMonth() - birthDate.getMonth()) / 12);
-        const earliestPlanAge = parseInt(scenarioData.option3EarlyAge || '58');
-
-        // Determine which age bucket was used
-        let usedAge = Math.floor(ageAtRetirement);
-        if (usedAge < earliestPlanAge) usedAge = earliestPlanAge;
-
-        activeIncomeItems = activeIncomeItems.filter(item => {
-          if (item.id?.toString().includes('pre_retirement_')) {
-            const match = item.id.toString().match(/_(\d+)\s+$/) || item.id.toString().match(/_(\d+)\s*$/);
-            if (match) {
-              const itemAge = parseInt(match[1]);
-              if (itemAge !== usedAge) return false;
-            }
-          }
-          return true;
-        });
-      }
-
-      // Filter out items with 0 amount, BUT keep Pre-retirement items (as they are dynamic)
-      activeIncomeItems = activeIncomeItems.filter(i =>
-        i.id?.toString().includes('pre_retirement_') || Math.abs(parseFloat(i.adjustedAmount || i.amount || 0)) > 0
-      );
-
-      activeIncomeItems.forEach(i => headers.push(i.name.substring(0, 25))); // Increased limit to avoid truncation
-
-      // 2. Assets (displayed as inflows)
-      const activeAssetItems = assets.filter(a => activeFilters[`asset-${a.id || a.name}`] && Math.abs(parseFloat(a.adjustedAmount || a.amount || 0)) > 0);
-      activeAssetItems.forEach(a => headers.push(a.name.substring(0, 25)));
-
-      // 3. Costs
-      const activeCostItems = costs.filter(c => activeFilters[`cost-${c.id || c.name}`] && Math.abs(parseFloat(c.adjustedAmount || c.amount || 0)) > 0);
-      activeCostItems.forEach(c => headers.push(c.name.substring(0, 25)));
-
-      // 4. Debts (displayed as outflows)
-      const activeDebtItems = debts.filter(d => activeFilters[`debt-${d.id || d.name}`] && Math.abs(parseFloat(d.adjustedAmount || d.amount || 0)) > 0);
-      activeDebtItems.forEach(d => headers.push(d.name.substring(0, 25)));
-
-      headers.push('Annual Bal.');
-      headers.push('Cumul. Bal.');
-
-      // Build body data from projection
-      const bodyData = projection.yearlyBreakdown.map(row => {
-        const rowData = [row.year];
-
-        // 1. Incomes
-        activeIncomeItems.forEach(i => {
-          let val = row.incomeBreakdown?.[i.name] || 0;
-
-          // FIX for Option 3: Map Pre-retirement dummy items to actual LPP values calculated in simulation
-          if (val === 0 && i.id?.toString().includes('pre_retirement_')) {
-            if (i.name.toLowerCase().includes('pension')) {
-              // Try to find the LPP Pension key used by calculateProjection
-              // 1. Check for standard LPP row name from retirementData
-              const lppRow = retirementData?.rows?.find(r => r.name.toLowerCase().includes('lpp') && !r.name.toLowerCase().includes('sup') && !r.name.toLowerCase().includes('capital'));
-              const lppKey = lppRow ? lppRow.name : 'LPP Pension';
-              val = row.incomeBreakdown?.[lppKey] || 0;
-            } else if (i.name.toLowerCase().includes('capital')) {
-              // Try to find LPP Capital key
-              val = row.incomeBreakdown?.['LPP Capital'] || 0;
-            }
-          }
-
-          rowData.push(val > 0 ? formatNumber(val) : '');
-        });
-
-        // 2. Assets (stored in incomeBreakdown in calculation logic)
-        activeAssetItems.forEach(a => {
-          const val = row.incomeBreakdown?.[a.name] || 0;
-          rowData.push(val > 0 ? formatNumber(val) : '');
-        });
-
-        // 3. Costs (stored in costBreakdown)
-        activeCostItems.forEach(c => {
-          const val = row.costBreakdown?.[c.name] || 0;
-          rowData.push(val > 0 ? formatNumber(val) : '');
-        });
-
-        // 4. Debts (stored in costBreakdown)
-        activeDebtItems.forEach(d => {
-          const val = row.costBreakdown?.[d.name] || 0;
-          rowData.push(val > 0 ? formatNumber(val) : '');
-        });
-
-        // Balances
-        rowData.push(formatNumber(row.annualBalance));
-        rowData.push(formatNumber(row.cumulativeBalance));
-
-        return rowData;
-      });
-
-      // Calculate boundaries for separators
-      // Year is column 0
-      const boundaryIncome = activeIncomeItems.length; // 0 (Year) + N incomes -> Last Income is at index N
-      const boundaryAssets = boundaryIncome + activeAssetItems.length;
-      const boundaryCosts = boundaryAssets + activeCostItems.length;
-      const boundaryDebts = boundaryCosts + activeDebtItems.length;
-
-      autoTable(pdf, {
-        startY: 25,
-        head: [headers],
-        body: bodyData,
-        theme: 'grid',
-        headStyles: { fillColor: [60, 60, 60], fontSize: 6, halign: 'right' },
-        styles: { fontSize: 5, cellPadding: 1, halign: 'right' },
-        columnStyles: {
-          0: { fontStyle: 'bold', halign: 'left' }
-        },
-        didDrawCell: function (data) {
-          // Add thick colored vertical lines to separate sections
-          if (data.section === 'body' || data.section === 'head') {
-            const idx = data.column.index;
-            // Draw line on the right edge of the cell if it's a boundary column
-            if (idx === boundaryIncome || idx === boundaryAssets || idx === boundaryCosts || idx === boundaryDebts) {
-              const doc = data.doc;
-              doc.setDrawColor(59, 130, 246); // Blue color
-              doc.setLineWidth(0.5); // Thicker line
-
-              const x = data.cell.x + data.cell.width;
-              const y = data.cell.y;
-              const h = data.cell.height;
-
-              doc.line(x, y, x, y + h);
-            }
-          }
-        },
-        didParseCell: function (data) {
-          // Apply conditional formatting to the last two columns (Annual Bal. and Cumul. Bal.)
-          const numColumns = headers.length;
-          const annualBalColIndex = numColumns - 2;
-          const cumulBalColIndex = numColumns - 1;
-
-          if (data.section === 'body') {
-            // Add light grey background to Year (0) and Balance columns
-            if (data.column.index === 0 || data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex) {
-              data.cell.styles.fillColor = [245, 245, 245];
-            }
-
-            if (data.column.index === annualBalColIndex || data.column.index === cumulBalColIndex) {
-              const rowIndex = data.row.index;
-              const yearData = projection.yearlyBreakdown[rowIndex];
-
-              if (yearData) {
-                const value = data.column.index === annualBalColIndex ? yearData.annualBalance : yearData.cumulativeBalance;
-
-                // Set text color based on positive/negative
-                if (value >= 0) {
-                  data.cell.styles.textColor = [34, 197, 94]; // Green (green-500)
-                }
-              }
-            }
-          }
-        },
-        willDrawCell: function (data) {
-          // Verify if we need this hook? No, just close didParseCell properly.
-          // didParseCell is defined at 1903.
-        }
-      });
-
-      // ===== ANNEX: LODGING COSTS =====
-      const isTenant = realEstateData?.lodgingSituation === 'tenant';
-      const propCount = realEstateData?.propertyCount || 1;
-
-      // Helper to calculate totals for a specific property (or tenant)
-      const calcPropertyTotals = (pId) => {
-        // Ensure realEstateData and its arrays exist before filtering
-        const mortgageRows = realEstateData?.mortgageRows || [];
-        const assetRows = realEstateData?.assetRows || [];
-        const maintenanceRows = realEstateData?.maintenanceRows || [];
-
-        const pMortgages = mortgageRows.filter(r => (r.propertyId ?? 1) === pId);
-        const pAssets = assetRows.filter(r => (r.propertyId ?? 1) === pId);
-        const pMaintenance = maintenanceRows.filter(r => (r.propertyId ?? 1) === pId);
-
-        const mortgageYearlyCost = pMortgages.reduce((sum, r) => sum + (parseFloat(r.amount || 0) * (parseFloat(r.rate || 0) / 100)), 0);
-        const mortgagePrincipal = pMortgages.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-        const maintenanceYearlyCost = pMaintenance.reduce((sum, r) => {
-          const amount = parseFloat(r.amount || 0);
-          const freqMultiplier = r.frequency === 'Monthly' ? 12 : 1;
-          return sum + (amount * freqMultiplier);
-        }, 0);
-        const assetValue = pAssets.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-
-        const totalYearlyCost = mortgageYearlyCost + maintenanceYearlyCost;
-        return {
-          yearlyCost: totalYearlyCost,
-          monthlyCost: totalYearlyCost / 12,
-          netAssetValue: assetValue - mortgagePrincipal,
-          mortgages: pMortgages,
-          assets: pAssets,
-          maintenance: pMaintenance
-        };
-      };
-
-      if (!realEstateData) {
-        pdf.addPage('a4', 'portrait');
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Annexe : Frais de logement' : 'Annex : lodging costs', 15, 20);
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'italic');
-        pdf.text(language === 'fr' ? 'Aucune donnée immobilière enregistrée.' : 'No housing calculation data saved.', 15, 40);
-      } else if (isTenant) {
-        // TENANT VIEW (Single Page)
-        pdf.addPage('a4', 'portrait');
-        let yPosition = 20;
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Annexe : Frais de logement' : 'Annex : lodging costs', 15, yPosition);
-        yPosition += 15;
-
-        const tenantData = calcPropertyTotals(0); // Tenant = Property 0
-
-        if (tenantData.maintenance.length > 0) {
-          pdf.setFontSize(12);
-          pdf.text(language === 'fr' ? 'Entretien & Charges' : 'Maintenance & Other Costs', 15, yPosition);
-          yPosition += 5;
-
-          autoTable(pdf, {
-            startY: yPosition,
-            head: [[
-              language === 'fr' ? 'Nom' : 'Name',
-              language === 'fr' ? 'Montant' : 'Amount',
-              language === 'fr' ? 'Fréquence' : 'Frequency'
-            ]],
-            body: tenantData.maintenance.map(row => [
-              row.name,
-              formatNumber(parseFloat(row.amount) || 0),
-              language === 'fr' && row.frequency === 'Yearly' ? 'Annuel' :
-                language === 'fr' && row.frequency === 'Monthly' ? 'Mensuel' : row.frequency
-            ]),
-            theme: 'grid',
-            headStyles: { fillColor: [60, 60, 60] }
-          });
-          yPosition = pdf.lastAutoTable.finalY + 15;
-        }
-
-        // Tenant Summary
-        pdf.setFontSize(12);
-        pdf.text(language === 'fr' ? 'Résumé' : 'Summary', 15, yPosition);
-        yPosition += 8;
-
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-
-        const summaryData = [
-          [language === 'fr' ? 'Coût Total Annuel' : 'Total Yearly Cost', `CHF ${formatNumber(tenantData.yearlyCost)}`],
-          [language === 'fr' ? 'Coût Total Mensuel (Repris dans les Dépenses)' : 'Total Monthly Cost (Carried to Costs)', `CHF ${formatNumber(tenantData.monthlyCost)}`]
-        ];
-
-        autoTable(pdf, {
-          startY: yPosition,
-          body: summaryData,
-          theme: 'plain',
-          columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 100 },
-            1: { fontStyle: 'bold' }
-          }
-        });
-
-      } else {
-        // OWNER VIEW (Multi-Page Loop)
-        for (let i = 1; i <= propCount; i++) {
-          pdf.addPage('a4', 'portrait');
-          let yPosition = 20;
-
-          const propData = calcPropertyTotals(i);
-          // Use default name if not found (Assets usually contain name)
-          const propName = propData.assets.length > 0 ? propData.assets[0].name : (language === 'fr' ? `Propriété ${i}` : `Property ${i}`);
-
-          pdf.setFontSize(16);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(language === 'fr' ? 'Annexe : Frais de logement' : 'Annex : lodging costs', 15, yPosition);
-          yPosition += 10;
-
-          pdf.setFontSize(14);
-          pdf.text(propName, 15, yPosition); // Property Name Header
-          yPosition += 15;
-
-          // 1. Mortgage Details
-          if (propData.mortgages.length > 0) {
-            pdf.setFontSize(12);
-            pdf.text(language === 'fr' ? 'Détails Hypothécaires' : 'Mortgage Details', 15, yPosition);
-            yPosition += 5;
-
-            autoTable(pdf, {
-              startY: yPosition,
-              head: [[
-                language === 'fr' ? 'Nom' : 'Name',
-                language === 'fr' ? 'Montant' : 'Amount',
-                language === 'fr' ? 'Échéance' : 'Maturity Date',
-                language === 'fr' ? 'Taux' : 'Rate',
-                language === 'fr' ? 'Coût Annuel' : 'Yearly Cost'
-              ]],
-              body: propData.mortgages.map(row => {
-                const amount = parseFloat(row.amount || 0);
-                const rate = parseFloat(row.rate || 0);
-                const yearly = amount * (rate / 100);
-                return [
-                  row.name,
-                  formatNumber(amount),
-                  formatDate(row.maturityDate),
-                  rate + '%',
-                  formatNumber(yearly)
-                ];
-              }),
-              theme: 'grid',
-              headStyles: { fillColor: [60, 60, 60] }
-            });
-            yPosition = pdf.lastAutoTable.finalY + 10;
-          }
-
-          // 2. Market Value
-          if (propData.assets.length > 0) {
-            pdf.setFontSize(12);
-            pdf.text(language === 'fr' ? 'Valeur du Marché' : 'Market Value', 15, yPosition);
-            yPosition += 5;
-
-            autoTable(pdf, {
-              startY: yPosition,
-              head: [[
-                language === 'fr' ? 'Nom' : 'Name',
-                language === 'fr' ? 'Valeur Estimée' : 'Estimated Value'
-              ]],
-              body: propData.assets.map(row => [
-                row.name,
-                formatNumber(parseFloat(row.amount || 0))
-              ]),
-              theme: 'grid',
-              headStyles: { fillColor: [60, 60, 60] }
-            });
-            yPosition = pdf.lastAutoTable.finalY + 10;
-          }
-
-          // 3. Maintenance
-          if (propData.maintenance.length > 0) {
-            pdf.setFontSize(12);
-            pdf.text(language === 'fr' ? 'Entretien & Charges' : 'Maintenance & Other Costs', 15, yPosition);
-            yPosition += 5;
-
-            autoTable(pdf, {
-              startY: yPosition,
-              head: [[
-                language === 'fr' ? 'Nom' : 'Name',
-                language === 'fr' ? 'Montant' : 'Amount',
-                language === 'fr' ? 'Fréquence' : 'Frequency'
-              ]],
-              body: propData.maintenance.map(row => [
-                row.name,
-                formatNumber(parseFloat(row.amount || 0)),
-                language === 'fr' && row.frequency === 'Yearly' ? 'Annuel' :
-                  language === 'fr' && row.frequency === 'Monthly' ? 'Mensuel' : row.frequency
-              ]),
-              theme: 'grid',
-              headStyles: { fillColor: [60, 60, 60] }
-            });
-            yPosition = pdf.lastAutoTable.finalY + 15;
-          }
-
-          // 4. Property Summary
-          pdf.setFontSize(12);
-          pdf.text(language === 'fr' ? 'Résumé' : 'Summary', 15, yPosition);
-          yPosition += 8;
-
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-
-          const summaryData = [
-            [language === 'fr' ? 'Coût Total Annuel' : 'Total Yearly Cost', `CHF ${formatNumber(propData.yearlyCost)}`],
-            [language === 'fr' ? 'Coût Total Mensuel (Repris dans les Dépenses)' : 'Total Monthly Cost (Carried to Costs)', `CHF ${formatNumber(propData.monthlyCost)}`],
-            [language === 'fr' ? 'Valeur Nette du Bien (Repris dans les Actifs)' : 'Net Asset Value (Carried to Assets)', `CHF ${formatNumber(propData.netAssetValue)}`]
-          ];
-
-          autoTable(pdf, {
-            startY: yPosition,
-            body: summaryData,
-            theme: 'plain',
-            columnStyles: {
-              0: { fontStyle: 'bold', cellWidth: 100 },
-              1: { fontStyle: 'bold' }
-            }
-          });
-        }
+      // Verify page 2 exists and is properly formatted
+      if (pages[2]) {
+        console.log('Page 2 exists in pages array');
       }
 
       // Save PDF
       pdf.save(`retirement-simulation-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success(language === 'fr' ? 'Rapport PDF généré' : 'PDF report generated');
+      toast.success(language === 'fr' ? 'Rapport PDF généré avec succès' : 'PDF report generated successfully');
+
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la génération du PDF' : 'Error generating PDF');
@@ -2172,6 +1572,7 @@ const ScenarioResult = () => {
       setGeneratingPdf(false);
     }
   };
+
 
   // Export to Excel
   const exportExcel = () => {
@@ -2703,6 +2104,15 @@ const ScenarioResult = () => {
         title={language === 'fr' ? 'Résultats de la simulation' : 'Simulation results'}
         rightContent={
           <div className="flex gap-2">
+            <Button
+              onClick={() => navigate('/detailed-graph', { state: { yearlyData: chartData, summaryData: { finalBalance: finalBaselineBalance, peakWealth: Math.max(...chartData.map(d => d.cumulativeBalance || 0)), yearsInRetirement: chartData.filter(d => d.year >= retirementInfo.date.getFullYear()).length }, retirementDate: retirementInfo.date } })}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <LineChartIcon className="h-4 w-4" />
+              {language === 'fr' ? 'Graphique détaillé' : 'Detailed graph'}
+            </Button>
             <Button
               onClick={generatePDF}
               variant="outline"
@@ -3283,6 +2693,21 @@ const ScenarioResult = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden Detailed Graph for PDF Capture */}
+      <div id="pdf-detailed-graph" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1600px', height: '800px', visibility: 'visible', zIndex: -1 }}>
+        {projection?.yearlyBreakdown && (
+          <DetailedChart
+            chartData={projection.yearlyBreakdown.map(year => ({
+              ...year,
+              negCosts: -(Math.abs(year.costs || 0))
+            }))}
+            retirementDate={scenarioData?.wishedRetirementDate}
+            language={language}
+            isPdf={true}
+          />
+        )}
+      </div>
     </div >
   );
 };

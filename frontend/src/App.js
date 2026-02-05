@@ -35,6 +35,7 @@ import SecurityDetails from './pages/SecurityDetails';
 import TermsOfService from './pages/legal/TermsOfService';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Disclaimer from './pages/legal/Disclaimer';
+import DetailedGraph from './pages/DetailedGraph';
 import Footer from './components/Footer';
 
 import { trackPageVisit } from './utils/analytics';
@@ -57,7 +58,7 @@ const PageTracker = () => {
 // Global header component that shows on appropriate pages
 const GlobalHeader = () => {
   const location = useLocation();
-  const hiddenPaths = ['/', '/information', '/security'];
+  const hiddenPaths = ['/', '/information', '/security', '/detailed-graph'];
 
   // Hide on admin routes
   if (hiddenPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
@@ -164,6 +165,11 @@ function AppRoutes() {
         <Route path="/result" element={
           <ProtectedRoute>
             <ScenarioResult />
+          </ProtectedRoute>
+        } />
+        <Route path="/detailed-graph" element={
+          <ProtectedRoute>
+            <DetailedGraph />
           </ProtectedRoute>
         } />
         <Route path="/admin/*" element={<AdminApp />} />
