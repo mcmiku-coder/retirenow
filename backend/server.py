@@ -938,6 +938,8 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "https://retirenow-frontend.onrender.com",
+        "https://www.caniquit.ch",
+        "https://caniquit.ch",
         os.environ.get("FRONTEND_URL", "") # Allow custom frontend URL from env
     ],
     allow_credentials=True,
