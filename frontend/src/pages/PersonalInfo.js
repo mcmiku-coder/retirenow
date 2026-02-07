@@ -118,7 +118,7 @@ const PersonalInfo = () => {
   }
 
   return (
-    <div className="min-h-screen py-6" data-testid="personal-info-page">
+    <div className="flex-grow py-6" data-testid="personal-info-page">
       <div className="max-w-6xl mx-auto mb-6 px-4">
       </div>
 

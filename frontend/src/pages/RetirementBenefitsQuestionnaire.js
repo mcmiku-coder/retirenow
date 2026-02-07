@@ -617,7 +617,7 @@ const RetirementBenefitsQuestionnaire = () => {
     };
 
     return (
-        <div className="min-h-screen py-8">
+        <div className="flex-grow py-8">
             <PageHeader
                 title={t('retirementBenefits.title')}
                 subtitle={t('retirementBenefits.subtitle')}

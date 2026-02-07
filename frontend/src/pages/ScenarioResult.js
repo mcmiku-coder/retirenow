@@ -2096,7 +2096,7 @@ const ScenarioResult = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col pt-6 pb-8 bg-background text-foreground" data- testid="scenario-result-page" >
+    <div className="flex-grow flex flex-col pt-6 pb-8 bg-background text-foreground" data-testid="scenario-result-page" >
       <div className="w-full max-w-[95%] mx-auto mb-6 px-4">
       </div>
 

@@ -48,7 +48,7 @@ const SecurityDetails = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-background pb-20 pt-8 flex flex-col relative overflow-x-hidden">
+        <div className="flex-grow bg-background pb-20 pt-8 flex flex-col relative overflow-x-hidden">
             {/* Language Selector - Top Right Absolute */}
             <div className="absolute top-6 right-6 z-50">
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 w-[100px] justify-center shadow-sm">

@@ -19,13 +19,18 @@ export default function Footer() {
         disclaimer: language === 'fr' ? "Avertissement" : "Disclaimer"
     };
 
+    const isLanding = location.pathname === '/';
+
     return (
-        <footer className="w-full py-6 mt-auto border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <footer className={`w-full py-6 border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${isLanding ? 'mt-auto' : 'mt-8'}`}>
             <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row mx-auto px-4">
                 <p className="text-sm text-muted-foreground">
                     &copy; {currentYear} CanIQuit. {t.rights}
                 </p>
                 <nav className="flex gap-4 sm:gap-6 text-sm font-medium text-muted-foreground">
+                    <Link to="/contact" className="hover:text-foreground hover:underline transition-colors">
+                        {language === 'fr' ? 'Contact' : 'Contact'}
+                    </Link>
                     <Link to="/terms" className="hover:text-foreground hover:underline transition-colors">
                         {t.terms}
                     </Link>

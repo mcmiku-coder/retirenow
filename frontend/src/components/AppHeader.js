@@ -23,7 +23,7 @@ const AppHeader = () => {
             </div>
 
             <div className="flex-1 flex justify-center">
-                {!['/terms', '/privacy', '/disclaimer'].includes(location.pathname) && (
+                {!['/terms', '/privacy', '/disclaimer', '/contact'].includes(location.pathname) && (
                     <WorkflowNavigation />
                 )}
             </div>

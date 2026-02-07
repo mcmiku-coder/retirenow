@@ -197,7 +197,7 @@ const ExpenseWizard = () => {
     );
 
     return (
-        <div className="min-h-screen bg-background pb-20 pt-8 flex flex-col">
+        <div className="flex-grow bg-background pb-20 pt-8 flex flex-col">
             <div className="w-full mb-2">
                 <PageHeader
                     title={t('costs.helpModal.title')}

@@ -92,7 +92,7 @@ const Information = () => {
   ];
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-background overflow-x-hidden relative">
+    <div className="flex-grow py-12 px-4 bg-background overflow-x-hidden relative">
 
       {/* Language Selector - Top Right Absolute */}
       <div className="absolute top-6 right-6 z-50">

@@ -42,7 +42,7 @@ const MonteCarloHelp = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-background pb-8">
+        <div className="flex-grow bg-background pb-8">
             <PageHeader
                 title={t('result.monteCarloHelpTitle')}
                 leftContent={

@@ -527,7 +527,7 @@ const RealEstate = () => {
     const tenantMaintenanceRows = maintenanceRows.filter(r => (r.propertyId ?? 1) === 0);
 
     return (
-        <div className="min-h-screen py-6 bg-background space-y-8">
+        <div className="flex-grow py-6 bg-background space-y-8">
             <PageHeader
                 title={t('realEstate.title')}
                 subtitle={t('realEstate.subtitle')}

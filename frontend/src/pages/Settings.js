@@ -64,7 +64,7 @@ const Settings = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background pb-20">
+        <div className="flex-grow bg-background pb-20">
             <PageHeader
                 title={language === 'fr' ? 'Paramètres' : 'Settings'}
                 subtitle={language === 'fr' ? 'Gérez vos données et votre compte' : 'Manage your data and account'}

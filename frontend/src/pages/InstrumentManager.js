@@ -221,7 +221,7 @@ export default function InstrumentManager() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex-grow bg-gradient-to-br from-gray-50 to-gray-100">
             <PageHeader />
 
             <div className="max-w-7xl mx-auto px-4 py-8">

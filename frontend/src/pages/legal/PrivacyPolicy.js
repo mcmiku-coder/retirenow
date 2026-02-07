@@ -2,11 +2,13 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import PageHeader from '../../components/PageHeader';
-import { Lock } from 'lucide-react';
+import { Lock, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function PrivacyPolicy() {
     const { language } = useLanguage();
+    const navigate = useNavigate();
 
     const content = {
         en: {
@@ -14,6 +16,7 @@ export default function PrivacyPolicy() {
             subtitle: "We value your privacy and data security above all else.",
             cardTitle: "GDPR Compliance & Data Protection",
             lastUpdated: "Last Updated: February 2026",
+            back: "Back",
             zeroKnowledgeTitle: "Zero-Knowledge Architecture",
             zeroKnowledgeText: "CanIQuit is built with a \"Zero-Knowledge\" privacy model. This means your sensitive financial data is encrypted on your device before it is ever saved. We (the service providers) do not have the key to decrypt your financial data. Only you possess the key (derived from your password).",
             sections: [
@@ -69,6 +72,7 @@ export default function PrivacyPolicy() {
             subtitle: "Nous accordons la plus haute importance à votre vie privée et à la sécurité de vos données.",
             cardTitle: "Conformité RGPD et Protection des Données",
             lastUpdated: "Dernière mise à jour : Février 2026",
+            back: "Retour",
             zeroKnowledgeTitle: "Architecture Zero-Knowledge",
             zeroKnowledgeText: "CanIQuit est construit avec un modèle de confidentialité \"Zero-Knowledge\". Cela signifie que vos données financières sensibles sont chiffrées sur votre appareil avant d'être sauvegardées. Nous (les fournisseurs de services) n'avons pas la clé pour déchiffrer vos données financières. Vous seul possédez la clé (dérivée de votre mot de passe).",
             sections: [
@@ -123,12 +127,23 @@ export default function PrivacyPolicy() {
 
     const t = content[language] || content.en;
 
+    const backButton = (
+        <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {t.back}
+        </button>
+    );
+
     return (
-        <div className="min-h-screen bg-background">
+        <div className="flex-grow bg-background">
             <PageHeader
                 icon={Lock}
                 title={t.title}
                 description={t.subtitle}
+                leftContent={backButton}
             />
             <div className="container mx-auto px-4 py-8 max-w-4xl">
 

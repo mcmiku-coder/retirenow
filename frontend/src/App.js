@@ -35,6 +35,7 @@ import SecurityDetails from './pages/SecurityDetails';
 import TermsOfService from './pages/legal/TermsOfService';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Disclaimer from './pages/legal/Disclaimer';
+import Contact from './pages/legal/Contact';
 import DetailedGraph from './pages/DetailedGraph';
 import Footer from './components/Footer';
 
@@ -181,6 +182,7 @@ function AppRoutes() {
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
+        <Route path="/contact" element={<Contact />} />
       </Routes>
       <Footer />
     </>

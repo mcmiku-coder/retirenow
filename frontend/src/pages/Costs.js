@@ -215,7 +215,7 @@ const Costs = () => {
   };
 
   return (
-    <div className="min-h-screen py-6" data-testid="costs-page">
+    <div className="flex-grow py-6" data-testid="costs-page">
       <div className="w-[80%] mx-auto mb-6 px-4">
       </div>
 

@@ -1927,776 +1927,775 @@ const DataReview = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col pt-20 pb-12 bg-background text-foreground" data-testid="data-review-page">
-      <div className="w-[80%] mx-auto mb-6">
+    <div className="flex-grow flex flex-col pt-20 pb-12 bg-background text-foreground" data-testid="data-review-page">
 
-        <PageHeader
-          title={language === 'fr' ? 'Revue des données avant simulation' : 'Data Review Before Simulation'}
-          description={language === 'fr' ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation' : 'Review and adjust incomes and costs before running the simulation'}
-          rightContent={
-            <Button
-              onClick={handleSuggestionClick}
-              className="bg-green-600 hover:bg-green-700 text-white gap-2"
-            >
-              <Lightbulb className="h-4 w-4" />
-              {language === 'fr' ? 'Suggère moi des ajustements pertinents' : 'Suggest relevant adjustments'}
-            </Button>
-          }
-        />
 
-        <div className="w-[80%] mx-auto">
-          {/* Dynamic Datalist for Cluster Tags */}
+      <PageHeader
+        title={language === 'fr' ? 'Revue des données avant simulation' : 'Data Review Before Simulation'}
+        description={language === 'fr' ? 'Vérifiez et ajustez les revenus et coûts avant de lancer la simulation' : 'Review and adjust incomes and costs before running the simulation'}
+        rightContent={
+          <Button
+            onClick={handleSuggestionClick}
+            className="bg-green-600 hover:bg-green-700 text-white gap-2"
+          >
+            <Lightbulb className="h-4 w-4" />
+            {language === 'fr' ? 'Suggère moi des ajustements pertinents' : 'Suggest relevant adjustments'}
+          </Button>
+        }
+      />
 
-          {/* Dynamic Datalist for Cluster Tags */}
-          <datalist id="cluster-options">
-            <option value="Cluster A" />
-            <option value="Cluster B" />
-            <option value="Cluster C" />
-            {/* Dynamically add unique tags from all data sources */}
-            {[
-              ...new Set([
-                ...incomes.map(i => i.clusterTag),
-                ...costs.map(c => c.clusterTag),
-                ...currentAssets.map(a => a.clusterTag),
-                ...projectedOutflows.map(d => d.clusterTag)
-              ])
-            ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
-              <option key={tag} value={tag} />
-            ))}
-          </datalist>
+      <div className="w-[80%] mx-auto">
+        {/* Dynamic Datalist for Cluster Tags */}
 
-          <div className="space-y-6">
+        {/* Dynamic Datalist for Cluster Tags */}
+        <datalist id="cluster-options">
+          <option value="Cluster A" />
+          <option value="Cluster B" />
+          <option value="Cluster C" />
+          {/* Dynamically add unique tags from all data sources */}
+          {[
+            ...new Set([
+              ...incomes.map(i => i.clusterTag),
+              ...costs.map(c => c.clusterTag),
+              ...currentAssets.map(a => a.clusterTag),
+              ...projectedOutflows.map(d => d.clusterTag)
+            ])
+          ].filter(tag => tag && !['Cluster A', 'Cluster B', 'Cluster C'].includes(tag)).map(tag => (
+            <option key={tag} value={tag} />
+          ))}
+        </datalist>
 
-            {/* Incomes Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
+        <div className="space-y-6">
 
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {incomes.map((income, index) => {
-                        // Check if this income is part of a split group
-                        const isInGroup = income.groupId !== undefined && income.groupId !== null;
-                        const isChildIncome = income.parentId !== undefined && income.parentId !== null;
+          {/* Incomes Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Flux périodiques entrants - peuvent être ajustés pour la simulation' : 'Periodic inflows - can be adjusted for simulation'}</CardTitle>
 
-                        // Visual grouping - lighter background for grouped incomes, slightly indented for children
-                        const groupStyles = isInGroup
-                          ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
-                          : '';
-                        const childStyles = isChildIncome
-                          ? 'bg-muted/10'
-                          : '';
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incomes.map((income, index) => {
+                      // Check if this income is part of a split group
+                      const isInGroup = income.groupId !== undefined && income.groupId !== null;
+                      const isChildIncome = income.parentId !== undefined && income.parentId !== null;
 
-                        // Get effective dates (override or default)
-                        const today = new Date().toISOString().split('T')[0];
-                        const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
+                      // Visual grouping - lighter background for grouped incomes, slightly indented for children
+                      const groupStyles = isInGroup
+                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
+                        : '';
+                      const childStyles = isChildIncome
+                        ? 'bg-muted/10'
+                        : '';
 
-                        // Calculate default dates for standard income types
-                        let defaultStartDate = '';
-                        let defaultEndDate = '';
+                      // Get effective dates (override or default)
+                      const today = new Date().toISOString().split('T')[0];
+                      const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
 
-                        if (income.name === 'Salary') {
-                          defaultStartDate = today;
-                          defaultEndDate = wishedRetirementDate;
-                        } else if (income.name === 'LPP') {
-                          defaultStartDate = wishedRetirementDate;
-                          defaultEndDate = deathDate;
-                        } else if (income.name === 'AVS') {
-                          defaultStartDate = retirementLegalDate;
-                          defaultEndDate = deathDate;
-                        } else if (income.name === '3a') {
-                          defaultStartDate = wishedRetirementDate;
-                          defaultEndDate = '';
-                        }
+                      // Calculate default dates for standard income types
+                      let defaultStartDate = '';
+                      let defaultEndDate = '';
 
-                        // Get current values (override or default)
-                        const currentStartDate = isStandardIncome
-                          ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
-                          : income.startDate;
-                        const currentEndDate = isStandardIncome
-                          ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
-                          : income.endDate;
+                      if (income.name === 'Salary') {
+                        defaultStartDate = today;
+                        defaultEndDate = wishedRetirementDate;
+                      } else if (income.name === 'LPP') {
+                        defaultStartDate = wishedRetirementDate;
+                        defaultEndDate = deathDate;
+                      } else if (income.name === 'AVS') {
+                        defaultStartDate = retirementLegalDate;
+                        defaultEndDate = deathDate;
+                      } else if (income.name === '3a') {
+                        defaultStartDate = wishedRetirementDate;
+                        defaultEndDate = '';
+                      }
 
-                        const isLPPPension = income.name.includes('LPP Pension');
+                      // Get current values (override or default)
+                      const currentStartDate = isStandardIncome
+                        ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
+                        : income.startDate;
+                      const currentEndDate = isStandardIncome
+                        ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
+                        : income.endDate;
 
-                        return (
-                          <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
-                            <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
-                              <div className="flex items-center gap-2">
-                                {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
-                                {getIncomeName(income.name)}
-                                {isInGroup && !isChildIncome && (
-                                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="text-right p-3 text-muted-foreground">
-                              CHF {parseFloat(income.amount).toLocaleString()}
-                            </td>
-                            <td className="text-right p-3">
-                              <Input
-                                data-testid={`income - adjusted - ${index} `}
-                                type="text"
-                                value={income.adjustedAmount ? income.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value.replace(/'/g, '');
-                                  if (!isNaN(rawValue)) {
-                                    updateIncomeAdjusted(income.id, rawValue);
-                                  }
-                                }}
-                                className="max-w-[150px] ml-auto text-right"
-                                style={{
-                                  backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                                }}
-                              />
-                            </td>
-                            <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
-                            <td className="p-3">
-                              {income.name === 'AVS' ? (
-                                <Input
-                                  type="text"
-                                  value={retirementLegalDate.split('-').reverse().join('.')}
-                                  readOnly
-                                  className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
-                                />
-                              ) : isStandardIncome ? (
-                                <DateInputWithShortcuts
-                                  data-testid={`income - start - date - ${index} `}
-                                  value={currentStartDate || ''}
-                                  onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
-                                  className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  mode="start"
-                                />
-                              ) : (
-                                <DateInputWithShortcuts
-                                  value={income.startDate || ''}
-                                  onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
-                                  className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  mode="start"
-                                />
+                      const isLPPPension = income.name.includes('LPP Pension');
+
+                      return (
+                        <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                          <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
+                            <div className="flex items-center gap-2">
+                              {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
+                              {getIncomeName(income.name)}
+                              {isInGroup && !isChildIncome && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
                               )}
-                            </td>
-                            <td className="p-3">
-                              {income.name === 'AVS' ? (
-                                <Input
-                                  type="text"
-                                  value={deathDate.split('-').reverse().join('.')}
-                                  readOnly
-                                  className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
-                                />
-                              ) : income.name === '3a' ? (
-                                null
-                              ) : isStandardIncome ? (
-                                <DateInputWithShortcuts
-                                  data-testid={`income - end - date - ${index} `}
-                                  value={currentEndDate || ''}
-                                  onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
-                                  className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  deathDate={deathDate}
-                                  mode="end"
-                                />
-                              ) : (
-                                (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null :
-                                  <DateInputWithShortcuts
-                                    value={income.endDate || ""}
-                                    onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)}
-                                    className="w-fit"
-                                    retirementDate={wishedRetirementDate}
-                                    legalDate={retirementLegalDate}
-                                    deathDate={deathDate}
-                                    mode="end"
-                                  />
-                              )}
-                            </td>
-
-                            <td className="p-3">
+                            </div>
+                          </td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {parseFloat(income.amount).toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              data-testid={`income - adjusted - ${index} `}
+                              type="text"
+                              value={income.adjustedAmount ? income.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/'/g, '');
+                                if (!isNaN(rawValue)) {
+                                  updateIncomeAdjusted(income.id, rawValue);
+                                }
+                              }}
+                              className="max-w-[150px] ml-auto text-right"
+                              style={{
+                                backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                              }}
+                            />
+                          </td>
+                          <td className="p-3">{getTranslatedFrequency(income.frequency, t)}</td>
+                          <td className="p-3">
+                            {income.name === 'AVS' ? (
                               <Input
                                 type="text"
-                                list="cluster-options"
-                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                                value={income.clusterTag || ''}
-                                onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
-                                className="max-w-[150px]"
+                                value={retirementLegalDate.split('-').reverse().join('.')}
+                                readOnly
+                                className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
                               />
-                            </td>
-                            <td className="p-3">
-                              <div className="flex gap-2 justify-center">
-                                <Button
-                                  onClick={() => splitIncome(income.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                  title="Split this income into two periods"
-                                  disabled={income.isRetirement}
-                                >
-                                  <Split className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => deleteIncome(income.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  title="Delete this income line"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={addIncome}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {language === 'fr' ? '+ ajouter un revenu périodique' : '+ add periodic inflow'}
-                  </Button>
-                  <Button
-                    onClick={resetIncomesToDefaults}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Assets Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
-                        <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
-                        <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentAssets.map((asset) => {
-                        const originalAmount = parseFloat(asset.amount) || 0;
-                        const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
-                        const isDecreased = adjustedAmount < originalAmount;
-                        const isIncreased = adjustedAmount > originalAmount;
-
-                        const isLPPCapital = asset.name.includes('LPP Capital');
-
-                        return (
-                          <tr key={asset.id} className="border-b hover:bg-muted/30">
-                            <td className="p-3">
-                              <Input
-                                type="text"
-                                value={asset.name}
-                                onChange={(e) => updateAsset(asset.id, 'name', e.target.value)}
-                                className={`font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : ''}`}
-                              />
-                            </td>
-                            <td className="text-right p-3 text-muted-foreground">
-                              CHF {originalAmount.toLocaleString()}
-                            </td>
-                            <td className="text-right p-3">
-                              <Input
-                                type="text"
-                                value={(asset.adjustedAmount !== undefined ? asset.adjustedAmount : asset.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value.replace(/'/g, '');
-                                  if (!isNaN(rawValue)) {
-                                    updateAsset(asset.id, 'adjustedAmount', rawValue);
-                                  }
-                                }}
-                                className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
-                              />
-                            </td>
-                            <td className="p-3">
-                              <Select
-                                value={asset.category}
-                                onValueChange={(value) => updateAsset(asset.id, 'category', value)}
-                              >
-                                <SelectTrigger className="max-w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
-                                  <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className="p-3">
-                              <Select
-                                value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
-                                onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
-                              >
-                                <SelectTrigger className="max-w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className="p-3">
-                              {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
-                                <Select
-                                  value={asset.availabilityTimeframe || 'Select'}
-                                  onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
-                                >
-                                  <SelectTrigger className="max-w-[150px]">
-                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
-                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <DateInputWithShortcuts
-                                  value={asset.availabilityDate || ''}
-                                  onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
-                                  className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  mode="start"
-                                />
-                              )}
-                            </td>
-                            <td className="p-3">
-                              {asset.category === 'Liquid' ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Checkbox
-                                    checked={asset.strategy === 'Invested'}
-                                    onCheckedChange={(checked) => updateAsset(asset.id, 'strategy', checked ? 'Invested' : 'Not invested')}
-                                  />
-                                  <span className="text-sm">{language === 'fr' ? 'Oui' : 'Yes'}</span>
-                                </div>
-                              ) : (
-                                <div className="text-center text-muted-foreground">-</div>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <Input
-                                type="text"
-                                list="cluster-options"
-                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                                value={asset.clusterTag || ''}
-                                onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
-                                className="max-w-[150px] ml-auto" // Added ml-auto to align right content similar to text-right header
-                              />
-                            </td>
-                            <td className="p-3">
-                              <div className="flex gap-2 justify-center">
-                                <Button
-                                  onClick={() => duplicateAsset(asset.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                  title="Duplicate this asset"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => deleteAsset(asset.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  title="Delete this asset"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={addAsset}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
-                  </Button>
-                  <Button
-                    onClick={resetAssetsToDefaults}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                  </Button>
-                </div>
-
-                {currentAssets.some(asset => asset.strategy === 'Invested') && (
-                  <div className="mt-8 flex justify-center border-t pt-6">
-                    <Button
-                      onClick={() => navigate('/capital-setup')}
-                      className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
-                      size="lg"
-                    >
-                      {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Costs Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                        <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {costs.map((cost, index) => {
-                        // Check if this cost is part of a split group
-                        const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
-                        const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
-
-                        // Visual grouping - lighter background for grouped costs, slightly indented for children
-                        const groupStyles = isInGroup
-                          ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
-                          : '';
-                        const childStyles = isChildCost
-                          ? 'bg-muted/10'
-                          : '';
-
-                        return (
-                          <tr
-                            key={cost.id}
-                            className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles} `}
-                          >
-                            <td className="p-3 font-medium text-white">
-                              <div className="flex items-center gap-2">
-                                {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
-                                {getCostName(cost.name)}
-                                {isInGroup && !isChildCost && (
-                                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="text-right p-3 text-muted-foreground">
-                              CHF {parseFloat(cost.amount).toLocaleString()}
-                            </td>
-                            <td className="text-right p-3">
-                              <Input
-                                data-testid={`cost - adjusted - ${index} `}
-                                type="text"
-                                value={cost.adjustedAmount ? cost.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value.replace(/'/g, '');
-                                  if (!isNaN(rawValue)) {
-                                    updateCostAdjusted(cost.id, rawValue);
-                                  }
-                                }}
-                                className="max-w-[150px] ml-auto text-right"
-                                style={{
-                                  backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
-                                }}
-                              />
-                            </td>
-                            <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
-                            <td className="p-3">
+                            ) : isStandardIncome ? (
                               <DateInputWithShortcuts
-                                data-testid={`cost - start - date - ${index} `}
-                                value={cost.startDate || ''}
-                                onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
+                                data-testid={`income - start - date - ${index} `}
+                                value={currentStartDate || ''}
+                                onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
                                 className="w-fit"
                                 retirementDate={wishedRetirementDate}
                                 legalDate={retirementLegalDate}
                                 mode="start"
                               />
-                            </td>
-                            <td className="p-3">
-                              {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null :
+                            ) : (
+                              <DateInputWithShortcuts
+                                value={income.startDate || ''}
+                                onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                mode="start"
+                              />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {income.name === 'AVS' ? (
+                              <Input
+                                type="text"
+                                value={deathDate.split('-').reverse().join('.')}
+                                readOnly
+                                className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
+                              />
+                            ) : income.name === '3a' ? (
+                              null
+                            ) : isStandardIncome ? (
+                              <DateInputWithShortcuts
+                                data-testid={`income - end - date - ${index} `}
+                                value={currentEndDate || ''}
+                                onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                deathDate={deathDate}
+                                mode="end"
+                              />
+                            ) : (
+                              (income.frequency === "One-time" || income.frequency === "Ponctuel") ? null :
                                 <DateInputWithShortcuts
-                                  data-testid={`cost - end - date - ${index} `}
-                                  value={cost.endDate || ""}
-                                  onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)}
+                                  value={income.endDate || ""}
+                                  onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)}
                                   className="w-fit"
                                   retirementDate={wishedRetirementDate}
                                   legalDate={retirementLegalDate}
                                   deathDate={deathDate}
                                   mode="end"
-                                />}
-                            </td>
-                            <td className="p-3">
-                              <Input
-                                type="text"
-                                list="cluster-options"
-                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                                value={cost.clusterTag || ''}
-                                onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
-                                className="max-w-[150px]"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <div className="flex gap-2 justify-center">
-                                <Button
-                                  onClick={() => splitCost(cost.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                  title="Split this cost into two periods"
-                                >
-                                  <Split className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => deleteCost(cost.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  title="Delete this cost line"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={addCost}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
-                  </Button>
-                  <Button
-                    onClick={resetCostsToDefaults}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                                />
+                            )}
+                          </td>
 
-
-
-
-
-            {/* Projected Outflows Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{language === 'fr' ? 'Sorties projetées actuelles ou futures' : 'Current or future Projected Outflows'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                        <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                        <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
-                        <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
-                        <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projectedOutflows.map((outflow) => {
-                        const originalAmount = parseFloat(outflow.amount) || 0;
-                        const adjustedAmount = parseFloat(outflow.adjustedAmount || outflow.amount) || 0;
-                        const isDecreased = adjustedAmount < originalAmount;
-                        const isIncreased = adjustedAmount > originalAmount;
-
-                        return (
-                          <tr key={outflow.id} className="border-b hover:bg-muted/30">
-                            <td className="p-3 font-medium text-white">{outflow.name}</td>
-                            <td className="text-right p-3 text-muted-foreground">
-                              CHF {originalAmount.toLocaleString()}
-                            </td>
-                            <td className="text-right p-3">
-                              <Input
-                                type="text"
-                                value={(outflow.adjustedAmount !== undefined ? outflow.adjustedAmount : outflow.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value.replace(/'/g, '');
-                                  if (!isNaN(rawValue)) {
-                                    updateOutflow(outflow.id, 'adjustedAmount', rawValue);
-                                  }
-                                }}
-                                className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
-                              />
-                            </td>
-                            <td className="p-3">
-                              <Select
-                                value={outflow.madeAvailableType || (outflow.madeAvailableTimeframe ? 'Period' : 'Date')}
-                                onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableType', value)}
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={income.clusterTag || ''}
+                              onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => splitIncome(income.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                title="Split this income into two periods"
+                                disabled={income.isRetirement}
                               >
-                                <SelectTrigger className="max-w-[120px]">
-                                  <SelectValue />
+                                <Split className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteIncome(income.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this income line"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addIncome}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter un revenu périodique' : '+ add periodic inflow'}
+                </Button>
+                <Button
+                  onClick={resetIncomesToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assets Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future Assets'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
+                      <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
+                      <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentAssets.map((asset) => {
+                      const originalAmount = parseFloat(asset.amount) || 0;
+                      const adjustedAmount = parseFloat(asset.adjustedAmount || asset.amount) || 0;
+                      const isDecreased = adjustedAmount < originalAmount;
+                      const isIncreased = adjustedAmount > originalAmount;
+
+                      const isLPPCapital = asset.name.includes('LPP Capital');
+
+                      return (
+                        <tr key={asset.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              value={asset.name}
+                              onChange={(e) => updateAsset(asset.id, 'name', e.target.value)}
+                              className={`font-medium ${isLPPCapital ? 'text-blue-600 font-bold' : ''}`}
+                            />
+                          </td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {originalAmount.toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              type="text"
+                              value={(asset.adjustedAmount !== undefined ? asset.adjustedAmount : asset.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/'/g, '');
+                                if (!isNaN(rawValue)) {
+                                  updateAsset(asset.id, 'adjustedAmount', rawValue);
+                                }
+                              }}
+                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.category}
+                              onValueChange={(value) => updateAsset(asset.id, 'category', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
+                                <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
+                              <Select
+                                value={asset.availabilityTimeframe || 'Select'}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}
+                              >
+                                <SelectTrigger className="max-w-[150px]">
+                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </td>
-                            <td className="p-3">
-                              {(outflow.madeAvailableType === 'Period' || (!outflow.madeAvailableType && outflow.madeAvailableTimeframe)) ? (
-                                <Select
-                                  value={outflow.madeAvailableTimeframe || 'Select'}
-                                  onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
-                                >
-                                  <SelectTrigger className="max-w-[150px]">
-                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
-                                    <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
-                                    <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
-                                    <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
-                                    <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
-                                    <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
-                                    <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <DateInputWithShortcuts
-                                  value={outflow.madeAvailableDate || ''}
-                                  onChange={(e) => updateOutflow(outflow.id, 'madeAvailableDate', e.target.value)}
-                                  className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  mode="start"
-                                />
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <Input
-                                type="text"
-                                list="cluster-options"
-                                placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                                value={outflow.clusterTag || ''}
-                                onChange={(e) => updateOutflow(outflow.id, 'clusterTag', e.target.value)}
-                                className="max-w-[150px]"
+                            ) : (
+                              <DateInputWithShortcuts
+                                value={asset.availabilityDate || ''}
+                                onChange={(e) => updateAsset(asset.id, 'availabilityDate', e.target.value)}
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                mode="start"
                               />
-                            </td>
-                            <td className="p-3">
-                              <div className="flex gap-2 justify-center">
-                                <Button
-                                  onClick={() => deleteOutflow(outflow.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  title="Delete this outflow"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {asset.category === 'Liquid' ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <Checkbox
+                                  checked={asset.strategy === 'Invested'}
+                                  onCheckedChange={(checked) => updateAsset(asset.id, 'strategy', checked ? 'Invested' : 'Not invested')}
+                                />
+                                <span className="text-sm">{language === 'fr' ? 'Oui' : 'Yes'}</span>
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={addOutflow}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {language === 'fr' ? '+ ajouter une sortie' : '+ add outflow'}
-                  </Button>
-                  <Button
-                    onClick={resetOutflowsToDefaults}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                            ) : (
+                              <div className="text-center text-muted-foreground">-</div>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={asset.clusterTag || ''}
+                              onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px] ml-auto" // Added ml-auto to align right content similar to text-right header
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => duplicateAsset(asset.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                title="Duplicate this asset"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteAsset(asset.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this asset"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addAsset}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter un actif' : '+ add asset'}
+                </Button>
+                <Button
+                  onClick={resetAssetsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
 
-            <div className="flex justify-center gap-4 mt-6">
-              <Button
-                data-testid="can-i-quit-btn"
-                onClick={runSimulation}
-                className="px-12 text-lg"
-                size="lg"
-              >
-                {language === 'fr' ? 'Lancer la simulation' : 'Run simulation'}
-              </Button>
-            </div>
+              {currentAssets.some(asset => asset.strategy === 'Invested') && (
+                <div className="mt-8 flex justify-center border-t pt-6">
+                  <Button
+                    onClick={() => navigate('/capital-setup')}
+                    className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
+                    size="lg"
+                  >
+                    {language === 'fr' ? 'Aller à la configuration de la gestion du capital' : 'Go to Capital management setup'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Costs Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Flux périodiques sortants - peuvent être ajustés pour la simulation' : 'Periodic outflows - can be adjusted for simulation'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costs.map((cost, index) => {
+                      // Check if this cost is part of a split group
+                      const isInGroup = cost.groupId !== undefined && cost.groupId !== null;
+                      const isChildCost = cost.parentId !== undefined && cost.parentId !== null;
+
+                      // Visual grouping - lighter background for grouped costs, slightly indented for children
+                      const groupStyles = isInGroup
+                        ? 'bg-muted/20 border-l-2 border-l-blue-500/50'
+                        : '';
+                      const childStyles = isChildCost
+                        ? 'bg-muted/10'
+                        : '';
+
+                      return (
+                        <tr
+                          key={cost.id}
+                          className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles} `}
+                        >
+                          <td className="p-3 font-medium text-white">
+                            <div className="flex items-center gap-2">
+                              {isChildCost && <span className="text-blue-400 text-xs">↳</span>}
+                              {getCostName(cost.name)}
+                              {isInGroup && !isChildCost && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">{t('scenario.split')}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {parseFloat(cost.amount).toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              data-testid={`cost - adjusted - ${index} `}
+                              type="text"
+                              value={cost.adjustedAmount ? cost.adjustedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") : ''}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/'/g, '');
+                                if (!isNaN(rawValue)) {
+                                  updateCostAdjusted(cost.id, rawValue);
+                                }
+                              }}
+                              className="max-w-[150px] ml-auto text-right"
+                              style={{
+                                backgroundColor: parseFloat(cost.adjustedAmount) < parseFloat(cost.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(cost.adjustedAmount) > parseFloat(cost.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                              }}
+                            />
+                          </td>
+                          <td className="p-3">{getTranslatedFrequency(cost.frequency, t)}</td>
+                          <td className="p-3">
+                            <DateInputWithShortcuts
+                              data-testid={`cost - start - date - ${index} `}
+                              value={cost.startDate || ''}
+                              onChange={(e) => updateCostDateWithSync(cost.id, 'startDate', e.target.value)}
+                              className="w-fit"
+                              retirementDate={wishedRetirementDate}
+                              legalDate={retirementLegalDate}
+                              mode="start"
+                            />
+                          </td>
+                          <td className="p-3">
+                            {(cost.frequency === "One-time" || cost.frequency === "Ponctuel") ? null :
+                              <DateInputWithShortcuts
+                                data-testid={`cost - end - date - ${index} `}
+                                value={cost.endDate || ""}
+                                onChange={(e) => updateCostDateWithSync(cost.id, "endDate", e.target.value)}
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                deathDate={deathDate}
+                                mode="end"
+                              />}
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={cost.clusterTag || ''}
+                              onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => splitCost(cost.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                title="Split this cost into two periods"
+                              >
+                                <Split className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => deleteCost(cost.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this cost line"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addCost}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter une sortie périodique' : '+ add periodic outflow'}
+                </Button>
+                <Button
+                  onClick={resetCostsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+
+
+
+
+          {/* Projected Outflows Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{language === 'fr' ? 'Sorties projetées actuelles ou futures' : 'Current or future Projected Outflows'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
+                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projectedOutflows.map((outflow) => {
+                      const originalAmount = parseFloat(outflow.amount) || 0;
+                      const adjustedAmount = parseFloat(outflow.adjustedAmount || outflow.amount) || 0;
+                      const isDecreased = adjustedAmount < originalAmount;
+                      const isIncreased = adjustedAmount > originalAmount;
+
+                      return (
+                        <tr key={outflow.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3 font-medium text-white">{outflow.name}</td>
+                          <td className="text-right p-3 text-muted-foreground">
+                            CHF {originalAmount.toLocaleString()}
+                          </td>
+                          <td className="text-right p-3">
+                            <Input
+                              type="text"
+                              value={(outflow.adjustedAmount !== undefined ? outflow.adjustedAmount : outflow.amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                              onChange={(e) => {
+                                const rawValue = e.target.value.replace(/'/g, '');
+                                if (!isNaN(rawValue)) {
+                                  updateOutflow(outflow.id, 'adjustedAmount', rawValue);
+                                }
+                              }}
+                              className={`max-w-[150px] ml-auto text-right ${isDecreased ? 'bg-green-500/10' : isIncreased ? 'bg-red-500/10' : ''}`}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={outflow.madeAvailableType || (outflow.madeAvailableTimeframe ? 'Period' : 'Date')}
+                              onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableType', value)}
+                            >
+                              <SelectTrigger className="max-w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-3">
+                            {(outflow.madeAvailableType === 'Period' || (!outflow.madeAvailableType && outflow.madeAvailableTimeframe)) ? (
+                              <Select
+                                value={outflow.madeAvailableTimeframe || 'Select'}
+                                onValueChange={(value) => updateOutflow(outflow.id, 'madeAvailableTimeframe', value === 'Select' ? '' : value)}
+                              >
+                                <SelectTrigger className="max-w-[150px]">
+                                  <SelectValue placeholder={language === 'fr' ? 'Sélectionner' : 'Select'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Select">{language === 'fr' ? 'Sélectionner' : 'Select'}</SelectItem>
+                                  <SelectItem value="within_5y">{language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years'}</SelectItem>
+                                  <SelectItem value="within_5_10y">{language === 'fr' ? 'dans 5 à 10 ans' : 'within 5 to 10y'}</SelectItem>
+                                  <SelectItem value="within_10_15y">{language === 'fr' ? 'dans 10 à 15 ans' : 'within 10 to 15y'}</SelectItem>
+                                  <SelectItem value="within_15_20y">{language === 'fr' ? 'dans 15 à 20 ans' : 'within 15 to 20y'}</SelectItem>
+                                  <SelectItem value="within_20_25y">{language === 'fr' ? 'dans 20 à 25 ans' : 'within 20 to 25y'}</SelectItem>
+                                  <SelectItem value="within_25_30y">{language === 'fr' ? 'dans 25 à 30 ans' : 'within 25 to 30y'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <DateInputWithShortcuts
+                                value={outflow.madeAvailableDate || ''}
+                                onChange={(e) => updateOutflow(outflow.id, 'madeAvailableDate', e.target.value)}
+                                className="w-fit"
+                                retirementDate={wishedRetirementDate}
+                                legalDate={retirementLegalDate}
+                                mode="start"
+                              />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              type="text"
+                              list="cluster-options"
+                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
+                              value={outflow.clusterTag || ''}
+                              onChange={(e) => updateOutflow(outflow.id, 'clusterTag', e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                onClick={() => deleteOutflow(outflow.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                title="Delete this outflow"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={addOutflow}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {language === 'fr' ? '+ ajouter une sortie' : '+ add outflow'}
+                </Button>
+                <Button
+                  onClick={resetOutflowsToDefaults}
+                  variant="outline"
+                  size="sm"
+                >
+                  {language === 'fr' ? 'Réinitialiser aux valeurs par défaut' : 'Reset to defaults'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-center gap-4 mt-6">
+            <Button
+              data-testid="can-i-quit-btn"
+              onClick={runSimulation}
+              className="px-12 text-lg"
+              size="lg"
+            >
+              {language === 'fr' ? 'Lancer la simulation' : 'Run simulation'}
+            </Button>
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 

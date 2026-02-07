@@ -10,7 +10,7 @@ const RetirementBenefitsHelp = () => {
     const { t } = useLanguage();
 
     return (
-        <div className="min-h-screen py-8">
+        <div className="flex-grow py-8">
             <PageHeader
                 title={t('retirementBenefitsHelp.title')}
                 subtitle={t('retirementBenefitsHelp.subtitle')}

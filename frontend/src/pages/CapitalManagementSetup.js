@@ -485,7 +485,7 @@ const CapitalManagementSetup = () => {
     }
 
     return (
-        <div className="min-h-screen py-6" data-testid="capital-management-page">
+        <div className="flex-grow py-6" data-testid="capital-management-page">
             <PageHeader
                 title={language === 'fr' ? 'Gestion du capital' : 'Capital management setup'}
                 subtitle={language === 'fr'

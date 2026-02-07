@@ -2,11 +2,13 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import PageHeader from '../../components/PageHeader';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function TermsOfService() {
     const { language } = useLanguage();
+    const navigate = useNavigate();
 
     const content = {
         en: {
@@ -14,8 +16,11 @@ export default function TermsOfService() {
             subtitle: "Please read these terms carefully before using CanIQuit",
             cardTitle: "User Agreement",
             lastUpdated: "Last Updated: February 2026",
+            back: "Back",
             sections: [
                 {
+                    // ... (rest of sections)
+
                     title: "1. Acceptance of Terms",
                     text: "By accessing or using the \"CanIQuit\" application (the \"Service\"), you agree to be bound by these Terms of Service (\"Terms\"). If you do not agree to these Terms, you may not access or use the Service."
                 },
@@ -77,6 +82,7 @@ export default function TermsOfService() {
             subtitle: "Veuillez lire attentivement ces conditions avant d'utiliser CanIQuit",
             cardTitle: "Accord utilisateur",
             lastUpdated: "Dernière mise à jour: Février 2026",
+            back: "Retour",
             sections: [
                 {
                     title: "1. Acceptation des conditions",
@@ -139,12 +145,23 @@ export default function TermsOfService() {
 
     const t = content[language] || content.en;
 
+    const backButton = (
+        <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {t.back}
+        </button>
+    );
+
     return (
-        <div className="min-h-screen bg-background">
+        <div className="flex-grow bg-background">
             <PageHeader
                 icon={ShieldCheck}
                 title={t.title}
                 description={t.subtitle}
+                leftContent={backButton}
             />
             <div className="container mx-auto px-4 py-8 max-w-4xl">
 

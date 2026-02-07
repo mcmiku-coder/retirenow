@@ -45,7 +45,7 @@ const DetailedGraph = () => {
     };
 
     return (
-        <div className="flex h-screen bg-background">
+        <div className="flex flex-grow bg-background">
             {/* Left Sidebar - 10% width */}
             <div className="w-[10%] bg-card border-r border-border p-4 flex flex-col">
                 {/* Back Button */}

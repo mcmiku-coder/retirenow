@@ -39,7 +39,7 @@ const VerifyEmail = () => {
     }, [searchParams, t]);
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="flex-grow flex flex-col items-center justify-center p-4">
             <div className="max-w-md w-full bg-card border rounded-lg p-8 text-center shadow-lg">
                 {status === 'verifying' && (
                     <div className="flex flex-col items-center gap-4">

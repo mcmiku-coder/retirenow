@@ -24,7 +24,7 @@ const ResetPassword = () => {
 
     if (!token) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="flex-grow bg-background flex items-center justify-center p-4">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle className="text-red-500">{language === 'fr' ? 'Lien Invalide' : 'Invalid Link'}</CardTitle>
@@ -88,7 +88,7 @@ const ResetPassword = () => {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="flex-grow bg-background flex items-center justify-center p-4">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle className="text-green-500">{language === 'fr' ? 'Succès' : 'Success'}</CardTitle>
@@ -109,7 +109,7 @@ const ResetPassword = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="flex-grow bg-background flex items-center justify-center p-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>{language === 'fr' ? 'Réinitialiser le mot de passe' : 'Reset Password'}</CardTitle>

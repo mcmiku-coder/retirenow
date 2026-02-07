@@ -199,7 +199,7 @@ const Income = () => {
   };
 
   return (
-    <div className="min-h-screen py-6" data-testid="income-page">
+    <div className="flex-grow py-6" data-testid="income-page">
       <div className="w-[80%] mx-auto mb-6 px-4">
       </div>
 
