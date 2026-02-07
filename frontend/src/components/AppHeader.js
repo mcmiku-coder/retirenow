@@ -2,7 +2,7 @@ import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Save, Lock } from 'lucide-react';
 import WorkflowNavigation from './WorkflowNavigation';
 
@@ -10,6 +10,7 @@ const AppHeader = () => {
     const { language, switchLanguage } = useLanguage();
     const { logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     return (
         <header className="w-full h-40 flex justify-between items-start pt-6 px-6 bg-background sticky top-0 z-50">
@@ -22,7 +23,9 @@ const AppHeader = () => {
             </div>
 
             <div className="flex-1 flex justify-center">
-                <WorkflowNavigation />
+                {!['/terms', '/privacy', '/disclaimer'].includes(location.pathname) && (
+                    <WorkflowNavigation />
+                )}
             </div>
 
             <div className="flex items-center gap-4">

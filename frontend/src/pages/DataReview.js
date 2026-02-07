@@ -1928,7 +1928,7 @@ const DataReview = () => {
 
   return (
     <div className="min-h-screen flex flex-col pt-20 pb-12 bg-background text-foreground" data-testid="data-review-page">
-      <div className="w-full max-w-[95%] mx-auto mb-6 px-4">
+      <div className="w-[80%] mx-auto mb-6">
 
         <PageHeader
           title={language === 'fr' ? 'Revue des données avant simulation' : 'Data Review Before Simulation'}

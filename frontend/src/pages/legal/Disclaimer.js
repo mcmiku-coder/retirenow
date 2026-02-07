@@ -95,69 +95,71 @@ export default function Disclaimer() {
     const t = content[language] || content.en;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="min-h-screen bg-background">
             <PageHeader
                 icon={AlertTriangle}
                 title={t.title}
                 description={t.subtitle}
             />
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
 
-            <Card className="mt-6 bg-card border-border">
-                <CardHeader>
-                    <CardTitle>{t.cardTitle}</CardTitle>
-                    <CardDescription>{t.lastUpdated}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[600px] pr-4">
-                        <div className="space-y-6 text-sm text-foreground/90">
+                <Card className="mt-6 bg-card border-border">
+                    <CardHeader>
+                        <CardTitle>{t.cardTitle}</CardTitle>
+                        <CardDescription>{t.lastUpdated}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[600px] pr-4">
+                            <div className="space-y-6 text-sm text-foreground/90">
 
-                            {/* Prominent Warning Box */}
-                            <Alert variant="destructive" className="my-6 border-red-600/50 bg-red-900/10">
-                                <AlertTriangle className="h-5 w-5" />
-                                <AlertTitle className="text-lg font-bold ml-2">{t.warningTitle}</AlertTitle>
-                                <AlertDescription className="mt-2 text-base font-medium">
-                                    {t.warningText}
-                                </AlertDescription>
-                            </Alert>
+                                {/* Prominent Warning Box */}
+                                <Alert variant="destructive" className="my-6 border-red-600/50 bg-red-900/10">
+                                    <AlertTriangle className="h-5 w-5" />
+                                    <AlertTitle className="text-lg font-bold ml-2">{t.warningTitle}</AlertTitle>
+                                    <AlertDescription className="mt-2 text-base font-medium">
+                                        {t.warningText}
+                                    </AlertDescription>
+                                </Alert>
 
-                            {t.sections.map((section, index) => (
-                                <section key={index}>
-                                    <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
-                                    <p>
-                                        {language === 'fr' && section.title.includes("éducatif") ? (
-                                            <>
-                                                CanIQuit est un outil pédagogique destiné à vous aider à visualiser différents scénarios financiers basés sur les données que vous saisissez. Les projections, calculs et graphiques présentés par ce Service sont <strong>de nature hypothétique</strong>, ne reflètent pas les résultats réels des investissements et ne constituent pas une garantie de résultats futurs.
-                                            </>
-                                        ) : language === 'en' && section.title.includes("Educational") ? (
-                                            <>
-                                                CanIQuit is an educational tool intended to help you visualize different financial scenarios based on the data you input. The projections, calculations, and graphs presented by this Service are <strong>hypothetical in nature</strong>, do not reflect actual investment results, and are not guarantees of future results.
-                                            </>
-                                        ) : (
-                                            section.text
+                                {t.sections.map((section, index) => (
+                                    <section key={index}>
+                                        <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
+                                        <p>
+                                            {language === 'fr' && section.title.includes("éducatif") ? (
+                                                <>
+                                                    CanIQuit est un outil pédagogique destiné à vous aider à visualiser différents scénarios financiers basés sur les données que vous saisissez. Les projections, calculs et graphiques présentés par ce Service sont <strong>de nature hypothétique</strong>, ne reflètent pas les résultats réels des investissements et ne constituent pas une garantie de résultats futurs.
+                                                </>
+                                            ) : language === 'en' && section.title.includes("Educational") ? (
+                                                <>
+                                                    CanIQuit is an educational tool intended to help you visualize different financial scenarios based on the data you input. The projections, calculations, and graphs presented by this Service are <strong>hypothetical in nature</strong>, do not reflect actual investment results, and are not guarantees of future results.
+                                                </>
+                                            ) : (
+                                                section.text
+                                            )}
+                                        </p>
+                                        {section.list && (
+                                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                                {section.list.map((item, i) => {
+                                                    const [bold, rest] = item.split(':');
+                                                    return (
+                                                        <li key={i}>
+                                                            {rest ? (
+                                                                <><strong>{bold}:</strong>{rest}</>
+                                                            ) : (
+                                                                item
+                                                            )}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
                                         )}
-                                    </p>
-                                    {section.list && (
-                                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                                            {section.list.map((item, i) => {
-                                                const [bold, rest] = item.split(':');
-                                                return (
-                                                    <li key={i}>
-                                                        {rest ? (
-                                                            <><strong>{bold}:</strong>{rest}</>
-                                                        ) : (
-                                                            item
-                                                        )}
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    )}
-                                </section>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                                    </section>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

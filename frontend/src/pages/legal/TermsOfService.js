@@ -140,45 +140,47 @@ export default function TermsOfService() {
     const t = content[language] || content.en;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="min-h-screen bg-background">
             <PageHeader
                 icon={ShieldCheck}
                 title={t.title}
                 description={t.subtitle}
             />
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
 
-            <Card className="mt-6 bg-card border-border">
-                <CardHeader>
-                    <CardTitle>{t.cardTitle}</CardTitle>
-                    <CardDescription>{t.lastUpdated}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[600px] pr-4">
-                        <div className="space-y-6 text-sm text-foreground/90">
-                            {t.sections.map((section, index) => (
-                                <section key={index}>
-                                    <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
-                                    {section.isWarning ? (
-                                        <p className="font-medium text-destructive">{section.text}</p>
-                                    ) : (
-                                        <p>{section.text}</p>
-                                    )}
-                                    {section.listIntroduction && (
-                                        <p className="mt-2">{section.listIntroduction}</p>
-                                    )}
-                                    {section.list && (
-                                        <ul className="list-disc pl-5 mt-1 space-y-1">
-                                            {section.list.map((item, i) => (
-                                                <li key={i}>{item}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </section>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                <Card className="mt-6 bg-card border-border">
+                    <CardHeader>
+                        <CardTitle>{t.cardTitle}</CardTitle>
+                        <CardDescription>{t.lastUpdated}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[600px] pr-4">
+                            <div className="space-y-6 text-sm text-foreground/90">
+                                {t.sections.map((section, index) => (
+                                    <section key={index}>
+                                        <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
+                                        {section.isWarning ? (
+                                            <p className="font-medium text-destructive">{section.text}</p>
+                                        ) : (
+                                            <p>{section.text}</p>
+                                        )}
+                                        {section.listIntroduction && (
+                                            <p className="mt-2">{section.listIntroduction}</p>
+                                        )}
+                                        {section.list && (
+                                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                                                {section.list.map((item, i) => (
+                                                    <li key={i}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </section>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

@@ -193,7 +193,7 @@ const ThemeScope = ({ children }) => {
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
-    <div className={`App dark min-h-screen bg-background text-foreground ${!isAdmin ? 'public-theme' : ''}`}>
+    <div className={`App dark min-h-screen flex flex-col bg-background text-foreground ${!isAdmin ? 'public-theme' : ''}`}>
       {children}
     </div>
   );

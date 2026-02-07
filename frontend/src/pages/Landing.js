@@ -78,7 +78,7 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4" data-testid="landing-page">
+    <div className="flex-grow flex flex-col items-center justify-center px-4" data-testid="landing-page">
       {/* Language Selector & Admin Access - Top Right */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
         <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 w-[100px] justify-center">

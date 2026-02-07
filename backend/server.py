@@ -409,10 +409,50 @@ def send_password_reset_email(to_email: str, token: str):
             print(f"FAILED TO SEND EMAIL VIA BREVO: {response.text}")
             print(f"BACKUP LINK: {reset_link}")
 
+
     except Exception as e:
         logger.error(f"Failed to send password reset email: {e}")
         print(f"FAILED TO SEND EMAIL: {e}")
         print(f"BACKUP LINK: {frontend_url}/reset-password?token={token}")
+
+def send_admin_notification(subject: str, html_content: str):
+    """Send a notification email to the administrator via Brevo"""
+    api_key = os.environ.get('BREVO_API_KEY', '').strip()
+    # Default to SMTP_EMAIL if ADMIN_EMAIL is not set
+    admin_email = os.environ.get('ADMIN_EMAIL', os.environ.get('SMTP_EMAIL', '')).strip()
+    
+    if not api_key or not admin_email:
+        logger.warning("Brevo API Key or Admin Email not found. Skipping admin notification.")
+        print(f"\n{'='*50}\n[MOCK ADMIN EMAIL]\nTo: {admin_email}\nSubject: {subject}\n{'='*50}\n")
+        return
+
+    try:
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": api_key,
+            "content-type": "application/json"
+        }
+        
+        sender_email = os.environ.get('SMTP_EMAIL', 'no-reply@retirenow.com')
+        
+        payload = {
+            "sender": {"name": "Can I Quit App (System)", "email": sender_email},
+            "to": [{"email": admin_email}],
+            "subject": subject,
+            "htmlContent": html_content
+        }
+        
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code in [200, 201, 202]:
+            logger.info(f"Admin notification sent to {admin_email}: {subject}")
+        else:
+            logger.error(f"Failed to send admin notification: {response.text}")
+
+    except Exception as e:
+        logger.error(f"Exception sending admin notification: {e}")
+
 
 # Routes
 @api_router.get("/health")
@@ -655,6 +695,15 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     # Send Email in Background
     # This prevents the UI from hitting a timeout while waiting for SMTP
     background_tasks.add_task(send_verification_email, user.email, verify_token_str)
+    
+    # Notify Admin
+    admin_content = f"""
+        <h1>New User Registration</h1>
+        <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>Time:</strong> {current_time}</p>
+        <p><strong>Location:</strong> {user_location}</p>
+    """
+    background_tasks.add_task(send_admin_notification, f"New user signed up {user.email}", admin_content)
 
     return TokenResponse(
         email=user.email, 
@@ -694,7 +743,7 @@ async def verify_email(request: VerifyRequest):
         raise HTTPException(status_code=400, detail="Invalid verification link")
 
 @api_router.post("/auth/login", response_model=TokenResponse)
-async def login(user: UserLogin, request: Request):
+async def login(user: UserLogin, request: Request, background_tasks: BackgroundTasks):
     # Find user
     user_doc = await db.access.find_one({"email": user.email}, {"_id": 0})
     if not user_doc:
@@ -747,6 +796,21 @@ async def login(user: UserLogin, request: Request):
             pass
     
     token = create_token(user.email)
+    
+    # Notify Admin of Login
+    try:
+        admin_content = f"""
+            <h1>User Login</h1>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>Time:</strong> {current_time}</p>
+            <p><strong>Location:</strong> {current_location}</p>
+            <p><strong>Login Count:</strong> {user_doc.get('login_count', 0) + 1}</p>
+        """
+        background_tasks.add_task(send_admin_notification, f"Existing user logged {user.email}", admin_content)
+    except Exception:
+        # Don't fail login if notification setup fails
+        pass
+
     return TokenResponse(
         token=token, 
         email=user.email,

@@ -124,66 +124,68 @@ export default function PrivacyPolicy() {
     const t = content[language] || content.en;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="min-h-screen bg-background">
             <PageHeader
                 icon={Lock}
                 title={t.title}
                 description={t.subtitle}
             />
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
 
-            <Card className="mt-6 bg-card border-border">
-                <CardHeader>
-                    <CardTitle>{t.cardTitle}</CardTitle>
-                    <CardDescription>{t.lastUpdated}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[600px] pr-4">
-                        <div className="space-y-6 text-sm text-foreground/90">
+                <Card className="mt-6 bg-card border-border">
+                    <CardHeader>
+                        <CardTitle>{t.cardTitle}</CardTitle>
+                        <CardDescription>{t.lastUpdated}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[600px] pr-4">
+                            <div className="space-y-6 text-sm text-foreground/90">
 
-                            <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg my-4">
-                                <h4 className="flex items-center gap-2 font-bold text-blue-400 mb-2">
-                                    <Lock className="w-4 h-4" />
-                                    {t.zeroKnowledgeTitle}
-                                </h4>
-                                <p className="text-blue-100">
-                                    {t.zeroKnowledgeText}
-                                </p>
+                                <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg my-4">
+                                    <h4 className="flex items-center gap-2 font-bold text-blue-400 mb-2">
+                                        <Lock className="w-4 h-4" />
+                                        {t.zeroKnowledgeTitle}
+                                    </h4>
+                                    <p className="text-blue-100">
+                                        {t.zeroKnowledgeText}
+                                    </p>
+                                </div>
+
+                                {t.sections.map((section, index) => (
+                                    <section key={index}>
+                                        <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
+                                        <p>{section.text}</p>
+                                        {section.list && (
+                                            <ul className="list-disc pl-5 mt-2 space-y-2">
+                                                {section.list.map((item, i) => {
+                                                    const [bold, rest] = item.split(':');
+                                                    return (
+                                                        <li key={i}>
+                                                            {rest ? (
+                                                                <><strong>{bold}:</strong>{rest}</>
+                                                            ) : (
+                                                                item
+                                                            )}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                        {section.extraText && (
+                                            <p className="mt-2 text-foreground/90">
+                                                {section.extraText}
+                                            </p>
+                                        )}
+                                        {section.warning && (
+                                            <p className="mt-2 text-amber-500 font-medium">{section.warning}</p>
+                                        )}
+                                    </section>
+                                ))}
                             </div>
-
-                            {t.sections.map((section, index) => (
-                                <section key={index}>
-                                    <h3 className="text-lg font-semibold mb-2 text-primary">{section.title}</h3>
-                                    <p>{section.text}</p>
-                                    {section.list && (
-                                        <ul className="list-disc pl-5 mt-2 space-y-2">
-                                            {section.list.map((item, i) => {
-                                                const [bold, rest] = item.split(':');
-                                                return (
-                                                    <li key={i}>
-                                                        {rest ? (
-                                                            <><strong>{bold}:</strong>{rest}</>
-                                                        ) : (
-                                                            item
-                                                        )}
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    )}
-                                    {section.extraText && (
-                                        <p className="mt-2 text-foreground/90">
-                                            {section.extraText}
-                                        </p>
-                                    )}
-                                    {section.warning && (
-                                        <p className="mt-2 text-amber-500 font-medium">{section.warning}</p>
-                                    )}
-                                </section>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
