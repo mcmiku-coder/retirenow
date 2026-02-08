@@ -42,30 +42,94 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
     const boxSpacing = 10;
     const startX = (pageWidth - (boxWidth * 3 + boxSpacing * 2)) / 2;
 
-    // Box 1: Final Balance
-    pdf.setFillColor(summaryData.finalBalance >= 0 ? 34 : 239, summaryData.finalBalance >= 0 ? 197 : 68, summaryData.finalBalance >= 0 ? 94 : 68);
-    pdf.rect(startX, yPos, boxWidth, boxHeight, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Solde Final' : 'Final Balance', startX + boxWidth / 2, yPos + 8, { align: 'center' });
-    pdf.setFontSize(10);
-    pdf.text(formatCurrency(summaryData.finalBalance), startX + boxWidth / 2, yPos + 15, { align: 'center' });
+    if (summaryData.isInvested) {
+        // REFINED LAYOUT: 2 Boxes, Full Width, No Background
+        const margin = 15;
+        const spacing = 10;
+        const fullWidth = pageWidth - (margin * 2);
+        const boxWidth = (fullWidth - spacing) / 2;
+        const boxStartX = margin;
 
-    // Box 2: Peak Wealth
-    pdf.setFillColor(52, 152, 219);
-    pdf.rect(startX + boxWidth + boxSpacing, yPos, boxWidth, boxHeight, 'F');
-    pdf.text(language === 'fr' ? 'Richesse Max' : 'Peak Wealth', startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 8, { align: 'center' });
-    pdf.setFontSize(10);
-    pdf.text(formatCurrency(summaryData.peakWealth || 0), startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 15, { align: 'center' });
+        // Box 1: Monte Carlo (Investment 5%)
+        // Border only (Blue), No Fill
+        pdf.setDrawColor(59, 130, 246); // border-blue-500
+        pdf.setLineWidth(0.5);
+        pdf.setFillColor(255, 255, 255); // White background ensuring no overlap
+        pdf.roundedRect(boxStartX, yPos, boxWidth, boxHeight, 2, 2, 'S'); // Stroke only
 
-    // Box 3: Years in Retirement
-    pdf.setFillColor(142, 68, 173);
-    pdf.rect(startX + (boxWidth + boxSpacing) * 2, yPos, boxWidth, boxHeight, 'F');
-    pdf.setFontSize(8);
-    pdf.text(language === 'fr' ? 'Années de Retraite' : 'Years in Retirement', startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
-    pdf.setFontSize(10);
-    pdf.text(String(summaryData.yearsInRetirement || 0), startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+        // Title
+        pdf.setTextColor(59, 130, 246); // text-blue-500 (matching border)
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'SIMULATION MONTE-CARLO SUR INVESTISSEMENTS' : 'MONTE-CARLO SIMULATION ON INVESTMENTS', boxStartX + boxWidth / 2, yPos + 6, { align: 'center' });
+
+        // Value
+        const val5 = Math.round(summaryData.final5Balance || 0);
+        // Use Green for positive, Red for negative
+        pdf.setTextColor(val5 >= 0 ? 22 : 163, val5 >= 0 ? 163 : 30, val5 >= 0 ? 74 : 30); // Darker Green/Red for visibility on white
+        pdf.setFontSize(12);
+        pdf.text(formatCurrency(val5), boxStartX + boxWidth / 2, yPos + 12, { align: 'center' });
+
+        // Subtitle
+        pdf.setTextColor(107, 114, 128); // text-gray-500
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(language === 'fr' ? 'Solde final projeté (5%)' : 'Projected Final Balance (5%)', boxStartX + boxWidth / 2, yPos + 17, { align: 'center' });
+
+
+        // Box 2: Baseline (Cash Only)
+        // Border only (Gray), No Fill
+        pdf.setDrawColor(107, 114, 128); // border-gray-500
+        pdf.roundedRect(boxStartX + boxWidth + spacing, yPos, boxWidth, boxHeight, 2, 2, 'S');
+
+        // Title
+        pdf.setTextColor(107, 114, 128); // text-gray-500
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'SIMULATION AVEC CASH SEULEMENT' : 'SIMULATION WITH ONLY CASH (NO INVESTMENT)', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 6, { align: 'center' });
+
+        // Value
+        const valBase = Math.round(summaryData.finalBaselineBalance || 0);
+        pdf.setTextColor(valBase >= 0 ? 22 : 163, valBase >= 0 ? 163 : 30, valBase >= 0 ? 74 : 30); // Green/Red
+        pdf.setFontSize(12);
+        pdf.text(formatCurrency(valBase), boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 12, { align: 'center' });
+
+        // Subtitle
+        pdf.setTextColor(107, 114, 128); // text-gray-500
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 17, { align: 'center' });
+
+    } else {
+        // STANDARD LAYOUT
+
+        // Box 1: Final Balance
+        // pdf.setFillColor(summaryData.finalBalance >= 0 ? 34 : 239, summaryData.finalBalance >= 0 ? 197 : 68, summaryData.finalBalance >= 0 ? 94 : 68);
+        // User screenshot shows simple Green box. Let's stick to standard colors but clean up.
+        pdf.setFillColor(summaryData.finalBalance >= 0 ? 34 : 239, summaryData.finalBalance >= 0 ? 197 : 68, summaryData.finalBalance >= 0 ? 94 : 68);
+        pdf.rect(startX, yPos, boxWidth, boxHeight, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'Solde Final' : 'Final Balance', startX + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.setFontSize(10);
+        pdf.text(formatCurrency(summaryData.finalBalance), startX + boxWidth / 2, yPos + 15, { align: 'center' });
+
+        // Box 2: Peak Wealth
+        pdf.setFillColor(52, 152, 219);
+        pdf.rect(startX + boxWidth + boxSpacing, yPos, boxWidth, boxHeight, 'F');
+        pdf.text(language === 'fr' ? 'Richesse Max' : 'Peak Wealth', startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.setFontSize(10);
+        pdf.text(formatCurrency(summaryData.peakWealth || 0), startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 15, { align: 'center' });
+
+        // Box 3: Years in Retirement
+        pdf.setFillColor(142, 68, 173);
+        pdf.rect(startX + (boxWidth + boxSpacing) * 2, yPos, boxWidth, boxHeight, 'F');
+        pdf.setFontSize(8);
+        pdf.text(language === 'fr' ? 'Années de Retraite' : 'Years in Retirement', startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.setFontSize(10);
+        pdf.text(String(summaryData.yearsInRetirement || 0), startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+    }
 
     yPos += boxHeight + 10;
 
@@ -729,8 +793,8 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
         pdf.text(focusTitle, cardX + 5, cardY + 8);
 
         // Annual/Cumulative Summary in Header
-        const annualLabel = language === 'fr' ? 'Annuel:' : 'Annual:';
-        const cumulLabel = language === 'fr' ? 'Cumulé:' : 'Cumul:';
+        const annualLabel = language === 'fr' ? 'Solde annuel:' : 'Annual balance:';
+        const cumulLabel = language === 'fr' ? 'Solde cumulé:' : 'Cumulative balance:';
         const annualVal = yearData.annualBalance || 0;
         const cumulVal = yearData.cumulativeBalance || 0;
 
@@ -800,11 +864,11 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
         incomeItems.forEach(([name, val]) => {
             pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(8);
+            pdf.setFontSize(7.5); // Slightly smaller to fit more text
             pdf.setTextColor(71, 85, 105); // Slate 600
 
-            // Truncate name if too long
-            const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+            // Truncate name if too long (Increased limit)
+            const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
             pdf.text(displayName, cardX + 5, leftY);
 
             pdf.setFont('helvetica', 'bold');
@@ -812,7 +876,7 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
             leftY += 5;
@@ -825,10 +889,10 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
         if (assetItems.length > 0) {
             assetItems.forEach(([name, val]) => {
                 pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(8);
+                pdf.setFontSize(7.5);
                 pdf.setTextColor(236, 72, 153); // Pink
 
-                const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+                const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
                 pdf.text(displayName, cardX + 5, leftY);
 
                 pdf.setFont('helvetica', 'bold');
@@ -836,7 +900,7 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
                 // Manual Right Align for Value
                 const valStr = formatNumber(val);
-                const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+                const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
                 pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
                 leftY += 5;
@@ -859,10 +923,10 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
         costItems.forEach(([name, val]) => {
             pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(8);
+            pdf.setFontSize(7.5);
             pdf.setTextColor(71, 85, 105);
 
-            const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+            const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
             pdf.text(displayName, rightColX, rightY);
 
             pdf.setFont('helvetica', 'bold');
@@ -870,7 +934,7 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + cardWidth - 5 - valWidth, rightY);
 
             rightY += 5;

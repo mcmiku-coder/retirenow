@@ -2,7 +2,9 @@ import React from 'react';
 import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import DetailedTooltipContent from './DetailedTooltipContent';
 
-const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, focusYears = [] }) => {
+const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, focusYears = [],
+    showMC50 = false, showMC25 = false, showMC10 = false, showMC5 = false, showActivatedOwnings = false
+}) => {
 
     // Format currency for display
     const formatCurrency = (value) => {
@@ -45,6 +47,8 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
             breakdown = Object.entries(payload.incomeBreakdown || {}).filter(([name]) => !name.includes('(Activated)'));
         } else if (dataKey === 'negCosts') {
             breakdown = Object.entries(payload.costBreakdown || {});
+        } else if (dataKey === 'activatedOwnings') {
+            breakdown = Object.entries(payload.activatedOwingsBreakdown || {});
         }
 
         const rectY = height < 0 ? y + height : y;
@@ -118,6 +122,20 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
         return null;
     };
 
+    // Calculate gradient offset for MC5 line
+    const getGradientOffset = () => {
+        if (!chartData || chartData.length === 0) return 0.5;
+        const dataMax = Math.max(...chartData.map(i => Math.max(i.mc5 || 0, i.cumulativeBalance || 0)));
+        const dataMin = Math.min(...chartData.map(i => Math.min(i.mc5 || 0, i.cumulativeBalance || 0)));
+
+        if (dataMax <= 0) return 0;
+        if (dataMin >= 0) return 1;
+
+        return dataMax / (dataMax - dataMin);
+    };
+
+    const gradientOffset = getGradientOffset();
+
     return (
         <div className="flex-1 rounded-lg p-4 border" style={{
             height: isPdf ? '100%' : '880px',
@@ -130,12 +148,19 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     margin={{ top: 20, right: 120, left: 60, bottom: 60 }}
                     stackOffset="sign"
                 >
+                    <defs>
+                        <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset={gradientOffset} stopColor="#22c55e" stopOpacity={1} />
+                            <stop offset={gradientOffset} stopColor="#ef4444" stopOpacity={1} />
+                        </linearGradient>
+                    </defs>
+
                     <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
                     <XAxis
                         dataKey="year"
-                        tick={{ fontSize: isPdf ? 11 : 15, fill: colors.text }} // Intermediate size
+                        tick={{ fontSize: isPdf ? 11 : 15, fill: colors.text }}
                         stroke={colors.axis}
-                        interval={0} // Force show all years
+                        interval={0}
                     />
                     <YAxis
                         label={{ value: 'Amount (CHF)', angle: -90, position: 'insideLeft', fill: colors.text, fontSize: 18 }}
@@ -179,11 +204,10 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             x={parseInt(focus.year)}
                             stroke={isPdf ? "#666666" : "#ffffff"}
                             shape={(props) => {
-                                // Extract props provided by Recharts
                                 const { x1, y1, x2, y2, stroke, strokeWidth, strokeOpacity } = props;
                                 const yTop = Math.min(y1, y2);
                                 const yBottom = Math.max(y1, y2);
-                                const gap = 30; // 14px (text) + ~10px gap + extra padding
+                                const gap = 30;
 
                                 return (
                                     <line
@@ -199,7 +223,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             }}
                             label={{
                                 position: 'insideTop',
-                                dy: 10, // Move label down slightly inside graph
+                                dy: 10,
                                 value: `F${focus.id}`,
                                 fill: isPdf ? "#000000" : "#ffffff",
                                 fontSize: 14,
@@ -208,7 +232,20 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         />
                     ))}
 
-                    {/* Stacked bars with segmented rendering */}
+                    {/* 1. Activated Ownings Bar (Optional) */}
+                    {showActivatedOwnings && (
+                        <Bar
+                            dataKey="activatedOwnings"
+                            fill="#ec4899"
+                            name="Activated Ownings"
+                            stackId="stack"
+                            barSize={isPdf ? 20 : 30}
+                            shape={<CustomBarShape />}
+                            isAnimationActive={false}
+                        />
+                    )}
+
+                    {/* 2. Income & Costs Bars (Always Visible) */}
                     <Bar
                         dataKey="income"
                         fill="#22c55e"
@@ -229,17 +266,129 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         isAnimationActive={false}
                     />
 
-                    {/* Cumulative balance line with ending balance label */}
+                    {/* 3. Monte Carlo Lines (Optional) */}
+
+                    {/* MC 50% (Median - Purple for PDF, Blue for Web) */}
+                    {showMC50 && (
+                        <Line
+                            type="monotone"
+                            dataKey="mc50"
+                            stroke={isPdf ? "#8e44ad" : "#3b82f6"} // Purple for PDF
+                            strokeWidth={2}
+                            name={isPdf ? (language === 'fr' ? "MC 50% (Médian)" : "MC 50% (Median)") : "MC 50% (Pessimistic)"}
+                            dot={false}
+                            isAnimationActive={false}
+                            label={(props) => {
+                                const { x, y, value, index } = props;
+                                if (chartData && index === chartData.length - 1) {
+                                    return (
+                                        <text x={x} y={y} dx={10} dy={4} fill={isPdf ? "#8e44ad" : "#3b82f6"} fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
+                                            {Math.round(value).toLocaleString('de-CH')}
+                                        </text>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                    )}
+
+                    {/* MC 25% (Conservative - Amber/Orange) */}
+                    {showMC25 && (
+                        <Line
+                            type="monotone"
+                            dataKey="mc25"
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            name="MC 25% (Conservative)"
+                            dot={false}
+                            isAnimationActive={false}
+                            label={(props) => {
+                                const { x, y, value, index } = props;
+                                if (chartData && index === chartData.length - 1) {
+                                    return (
+                                        <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
+                                            {Math.round(value).toLocaleString('de-CH')}
+                                        </text>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                    )}
+
+                    {/* MC 10% (Very Pessimistic - Red/Orange) */}
+                    {showMC10 && (
+                        <Line
+                            type="monotone"
+                            dataKey="mc10"
+                            stroke="#dc2626"
+                            strokeWidth={2}
+                            name="MC 10% (Pessimistic)"
+                            dot={false}
+                            isAnimationActive={false}
+                            label={(props) => {
+                                const { x, y, value, index } = props;
+                                if (chartData && index === chartData.length - 1) {
+                                    return (
+                                        <text x={x} y={y} dx={10} dy={4} fill="#dc2626" fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
+                                            {Math.round(value).toLocaleString('de-CH')}
+                                        </text>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                    )}
+
+                    {/* MC 5% (Extremely Pessimistic - Blue for PDF, Gradient for Web) */}
+                    {showMC5 && (
+                        <Line
+                            type="monotone"
+                            dataKey="mc5"
+                            stroke={isPdf ? "#3b82f6" : "url(#splitColor)"} // Blue for PDF
+                            strokeWidth={3}
+                            name="MC 5% (Very Pessimistic)"
+                            dot={false}
+                            isAnimationActive={false}
+                            label={(props) => {
+                                const { x, y, value, index } = props;
+                                if (chartData && index === chartData.length - 1) {
+                                    const fillColor = isPdf ? "#3b82f6" : (value >= 0 ? "#22c55e" : "#ef4444");
+                                    return (
+                                        <text
+                                            x={x}
+                                            y={y}
+                                            dx={10}
+                                            dy={4}
+                                            fill={fillColor}
+                                            fontSize={18}
+                                            fontWeight="bold"
+                                            textAnchor="start"
+                                            style={{ pointerEvents: 'none' }}
+                                        >
+                                            {Math.round(value).toLocaleString('de-CH')}
+                                        </text>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                    )}
+
+                    {/* 4. Baseline (Cumulative Balance - Yellow/Gold) - Always Visible */}
                     <Line
                         type="monotone"
                         dataKey="cumulativeBalance"
-                        stroke="#eab308"
+                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? "#374151" : "#eab308"}
+                        strokeDasharray={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? "5 5" : "0"}
                         strokeWidth={3}
-                        name="Cumulative Balance"
+                        name={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? (language === 'fr' ? "Ligne de base" : "Base Line") : "Cumulative Balance"}
                         dot={false}
                         isAnimationActive={false}
                         label={(props) => {
                             const { x, y, value, index } = props;
+                            // Only show label if MC5 is NOT shown to avoid clutter, or ensure distinct position?
+                            // User request implies both can be active. Let's keep it.
                             if (chartData && index === chartData.length - 1) {
                                 return (
                                     <text
@@ -266,10 +415,10 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         type="monotone"
                         dataKey="cumulativeBalance"
                         fill="#eab308"
-                        fillOpacity={0.1}
+                        fillOpacity={0.05}
                         stroke="none"
                         legendType="none"
-                        tooltipType="none" // Ensure it doesn't try to show up specifically
+                        tooltipType="none"
                     />
                 </ComposedChart>
             </ResponsiveContainer>

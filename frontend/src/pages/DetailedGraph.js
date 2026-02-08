@@ -23,6 +23,19 @@ const DetailedGraph = () => {
         { id: 4, active: false, year: '' }
     ]);
 
+    // Graph Options State
+    const [graphOptions, setGraphOptions] = useState({
+        showMC5: true, // Default per user request (Main line)
+        showMC10: false,
+        showMC25: false,
+        showMC50: false,
+        showActivatedOwnings: false
+    });
+
+    const toggleGraphOption = (key) => {
+        setGraphOptions(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     useEffect(() => {
         // Get data passed from ScenarioResult page
         if (location.state?.yearlyData && location.state?.summaryData) {
@@ -39,15 +52,56 @@ const DetailedGraph = () => {
                 setRetirementDate(location.state.retirementDate);
             }
 
-            // Get focusYears from state (Persist settings)
-            if (location.state?.focusYears && Array.isArray(location.state.focusYears) && location.state.focusYears.length > 0) {
-                setFocusYears(location.state.focusYears);
+            // Get focusYears from state or localStorage (Persist settings across sessions)
+            let loadedYears = null;
+
+            // 1. Try to get from navigation state (ONLY if it has active years)
+            // Fix: ScenarioResult passes an empty array by default if no years were selected previously.
+            // We must ignore that empty array to allow localStorage to load.
+            if (location.state?.focusYears && Array.isArray(location.state.focusYears) && location.state.focusYears.some(y => y.active)) {
+                loadedYears = location.state.focusYears;
+            }
+
+            // 2. If no active years in state, try localStorage
+            if (!loadedYears) {
+                const savedFocusYears = localStorage.getItem('retirenow_focusYears');
+                if (savedFocusYears) {
+                    try {
+                        const parsed = JSON.parse(savedFocusYears);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            loadedYears = parsed;
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse saved focus years:", e);
+                    }
+                }
+            }
+
+            // 3. Last resort: If still nothing loaded, AND we have state (even if empty), use it to clear/reset?
+            // Actually, if we are here, it means:
+            // - State has no active years.
+            // - LocalStorage has no data (or failed).
+            // In this case, we SHOULD fallback to the default empty state (recieved from location),
+            // effectively "clearing" the selection if the user intended to clear it (and it syncs to LS via useEffect).
+            if (!loadedYears && location.state?.focusYears && Array.isArray(location.state.focusYears)) {
+                loadedYears = location.state.focusYears;
+            }
+
+            if (loadedYears) {
+                setFocusYears(loadedYears);
             }
         } else {
             // If no data, redirect back
             navigate('/scenario-result');
         }
     }, [location.state, navigate]);
+
+    // Save focusYears to localStorage whenever they change
+    useEffect(() => {
+        if (focusYears?.length > 0) {
+            localStorage.setItem('retirenow_focusYears', JSON.stringify(focusYears));
+        }
+    }, [focusYears]);
 
     const handleBack = () => {
         // Pass focusYears back to ScenarioResult so they can be included in the PDF
@@ -58,7 +112,8 @@ const DetailedGraph = () => {
         navigate('/result', {
             state: {
                 ...location.state, // Preserve existing state if any
-                focusYears: focusYears
+                focusYears: focusYears,
+                graphOptions: graphOptions
             }
         });
     };
@@ -95,7 +150,7 @@ const DetailedGraph = () => {
                 </button>
 
                 {/* Detailed Years Controls */}
-                <div className="flex-1">
+                <div className="mb-6">
                     <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
                         {language === 'fr' ? 'Années détaillées' : 'Detailed Years'}
                     </h3>
@@ -132,6 +187,79 @@ const DetailedGraph = () => {
                         ))}
                     </div>
                 </div>
+
+                {/* Graph Options Controls */}
+                <div className="flex-1">
+                    <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                        {language === 'fr' ? 'Projection' : 'Projection'}
+                    </h3>
+                    <div className="space-y-3">
+                        {/* MC 5% */}
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="opt-mc5"
+                                checked={graphOptions.showMC5}
+                                onCheckedChange={() => toggleGraphOption('showMC5')}
+                                className="h-4 w-4 mt-0.5"
+                            />
+                            <Label htmlFor="opt-mc5" className="text-xs font-medium cursor-pointer leading-tight">
+                                {language === 'fr' ? 'MC 5% (Très Pessimiste)' : 'MC 5% (Very Pessimistic)'}
+                            </Label>
+                        </div>
+
+                        {/* MC 10% */}
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="opt-mc10"
+                                checked={graphOptions.showMC10}
+                                onCheckedChange={() => toggleGraphOption('showMC10')}
+                                className="h-4 w-4 mt-0.5"
+                            />
+                            <Label htmlFor="opt-mc10" className="text-xs font-medium cursor-pointer leading-tight">
+                                {language === 'fr' ? 'MC 10% (Pessimiste)' : 'MC 10% (Pessimistic)'}
+                            </Label>
+                        </div>
+
+                        {/* MC 25% */}
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="opt-mc25"
+                                checked={graphOptions.showMC25}
+                                onCheckedChange={() => toggleGraphOption('showMC25')}
+                                className="h-4 w-4 mt-0.5"
+                            />
+                            <Label htmlFor="opt-mc25" className="text-xs font-medium cursor-pointer leading-tight">
+                                {language === 'fr' ? 'MC 25% (Conservateur)' : 'MC 25% (Conservative)'}
+                            </Label>
+                        </div>
+
+                        {/* MC 50% */}
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="opt-mc50"
+                                checked={graphOptions.showMC50}
+                                onCheckedChange={() => toggleGraphOption('showMC50')}
+                                className="h-4 w-4 mt-0.5"
+                            />
+                            <Label htmlFor="opt-mc50" className="text-xs font-medium cursor-pointer leading-tight">
+                                {language === 'fr' ? 'MC 50% (Médian)' : 'MC 50% (Median)'}
+                            </Label>
+                        </div>
+
+                        {/* Activated Ownings */}
+                        <div className="flex items-start space-x-2 pt-2 border-t border-border/50">
+                            <Checkbox
+                                id="opt-ownings"
+                                checked={graphOptions.showActivatedOwnings}
+                                onCheckedChange={() => toggleGraphOption('showActivatedOwnings')}
+                                className="h-4 w-4 mt-0.5"
+                            />
+                            <Label htmlFor="opt-ownings" className="text-xs font-medium cursor-pointer leading-tight">
+                                {language === 'fr' ? 'Inclure Avoirs Non-activés' : 'Show Non-Available Assets'}
+                            </Label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Main Graph Area - 92% width */}
@@ -150,6 +278,11 @@ const DetailedGraph = () => {
                         retirementDate={retirementDate}
                         language={language}
                         focusYears={focusYears}
+                        showMC5={graphOptions.showMC5}
+                        showMC10={graphOptions.showMC10}
+                        showMC25={graphOptions.showMC25}
+                        showMC50={graphOptions.showMC50}
+                        showActivatedOwnings={graphOptions.showActivatedOwnings}
                     />
                 </div>
 

@@ -45,16 +45,16 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
     let optionText = '';
     if (option === 'option0') {
         optionText = language === 'fr'
-            ? `Option 0 : Retraite à l'âge légal (65 ans)`
-            : `Option 0: Legal Retirement Age (65 years)`;
+            ? `Retraite à l'âge légal (65 ans)`
+            : `Legal Retirement Age (65 years)`;
     } else if (option === 'option1') {
         optionText = language === 'fr'
-            ? `Option 1 : Retraite anticipée avec pension LPP à ${retireAge} ans`
-            : `Option 1: Early Retirement with LPP Pension at age ${retireAge}`;
+            ? `Retraite anticipée avec pension LPP à ${retireAge} ans`
+            : `Early Retirement with LPP Pension at age ${retireAge}`;
     } else if (option === 'option2') {
         optionText = language === 'fr'
-            ? `Option 2 : Retraite anticipée avec capital LPP à ${retireAge} ans`
-            : `Option 2: Early Retirement with LPP Capital at age ${retireAge}`;
+            ? `Retraite anticipée avec capital LPP à ${retireAge} ans`
+            : `Early Retirement with LPP Capital at age ${retireAge}`;
     }
 
     pdf.text(optionText, 20, yPos);

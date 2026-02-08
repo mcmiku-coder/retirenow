@@ -126,10 +126,23 @@ const ScenarioResult = () => {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
+  // Graph Options for PDF (From DetailedGraph or Defaults)
+  const [pdfGraphOptions, setPdfGraphOptions] = useState({
+    showMC50: false,
+    showMC25: false,
+    showMC10: false,
+    showMC5: true, // Default to true (User requirement: 5% + Baseline must appear)
+    showActivatedOwnings: false
+  });
+
   // Scroll to top
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    // Sync graph options from location state if available
+    if (location.state?.graphOptions) {
+      setPdfGraphOptions(location.state.graphOptions);
+    }
+  }, [location.state]);
 
   // Load Data
   useEffect(() => {
@@ -1424,10 +1437,25 @@ const ScenarioResult = () => {
   }, [activeFilters, activateAllOwnings, owningsActivationDate, showTrendHighlight, loading, user, masterKey, scenarioData]);
 
   // PDF Focus Years State
-  const [pdfFocusYears, setPdfFocusYears] = useState([]);
+  // PDF Focus Years State
+  const [pdfFocusYears, setPdfFocusYears] = useState(() => {
+    // Try to load from localStorage first for persistence across sessions
+    const saved = localStorage.getItem('retirenow_focusYears');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error("Failed to parse saved focus years:", e);
+      }
+    }
+    return [];
+  });
 
   useEffect(() => {
-    if (location.state?.focusYears) {
+    if (location.state?.focusYears && Array.isArray(location.state.focusYears) && location.state.focusYears.length > 0) {
       setPdfFocusYears(location.state.focusYears);
     }
   }, [location.state]);
@@ -1464,7 +1492,10 @@ const ScenarioResult = () => {
         yearsInRetirement: yearlyData.length || 0,
         deathDate: userData?.theoreticalDeathDate,
         peakWealth: Math.max(...(yearlyData.map(p => p.cumulativeBalance) || [0])),
-        totalPages: 14 // Will be updated
+        totalPages: 14, // Will be updated
+        isInvested: isInvested,
+        final5Balance: final5Balance,
+        finalBaselineBalance: finalBaselineBalance
       };
 
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
@@ -2721,7 +2752,7 @@ const ScenarioResult = () => {
       <div id="pdf-detailed-graph" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1600px', height: '800px', visibility: 'visible', zIndex: -1 }}>
         {projection?.yearlyBreakdown && (
           <DetailedChart
-            chartData={projection.yearlyBreakdown.map(year => ({
+            chartData={chartData.map(year => ({
               ...year,
               negCosts: -(Math.abs(year.costs || 0))
             }))}
@@ -2729,6 +2760,11 @@ const ScenarioResult = () => {
             language={language}
             isPdf={true}
             focusYears={pdfFocusYears}
+            showMC50={pdfGraphOptions.showMC50}
+            showMC25={pdfGraphOptions.showMC25}
+            showMC10={pdfGraphOptions.showMC10}
+            showMC5={pdfGraphOptions.showMC5}
+            showActivatedOwnings={pdfGraphOptions.showActivatedOwnings}
           />
         )}
       </div>
