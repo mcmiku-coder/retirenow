@@ -89,7 +89,7 @@ const Landing = () => {
           onClick={() => setShowVideo(false)}
         >
           <div
-            className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-zinc-800"
+            className="relative w-full max-w-5xl aspect-video bg-black shadow-2xl overflow-hidden border border-zinc-800"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -167,13 +167,7 @@ const Landing = () => {
               >
                 {t('landing.learnMore')}
               </Link>
-              <span className="text-zinc-600">•</span>
-              <button
-                onClick={() => setShowVideo(true)}
-                className="text-blue-500 hover:text-blue-400 hover:underline text-sm flex items-center gap-1"
-              >
-                <Play className="h-3 w-3" /> {language === 'fr' ? 'Voir la Vidéo' : 'Watch Demo'}
-              </button>
+
             </div>
           </div>
         )}

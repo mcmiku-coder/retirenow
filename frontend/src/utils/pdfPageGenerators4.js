@@ -665,10 +665,230 @@ export const generateLegalWarnings = (pdf, language, pageNum, totalPages) => {
     addPageNumber(pdf, pageNum, totalPages, language);
 };
 
+/**
+ * Page 15 (Optional): Focus Years Details
+ * Displays detailed cards for selected focus years (up to 4)
+ */
+export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum, totalPages) => {
+    // Filter active focus years
+    const activeFocusYears = focusYears?.filter(f => f.active && f.year) || [];
+
+    if (activeFocusYears.length === 0) {
+        return;
+    }
+
+    pdf.addPage('a4', 'landscape');
+
+    let yPos = addPageHeader(
+        pdf,
+        language === 'fr' ? 'Détails des années focus' : 'Focus Years Details',
+        null,
+        15
+    );
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const availableWidth = pageWidth - (margin * 2);
+    // Adjusted height calculation
+    const availableHeight = pageHeight - yPos - 20;
+
+    const gap = 10;
+    // 2x2 grid logic
+    const cardWidth = (availableWidth - gap) / 2;
+    const cardHeight = (availableHeight - gap) / 2;
+
+    activeFocusYears.forEach((focus, index) => {
+        if (index >= 4) return; // Max 4 cards per page
+
+        const yearData = chartData.find(d => String(d.year) === String(focus.year));
+        if (!yearData) return;
+
+        // Calculate card position
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+
+        const cardX = margin + (col * (cardWidth + gap));
+        const cardY = yPos + (row * (cardHeight + gap));
+
+        // Draw Card Background
+        pdf.setFillColor(248, 250, 252); // Very light gray/blue
+        pdf.setDrawColor(226, 232, 240); // Border color
+        pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 3, 3, 'FD');
+
+        // Header Section (Dark Blue)
+        pdf.setFillColor(30, 41, 59); // slate-800
+        // Draw top part as rect
+        pdf.rect(cardX, cardY, cardWidth, 12, 'F');
+
+        // Header Text
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        const focusTitle = `FOCUS ${focus.id} - ${language === 'fr' ? 'Année' : 'Year'} ${focus.year}`;
+        pdf.text(focusTitle, cardX + 5, cardY + 8);
+
+        // Annual/Cumulative Summary in Header
+        const annualLabel = language === 'fr' ? 'Annuel:' : 'Annual:';
+        const cumulLabel = language === 'fr' ? 'Cumulé:' : 'Cumul:';
+        const annualVal = yearData.annualBalance || 0;
+        const cumulVal = yearData.cumulativeBalance || 0;
+
+        let cursorX = cardX + cardWidth - 5;
+
+        // 1. Cumulative Value
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        if (cumulVal >= 0) pdf.setTextColor(34, 197, 94); // Green
+        else pdf.setTextColor(239, 68, 68); // Red
+
+        const cumulValStr = formatNumber(cumulVal);
+        const cumulValWidth = pdf.getStringUnitWidth(cumulValStr) * 9 / pdf.internal.scaleFactor;
+
+        pdf.text(cumulValStr, cursorX - cumulValWidth, cardY + 8);
+        cursorX -= (cumulValWidth + 2); // Spacing
+
+        // 2. Cumulative Label
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(255, 255, 255); // White
+
+        const cumulLabelWidth = pdf.getStringUnitWidth(cumulLabel) * 8 / pdf.internal.scaleFactor;
+        pdf.text(cumulLabel, cursorX - cumulLabelWidth, cardY + 8);
+        cursorX -= (cumulLabelWidth + 6); // More spacing between groups
+
+        // 3. Annual Value
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        if (annualVal >= 0) pdf.setTextColor(34, 197, 94); // Green
+        else pdf.setTextColor(239, 68, 68); // Red
+
+        const annualValStr = formatNumber(annualVal);
+        const annualValWidth = pdf.getStringUnitWidth(annualValStr) * 9 / pdf.internal.scaleFactor;
+
+        pdf.text(annualValStr, cursorX - annualValWidth, cardY + 8);
+        cursorX -= (annualValWidth + 2);
+
+        // 4. Annual Label
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(255, 255, 255); // White
+
+        const annualLabelWidth = pdf.getStringUnitWidth(annualLabel) * 8 / pdf.internal.scaleFactor;
+        pdf.text(annualLabel, cursorX - annualLabelWidth, cardY + 8);
+
+        // Content Position setup
+        let contentY = cardY + 18;
+        const contentWidth = cardWidth - 10;
+        const colWidth = (contentWidth - 10) / 2; // Divide space for two columns
+
+        pdf.setTextColor(0, 0, 0);
+
+        // --- LEFT COLUMN: INCOME ---
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(34, 197, 94); // Green
+        const incomeHeader = language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)';
+        pdf.text(incomeHeader, cardX + 5, contentY);
+
+        let leftY = contentY + 6;
+
+        // Income Items
+        const incomeItems = Object.entries(yearData.incomeBreakdown || {})
+            .filter(([_, val]) => val > 0)
+            .sort((a, b) => b[1] - a[1]); // Descending
+
+        incomeItems.forEach(([name, val]) => {
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(71, 85, 105); // Slate 600
+
+            // Truncate name if too long
+            const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+            pdf.text(displayName, cardX + 5, leftY);
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+
+            // Manual Right Align for Value
+            const valStr = formatNumber(val);
+            const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+            pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
+
+            leftY += 5;
+        });
+
+        // Activated Ownings (Assets)
+        const assetItems = Object.entries(yearData.activatedOwingsBreakdown || {})
+            .filter(([_, val]) => val > 0);
+
+        if (assetItems.length > 0) {
+            assetItems.forEach(([name, val]) => {
+                pdf.setFont('helvetica', 'italic');
+                pdf.setFontSize(8);
+                pdf.setTextColor(236, 72, 153); // Pink
+
+                const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+                pdf.text(displayName, cardX + 5, leftY);
+
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0, 0, 0);
+
+                // Manual Right Align for Value
+                const valStr = formatNumber(val);
+                const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+                pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
+
+                leftY += 5;
+            });
+        }
+
+        // --- RIGHT COLUMN: COSTS ---
+        const rightColX = cardX + 5 + colWidth + 5; // Start position for right column
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(239, 68, 68); // Red
+        const costsHeader = language === 'fr' ? 'Dépenses (CHF)' : 'Expenses (CHF)';
+        pdf.text(costsHeader, rightColX, contentY);
+
+        let rightY = contentY + 6;
+        const costItems = Object.entries(yearData.costBreakdown || {})
+            .filter(([_, val]) => val > 0)
+            .sort((a, b) => b[1] - a[1]);
+
+        costItems.forEach(([name, val]) => {
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            pdf.setTextColor(71, 85, 105);
+
+            const displayName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+            pdf.text(displayName, rightColX, rightY);
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+
+            // Manual Right Align for Value
+            const valStr = formatNumber(val);
+            const valWidth = pdf.getStringUnitWidth(valStr) * 8 / pdf.internal.scaleFactor;
+            pdf.text(valStr, cardX + cardWidth - 5 - valWidth, rightY);
+
+            rightY += 5;
+        });
+
+        // Ensure totals don't overlap if list is long
+        // (In a real app, we might need pagination or careful height calc. Assuming fits for now.)
+
+    });
+
+    addPageNumber(pdf, pageNum, totalPages, language);
+};
+
 export default {
     generateLandscapeGraph,
     generateYearByYearBreakdown,
     generateLodgingAnnex,
     generateInvestmentInfo,
-    generateLegalWarnings
+    generateLegalWarnings,
+    generateFocusPage
 };

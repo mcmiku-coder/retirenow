@@ -48,6 +48,7 @@ import {
 import {
   generateLandscapeGraph,
   generateYearByYearBreakdown,
+  generateFocusPage,
   generateLodgingAnnex,
   generateInvestmentInfo,
   generateLegalWarnings
@@ -59,6 +60,11 @@ const ScenarioResult = () => {
   const navigate = useNavigate();
 
   const location = useLocation();
+  console.log('ScenarioResult Render Debug:', {
+    hasState: !!location.state,
+    stateKeys: location.state ? Object.keys(location.state) : [],
+    focusYears: location.state?.focusYears
+  });
   const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
@@ -1417,6 +1423,15 @@ const ScenarioResult = () => {
     }
   }, [activeFilters, activateAllOwnings, owningsActivationDate, showTrendHighlight, loading, user, masterKey, scenarioData]);
 
+  // PDF Focus Years State
+  const [pdfFocusYears, setPdfFocusYears] = useState([]);
+
+  useEffect(() => {
+    if (location.state?.focusYears) {
+      setPdfFocusYears(location.state.focusYears);
+    }
+  }, [location.state]);
+
   // Generate PDF Report
   const generatePDF = async () => {
     try {
@@ -1502,6 +1517,13 @@ const ScenarioResult = () => {
 
       await generateLandscapeGraph(pdf, graphElement, summaryData, language, currentPage, summaryData.totalPages);
       currentPage++;
+
+      // ===== PAGE 10.5 (OPTIONAL): FOCUS YEARS DETAILS =====
+      if (pdfFocusYears && pdfFocusYears.some(f => f.active && f.year)) {
+        pageNumbers.focus = currentPage;
+        generateFocusPage(pdf, pdfFocusYears, yearlyData, language, currentPage, summaryData.totalPages);
+        currentPage++;
+      }
 
       // ===== PAGE 11: YEAR-BY-YEAR BREAKDOWN =====
       pageNumbers.breakdown = currentPage;
@@ -2101,11 +2123,12 @@ const ScenarioResult = () => {
       </div>
 
       <PageHeader
+        containerClassName="max-w-[80%]"
         title={language === 'fr' ? 'Résultats de la simulation' : 'Simulation results'}
         rightContent={
           <div className="flex gap-2">
             <Button
-              onClick={() => navigate('/detailed-graph', { state: { yearlyData: chartData, summaryData: { finalBalance: finalBaselineBalance, peakWealth: Math.max(...chartData.map(d => d.cumulativeBalance || 0)), yearsInRetirement: chartData.filter(d => d.year >= retirementInfo.date.getFullYear()).length }, retirementDate: retirementInfo.date } })}
+              onClick={() => navigate('/detailed-graph', { state: { yearlyData: chartData, summaryData: { finalBalance: finalBaselineBalance, peakWealth: Math.max(...chartData.map(d => d.cumulativeBalance || 0)), yearsInRetirement: chartData.filter(d => d.year >= retirementInfo.date.getFullYear()).length }, retirementDate: retirementInfo.date, focusYears: pdfFocusYears } })}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
@@ -2705,6 +2728,7 @@ const ScenarioResult = () => {
             retirementDate={scenarioData?.wishedRetirementDate}
             language={language}
             isPdf={true}
+            focusYears={pdfFocusYears}
           />
         )}
       </div>

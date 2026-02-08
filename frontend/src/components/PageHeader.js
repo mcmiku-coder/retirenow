@@ -1,9 +1,9 @@
 import React from 'react';
 
-const PageHeader = ({ title, subtitle, leftContent, rightContent }) => {
+const PageHeader = ({ title, subtitle, leftContent, rightContent, containerClassName }) => {
   return (
     <div className="w-full border-y border-primary py-6 mb-10 bg-background/50 backdrop-blur-sm">
-      <div className="w-full max-w-7xl mx-auto px-6 relative flex items-center justify-center min-h-[48px]">
+      <div className={`w-full mx-auto px-6 relative flex items-center justify-center min-h-[48px] ${containerClassName || 'max-w-7xl'}`}>
         {leftContent && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2">
             {leftContent}

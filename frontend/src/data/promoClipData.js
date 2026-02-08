@@ -3,95 +3,146 @@ export const SCRIPTS = {
         {
             "id": "landing",
             "duration": 0,
-            "text": "Planning for retirement can be complex. Balancing income with expenses and understanding what your pension pillars will provide can remain abstract. ",
+            "text": "Planning for retirement can be complex. My savings, and the various pillars of the pension system, will they be enough to meet my needs?",
             "image": "/promo/0-landing_FR.jpg",
-            "subtitle": "The Challenge"
+            "subtitle": "The Challenge",
+            "delay": 0.2,
+            "transition": "appear"
+        },
+        {
+            "id": "scene_early_ret_en",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "Could I even take early retirement?",
+            "image": "/promo/0-landing_FR.jpg",
+            "subtitle": "Early Retirement?",
+            "transition": "zoom"
         },
         {
             "id": "about_me",
             "duration": 0,
-            "text": "It all starts with you. Tell us about yourself to build your unique profile.",
+            "text": "It all starts with you. Tell us who you are to build your profile.",
             "image": "/promo/1-about_me_FR.jpg",
-            "subtitle": "Your Profile"
+            "subtitle": "Your Profile",
+            "transition": "appear"
         },
         {
             "id": "expectancy",
             "duration": 0,
-            "text": "We calculate your life expectancy to build a truly personalized long-term financial timeline.",
+            "text": "We calculate your life expectancy to build a personalized, long-term financial timeline.",
             "image": "/promo/2-expectancy_FR.jpg",
             "subtitle": "Personalized Timeline"
         },
         {
             "id": "income",
             "duration": 0,
-            "text": "Inventory your income sources. Securely input your salary, bonuses, and other revenue streams.",
+            "text": "Inventory your income sources. Enter them securely.",
             "image": "/promo/3-income_FR.jpg",
-            "subtitle": "Income Centralization"
+            "subtitle": "Centralized Income"
+        },
+        {
+            "id": "scene_encryption_en",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "No confidential information leaves your computer. All your data remains exclusively encrypted within your browser's internal memory and is never transmitted over the internet.",
+            "image": "/promo/placeholder.jpg",
+            "subtitle": "Secure & Private",
+            "transition": "fade"
         },
         {
             "id": "costs",
             "duration": 0,
-            "text": "Measure your lifestyle. We help you estimate recurring costs and housing expenses, whether you rent or own.",
+            "text": "Measure your lifestyle. We help you estimate recurring costs, as well as your housing expenses, whether you rent or own.",
             "image": "/promo/4-costs_FR.jpg",
             "subtitle": "Expense Tracking"
         },
         {
             "id": "assets",
             "duration": 0,
-            "text": "Visualize your current and future net worth. Monitor your assets and liabilities in a single, unified dashboard.",
+            "text": "Visualize your current and future net worth. Observe your assets and liabilities in a unified dashboard.",
             "image": "/promo/5-actifs_passifs_FR.jpg",
-            "subtitle": "Net Worth Management"
+            "subtitle": "Wealth Management"
         },
         {
             "id": "pension",
             "duration": 0,
-            "text": "Master the 3 Pillars. Input your pension details and define the pre-retirement scenarios you want to simulate.",
+            "text": "Enter the status and conditions of your 3 Pension Pillars. Indicate your desire for pre-retirement to simulate its viability.",
             "image": "/promo/6-retraite_FR.jpg",
             "subtitle": "Pension Optimization"
         },
         {
             "id": "review",
             "duration": 0,
-            "text": "Review everything before the simulation. Ensure your data is accurate for the most precise projection.",
+            "text": "Make final adjustments before the simulation. Ensure your data is accurate for a precise projection.",
             "image": "/promo/7-review_FR.jpg",
             "subtitle": "Data Validation"
         },
         {
             "id": "simulation",
             "duration": 0,
-            "text": "Our engine projects your cash flow year by year. See exactly when you can retire with confidence, and adjust parameters until you find the perfect option.",
+            "text": "The simulator projects your cash flow, year after year. Discover with confidence when you can retire. Adjust the parameters until you find the right option.",
             "image": "/promo/8-simulation_FR.jpg",
             "subtitle": "Financial Freedom"
+        },
+        {
+            "id": "scene_cta_en",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "So? Interested in better understanding your possibilities? Don't hesitate any longer and create your free account!",
+            "image": "/promo/placeholder.jpg",
+            "subtitle": "Start Now",
+            "transition": "fade"
         }
     ],
     "fr": [
         {
             "id": "landing",
             "duration": 0,
-            "text": "Planifier sa retraite peut s'av\u00e9rer complexe. R\u00e9aliser ce que les piliers de la pr\u00e9voyance vont pouvoir nous permettre, peut rester abstrait.",
+            "text": "Planifier sa retraite, peut s'av\u00e9rer complexe. Mes \u00e9conomies, et les diff\u00e9rents piliers de la pr\u00e9voyance, seront-ils suffisants, pour r\u00e9pondre \u00e0 mes besoins ?",
             "image": "/promo/0-landing_FR.jpg",
-            "subtitle": "Le D\u00e9fi"
+            "subtitle": "Le D\u00e9fi",
+            "delay": 0.2,
+            "transition": "appear"
+        },
+        {
+            "id": "scene_1770578117308",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "Pourrais-je m\u00eame, prendre une retraite anticip\u00e9e?",
+            "image": "/promo/0-landing_FR.jpg",
+            "subtitle": "New Scene",
+            "transition": "zoom"
         },
         {
             "id": "about_me",
             "duration": 0,
             "text": "Tout commence par vous. Dites-nous qui vous \u00eates, pour \u00e9tablir votre profil.",
             "image": "/promo/1-about_me_FR.jpg",
-            "subtitle": "Votre Profil"
+            "subtitle": "Votre Profil",
+            "transition": "appear"
         },
         {
             "id": "expectancy",
             "duration": 0,
-            "text": "Nous calculons votre esp\u00e9rance de vie, pour b\u00e2tir une chronologie financi\u00e8re, personnalis\u00e9e sur le long terme.",
+            "text": "Nous calculons votre esp\u00e9rance de vie, pour \u00e9tablir une chronologie financi\u00e8re, personnalis\u00e9e sur le long terme.",
             "image": "/promo/2-expectancy_FR.jpg",
             "subtitle": "Chronologie Personnalis\u00e9e"
         },
         {
             "id": "income",
             "duration": 0,
-            "text": "Faites l'inventaire de vos sources de revenus. Saisissez en toute s\u00e9curit\u00e9, vos salaires et autres revenus.",
+            "text": "Faites l'inventaire de vos sources de revenus. Saisissez les en toute s\u00e9curit\u00e9. ",
             "image": "/promo/3-income_FR.jpg",
             "subtitle": "Revenus Centralis\u00e9s"
+        },
+        {
+            "id": "scene_1770579076887",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "Aucune information \u00e0 caract\u00e8re confidentielle ne quitte votre ordinateur. Toutes vos donn\u00e9es restent exclusivement encrypt\u00e9es, dans la m\u00e9moire interne de votre navigateur, et ne sont jamais transmises sur internet.",
+            "image": "/promo/placeholder.jpg",
+            "subtitle": "New Scene",
+            "transition": "fade"
         },
         {
             "id": "costs",
@@ -103,30 +154,39 @@ export const SCRIPTS = {
         {
             "id": "assets",
             "duration": 0,
-            "text": "Visualisez votre fortune nette actuelle et \u00e0 venir. Observer vos actifs et passifs dans un tableau de bord unifi\u00e9.",
+            "text": "Visualisez votre fortune nette, actuelle et \u00e0 venir. Observer vos actifs et passifs, dans un tableau de bord, unifi\u00e9.",
             "image": "/promo/5-actifs_passifs_FR.jpg",
             "subtitle": "Gestion de Fortune"
         },
         {
             "id": "pension",
             "duration": 0,
-            "text": "Renseignez les statuts et conditions de vos 3 Piliers de pr\u00e9voyance. Indiquez votre d\u00e9sir de pr\u00e9-retraite pour en simuler la viabilit\u00e9.",
+            "text": "Renseignez les statuts et conditions, de vos 3 Piliers de pr\u00e9voyance. Indiquez votre d\u00e9sir de pr\u00e9-retraite, pour en simuler la viabilit\u00e9.",
             "image": "/promo/6-retraite_FR.jpg",
             "subtitle": "Optimisation Pr\u00e9voyance"
         },
         {
             "id": "review",
             "duration": 0,
-            "text": "Derniers ajustements avant la simulation. Assurez-vous que vos donn\u00e9es sont exactes, pour une projection pr\u00e9cise.",
+            "text": "Proc\u00e9dez aux derniers ajustements avant la simulation. Assurez-vous que vos donn\u00e9es sont exactes, pour une projection pr\u00e9cise.",
             "image": "/promo/7-review_FR.jpg",
             "subtitle": "Validation des Donn\u00e9es"
         },
         {
             "id": "simulation",
             "duration": 0,
-            "text": "Notre simulateur projette votre tr\u00e9sorerie, ann\u00e9e apr\u00e8s ann\u00e9e. Voyez exactement quand vous pouvez prendre votre retraite, en toute confiiance. Adaptez les param\u00e8tres, jusqu'\u00e0 trouver la bonne option.",
+            "text": "Le simulateur projette votre tr\u00e9sorerie, ann\u00e9e apr\u00e8s ann\u00e9e. D\u00e9couvrez en toute confiance, quand vous pourrez prendre votre retraite. Adaptez les param\u00e8tres, jusqu'\u00e0 trouver la bonne option.",
             "image": "/promo/8-simulation_FR.jpg",
             "subtitle": "Libert\u00e9 Financi\u00e8re"
+        },
+        {
+            "id": "scene_1770579978281",
+            "duration": 0,
+            "delay": 1.4,
+            "text": "Alors ? Int\u00e9ress\u00e9 \u00e0 mieux comprendre vos possibilit\u00e9s? N'h\u00e9sitez plus et cr\u00e9er votre compte gratuit!",
+            "image": "/promo/placeholder.jpg",
+            "subtitle": "New Scene",
+            "transition": "fade"
         }
     ]
 };

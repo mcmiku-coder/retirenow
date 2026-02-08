@@ -101,7 +101,27 @@ const PromoClip = ({ propScripts, propLanguage, propVoice, propSpeed }) => {
             utterance.pitch = 1.0;
             utterance.lang = language === 'fr' ? 'fr-FR' : 'en-US';
 
-            // ... (event listeners) ...
+            utterance.onend = () => {
+                lastPlayedSceneRef.current = currentSceneIndex;
+                setCurrentSceneIndex(prev => prev + 1);
+            };
+
+            utterance.onerror = (e) => {
+                console.error("Speech Error:", e);
+                // Auto-advance even on error to prevent stuck state
+                setTimeout(() => setCurrentSceneIndex(prev => prev + 1), 1000);
+            };
+
+            // Preload Image logic
+            const img = new Image();
+            img.src = scene.image;
+            img.onload = () => {
+                setImagesLoaded(prev => ({ ...prev, [scene.image]: true }));
+            };
+            img.onerror = () => {
+                console.error("Image failed to load:", scene.image);
+                // Optionally set error state, but for now we just log
+            };
 
             // Delay before speaking (DYNAMIC)
             setTimeout(() => {
@@ -311,9 +331,10 @@ const PromoClip = ({ propScripts, propLanguage, propVoice, propSpeed }) => {
                                     src={currentScene.image}
                                     alt={currentScene.id}
                                     className="w-full h-full object-cover object-top"
-                                    initial={{ scale: 1.1 }}
-                                    animate={{ scale: 1.0 }}
-                                    transition={{ duration: currentScene.duration / 1000 || 5, ease: "linear" }}
+                                // Removed Ken Burns effect per user request
+                                // initial={{ scale: 1.1 }}
+                                // animate={{ scale: 1.0 }}
+                                // transition={{ duration: currentScene.duration / 1000 || 5, ease: "linear" }}
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-zinc-500 bg-zinc-800">
@@ -322,7 +343,8 @@ const PromoClip = ({ propScripts, propLanguage, propVoice, propSpeed }) => {
                             )}
 
                             {/* Overlay Gradient for Text */}
-                            <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" />
+                            {/* Overlay Gradient for Text - REMOVED per user request */}
+                            {/* <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/90 to-transparent" /> */}
                         </div>
 
                         {/* 3. Text Overlay */}

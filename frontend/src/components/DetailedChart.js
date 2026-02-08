@@ -1,7 +1,8 @@
 import React from 'react';
 import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import DetailedTooltipContent from './DetailedTooltipContent';
 
-const DetailedChart = ({ chartData, retirementDate, language, isPdf = false }) => {
+const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, focusYears = [] }) => {
 
     // Format currency for display
     const formatCurrency = (value) => {
@@ -112,78 +113,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false }) =
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
-
-            // Adjust styles for PDF mode vs Web mode
-            const containerClass = isPdf
-                ? "bg-white text-black p-3 rounded shadow-lg border border-gray-300 text-xs min-w-[600px]"
-                : "bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs min-w-[600px]";
-
-            const headerClass = isPdf
-                ? "flex justify-between items-center bg-gray-100 p-2 -mx-3 -mt-3 mb-2 border-b border-gray-300 rounded-t"
-                : "flex justify-between items-center bg-gray-900/50 p-2 -mx-3 -mt-3 mb-2 border-b border-gray-700 rounded-t";
-
-            const headerTextClass = isPdf ? "font-bold text-sm text-gray-800 pl-1" : "font-bold text-sm text-gray-100 pl-1";
-
-            const labelClass = isPdf ? "text-gray-600 font-normal" : "text-gray-400 font-normal";
-            const borderClass = isPdf ? "border-b border-gray-300" : "border-b border-gray-600";
-            const topBorderClass = isPdf ? "border-t border-gray-300" : "border-t border-gray-600";
-
-
-            return (
-                <div className={containerClass}>
-                    {/* Header Row: Year left, Balances right */}
-                    <div className={headerClass}>
-                        <p className={headerTextClass}>{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
-
-                        <div className="flex gap-4">
-                            <div className={`flex items-center gap-2 font-bold ${data.annualBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                <span className={labelClass}>{language === 'fr' ? 'Annuel:' : 'Annual:'}</span>
-                                <span>{Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 font-bold text-blue-500">
-                                <span className={labelClass}>{language === 'fr' ? 'Cumulé:' : 'Cumul:'}</span>
-                                <span>{Math.round(data.cumulativeBalance).toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-6 mb-2 mt-3">
-                        <div className="flex-1">
-                            <p className={`font-semibold text-green-600 mb-1 ${borderClass} pb-1`}>{language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)'}</p>
-                            {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
-                                <div key={name} className="flex justify-between gap-4">
-                                    <span>{name}</span>
-                                    <span>{Math.round(val).toLocaleString()}</span>
-                                </div>
-                            ))}
-                            {data.activatedOwnings > 0 && (
-                                <div className="flex justify-between gap-4 text-pink-500 font-medium">
-                                    <span>{language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'}</span>
-                                    <span>{Math.round(data.activatedOwnings).toLocaleString()}</span>
-                                </div>
-                            )}
-                            <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold`}>
-                                <span>Total</span>
-                                <span>{Math.round(data.income + (data.activatedOwnings || 0)).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex-1">
-                            <p className={`font-semibold text-red-500 mb-1 ${borderClass} pb-1`}>{language === 'fr' ? 'Dépenses (CHF)' : 'Costs (CHF)'}</p>
-                            {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
-                                <div key={name} className="flex justify-between gap-4">
-                                    <span>{name}</span>
-                                    <span>{Math.round(val).toLocaleString()}</span>
-                                </div>
-                            ))}
-                            <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold`}>
-                                <span>Total</span>
-                                <span>{Math.round(data.costs).toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+            return <DetailedTooltipContent data={data} language={language} isPdf={isPdf} />;
         }
         return null;
     };
@@ -203,7 +133,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false }) =
                     <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
                     <XAxis
                         dataKey="year"
-                        tick={{ fontSize: isPdf ? 12 : 18, fill: colors.text }} // Smaller font for PDF
+                        tick={{ fontSize: isPdf ? 11 : 15, fill: colors.text }} // Intermediate size
                         stroke={colors.axis}
                         interval={0} // Force show all years
                     />
@@ -213,6 +143,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false }) =
                         tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                         stroke={colors.axis}
                     />
+
                     {!isPdf && <Tooltip content={<CustomTooltip />} />}
                     <Legend
                         verticalAlign="top"
@@ -240,6 +171,42 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false }) =
                             }}
                         />
                     )}
+
+                    {/* Focus Years Bars */}
+                    {focusYears.map((focus, index) => focus.active && focus.year && (
+                        <ReferenceLine
+                            key={`focus-${index}`}
+                            x={parseInt(focus.year)}
+                            stroke={isPdf ? "#666666" : "#ffffff"}
+                            shape={(props) => {
+                                // Extract props provided by Recharts
+                                const { x1, y1, x2, y2, stroke, strokeWidth, strokeOpacity } = props;
+                                const yTop = Math.min(y1, y2);
+                                const yBottom = Math.max(y1, y2);
+                                const gap = 30; // 14px (text) + ~10px gap + extra padding
+
+                                return (
+                                    <line
+                                        x1={x1}
+                                        y1={yTop + gap}
+                                        x2={x2}
+                                        y2={yBottom}
+                                        stroke={stroke}
+                                        strokeWidth={strokeWidth}
+                                        strokeOpacity={strokeOpacity}
+                                    />
+                                );
+                            }}
+                            label={{
+                                position: 'insideTop',
+                                dy: 10, // Move label down slightly inside graph
+                                value: `F${focus.id}`,
+                                fill: isPdf ? "#000000" : "#ffffff",
+                                fontSize: 14,
+                                fontWeight: 'bold'
+                            }}
+                        />
+                    ))}
 
                     {/* Stacked bars with segmented rendering */}
                     <Bar
