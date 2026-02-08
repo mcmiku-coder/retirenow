@@ -730,7 +730,7 @@ const RealEstate = () => {
                                 <TabsTrigger
                                     key={num}
                                     value={num.toString()}
-                                    className="relative h-12 px-8 text-lg font-medium rounded-t-md rounded-b-none border-t border-x border-border/50 bg-background/50 text-muted-foreground data-[state=active]:bg-card/30 data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-0 -mb-[1px] z-10"
+                                    className="relative h-12 px-8 text-lg font-medium rounded-t-md rounded-b-none border-t border-x border-border/50 bg-background/50 text-muted-foreground data-[state=active]:bg-accent/50 data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-0 -mb-[1px] z-10"
                                 >
                                     {t('realEstate.property')} {num}
                                 </TabsTrigger>
@@ -746,7 +746,7 @@ const RealEstate = () => {
 
                             return (
                                 <TabsContent key={num} value={num.toString()} className="mt-0">
-                                    <div className="border border-border/50 rounded-lg p-6 space-y-8 bg-card/30 relative z-0">
+                                    <div className="border border-border/50 rounded-lg p-6 space-y-8 bg-accent/50 relative z-0">
 
                                         {/* ZONE 1: PROPERTY SPECIFIC TOTALS */}
                                         {renderKeyFigures(propTotals, true)}

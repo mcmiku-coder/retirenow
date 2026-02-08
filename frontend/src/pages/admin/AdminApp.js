@@ -7,6 +7,7 @@ import AdminUsers from './AdminUsers';
 import AdminInstruments from './AdminInstruments';
 import AdminTemplates from './AdminTemplates';
 import AdminConfigPage from './AdminConfigPage';
+import PromoClipAdmin from './PromoClipAdmin';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
@@ -87,6 +88,7 @@ export default function AdminApp() {
                 <Route path="/users" element={<AdminUsers token={token} adminUser={adminUser} />} />
                 <Route path="/instruments" element={<AdminInstruments token={token} adminUser={adminUser} />} />
                 <Route path="/templates" element={<AdminTemplates />} />
+                <Route path="/promo" element={<PromoClipAdmin token={token} />} />
                 <Route path="/config" element={<AdminConfigPage />} />
             </Routes>
         </AdminLayout>

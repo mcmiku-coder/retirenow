@@ -59,15 +59,6 @@ export default function Contact() {
                     <CardContent>
                         <div className="flex flex-col items-center justify-center p-12 text-center space-y-8">
 
-                            {/* Poster Image */}
-                            <div className="w-full max-w-xs mx-auto rounded-lg overflow-hidden shadow-lg border border-border">
-                                <img
-                                    src={contactImage}
-                                    alt={t.imageAlt}
-                                    className="w-full h-auto object-cover"
-                                />
-                            </div>
-
                             <div className="space-y-2">
                                 <p className="text-lg text-muted-foreground font-medium">
                                     {t.emailLabel}
@@ -79,6 +70,15 @@ export default function Contact() {
                                     <Mail className="h-6 w-6" />
                                     {t.email}
                                 </a>
+                            </div>
+
+                            {/* Poster Image */}
+                            <div className="w-full max-w-xs mx-auto rounded-lg overflow-hidden shadow-lg border border-border">
+                                <img
+                                    src={contactImage}
+                                    alt={t.imageAlt}
+                                    className="w-full h-auto object-cover"
+                                />
                             </div>
                         </div>
                     </CardContent>

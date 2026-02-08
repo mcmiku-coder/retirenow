@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../utils/apiConfig';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -7,7 +8,6 @@ import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
 /**
  * AdminLogin - Email/Password Authentication for Admin Access
@@ -28,7 +28,7 @@ export default function AdminLogin({ onLogin }) {
 
         try {
             // Login with email/password
-            const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 email,
                 password
             });

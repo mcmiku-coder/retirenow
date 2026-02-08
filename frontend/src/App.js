@@ -37,6 +37,7 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Disclaimer from './pages/legal/Disclaimer';
 import Contact from './pages/legal/Contact';
 import DetailedGraph from './pages/DetailedGraph';
+import PromoClip from './pages/PromoClip';
 import Footer from './components/Footer';
 
 import { trackPageVisit } from './utils/analytics';
@@ -183,6 +184,7 @@ function AppRoutes() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/disclaimer" element={<Disclaimer />} />
         <Route path="/contact" element={<Contact />} />
+
       </Routes>
       <Footer />
     </>

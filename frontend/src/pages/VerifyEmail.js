@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/apiConfig';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-const API = `${BACKEND_URL}/api`;
 
 const VerifyEmail = () => {
     const [searchParams] = useSearchParams();
@@ -25,7 +24,7 @@ const VerifyEmail = () => {
             }
 
             try {
-                await axios.post(`${API}/auth/verify`, { token });
+                await axios.post(`${API_BASE_URL}/api/auth/verify`, { token });
                 setStatus('success');
                 setMessage(t('auth.verificationSuccess'));
             } catch (error) {

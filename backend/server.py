@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
+import json
 import pandas as pd
 import csv
 import traceback
@@ -588,7 +589,44 @@ async def delete_user(user_id: str, admin_user: dict = Depends(require_admin)):
         logger.error(f"Error deleting user: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@api_router.post("/admin/save-promo-source")
+async def save_promo_source(request: Request, admin_user: dict = Depends(require_admin)):
+    """
+    Overwrite the frontend source file with current config.
+    DEV ONLY FEATURE - Writes directly to frontend/src/data/promoClipData.js
+    """
+    try:
+        data = await request.json()
+        scripts = data.get('scripts')
+        print(f"DEBUG: Received save-promo-source request.")
+        
+        if not scripts:
+            print("DEBUG: Missing scripts in payload")
+            raise HTTPException(status_code=400, detail="Missing scripts data")
+
+        # formatting the JS file content
+        js_content = f"export const SCRIPTS = {json.dumps(scripts, indent=4)};"
+        
+        # Path to frontend file (relative to backend/server.py)
+        # backend/server.py -> ../frontend/src/data/promoClipData.js
+        source_path = ROOT_DIR.parent / "frontend" / "src" / "data" / "promoClipData.js"
+        
+        # Ensure directory exists
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(source_path, "w", encoding="utf-8") as f:
+            f.write(js_content)
+            
+        logger.info(f"Source file overwritten successfully at {source_path}")
+        return {"success": True, "message": "Source file overwritten successfully"}
+            
+    except Exception as e:
+        print(f"DEBUG: Error saving file: {e}")
+        logger.error(f"Failed to overwrite source file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
+
 @api_router.post("/admin/stats")
+
 async def get_admin_stats(admin_user: dict = Depends(require_admin)):
     """Get admin statistics (admin only)"""
     try:
@@ -602,6 +640,37 @@ async def get_admin_stats(admin_user: dict = Depends(require_admin)):
     except Exception as e:
         print(f"Error fetching stats: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# Promo Clip Configuration Persistence - MongoDB (Required for Render)
+@api_router.get("/promo-config")
+async def get_promo_config():
+    """Get the current Promo Clip configuration from DB"""
+    try:
+        config = await db.promo_config.find_one({"_id": "main_config"}, {"_id": 0})
+        if not config:
+            return {} # Return empty to trigger defaults on frontend
+        return config
+    except Exception as e:
+        logger.error(f"Failed to read promo config from DB: {e}")
+        return {}
+
+@api_router.post("/promo-config")
+async def save_promo_config(config: dict, admin_user: dict = Depends(require_admin)):
+    """Save Promo Clip configuration to DB (Admin only)"""
+    try:
+        # Ensure we don't accidentally save _id if it's in the payload
+        if "_id" in config:
+            del config["_id"]
+            
+        await db.promo_config.update_one(
+            {"_id": "main_config"},
+            {"$set": config},
+            upsert=True
+        )
+        return {"success": True, "message": "Configuration saved to Database"}
+    except Exception as e:
+        logger.error(f"Failed to save promo config to DB: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save config: {str(e)}")
 
 @api_router.post("/admin/users/{user_id}/toggle-admin")
 async def toggle_user_admin_role(user_id: str, admin_user: dict = Depends(require_admin)):
@@ -1001,6 +1070,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "http://[::1]:3000",
+        "http://[::1]:8000",
         "https://retirenow-frontend.onrender.com",
         "https://www.caniquit.ch",
         "https://caniquit.ch",

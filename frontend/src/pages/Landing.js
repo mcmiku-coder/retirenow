@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { validatePassword } from '../utils/encryption';
-import { Lock, Mail, Globe, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Globe, Eye, EyeOff, Play, X } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
@@ -19,12 +19,15 @@ const Landing = () => {
   const { language, switchLanguage, t } = useLanguage();
   const [showRegister, setShowRegister] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showVideo, setShowVideo] = useState(false); // New State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [registerSuccess, setRegisterSuccess] = useState(false);
+
+  // ... (handlers remain the same) ...
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -79,6 +82,35 @@ const Landing = () => {
 
   return (
     <div className="flex-grow flex flex-col items-center justify-center px-4" data-testid="landing-page">
+      {/* VIDEO MODAL OVERLAY */}
+      {showVideo && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300"
+          onClick={() => setShowVideo(false)}
+        >
+          <div
+            className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-zinc-800"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowVideo(false)}
+              className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <video
+              src={language === 'fr' ? '/videos/promo_fr.mp4' : '/videos/promo_en.mp4'}
+              className="w-full h-full"
+              controls
+              autoPlay
+              onEnded={() => {
+                setTimeout(() => setShowVideo(false), 1500);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Language Selector & Admin Access - Top Right */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
         <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800 w-[100px] justify-center">
@@ -128,12 +160,21 @@ const Landing = () => {
             <p className="text-xl text-muted-foreground mb-4">
               {t('landing.subtitle')}
             </p>
-            <Link
-              to="/information"
-              className="text-green-500 hover:underline text-sm"
-            >
-              {t('landing.learnMore')}
-            </Link>
+            <div className="flex gap-4 justify-center items-center">
+              <Link
+                to="/information"
+                className="text-green-500 hover:underline text-sm"
+              >
+                {t('landing.learnMore')}
+              </Link>
+              <span className="text-zinc-600">•</span>
+              <button
+                onClick={() => setShowVideo(true)}
+                className="text-blue-500 hover:text-blue-400 hover:underline text-sm flex items-center gap-1"
+              >
+                <Play className="h-3 w-3" /> {language === 'fr' ? 'Voir la Vidéo' : 'Watch Demo'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -166,6 +207,15 @@ const Landing = () => {
                 className="min-w-[200px]"
               >
                 {t('landing.login')}
+              </Button>
+
+              <Button
+                onClick={() => setShowVideo(true)}
+                variant="ghost"
+                size="lg"
+                className="min-w-[200px] border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+              >
+                <Play className="mr-2 h-5 w-5" /> {language === 'fr' ? 'Démo' : 'Demo'}
               </Button>
             </>
           )}

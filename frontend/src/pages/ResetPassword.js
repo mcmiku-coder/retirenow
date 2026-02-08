@@ -1,5 +1,7 @@
 
+
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../utils/apiConfig';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -57,11 +59,12 @@ const ResetPassword = () => {
             return;
         }
 
+        // ...
+
         setLoading(true);
 
         try {
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

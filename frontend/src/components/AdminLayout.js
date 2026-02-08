@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, Palette, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Palette, LogOut, Video } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -35,6 +35,12 @@ export default function AdminLayout({ children, onLogout, adminUser }) {
             icon: TrendingUp,
             label: 'Instruments',
             description: 'Global catalog'
+        },
+        {
+            path: '/admin/promo',
+            icon: Video,
+            label: 'Promo Tool',
+            description: 'Generate video clips'
         },
         {
             path: '/admin/config',
