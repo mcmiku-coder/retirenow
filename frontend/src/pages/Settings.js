@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Download, Upload, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportBackup, importBackup } from '../utils/backup';
+import { clearUserData } from '../utils/database';
 import { Input } from '../components/ui/input';
 
 const Settings = () => {
@@ -60,6 +61,29 @@ const Settings = () => {
             }
         } else {
             if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleClearData = async () => {
+        if (window.confirm(language === 'fr'
+            ? 'ATTENTION: Cette action effacera définitivement toutes vos données. Voulez-vous vraiment continuer ?'
+            : 'WARNING: This action will permanently delete all your data. Are you really sure you want to continue?')) {
+
+            setLoading(true);
+            try {
+                await clearUserData(user.email);
+                // Clear local preferences too
+                localStorage.removeItem('retirenow_focusYears');
+
+                toast.success(language === 'fr' ? 'Toutes les données ont été effacées' : 'All data cleared successfully');
+
+                // Force reload to reset app state
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (error) {
+                console.error(error);
+                toast.error(language === 'fr' ? 'Erreur lors de la suppression' : 'Error clearing data');
+                setLoading(false);
+            }
         }
     };
 
@@ -169,10 +193,17 @@ const Settings = () => {
                             <CardTitle>{language === 'fr' ? 'Compte' : 'Account'}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground mb-4">
                                 {language === 'fr' ? 'Connecté en tant que :' : 'Logged in as:'} <span className="font-medium text-foreground">{user?.email}</span>
                             </div>
-                            {/* Future Password Reset Button can go here */}
+
+                            <Button
+                                onClick={handleClearData}
+                                disabled={loading}
+                                className="w-full sm:w-auto"
+                            >
+                                {language === 'fr' ? 'Effacer toutes mes données - Réinitialiser l\'application' : 'Clear all my users data - Reset to application defaults'}
+                            </Button>
                         </CardContent>
                     </Card>
 

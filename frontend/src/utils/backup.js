@@ -68,7 +68,11 @@ export const exportBackup = async (email, masterKey) => {
                 assetsData,
                 realEstateData,
                 instrumentData,     // NEW
-                simulationConfig    // NEW
+                simulationConfig,   // NEW
+                localSettings: {    // NEW: Capture Local Storage Settings
+                    focusYears: localStorage.getItem('retirenow_focusYears'),
+                    language: localStorage.getItem('app_language')
+                }
             }
         };
 
@@ -137,6 +141,12 @@ export const importBackup = async (file, email, masterKey) => {
                     data.instrumentData ? saveInstrumentData(email, masterKey, data.instrumentData) : Promise.resolve(),
                     data.simulationConfig ? saveSimulationConfig(email, masterKey, data.simulationConfig) : Promise.resolve()
                 ]);
+
+                // NEW: Restore Local Storage Settings
+                if (data.localSettings) {
+                    if (data.localSettings.focusYears) localStorage.setItem('retirenow_focusYears', data.localSettings.focusYears);
+                    if (data.localSettings.language) localStorage.setItem('app_language', data.localSettings.language);
+                }
 
                 resolve(true);
             } catch (error) {

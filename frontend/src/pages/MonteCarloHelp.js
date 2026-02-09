@@ -78,7 +78,20 @@ const MonteCarloHelp = () => {
                     ))}
                 </div>
 
-                <div className="mt-12 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex gap-4">
+                <div className="mt-8 flex justify-center">
+                    <Button
+                        variant="link"
+                        onClick={() => navigate('/monte-carlo-audit')}
+                        className="text-blue-400 hover:text-blue-300 underline-offset-4 flex items-center gap-2"
+                    >
+                        {language === 'fr'
+                            ? "Voir comment la simulation Monte-Carlo a été appliquée dans cet outil"
+                            : "See how the Monte-Carlo simulation was applied in this tool"}
+                        <ArrowLeft className="h-4 w-4 rotate-180" />
+                    </Button>
+                </div>
+
+                <div className="mt-8 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex gap-4">
                     <Info className="h-6 w-6 text-amber-500 shrink-0" />
                     <p className="text-sm text-amber-200/80 italic">
                         {language === 'fr'

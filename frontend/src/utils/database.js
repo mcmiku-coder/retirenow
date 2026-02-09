@@ -399,6 +399,8 @@ export async function clearUserData(email) {
     await db.retirementData.delete(email);
     await db.assetsData.delete(email);
     await db.realEstateData.delete(email);
+    await db.instrumentData.delete(email);      // NEW
+    await db.simulationConfig.delete(email);    // NEW
   } catch (error) {
     console.error('clearUserData error:', error);
   }

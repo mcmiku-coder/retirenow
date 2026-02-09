@@ -165,7 +165,7 @@ const ExpenseWizard = () => {
                     <span className="bg-[#EF5343]/15 text-[#EF5343] w-9 h-9 rounded-full flex items-center justify-center text-base font-bold shrink-0">
                         {id}
                     </span>
-                    <h3 className="text-xl font-semibold text-white truncate font-sans" title={label}>{label}</h3>
+                    <h3 className="text-sm font-medium text-white truncate font-sans" title={label}>{label}</h3>
                 </div>
 
                 <RadioGroup
@@ -180,7 +180,7 @@ const ExpenseWizard = () => {
                         >
                             <Label
                                 htmlFor={`${field}-${option.value}`}
-                                className="text-lg font-medium text-white cursor-pointer hover:text-[#EF5343] transition-colors text-right"
+                                className="text-sm font-medium text-white cursor-pointer hover:text-[#EF5343] transition-colors text-right"
                             >
                                 {option.label}
                             </Label>
@@ -283,7 +283,7 @@ const ExpenseWizard = () => {
                     <Button
                         onClick={handleApply}
                         size="lg"
-                        className="px-20 h-14 text-lg bg-[#EF5343] hover:bg-[#d94334] text-white shadow-xl shadow-[#EF5343]/20 transition-all font-bold"
+                        className="px-20 h-14 text-lg font-bold shadow-xl"
                         disabled={loading}
                     >
                         {loading ? t('common.loading') : (language === 'fr' ? 'Appliquer' : 'Apply')}

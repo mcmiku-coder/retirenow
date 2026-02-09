@@ -9,6 +9,7 @@ import AppHeader from './components/AppHeader';
 import Landing from './pages/Landing';
 import Information from './pages/Information';
 import MonteCarloHelp from './pages/MonteCarloHelp';
+import MonteCarloAudit from './pages/MonteCarloAudit';
 import AdminApp from './pages/admin/AdminApp';
 import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="/information" element={<Information />} />
         <Route path="/security" element={<SecurityDetails />} />
         <Route path="/monte-carlo-help" element={<MonteCarloHelp />} />
+        <Route path="/monte-carlo-audit" element={<MonteCarloAudit />} />
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
