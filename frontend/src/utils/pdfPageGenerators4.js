@@ -12,8 +12,10 @@ import {
     formatNumber,
     formatDate,
     checkPageBreak,
+
     getValueColor
 } from './pdfHelpers';
+import { investmentProducts, assetClassCorrelations } from '../data/investmentProducts';
 
 /**
  * Page 10: Landscape Results Graph
@@ -338,6 +340,8 @@ export const generateYearByYearBreakdown = (pdf, yearlyData, language, pageNum, 
  * For tenants: one page with rent details
  */
 export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, totalPages) => {
+    if (!realEstateData) return;
+
     const isOwner = realEstateData?.lodgingSituation === 'owner';
 
     // Normalize Data: If raw flat arrays are passed, structure them into 'properties' or 'tenantExpenses'
@@ -569,9 +573,14 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
  * Page 13: Investment Information (Conditional)
  * Only included if user has defined investments in Capital Management
  */
-export const generateInvestmentInfo = (pdf, instrumentData, language, pageNum, totalPages) => {
-    if (!instrumentData || instrumentData.length === 0) {
-        return; // Skip this page if no investments
+export const generateInvestmentInfo = (pdf, instrumentData, language, pageNum, totalPages, monteCarloData, baselineProjection) => {
+    // USE MONTE CARLO DATA IF AVAILABLE (It contains the specific product selections)
+    // Structure: monteCarloData.details.portfolioAssets (because ScenarioResult wraps it)
+    const simulationDetails = monteCarloData?.details;
+    const assetsToDisplay = simulationDetails?.portfolioAssets || [];
+
+    if (assetsToDisplay.length === 0 && instrumentData.length === 0) {
+        return; // Skip if nothing to show
     }
 
     pdf.addPage();
@@ -583,46 +592,271 @@ export const generateInvestmentInfo = (pdf, instrumentData, language, pageNum, t
         20
     );
 
-    yPos += 5;
+    yPos += 10;
 
-    instrumentData.forEach((instrument, index) => {
-        yPos = checkPageBreak(pdf, yPos, 50);
+    // 1. INVESTMENT DETAILS TABLE
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text(language === 'fr' ? '1. Détail des Instruments' : '1. Instrument Details', 15, yPos);
+    yPos += 8;
 
-        pdf.setFontSize(11);
+    const detailsHeaders = [
+        language === 'fr' ? 'Actif' : 'Asset',
+        language === 'fr' ? 'Produit Sélectionné' : 'Selected Product',
+        language === 'fr' ? 'Montant' : 'Amount',
+        language === 'fr' ? 'Début' : 'Start Date',
+        language === 'fr' ? 'Stratégie' : 'Strategy'
+    ];
+
+    // If using MC data, we need to map back to original asset name if possible, or use product name
+    const detailsData = [];
+
+    if (assetsToDisplay.length > 0) {
+        assetsToDisplay.forEach(item => {
+            // item structure: { assetId, product: {...}, amount, availabilityDate, weight }
+            // Find original asset name from instrumentData if possible
+            const originalAsset = instrumentData.find(i => i.id === item.assetId);
+
+            detailsData.push([
+                originalAsset ? originalAsset.name : (language === 'fr' ? 'Investissement' : 'Investment'),
+                item.product.name, // The SPECIFIC product name (e.g., UBS ETF...)
+                formatCurrency(item.amount || 0),
+                item.availabilityDate ? formatDate(item.availabilityDate) : 'N/A',
+                'Invested'
+            ]);
+        });
+    } else {
+        // Fallback if no MC data (display generic info)
+        instrumentData.forEach(inst => {
+            detailsData.push([
+                inst.name,
+                language === 'fr' ? 'Non spécifié' : 'Not specified',
+                formatCurrency(inst.adjustedAmount || inst.amount || 0),
+                inst.startDate ? formatDate(inst.startDate) : 'N/A',
+                inst.strategy || 'N/A'
+            ]);
+        });
+    }
+
+    autoTable(pdf, {
+        startY: yPos,
+        head: [detailsHeaders],
+        body: detailsData,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
+        styles: { fontSize: 8 },
+        columnStyles: { 2: { halign: 'right' } },
+        margin: { left: 15, right: 15 }
+    });
+
+    yPos = pdf.lastAutoTable.finalY + 15;
+
+    // 2. STATISTICAL INFORMATION (Specific to selected products)
+    yPos = checkPageBreak(pdf, yPos, 60);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text(language === 'fr' ? '2. Statistiques Historiques (25 ans)' : '2. Historical Statistics (25 Years)', 15, yPos);
+    yPos += 8;
+
+    const statsHeaders = [
+        language === 'fr' ? 'Produit' : 'Product',
+        language === 'fr' ? 'Rendement Moy.' : 'Avg Return',
+        language === 'fr' ? 'Volatilité' : 'Volatility',
+        language === 'fr' ? 'Max Perte 3 ans' : 'Max 3Y Loss',
+        language === 'fr' ? 'Max Gain 3 ans' : 'Max 3Y Gain'
+    ];
+
+    const statsData = [];
+    if (assetsToDisplay.length > 0) {
+        assetsToDisplay.map(item => {
+            const p = item.product;
+            // Check if metrics exist
+            if (!p || !p.metrics) return statsData.push([item.product?.name || 'N/A', '-', '-', '-', '-']);
+
+            statsData.push([
+                p.name, // Specific product name
+                `${p.metrics.avgReturn}%`,
+                `${p.metrics.avgVolatility}%`,
+                { content: `${p.metrics.max3YLoss}%`, styles: { textColor: [220, 38, 38] } }, // Red
+                { content: `${p.metrics.max3YGain}%`, styles: { textColor: [22, 163, 74] } }  // Green
+            ]);
+        });
+    } else {
+        statsData.push([language === 'fr' ? 'Aucun produit sélectionné' : 'No product selected', '-', '-', '-', '-']);
+    }
+
+    autoTable(pdf, {
+        startY: yPos,
+        head: [statsHeaders],
+        body: statsData,
+        theme: 'striped',
+        headStyles: { fillColor: [142, 68, 173], textColor: 255, fontSize: 9 }, // Purple header
+        styles: { fontSize: 8 },
+        columnStyles: {
+            1: { halign: 'center' },
+            2: { halign: 'center' },
+            3: { halign: 'center', fontStyle: 'bold' },
+            4: { halign: 'center', fontStyle: 'bold' }
+        },
+        margin: { left: 15, right: 15 }
+    });
+
+    yPos = pdf.lastAutoTable.finalY + 15;
+
+    // 3. MONTE CARLO AUDIT (Specific Matrix)
+    yPos = checkPageBreak(pdf, yPos, 80);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text(language === 'fr' ? '3. Audit de la Simulation Monte-Carlo' : '3. Monte-Carlo Simulation Audit', 15, yPos);
+    yPos += 8;
+
+    // Explanation Text
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(50, 50, 50);
+    const explanation = language === 'fr'
+        ? "Cette simulation utilise un modèle de Mouvement Brownien Géométrique (GBM) calibré sur 25 ans de données historiques. La matrice de corrélation ci-dessous représente les interdépendances réelles utilisées pour vos produits sélectionnés."
+        : "This simulation uses a Geometric Brownian Motion (GBM) model calibrated on 25 years of historical data. The correlation matrix below represents the actual interdependencies used for your selected products.";
+
+    const splitText = pdf.splitTextToSize(explanation, pdf.internal.pageSize.getWidth() - 30);
+    pdf.text(splitText, 15, yPos);
+    yPos += splitText.length * 4 + 8;
+
+    // Correlation Matrix Display (Specific from Simulation)
+    if (simulationDetails && simulationDetails.correlationMatrix && assetsToDisplay.length > 0) {
+        yPos = checkPageBreak(pdf, yPos, 60);
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(`${index + 1}. ${instrument.name || 'N/A'}`, 15, yPos);
-        yPos += 8;
+        pdf.text(language === 'fr' ? 'Matrice de Corrélation (Produits Sélectionnés)' : 'Correlation Matrix (Selected Products)', 15, yPos);
+        yPos += 5;
 
-        const investmentDetails = [
-            [language === 'fr' ? 'Montant' : 'Amount', formatCurrency(instrument.amount || 0)],
-            [language === 'fr' ? 'Classe d\'Actifs' : 'Asset Class', instrument.assetClass || 'N/A'],
-            [language === 'fr' ? 'Rendement Attendu' : 'Expected Return', `${((instrument.expectedReturn || 0) * 100).toFixed(2)}%`],
-            [language === 'fr' ? 'Volatilité' : 'Volatility', `${((instrument.volatility || 0) * 100).toFixed(2)}%`]
+        // Use Product Names for headers (shortened if needed)
+        const productNames = assetsToDisplay.map(a => a.product.ticker || a.product.name.substring(0, 10));
+        const matrixHeaders = ['', ...productNames];
+
+        // Map the raw matrix (which is NxN matching portfolioAssets)
+        const matrixData = simulationDetails.correlationMatrix.map((row, i) => {
+            const rowName = productNames[i];
+            const rowData = [rowName];
+            row.forEach(val => rowData.push(val.toFixed(2)));
+            return rowData;
+        });
+
+        autoTable(pdf, {
+            startY: yPos,
+            head: [matrixHeaders],
+            body: matrixData,
+            theme: 'grid',
+            headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8, halign: 'center' },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            styles: { fontSize: 7, halign: 'center' },
+            margin: { left: 15, right: 15 }
+        });
+
+        yPos = pdf.lastAutoTable.finalY + 10;
+    }
+
+    // Parameters Used
+    if (simulationDetails && simulationDetails.metadata) {
+        yPos = checkPageBreak(pdf, yPos, 40);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'Paramètres de Simulation' : 'Simulation Parameters', 15, yPos);
+        yPos += 5;
+
+        const paramsData = [
+            [language === 'fr' ? 'Itérations' : 'Iterations', simulationDetails.metadata.iterations || '10,000'],
+            [language === 'fr' ? 'Distribution' : 'Distribution', 'Student-t (df=5) [Fat Tails]'],
+            [language === 'fr' ? 'Confiance' : 'Confidence Level', '95%'],
+            [language === 'fr' ? 'Méthode' : 'Method', 'Cholesky Decomposition (Multi-asset)']
         ];
 
         autoTable(pdf, {
             startY: yPos,
-            body: investmentDetails,
+            body: paramsData,
             theme: 'plain',
-            styles: { fontSize: 9, cellPadding: 2 },
-            columnStyles: {
-                0: { fontStyle: 'bold', cellWidth: 60 },
-                1: { halign: 'left' }
-            },
-            margin: { left: 20 }
+            styles: { fontSize: 9 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
+            margin: { left: 15 }
         });
+    }
 
-        yPos = pdf.lastAutoTable.finalY + 10;
-    });
+    // 4. VALUE ANALYSIS (NEW)
+    if (baselineProjection?.yearlyBreakdown && monteCarloData?.p5) {
+        yPos = checkPageBreak(pdf, yPos, 60);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(41, 128, 185);
+        pdf.text(language === 'fr' ? '4. Analyse de la Valeur Créée' : '4. Value Creation Analysis', 15, yPos);
+        yPos += 8;
+
+        // Calculate Delta
+        const breakdown = baselineProjection.yearlyBreakdown;
+        const lastRow = breakdown[breakdown.length - 1];
+        const lastYear = lastRow.year;
+
+        // Find matching MC year (P5 = Pessimistic)
+        const mcRow = monteCarloData.p5.find(y => y.year === lastYear) || monteCarloData.p5[monteCarloData.p5.length - 1];
+
+        if (mcRow && lastRow) {
+            const baselineTotal = lastRow.total;
+            const baselineInvested = lastRow.invested || 0;
+            const investedTotal = (baselineTotal - baselineInvested) + mcRow.value;
+            const delta = investedTotal - baselineTotal;
+
+            const analysisHeaders = [
+                language === 'fr' ? 'Scénario' : 'Scenario',
+                language === 'fr' ? 'Résultat Final' : 'Final Result',
+                language === 'fr' ? 'Différence' : 'Difference'
+            ];
+
+            const analysisData = [
+                [
+                    language === 'fr' ? 'Sans Investissement (Cash)' : 'Baseline (Cash Only)',
+                    formatCurrency(baselineTotal),
+                    '-'
+                ],
+                [
+                    language === 'fr' ? 'Stratégie Investie (Pessimiste 5%)' : 'Invested Strategy (Pessimistic 5%)',
+                    formatCurrency(investedTotal),
+                    formatCurrency(delta)
+                ]
+            ];
+
+            autoTable(pdf, {
+                startY: yPos,
+                head: [analysisHeaders],
+                body: analysisData,
+                theme: 'grid',
+                headStyles: { fillColor: [46, 204, 113], textColor: 255, fontSize: 9 }, // Green header
+                styles: { fontSize: 9, fontStyle: 'bold' },
+                columnStyles: { 2: { textColor: delta > 0 ? [22, 163, 74] : [220, 38, 38] } }, // Green/Red text
+                margin: { left: 15, right: 15 }
+            });
+
+            yPos = pdf.lastAutoTable.finalY + 8;
+
+            // Explanation
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'italic');
+            pdf.setTextColor(80, 80, 80);
+
+            const gapExpl = language === 'fr'
+                ? `La différence de ${formatCurrency(delta)} s'explique par l'effet des intérêts composés sur la durée de la simulation. Même dans un scénario de marché pessimiste (5ème percentile), le rendement généré par vos actifs diversifiés permet de compenser l'érosion du capital et de couvrir les déficits de trésorerie qui, sans investissement, conduiraient à un solde négatif.`
+                : `The difference of ${formatCurrency(delta)} is explained by the compound interest effect over the simulation duration. Even in a pessimistic market scenario (5th percentile), the returns generated by your diversified assets offset capital erosion and cover cash flow deficits that would otherwise lead to a negative balance in the cash-only scenario.`;
+
+            const splitExpl = pdf.splitTextToSize(gapExpl, pdf.internal.pageSize.getWidth() - 30);
+            pdf.text(splitExpl, 15, yPos);
+            yPos += splitExpl.length * 4 + 5;
+        }
+    }
 
     addPageNumber(pdf, pageNum, totalPages, language);
 };
 
-/**
- * Page 14: Legal Warnings
- * Key disclaimers and legal information
- */
 export const generateLegalWarnings = (pdf, language, pageNum, totalPages) => {
     pdf.addPage();
 

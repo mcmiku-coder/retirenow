@@ -185,11 +185,14 @@ const DataReview = () => {
         }
 
         // Calculate dates
+        // [Phase 9b] UTC Birth/Retirement alignment
         const birthDate = new Date(userData.birthDate);
         setBirthDate(userData.birthDate);
-        const retirementDate = new Date(birthDate);
-        retirementDate.setFullYear(retirementDate.getFullYear() + 65);
-        retirementDate.setMonth(retirementDate.getMonth() + 1);
+        const retirementDate = new Date(Date.UTC(
+          birthDate.getUTCFullYear() + 65,
+          birthDate.getUTCMonth() + 1,
+          1, 0, 0, 0, 0
+        ));
         const retirementDateStr = retirementDate.toISOString().split('T')[0];
 
         // Use the theoretical death date from API
@@ -200,7 +203,8 @@ const DataReview = () => {
           // Fallback to approximation if not available
           const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
           const deathDate = new Date(birthDate);
-          deathDate.setFullYear(deathDate.getFullYear() + approximateLifeExpectancy);
+          // [Phase 9b] UTC accessors
+          deathDate.setUTCFullYear(deathDate.getUTCFullYear() + approximateLifeExpectancy);
           deathDateStr = deathDate.toISOString().split('T')[0];
         }
 
@@ -286,10 +290,12 @@ const DataReview = () => {
             let earlyRetirementDateStr = retirementDateStr;
             if (scenarioData.earlyRetirementAge && userData.birthDate) {
               const bDate = new Date(userData.birthDate);
-              const earlyRetDate = new Date(bDate);
-              earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
-              earlyRetDate.setDate(1);
-              earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+              // [Phase 9b] Strict UTC Construction
+              const earlyRetDate = new Date(Date.UTC(
+                bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
+                bDate.getUTCMonth() + 1,
+                1, 0, 0, 0, 0
+              ));
               earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
             }
 
@@ -509,10 +515,12 @@ const DataReview = () => {
             let earlyRetirementDateStr = retirementDateStr;
             if (scenarioData.earlyRetirementAge && userData.birthDate) {
               const bDate = new Date(userData.birthDate);
-              const earlyRetDate = new Date(bDate);
-              earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
-              earlyRetDate.setDate(1);
-              earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+              // [Phase 9b] Strict UTC Construction
+              const earlyRetDate = new Date(Date.UTC(
+                bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
+                bDate.getUTCMonth() + 1,
+                1, 0, 0, 0, 0
+              ));
               earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
             }
 
@@ -585,10 +593,12 @@ const DataReview = () => {
         const opt = scenarioData.retirementOption || 'option1';
         if (opt === 'option2' && scenarioData.earlyRetirementAge && userData.birthDate) {
           const bDate = new Date(userData.birthDate);
-          const earlyRetDate = new Date(bDate);
-          earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
-          earlyRetDate.setDate(1);
-          earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+          // [Phase 9b] Strict UTC Construction
+          const earlyRetDate = new Date(Date.UTC(
+            bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
+            bDate.getUTCMonth() + 1,
+            1, 0, 0, 0, 0
+          ));
           opt2EarlyDateStr = earlyRetDate.toISOString().split('T')[0];
         }
 
@@ -921,15 +931,16 @@ const DataReview = () => {
           let earlyRetirementDateStr = retirementLegalDate;
           if (scenarioData.earlyRetirementAge && birthDate) {
             const bDate = new Date(birthDate);
-            const earlyRetDate = new Date(bDate);
-            earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(scenarioData.earlyRetirementAge));
-            // Alignment: Set to 1st of month following birthday (Matches LoadData)
-            earlyRetDate.setDate(1);
-            earlyRetDate.setMonth(earlyRetDate.getMonth() + 1);
+            // [Phase 9b] Strict UTC Construction
+            const earlyRetDate = new Date(Date.UTC(
+              bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
+              bDate.getUTCMonth() + 1,
+              1, 0, 0, 0, 0
+            ));
 
-            const y = earlyRetDate.getFullYear();
-            const m = String(earlyRetDate.getMonth() + 1).padStart(2, '0');
-            const d = String(earlyRetDate.getDate()).padStart(2, '0');
+            const y = earlyRetDate.getUTCFullYear();
+            const m = String(earlyRetDate.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(earlyRetDate.getUTCDate()).padStart(2, '0');
             earlyRetirementDateStr = `${y}-${m}-${d}`;
           }
 
@@ -1535,7 +1546,8 @@ const DataReview = () => {
           }
 
           // Move to next month
-          checkDate.setMonth(checkDate.getMonth() + 1);
+          // [Phase 9b] UTC increments
+          checkDate.setUTCMonth(checkDate.getUTCMonth() + 1);
         }
 
         if (foundDate) {

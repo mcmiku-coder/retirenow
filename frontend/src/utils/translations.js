@@ -101,6 +101,11 @@ export const translations = {
     personalInfo: {
       title: "Personal Information",
       subtitle: "Tell us about yourself to calculate your retirement timeline",
+      analysisType: "I wish to analyse",
+      individualSituation: "my individual situation",
+      coupleSituation: "my couple situation (double entries necessary)",
+      comingSoonTitle: "Feature Coming Soon",
+      comingSoonMessage: "The couple analysis feature is currently under development. Please check back later!",
       birthDate: "Date of Birth",
       gender: "Gender",
       male: "Male",
@@ -389,6 +394,7 @@ export const translations = {
       success: "Success",
       save: "Save",
       cancel: "Cancel",
+      close: "Close",
       delete: "Delete",
       edit: "Edit",
       chf: "CHF"
@@ -603,6 +609,11 @@ export const translations = {
     personalInfo: {
       title: "Informations personnelles",
       subtitle: "Parlez-nous de vous pour calculer votre calendrier de retraite",
+      analysisType: "Je souhaite analyser",
+      individualSituation: "ma situation individuelle",
+      coupleSituation: "ma situation de couple (double saisie nécessaire)",
+      comingSoonTitle: "Fonctionnalité à venir",
+      comingSoonMessage: "La fonctionnalité d'analyse de couple est actuellement en développement. Revenez plus tard!",
       birthDate: "Date de naissance",
       gender: "Genre",
       male: "Masculin",
@@ -889,6 +900,7 @@ export const translations = {
       success: "Succès",
       save: "Enregistrer",
       cancel: "Annuler",
+      close: "Fermer",
       delete: "Supprimer",
       edit: "Modifier",
       chf: "CHF"

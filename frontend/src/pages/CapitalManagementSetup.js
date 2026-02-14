@@ -13,7 +13,7 @@ import { investmentProducts, getAssetClassStyle } from '../data/investmentProduc
 import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
 import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
-import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw } from 'lucide-react';
+import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
 
 const CapitalManagementSetup = () => {
@@ -33,6 +33,19 @@ const CapitalManagementSetup = () => {
     const [wishedRetirementDate, setWishedRetirementDate] = useState('');
 
     const [isSaving, setIsSaving] = useState(false);
+    const scrollContainerRef = React.useRef(null);
+
+    const scrollLeft = () => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollBy({ left: -340, behavior: 'smooth' });
+        }
+    };
+
+    const scrollRight = () => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollBy({ left: 340, behavior: 'smooth' });
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -364,119 +377,165 @@ const CapitalManagementSetup = () => {
                         </button>
                     </div>
 
+
+                    <style>{`
+                        .scrollbar-hide::-webkit-scrollbar {
+                            display: none;
+                        }
+                        .scrollbar-hide {
+                            -ms-overflow-style: none;
+                            scrollbar-width: none;
+                        }
+                    `}</style>
+
                     <RadioGroup value={selectedProductId} onValueChange={setSelectedProductId}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {investmentProducts
-                                .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
-                                .map((product) => {
-                                    const isSelected = selectedProductId === product.id;
-                                    return (
-                                        <Card
-                                            key={product.id}
-                                            className={`relative cursor-pointer hover:border-primary transition-all duration-200 ${isSelected ? 'ring-2 ring-primary border-primary shadow-xl scale-[1.02]' : 'hover:shadow-md'
-                                                }`}
-                                            onClick={() => setSelectedProductId(previous => previous === product.id ? null : product.id)}
-                                        >
-                                            <CardContent className="p-5">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
-                                                        {product.assetClass === 'Equities' && <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                        {product.assetClass === 'Bonds' && <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                        {product.assetClass === 'Real Estate' && <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                        {product.assetClass === 'Money Market' && <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                        {product.assetClass === 'Commodities' && <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                    </div>
-                                                    <RadioGroupItem value={product.id} id={product.id} className="mt-1" />
-                                                </div>
+                        <div className="relative group/carousel w-full min-w-0 rounded-xl overflow-hidden">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
+                                onClick={scrollLeft}
+                            >
+                                <ChevronLeft className="h-6 w-6" />
+                            </Button>
 
-                                                <div className="mb-4">
-                                                    <h3 className="font-bold text-lg leading-tight mb-1 tracking-tight font-sans">{product.name}</h3>
-                                                    <div className="text-sm text-muted-foreground font-mono">{product.ticker}</div>
-                                                </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
+                                onClick={scrollRight}
+                            >
+                                <ChevronRight className="h-6 w-6" />
+                            </Button>
 
-                                                <div className={`mb-4 w-full ${isSelected ? 'h-40' : 'h-32'}`}>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={product.performanceData}>
-                                                            <XAxis
-                                                                dataKey="year"
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fontSize: 10, fill: '#888888' }}
-                                                                minTickGap={30}
-                                                            />
-                                                            <YAxis hide domain={['auto', 'auto']} />
-                                                            <Tooltip
-                                                                contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
-                                                                itemStyle={{ padding: 0 }}
-                                                            />
+                            <div
+                                ref={scrollContainerRef}
+                                className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory px-4 scrollbar-hide"
+                            >
+                                {investmentProducts
+                                    .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
+                                    .map((product) => {
+                                        const isSelected = selectedProductId === product.id;
+                                        return (
+                                            <div key={product.id} className="min-w-[300px] md:min-w-[340px] snap-center pt-2">
+                                                <Card
+                                                    className={`h-full relative cursor-pointer hover:border-primary transition-all duration-200 ${isSelected ? 'ring-2 ring-primary border-primary shadow-xl scale-[1.02]' : 'hover:shadow-md'
+                                                        }`}
+                                                    onClick={() => setSelectedProductId(previous => previous === product.id ? null : product.id)}
+                                                >
+                                                    <CardContent className="p-5">
+                                                        <div className="flex items-start justify-between mb-4">
+                                                            <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
+                                                                {product.assetClass === 'Equities' && <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                                {product.assetClass === 'Bonds' && <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                                {product.assetClass === 'Real Estate' && <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                                {product.assetClass === 'Money Market' && <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                                {product.assetClass === 'Commodities' && <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                            </div>
+                                                            <RadioGroupItem value={product.id} id={product.id} className="mt-1" />
+                                                        </div>
 
-                                                            {/* Highlight Max Loss Period */}
-                                                            {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (
-                                                                <ReferenceArea
-                                                                    x1={parseInt(product.metrics.max3YLossPeriod.split('-')[0])}
-                                                                    x2={parseInt(product.metrics.max3YLossPeriod.split('-')[1])}
-                                                                    fill="red"
-                                                                    fillOpacity={0.2}
-                                                                />
-                                                            )}
+                                                        <div className="mb-4">
+                                                            <h3 className="font-bold text-lg leading-tight mb-1 tracking-tight font-sans">{product.name}</h3>
+                                                            <div className="text-sm text-muted-foreground font-mono">{product.ticker}</div>
+                                                        </div>
 
-                                                            {/* Highlight Max Gain Period */}
-                                                            {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (
-                                                                <ReferenceArea
-                                                                    x1={parseInt(product.metrics.max3YGainPeriod.split('-')[0])}
-                                                                    x2={parseInt(product.metrics.max3YGainPeriod.split('-')[1])}
-                                                                    fill="green"
-                                                                    fillOpacity={0.2}
-                                                                />
-                                                            )}
+                                                        <div className={`mb-4 w-full ${isSelected ? 'h-40' : 'h-32'}`}>
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <LineChart data={product.performanceData}>
+                                                                    <XAxis
+                                                                        dataKey="date"
+                                                                        axisLine={false}
+                                                                        tickLine={false}
+                                                                        tick={{ fontSize: 10, fill: '#888888' }}
+                                                                        minTickGap={30}
+                                                                        tickFormatter={(value) => {
+                                                                            // value is date string YYYY-MM-DD
+                                                                            return value.split('-')[0];
+                                                                        }}
+                                                                    />
+                                                                    <YAxis hide domain={['auto', 'auto']} />
+                                                                    <Tooltip
+                                                                        contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                                                                        itemStyle={{ padding: 0 }}
+                                                                        labelFormatter={(value) => {
+                                                                            // Format tooltip date
+                                                                            return value;
+                                                                        }}
+                                                                    />
 
-                                                            <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                                                    {/* Highlight Max Loss Period */}
+                                                                    {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (() => {
+                                                                        const [startYear, endYear] = product.metrics.max3YLossPeriod.split('-');
+                                                                        const startData = product.performanceData.find(d => d.date.startsWith(startYear));
+                                                                        const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(endYear));
+                                                                        if (startData && endData) {
+                                                                            return <ReferenceArea x1={startData.date} x2={endData.date} fill="red" fillOpacity={0.2} />;
+                                                                        }
+                                                                        return null;
+                                                                    })()}
 
-                                                <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
-                                                    <div>
-                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return (25y)'}</span>
-                                                        <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Volatilité' : 'Volatility'}</span>
-                                                        <span className="font-semibold">{product.metrics.avgVolatility}%</span>
-                                                    </div>
+                                                                    {/* Highlight Max Gain Period */}
+                                                                    {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (() => {
+                                                                        const period = String(product.metrics.max3YGainPeriod);
+                                                                        // It's a single year string based on my catalogHelpers implementation ("YYYY")
+                                                                        const startData = product.performanceData.find(d => d.date.startsWith(period));
+                                                                        const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(period));
+                                                                        if (startData && endData) {
+                                                                            return <ReferenceArea x1={startData.date} x2={endData.date} fill="green" fillOpacity={0.2} />;
+                                                                        }
+                                                                        return null;
+                                                                    })()}
 
-                                                    <div
-                                                        className="cursor-pointer hover:bg-red-50 p-1 -ml-1 rounded transition-colors group"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'loss' ? null : 'loss' }));
-                                                        }}
-                                                    >
-                                                        <span className="text-muted-foreground block text-xs group-hover:text-red-600 transition-colors">{language === 'fr' ? 'Perte Max' : 'Max Loss'}</span>
-                                                        <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
-                                                        {isSelected && product.metrics.max3YLossPeriod && (
-                                                            <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YLossPeriod})</span>
-                                                        )}
-                                                    </div>
+                                                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                                                                </LineChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
 
-                                                    <div
-                                                        className="text-right cursor-pointer hover:bg-green-50 p-1 -mr-1 rounded transition-colors group"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'gain' ? null : 'gain' }));
-                                                        }}
-                                                    >
-                                                        <span className="text-muted-foreground block text-xs group-hover:text-green-600 transition-colors">{language === 'fr' ? 'Gain Max' : 'Max Gain'}</span>
-                                                        <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
-                                                        {isSelected && product.metrics.max3YGainPeriod && (
-                                                            <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YGainPeriod})</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
+                                                        <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
+                                                            <div>
+                                                                <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return (25y)'}</span>
+                                                                <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Volatilité' : 'Volatility'}</span>
+                                                                <span className="font-semibold">{product.metrics.avgVolatility}%</span>
+                                                            </div>
+
+                                                            <div
+                                                                className="cursor-pointer hover:bg-red-50 p-1 -ml-1 rounded transition-colors group"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'loss' ? null : 'loss' }));
+                                                                }}
+                                                            >
+                                                                <span className="text-muted-foreground block text-xs group-hover:text-red-600 transition-colors">{language === 'fr' ? 'Perte Max' : 'Max Loss'}</span>
+                                                                <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
+                                                                {isSelected && product.metrics.max3YLossPeriod && (
+                                                                    <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YLossPeriod})</span>
+                                                                )}
+                                                            </div>
+
+                                                            <div
+                                                                className="text-right cursor-pointer hover:bg-green-50 p-1 -mr-1 rounded transition-colors group"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'gain' ? null : 'gain' }));
+                                                                }}
+                                                            >
+                                                                <span className="text-muted-foreground block text-xs group-hover:text-green-600 transition-colors">{language === 'fr' ? 'Gain Max' : 'Max Gain'}</span>
+                                                                <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
+                                                                {isSelected && product.metrics.max3YGainPeriod && (
+                                                                    <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YGainPeriod})</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
                         </div>
                     </RadioGroup>
                 </div>

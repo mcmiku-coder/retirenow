@@ -24,7 +24,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
     } : {
         axis: '#4b5563',
         grid: '#374151',
-        text: '#9ca3af',
+        text: '#FFFFFF',
         tooltipBg: '#1f2937',
         tooltipText: '#ffffff',
         tooltipBorder: '#374151',

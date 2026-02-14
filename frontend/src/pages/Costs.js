@@ -292,7 +292,18 @@ const Costs = () => {
                         <div className="flex gap-1 h-10 w-full min-w-[200px]">
                           <Button
                             type="button"
-                            onClick={() => navigate('/real-estate')}
+                            onClick={async () => {
+                              try {
+                                setLoading(true);
+                                // Save current rows before navigating, preserving all defaults and edits
+                                await saveCostData(user.email, masterKey, rows);
+                                navigate('/real-estate');
+                              } catch (error) {
+                                toast.error(t('costs.saveFailed'));
+                                setLoading(false);
+                              }
+                            }}
+                            disabled={loading}
                             className="flex-1 h-full px-2 text-xs bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white whitespace-nowrap"
                             title={language === 'fr' ? 'Calculateur frais de logement' : 'Lodging expenses calculator'}
                           >

@@ -53,7 +53,8 @@ export const generateComprehensivePDF = async ({
   const option = scenarioData?.retirementOption || 'option1';
   const retireDate = new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate);
   const birthDate = new Date(userData.birthDate);
-  const retireAge = retireDate.getFullYear() - birthDate.getFullYear();
+  // [Phase 9b] UTC accessors
+  const retireAge = retireDate.getUTCFullYear() - birthDate.getUTCFullYear();
 
   let optionText = '';
   if (option === 'option0') {
@@ -260,8 +261,8 @@ export const generateComprehensivePDF = async ({
 
     // Add asset values (one-time inflows in that year)
     activeAssets.forEach(a => {
-      // Assets appear as one-time in their availability year
-      const assetYear = a.availabilityDate ? new Date(a.availabilityDate).getFullYear() : null;
+      // [Phase 9b] UTC accessors
+      const assetYear = a.availabilityDate ? new Date(a.availabilityDate).getUTCFullYear() : null;
       if (assetYear === row.year) {
         rowData.push(formatNumber(parseFloat(a.adjustedAmount || a.amount)));
       } else {
@@ -277,7 +278,8 @@ export const generateComprehensivePDF = async ({
 
     // Add debt values (one-time outflows in that year)
     activeDebts.forEach(d => {
-      const debtYear = d.madeAvailableDate ? new Date(d.madeAvailableDate).getFullYear() : null;
+      // [Phase 9b] UTC accessors
+      const debtYear = d.madeAvailableDate ? new Date(d.madeAvailableDate).getUTCFullYear() : null;
       if (debtYear === row.year) {
         rowData.push(formatNumber(parseFloat(d.adjustedAmount || d.amount)));
       } else {

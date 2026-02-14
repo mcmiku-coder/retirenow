@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
 import { Trash2, Plus, HelpCircle } from 'lucide-react';
@@ -17,6 +19,8 @@ const PersonalInfo = () => {
   const { t } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
+  const [analysisType, setAnalysisType] = useState('individual'); // 'individual' or 'couple'
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [residence] = useState('Switzerland'); // Default to Switzerland, field removed from UI
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -49,6 +53,7 @@ const PersonalInfo = () => {
           if (data) {
             setBirthDate(data.birthDate || '');
             setGender(data.gender || '');
+            setAnalysisType(data.analysisType || 'individual');
             // residence is now hardcoded to Switzerland
           }
           // If data is null, that's fine - it's a new user with empty form
@@ -91,6 +96,7 @@ const PersonalInfo = () => {
       const userData = {
         birthDate,
         gender,
+        analysisType,
         residence
       };
 
@@ -131,6 +137,37 @@ const PersonalInfo = () => {
         <div className="max-w-2xl mx-auto">
 
           <form id="personal-info-form" onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
+            {/* Analysis Type Selection */}
+            <div>
+              <Label className="text-base font-semibold mb-3 block">{t('personalInfo.analysisType')}</Label>
+              <RadioGroup
+                value={analysisType}
+                onValueChange={(value) => {
+                  if (value === 'couple') {
+                    setShowComingSoonModal(true);
+                    // Keep it on individual
+                    setAnalysisType('individual');
+                  } else {
+                    setAnalysisType(value);
+                  }
+                }}
+                className="flex gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="individual" id="individual" />
+                  <Label htmlFor="individual" className="text-sm cursor-pointer">
+                    {t('personalInfo.individualSituation')}
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="couple" id="couple" />
+                  <Label htmlFor="couple" className="text-sm cursor-pointer">
+                    {t('personalInfo.coupleSituation')}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div>
               <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
               <div className="relative">
@@ -177,6 +214,23 @@ const PersonalInfo = () => {
           </div>
         </div>
       </div>
+
+      {/* Coming Soon Modal */}
+      <AlertDialog open={showComingSoonModal} onOpenChange={setShowComingSoonModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('personalInfo.comingSoonTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('personalInfo.comingSoonMessage')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowComingSoonModal(false)}>
+              {t('common.close')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

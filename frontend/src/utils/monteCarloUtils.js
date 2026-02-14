@@ -5,13 +5,93 @@
  * for robust Monte Carlo simulations.
  */
 
+import quickselect from 'quickselect';
+
+/**
+ * Align multiple time series to the intersection of their dates.
+ * GUARANTEES that all series have exactly the same dates in the same order.
+ * 
+ * @param {Array<Array<{date: string, value: number}>>} seriesArray - Array of performance history arrays
+ * @returns {Array<Array<{date: string, value: number}>>} Aligned series arrays
+ */
+export function alignTimeSeries(seriesArray) {
+    if (!seriesArray || seriesArray.length === 0) return [];
+
+    // 1. Create Maps for O(1) lookup
+    const maps = seriesArray.map(series =>
+        new Map(series.map(p => [p.date, p.value]))
+    );
+
+    // 2. Find Intersection of Dates
+    // Start with dates from the first series, filter by existence in all others
+    const commonDates = [...maps[0].keys()]
+        .filter(d => maps.every(m => m.has(d)))
+        .sort(); // String sort works for ISO dates (YYYY-MM-DD)
+
+    // 3. Map back to objects
+    return maps.map(map =>
+        commonDates.map(d => ({ date: d, value: map.get(d) }))
+    );
+}
+
+/**
+ * Calculate percentile using Quickselect (O(n)) to avoid full sort O(n log n).
+ * Modifies the array in-place (partial sort).
+ * 
+ * @param {Float64Array} arr - Data array
+ * @param {number} p - Percentile (0 to 1)
+ * @returns {number} Value at percentile
+ */
+export function percentile(arr, p) {
+    if (arr.length === 0) return 0;
+    const k = Math.floor(p * (arr.length - 1));
+    quickselect(arr, k);
+    return arr[k];
+}
+
+/**
+ * Calculate multiple percentiles safely without evaluating in-place multiple times.
+ * Uses a single sort (O(N log N)) which is stable and fast enough for N < 10000.
+ * 
+ * @param {Float64Array} arr - Source data (will not be mutated)
+ * @param {number[]} percentiles - Array of percentiles (0 to 1), e.g. [0.05, 0.5]
+ * @returns {Object} Map of percentile -> value
+ */
+export function calculatePercentiles(arr, percentiles) {
+    if (arr.length === 0) {
+        const res = {};
+        percentiles.forEach(p => res[p] = 0);
+        return res;
+    }
+
+    // 1. Copy to avoid mutation of source
+    const sorted = new Float64Array(arr); // Fast copy
+
+    // 2. Full Sort (O(N log N)) - EXPLICIT Numeric Ascending
+    sorted.sort((a, b) => a - b);
+
+    // 3. Pluck values
+    const results = {};
+    const len = sorted.length;
+
+    percentiles.forEach(p => {
+        // Clamp p between 0 and 1
+        const safeP = Math.max(0, Math.min(1, p));
+        // Find index (nearest rank)
+        const idx = Math.floor(safeP * (len - 1));
+        results[p] = sorted[idx];
+    });
+
+    return results;
+}
+
 /**
  * Mulberry32 PRNG - Fast, high-quality seeded random number generator
  * 
  * @param {number} seed - 32-bit integer seed
  * @returns {function} Function that returns random numbers in [0, 1)
  */
-function createSeededRandom(seed) {
+export function createSeededRandom(seed) {
     return function () {
         let t = seed += 0x6D2B79F5;
         t = Math.imul(t ^ t >>> 15, t | 1);
@@ -62,16 +142,47 @@ function getRandomUniform() {
 }
 
 /**
- * Generate standard normal using seeded PRNG
- * Uses Box-Muller transform
+ * Generate standard normal pair using Box-Muller transform
+ * Optimized to generate TWO numbers per call.
+ * 
+ * @param {function} rng - PRNG function (returns [0,1))
+ * @returns {Array<number>} [z1, z2]
+ */
+export function gaussianPair(rng) {
+    let u1 = 0;
+    while (u1 === 0) u1 = rng();   // avoid log(0)
+
+    const u2 = rng();
+
+    // Box-Muller
+    const r = Math.sqrt(-2.0 * Math.log(u1));
+    const theta = 2.0 * Math.PI * u2;
+
+    return [
+        r * Math.cos(theta),
+        r * Math.sin(theta)
+    ];
+}
+
+/**
+ * Legacy single-value Gaussian (wrapper)
+ * Kept for backward compatibility
  */
 export function generateNormalRandom() {
-    let u1 = 0, u2 = 0;
-    while (u1 === 0) u1 = getRandomUniform();
-    while (u2 === 0) u2 = getRandomUniform();
+    // Note: Inefficient for bulk generation, use gaussianPair loop instead
+    const [z1] = gaussianPair(getRandomUniform);
+    return z1;
+}
 
-    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    return z0;
+/**
+ * Generate standard normal using Box-Muller transform
+ * @param {function} rng - Optional PRNG function (returns [0,1))
+ */
+export function generateGaussian(rng) {
+    // Single value wrapper
+    const random = rng || Math.random;
+    const [z1] = gaussianPair(random);
+    return z1;
 }
 
 /**

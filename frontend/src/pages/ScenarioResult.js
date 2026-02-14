@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,10 +10,11 @@ import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, saveRetirementData, getRealEstateData } from '../utils/database';
-import { calculateYearlyAmount } from '../utils/calculations';
+import { calculateYearlyAmount, calculateMonthlyAmount, parseToUtc, getLegalRetirementDate } from '../utils/calculations';
 import { toast } from 'sonner';
-import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateInvestedProjection } from '../utils/projectionCalculator';
-import { extractPercentile, calculateBandwidth } from '../utils/monteCarloSimulation';
+import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateRecomposedBaselineAtIndex, calculateRecomposedTotalAtIndex, calculateInvestedProjection, calculateMonthlyDeterministicSeries } from '../utils/projectionCalculator';
+import { toUtcMonthStart, getSimulationStartDate, getYearEndMonthIndex, monthIndexToYearMonth, dateToMonthIndex } from '../utils/simulationDateUtils';
+
 import { getProductById, getAssetClassStyle } from '../data/investmentProducts';
 import { Slider } from '../components/ui/slider';
 
@@ -21,10 +22,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
-import { ChevronDown, ChevronUp, Download, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle, Activity } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DetailedChart from '../components/DetailedChart';
+import DetailedTooltipContent from '../components/DetailedTooltipContent';
 
 // PDF Generation Imports
 import {
@@ -54,9 +55,16 @@ import {
   generateLegalWarnings
 } from '../utils/pdfPageGenerators4';
 
+import {
+  generateMonteCarloOverview,
+  generateConservativeOutcomes
+} from '../utils/pdfMonteCarloGenerators';
+
 
 const ScenarioResult = () => {
-  console.log('Rendering ScenarioResult Component - Force Refresh');
+  // [HOTFIX V2] FORCE REFRESH TO CLEAR CACHE
+  console.log('Rendering ScenarioResult Component - Hotfix V2 Active');
+  const lastRunKeyRef = useRef(null);
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -123,7 +131,8 @@ const ScenarioResult = () => {
   const [activateAllOwnings, setActivateAllOwnings] = useState(false);
   const [owningsActivationDate, setOwningsActivationDate] = useState(() => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // [Phase 9b] Use UTC for consistency in internal state strings
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
   });
 
   // Graph Options for PDF (From DetailedGraph or Defaults)
@@ -182,10 +191,11 @@ const ScenarioResult = () => {
               const saved = finalIncomes[idx];
               const isDirty = parseFloat(saved.amount) !== parseFloat(saved.adjustedAmount);
               finalIncomes[idx] = {
-                ...saved,
-                ...freshInc, // Update name/freq/dates from fresh
-                amount: freshInc.amount, // FORCE FRESH Original
-                // If not dirty (not manually adjusted), auto-update adjusted value. Else preserve override.
+                ...freshInc, // Start with Profile Defaults
+                ...saved,    // Apply Scenario Overrides (startDate, endDate, frequency, adjustedAmount, etc.)
+                amount: freshInc.amount, // Force fresh original amount for reference
+                // If the user modified the amount specifically in this scenario, use it
+                // Otherwise use fresh from profile
                 adjustedAmount: isDirty ? saved.adjustedAmount : freshInc.amount
               };
             } else {
@@ -230,6 +240,7 @@ const ScenarioResult = () => {
               const isDirty = parseFloat(saved.amount) !== parseFloat(saved.adjustedAmount);
               return {
                 ...fresh,
+                ...saved, // Apply Scenario Overrides (startDate, endDate, frequency, adjustedAmount, etc.)
                 amount: fresh.amount,
                 adjustedAmount: isDirty ? saved.adjustedAmount : fresh.amount
               };
@@ -440,31 +451,57 @@ const ScenarioResult = () => {
     const ignorePensionFilters = overrides.ignorePensionFilters || false;
     const simActivateOwnings = overrides.hasOwnProperty('activateAllOwnings') ? overrides.activateAllOwnings : activateAllOwnings;
     const simOwningsDate = overrides.hasOwnProperty('owningsActivationDate') ? overrides.owningsActivationDate : owningsActivationDate;
+    const incomeDateOverrides = effectiveScenarioData?.incomeDateOverrides || {};
+
+    // [Phase 18c] Reserved Item Identification Helpers
+    // These must be identical across all blocks to ensure consistent deduplication
+    const isSalary = (name = '') => {
+      const n = name.toLowerCase();
+      return n.includes('salary') || n.includes('salaire') || n.includes('lohn') || n.includes('revenu');
+    };
+    const isLPP = (name = '') => {
+      const n = name.toLowerCase();
+      // Skip capital to only target pension/rent flows
+      if (n.includes('capital')) return false;
+      return n.includes('lpp') || n.includes('bvg') || n.includes('pension') || n.includes('rente');
+    };
+    const isAVS = (name = '') => {
+      const n = name.toLowerCase();
+      return n.includes('avs') || n.includes('ahv') || n.includes('1. säule') || n.includes('1er pilier') || n.includes('pension de vieillesse');
+    };
+
+    // Safety check for birthDate
+    if (!userData.birthDate) return null;
 
     const simRetirementDateObj = (() => {
       // Robust Parser for "DD.MM.YYYY" (Swiss format) as seen in user data
       if (typeof simRetirementDate === 'string' && simRetirementDate.includes('.')) {
         const parts = simRetirementDate.split('.');
-        // Presume DD.MM.YYYY
-        if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+        // [Phase 9b] Use Date.UTC for robust parsing
+        if (parts.length === 3) return new Date(Date.UTC(parts[2], parseInt(parts[1]) - 1, parseInt(parts[0]), 0, 0, 0, 0));
       }
       return new Date(simRetirementDate);
     })();
-    const currentYear = new Date().getFullYear();
+    const firstProjYear = projection?.yearlyBreakdown?.[0]?.year;
+    const startYear = firstProjYear ? parseInt(firstProjYear) : new Date().getUTCFullYear();
+    const simStartRef = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0)); // Simulation activation date (Timeline Start)
+    const currentYear = simStartRef.getUTCFullYear();
     const birthDate = new Date(userData.birthDate);
+    const retirementLegalDate = getLegalRetirementDate(userData.birthDate, userData.gender);
 
-    // Calculate Retirement Age for this simulation run
-    const ageAtRetirement = (simRetirementDateObj.getFullYear() - birthDate.getFullYear()) +
-      ((simRetirementDateObj.getMonth() - birthDate.getMonth()) / 12);
+    // [Phase 9b] Strict UTC age calculation
+    const ageAtRetirement = (simRetirementDateObj.getUTCFullYear() - birthDate.getUTCFullYear()) +
+      ((simRetirementDateObj.getUTCMonth() - birthDate.getUTCMonth()) / 12);
 
     // Death date logic
     let deathYear;
     if (userData.theoreticalDeathDate) {
-      deathYear = new Date(userData.theoreticalDeathDate).getFullYear();
+      deathYear = new Date(userData.theoreticalDeathDate).getUTCFullYear();
     } else {
       const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-      deathYear = birthDate.getFullYear() + approximateLifeExpectancy;
+      deathYear = birthDate.getUTCFullYear() + approximateLifeExpectancy;
     }
+    const deathDate = userData.theoreticalDeathDate || `${deathYear}-12-31`;
 
     // Determine LPP Parameters for this specific retirement date (Option 3 logic)
     let simLppPension = 0;
@@ -539,62 +576,65 @@ const ScenarioResult = () => {
       payoutDate3a = new Date(p3aRow.startDate);
     } else if (effectiveScenarioData?.retirementOption === 'option3' && ageAtRetirement < 60) {
       const dateAt60 = new Date(birthDate);
-      dateAt60.setFullYear(dateAt60.getFullYear() + 60);
+      // [Phase 9b] UTC accessors
+      dateAt60.setUTCFullYear(dateAt60.getUTCFullYear() + 60);
       payoutDate3a = dateAt60;
     }
-    const payoutYear3a = payoutDate3a.getFullYear();
+    const payoutYear3a = payoutDate3a.getUTCFullYear();
 
 
     // --- SIMULATION LOOP ---
     const breakdown = [];
-    let cumulativeBalance = 0;
     const transmissionAmt = location.state?.transmissionAmount || effectiveScenarioData?.transmissionAmount || 0;
     let balanceBeforeTransmission = 0;
-
     // Monte Carlo Integration: Track invested assets separately
     // Use effectiveAssets and effectiveScenarioData
     const investedAssetIds = getInvestedBookAssets(effectiveAssets, effectiveScenarioData).map(a => a.id);
+
+    // INITIALIZE Cash Balance (Initial Liquid Wealth)
+    let initialCashWealth = 0;
+    effectiveAssets.forEach(asset => {
+      const id = asset.id || asset.name;
+      if (!activeFilters[`asset-${id}`]) return;
+
+      const isLiquid = asset.category === 'Liquid';
+      const isInvested = investedAssetIds.includes(id) || asset.strategy === 'Invested';
+
+      if (isLiquid && !isInvested) {
+        if (asset.availabilityDate) {
+          const availDate = parseToUtc(asset.availabilityDate);
+
+          // [STOCK CHECK] Assets available on or before activation date are OPENING BALANCE
+          if (availDate <= simStartRef) {
+            initialCashWealth += parseFloat(asset.adjustedAmount || asset.amount || 0);
+          }
+        }
+      }
+    });
+
+    let cumulativeBalance = initialCashWealth;
+
+    // INITIALIZE Invested Balance (BUT ONLY FOR ASSETS AVAILABLE NOW)
     let investedBalance = 0;
     // BASELINE: Always assume flat 0% return for the main projection (Gray Line)
     // The Monte Carlo returns are handled separately in the Blue Line calculations.
     const yearlyReturns = [];
 
-    // INITIALIZE Invested Balance (BUT ONLY FOR ASSETS AVAILABLE NOW)
     investedAssetIds.forEach(assetId => {
       const asset = effectiveAssets.find(a => a.id === assetId);
       if (asset && activeFilters[`asset-${asset.id || asset.name}`]) {
         const amount = parseFloat(asset.amount || 0);
 
-        // Check availability. 
-        // Logic: 
-        // 1. If "availabilityDate" exists, compare year.
-        // 2. If NO availabilityDate, it is NOT available (unless we define a default, but user said "no availability date...so should not appear").
-        // 3. Exception: If we have an "Already available" flag or similar? The code used "Date" type mostly.
-
-        let isAvailableNow = false;
-
-        if (asset.availabilityType === 'Period') {
-          // Periods are flows, not initial lumps
-          isAvailableNow = false;
-        } else if (asset.availabilityDate) {
-          const availDate = new Date(asset.availabilityDate);
-          const availYear = availDate.getFullYear();
-
-          // Available now only if date is strictly in the past (before current simulation start year)
-          // If it's this year (currentYear), it will be added in the loop below as an "Inflow"
-          if (availYear < currentYear) {
-            isAvailableNow = true;
+        if (asset.availabilityDate) {
+          const availDate = parseToUtc(asset.availabilityDate);
+          if (availDate <= simStartRef) {
+            investedBalance += amount;
           }
-        }
-        // If availabilityDate is missing/empty, it is NEVER available (per user request for Net Housing)
-
-        if (isAvailableNow) {
-          investedBalance += amount;
         }
       }
     });
 
-    console.log(`Simulation starting with invested balance (available now): ${investedBalance}`);
+    console.log(`[STOCK CHECK] Simulation starting with Cash: ${cumulativeBalance}, Invested: ${investedBalance}`);
 
     for (let year = currentYear; year <= deathYear; year++) {
       let yearIncome = 0;
@@ -605,69 +645,93 @@ const ScenarioResult = () => {
       const costBreakdown = {};
       let amountTransferredToInvested = 0; // Amount moved from 'Cash Flow' to 'Invested Pot'
 
-      // Apply Monte Carlo returns to invested balance (if applicable)
-      const yearIndex = year - currentYear;
-      if (yearIndex > 0 && yearlyReturns.length > 0 && yearlyReturns[yearIndex - 1] !== undefined) {
-        const yearReturn = yearlyReturns[yearIndex - 1];
-        investedBalance *= (1 + yearReturn);
+      // [Phase 18d] Handle Reserveds with strict overrides (Salary, AVS, LPP)
+      // This matches DataReview.js logic for 100% agreement
+
+      // SALARY
+      effectiveIncomes.filter(r => isSalary(r.name)).forEach(row => {
+        if (!activeFilters[`income-${row.id || row.name}`]) return;
+        const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
+
+        // MASTER SCREEN SYNC: Salary ends EXACTLY on retirement date to avoid 1-month overlap
+        const start = row.startDate || new Date().toISOString().split('T')[0];
+        const end = simRetirementDate;
+
+        const val = calculateYearlyAmount(amount, row.frequency, start, end, year);
+        if (val > 0) {
+          yearIncome += val;
+          incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
+        }
+      });
+
+      // AVS
+      [...effectiveIncomes, ...(effectiveRetirementData?.rows || [])].filter(r => isAVS(r.name)).forEach(row => {
+        const filterId = row.id && !isNaN(row.id) ? `pillar-${row.id}` : `pillar-${row.name}`;
+        if (activeFilters[filterId] === false || activeFilters[`income-${row.id || row.name}`] === false) return;
+
+        const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
+
+        // MASTER SCREEN SYNC: AVS starts at legal date by default, unless retiring later.
+        // If user is retiring AFTER legal age, AVS starts at Legal Date (unless deferred).
+        // For simplicity and 100% table agreement, we use the row's date but ensure 
+        // it doesn't drift if it's the main projected one.
+        const start = row.startDate || retirementLegalDate;
+        const end = row.endDate || deathDate;
+
+        const val = calculateYearlyAmount(amount, row.frequency, start, end, year);
+        if (val > 0) {
+          // Deduplicate breakdown keys
+          if (!incomeBreakdown[row.name]) {
+            yearIncome += val;
+            incomeBreakdown[row.name] = val;
+          }
+        }
+      });
+
+      // LPP PENSION (Dynamic Source of Truth)
+      // We prioritize simLppPension and lppStartDate for ANY row matching isLPP
+      const lppRows = [...effectiveIncomes, ...(effectiveRetirementData?.rows || [])].filter(r => isLPP(r.name));
+      if (lppRows.length > 0 && simLppPension > 0) {
+        const firstActiveLpp = lppRows.find(r => activeFilters[`pillar-${r.id || r.name}`] !== false && activeFilters[`income-${r.id || r.name}`] !== false);
+        if (firstActiveLpp) {
+          // MASTER SCREEN SYNC: LPP Pension starts EXACTLY on retirement date
+          const start = simRetirementDate;
+          const end = firstActiveLpp.endDate || deathDate;
+
+          const val = calculateYearlyAmount(simLppPension, 'Yearly', start, end, year);
+          if (val > 0) {
+            yearIncome += val;
+            incomeBreakdown[firstActiveLpp.name] = val;
+          }
+        }
       }
 
       // 1. INCOMES (Salary etc)
-      // Rule: They stop strictly at simRetirementDate
       effectiveIncomes.forEach(row => {
         const id = row.id || row.name;
         if (!activeFilters[`income-${id}`]) return;
         // Skip static Option 3 rows calculated by DataReview, as we handle them dynamically here
         if (row.id && row.id.toString().includes('pre_retirement_')) return;
-        if (row.name && row.name.includes('Pre - retirement')) return;
+        if (row.name && (row.name.includes('Pre - retirement') || row.name.includes('Pre-retirement'))) return;
 
         const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
-        // IMPORTANT: pass the simRetirementDate as the *End Date* for work-related income
-        // But we must distinguish "Work Income" from "Annuities".
-        // Assumption: 'Net Salary' and customized work incomes stop at retirement.
-        // We can use the 'endDate' param of calculateYearlyAmount to force cut-off.
-        // If the item already has an EndDate earlier than retirement, respect it.
-        // If not, cap it at retirement.
+        const nameLower = (row.name || '').toLowerCase();
 
+        // UNIFY LOGIC: Dedicated blocks for Salary, AVS, LPP to avoid overcounting and start-date drift
+        if (isSalary(row.name) || isAVS(row.name) || isLPP(row.name)) {
+          // These are skipped here - they are handled either by injection logic or by Loop 2 (Pillars)
+          // to ensure we use the dynamic simulation values (simLppPension, etc) and correct overrides.
+          return;
+        }
+
+        let effectiveStartDate = row.startDate;
         let effectiveEndDate = row.endDate;
 
-        // Logic: Sync Salary with Retirement (Option 2) or Cap it (Standard)
-        const nameLower = (row.name || '').toLowerCase();
-        const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
-
-        if (row.isRetirement && !isSalary) {
-          // Rule: Retirement-related incomes (Annuities, AVS) should be used exactly as provided (start/end)
-          // DataReview already set their start date to either (RetirementDate) or (LegalAge)
-        } else if (isSalary) {
-          // STRICT RULE: Work-related income ("Salary") ALWAYS ends exactly at Retirement Date.
-          // This allows both extending (working longer) and capping (retiring earlier)
-          // ignoring the static "End Date" saved in the database from the original plan.
-          // This applies to Option 2 (Slider) AND ANY OTHER OPTION where Salary is expected to stop at retirement.
-
-          const y = simRetirementDateObj.getFullYear();
-          const m = String(simRetirementDateObj.getMonth() + 1).padStart(2, '0');
-          const d = String(simRetirementDateObj.getDate()).padStart(2, '0');
-          effectiveEndDate = `${y}-${m}-${d}`;
-
-          // CRITICAL FAIL-SAFE: If we are completely past the retirement year, 
-          // and this is work income, force skip. This fixes the persistent salary bug.
-          if (year > simRetirementDateObj.getFullYear()) {
-            // For safety, let's verify it's not a tiny overlap year
-            // If effectiveEndDate is fully in the past relative to THIS year's start (Jan 1), skip.
-            // simRetirementDateObj is exact end date.
-            // If year=2032, and retirement=2027. Skip.
-            return;
-          }
-        } else {
-          // Standard: Other Incomes (Rental, etc)
-          // If no end date, or end date is AFTER retirement, DO NOT CAP (Passive income continues).
-          // BUT: If user explicitly set an end date earlier, respect it.
-        }
 
         const val = calculateYearlyAmount(
           amount,
-          (row.isRetirement && nameLower.includes('avs')) ? 'Yearly' : row.frequency,
-          row.startDate,
+          row.frequency,
+          effectiveStartDate,
           effectiveEndDate,
           year
         );
@@ -677,94 +741,8 @@ const ScenarioResult = () => {
         }
       });
 
-      // 2. RETIREMENT PILLARS (LPP, AVS, etc from RetirementData)
-      // Note: For Option 3, LPP we calculated above overrides standard LPP rows from DB?
-      // Or do we rely on DB rows?
-      // "RetirementParameters" usually saves "preRetirementRows" but doesn't overwrite the `retirementData` table used by `getRetirementData`.
-      // However, `ScenarioResult` uses `retirementData.rows`.
-
-      // CRITICIAL FIX: Option 2 (Slider) must explicitly add the "Projected LPP" if not already covered.
-      if (effectiveScenarioData?.retirementOption === 'option2' || effectiveScenarioData?.retirementOption === 'option1') {
-        // If we have projected values from the slider logic (simLppPension, simLppCapital)
-        // We need to inject them as cash flows if they aren't already in effectiveIncomes.
-        // BUT: synchroniseSimulationState ADDS them to adjustedIncomes.
-        // So they *should* be in effectiveIncomes.
-        // IF they are missing (filtered out?), we force add them here.
-
-        if (simLppPension > 0) {
-          const pStart = simRetirementDateObj;
-          // Check if we already processed a "Projected LPP Pension" in the income loop above
-          // The income loop uses "effectiveIncomes" which comes from "incomes" state.
-          // If "Projected LPP Pension" was in DataReview, it is in "incomes".
-          // But if it was filtered out by "ghost filter", we need to add it here.
-          // To avoid double counting, let's check if we saw it in incomeBreakdown.
-          const alreadyCounted = Object.keys(incomeBreakdown).some(k => k.toLowerCase().includes('lpp') && k.toLowerCase().includes('pension'));
-
-          if (!alreadyCounted) {
-            const val = calculateYearlyAmount(simLppPension, 'Yearly', pStart, null, year);
-            if (val > 0) {
-              yearIncome += val;
-              incomeBreakdown['Projected LPP Pension (Sim)'] = val;
-            }
-          }
-        }
-      }
-      // We must override the "LPP" entry in `retirementData.rows` with our dynamic `simLppPension`.
-
-      let lppProcessed = false;
-
-      if (effectiveRetirementData?.rows) {
-        effectiveRetirementData.rows.forEach(row => {
-          const id = row.id || row.name;
-          if (!activeFilters[`pillar-${id}`]) return;
-
-          let amount = parseFloat(row.amount) || 0;
-          const nameLower = row.name.toLowerCase();
-
-          // CRITICAL FIX: Kill Ghost Salaries in Retirement Data (they belong in Loop 1)
-          if (nameLower.includes('salary') || nameLower.includes('salaire')) return;
-
-          // CRITICAL FIX: Deduplicate LPP (If already added in Loop 1 or Injection Logic)
-          if (nameLower.includes('lpp') && nameLower.includes('pension')) {
-            const alreadyCounted = Object.keys(incomeBreakdown).some(k => k.toLowerCase().includes('lpp') && k.toLowerCase().includes('pension'));
-            if (alreadyCounted) return;
-          }
-
-          const simDateStr = `${simRetirementDateObj.getFullYear()}-${String(simRetirementDateObj.getMonth() + 1).padStart(2, '0')}-${String(simRetirementDateObj.getDate()).padStart(2, '0')}`;
-          let effectiveStartDate = row.startDate || simDateStr;
-          let effectiveEndDate = row.endDate || `${deathYear}-12-31`;
-          let frequency = row.frequency;
-
-          // OVERRIDES for Option 3 & Dynamic Logic
-          if (nameLower.includes('lpp') && !nameLower.includes('sup') && !nameLower.includes('capital')) { // Main LPP
-            // Use our calculated dynamic variables
-            amount = simLppPension;
-            frequency = 'Yearly'; // Pension inputs are now Yearly
-            const lppY = lppStartDate.getFullYear();
-            const lppM = String(lppStartDate.getMonth() + 1).padStart(2, '0');
-            const lppD = String(lppStartDate.getDate()).padStart(2, '0');
-            effectiveStartDate = `${lppY}-${lppM}-${lppD}`;
-            lppProcessed = true;
-            // If there is Capital, handle below as One-time
-          } else if (nameLower.includes('avs')) {
-            // SKIP AVS here as it is processed in the incomes loop above (isRetirement: true)
-            return;
-          } else if (nameLower.includes('3a')) {
-            // 3a Payout (Capital)
-            // Handled specifically via the 3a Payout Date Rule
-            // We suppress the standard row processing here and handle it as a One-Time Event below
-            amount = 0;
-          }
-
-          if (amount > 0 && frequency !== 'One-time') {
-            const val = calculateYearlyAmount(amount, frequency, effectiveStartDate, effectiveEndDate, year);
-            if (val > 0) {
-              yearIncome += val;
-              incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
-            }
-          }
-        });
-      }
+      // 2. OTHER RETIREMENT PILLARS & FALLBACKS
+      // (AVS and LPP processed above in unified reserveds block)
 
       // Fallback Logic Removed (Lines 669-681) to prevent "LPP Pension" duplicates.
       // Injection Logic (lines 604+) handles this correctly.
@@ -786,7 +764,7 @@ const ScenarioResult = () => {
 
       // Handle LPP Capital Payout (if any)
       if (simLppCapital > 0) {
-        const lppCapYear = lppStartDate.getFullYear();
+        const lppCapYear = lppStartDate.getUTCFullYear();
         if (year === lppCapYear) {
           yearIncome += simLppCapital;
           incomeBreakdown['LPP Capital'] = (incomeBreakdown['LPP Capital'] || 0) + simLppCapital;
@@ -853,9 +831,15 @@ const ScenarioResult = () => {
           // STRICT RULE: Asset must have a valid availability date to be processed here
           if (!effectiveDateStr) return;
 
-          const date = new Date(effectiveDateStr);
+          const date = parseToUtc(effectiveDateStr);
 
-          if (year === date.getFullYear()) {
+          if (year === date.getUTCFullYear()) {
+            // Check if this was already added as "Initial State"
+            if (date <= simStartRef) {
+              // ALREADY INJECTED - Skip flow adding
+              return;
+            }
+
             // IT BECOMES AVAILABLE THIS YEAR
 
             if (isActivatedOwning) {
@@ -901,7 +885,7 @@ const ScenarioResult = () => {
         // Simple debt handling (Year match)
         // If period logic needed, duplicate above or assume simple date
         const dateStr = debt.madeAvailableDate || debt.startDate;
-        const debtYear = dateStr ? new Date(dateStr).getFullYear() : currentYear;
+        const debtYear = dateStr ? parseToUtc(dateStr).getUTCFullYear() : currentYear;
         // If specific logic needed for periods, add here. Currently assuming simple date for debts in this refactor.
         if (year === debtYear) {
           yearCosts += amount;
@@ -971,8 +955,9 @@ const ScenarioResult = () => {
       // Automatic Optimization
       // Iterate monthly from NOW until Legal Retirement Date
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() + 1); // Start next month
-      const endDate = userData?.retirementLegalDate ? new Date(userData.retirementLegalDate) : new Date(startDate.getFullYear() + 20, 0, 1);
+      // [Phase 9b] UTC increments
+      startDate.setUTCMonth(startDate.getUTCMonth() + 1); // Start next month
+      const endDate = userData?.retirementLegalDate ? new Date(userData.retirementLegalDate) : new Date(Date.UTC(startDate.getUTCFullYear() + 20, 0, 1));
 
       let bestResult = null;
       let found = false;
@@ -981,7 +966,7 @@ const ScenarioResult = () => {
       let iterations = 0;
       const maxIterations = 300; // ~25 years
 
-      let testDate = new Date(startDate);
+      let testDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
       while (testDate <= endDate && iterations < maxIterations) {
         // Optimization: Find earliest date assuming pension IS taken (ignore filters = true)
         const result = runSimulation(testDate, { ignorePensionFilters: true });
@@ -990,8 +975,8 @@ const ScenarioResult = () => {
           bestResult = result;
           break; // Stop at first valid date
         }
-        // Increment month
-        testDate.setMonth(testDate.getMonth() + 1);
+        // Increment month strictly in UTC
+        testDate.setUTCMonth(testDate.getUTCMonth() + 1);
         iterations++;
       }
 
@@ -1015,61 +1000,98 @@ const ScenarioResult = () => {
     }
   }, [loading, userData, runSimulation, scenarioData, location.state, activateAllOwnings, owningsActivationDate]);
 
-  // Run Monte Carlo simulation for Invested Book
+  // Run Monte Carlo simulation for Invested Book (Phase 12)
+  const mcReady =
+    !!projection?.yearlyBreakdown?.length &&
+    !!scenarioData &&
+    Array.isArray(assets) && assets.length > 0 &&
+    !!scenarioData.investmentSelections;
+
+  const runKey = JSON.stringify({
+    startYear: projection?.yearlyBreakdown?.[0]?.year,
+    selections: scenarioData?.investmentSelections,
+    assetsLen: assets?.length
+  });
+
   useEffect(() => {
-    const runMonteCarloIfNeeded = async () => {
-      console.log('MC Debug: Checking if simulation needed', {
-        hasScenario: !!scenarioData,
+    if (!mcReady) {
+      console.log("[MC GATE] not ready", {
+        mcReady,
+        hasProjection: !!projection?.yearlyBreakdown?.length,
         assetsLen: assets?.length,
-        investmentSelections: scenarioData?.investmentSelections
+        hasSelections: !!scenarioData?.investmentSelections
       });
+      return;
+    }
 
-      const hasInvestments = hasInvestedBook(scenarioData, assets);
-      console.log('MC Debug: hasInvestedBook result', hasInvestments);
+    if (lastRunKeyRef.current === runKey) {
+      console.log("[MC GATE] already ran for this key");
+      return;
+    }
 
-      if (!hasInvestments) {
-        setMonteCarloProjections(null);
-        return;
-      }
+    lastRunKeyRef.current = runKey;
 
+    const runMonteCarlo = async () => {
       setSimulationLoading(true);
       try {
-        console.log('Running Monte Carlo simulation for Invested Book...');
-        const portfolioSimulation = await runInvestedBookSimulation(
+        console.log("[MC START]", { runKey });
+        const portfolioSimulation = await runInvestedBookSimulation({
           assets,
           scenarioData,
-          userData
-        );
+          userData,
+          projection
+        });
 
         if (portfolioSimulation) {
-          // Extract specific percentiles using Flow-Aware projection
-          // This allows assets (like 2035 Pension) to be added dynamically + Returns applied correctly
-          const params = { assets, activeFilters };
+          // [Phase 11/12] ATTACH detSeries BEFORE SETTING STATE
+          // [ALIGNMENT FIX] Pass incomes and costs for Bottom-Up Accumulation
+          const combinedCosts = [...costs, ...debts];
+          const detSeries = calculateMonthlyDeterministicSeries(
+            projection,
+            portfolioSimulation.simulationStartDate,
+            portfolioSimulation.horizonMonths,
+            assets,
+            activeFilters,
+            scenarioData,
+            incomes,
+            combinedCosts
+          );
 
-          const p50 = calculateInvestedProjection(params, portfolioSimulation, 50);
-          const p25 = calculateInvestedProjection(params, portfolioSimulation, 25);
-          const p10 = calculateInvestedProjection(params, portfolioSimulation, 10);
-          const p5 = calculateInvestedProjection(params, portfolioSimulation, 5);
+          console.log("[MC SUCCESS]", {
+            simStart: portfolioSimulation.simulationStartDate,
+            p5Len: portfolioSimulation.percentiles?.p5?.length,
+            principalLen: portfolioSimulation.principalPath?.length,
+            detLen: detSeries?.length
+          });
+
+          // Extract legacy series for standard chart rendering
+          const p50 = calculateInvestedProjection({ assets }, portfolioSimulation, 50);
+          const p10 = calculateInvestedProjection({ assets }, portfolioSimulation, 10);
+          const p5 = calculateInvestedProjection({ assets }, portfolioSimulation, 5);
 
           setMonteCarloProjections({
             p50,
-            p25,
             p10,
             p5,
-            details: portfolioSimulation
+            details: {
+              ...portfolioSimulation,
+              detSeries
+            }
           });
-          console.log('Monte Carlo simulation complete');
+
+          console.log("[MC STATE SET]");
         }
       } catch (error) {
-        console.error('Monte Carlo simulation failed:', error);
+        console.error("[MC FAIL]", error);
+        setMonteCarloProjections(null); // only on failure
         toast.error(language === 'fr' ? 'Échec de la simulation d\'investissement' : 'Failed to run investment simulation');
       } finally {
         setSimulationLoading(false);
       }
     };
 
-    runMonteCarloIfNeeded();
-  }, [userData, scenarioData, assets, loading, language]);
+    runMonteCarlo();
+  }, [mcReady, runKey, assets, scenarioData, userData, projection, language, incomes, costs, debts, activeFilters]);
 
   // Debounced recalculation when retirement age changes
   // MODIFIED: We now use onValueCommit for "heavy" updates (State Sync).
@@ -1094,8 +1116,9 @@ const ScenarioResult = () => {
     const retirementDate = new Date(birthDate);
     const years = Math.floor(numericAge);
     const months = Math.round((numericAge - years) * 12);
-    retirementDate.setFullYear(retirementDate.getFullYear() + years);
-    retirementDate.setMonth(retirementDate.getMonth() + months + 1);
+    // [Phase 9b] UTC accessors
+    retirementDate.setUTCFullYear(retirementDate.getUTCFullYear() + years);
+    retirementDate.setUTCMonth(retirementDate.getUTCMonth() + months + 1);
     retirementDate.setDate(1);
     const newRetirementDateStr = retirementDate.toISOString().split('T')[0];
 
@@ -1460,11 +1483,331 @@ const ScenarioResult = () => {
     }
   }, [location.state]);
 
+  // Prepare Monthly Data for Table
+  const prepareMonthlyDataForTable = () => {
+    console.log('[DATA EXPORT ENTER]', {
+      isInvested,
+      hasMC: !!monteCarloProjections?.details,
+      projectionYears: projection?.yearlyBreakdown?.length,
+    });
+
+    if (!projection?.yearlyBreakdown) {
+      console.warn('[DATA EXPORT] No projection.yearlyBreakdown, returning empty');
+      return [];
+    }
+
+    const mcDetails = monteCarloProjections?.details;
+    const hasMC = !!mcDetails;
+    const investedAssetIds = getInvestedBookAssets(assets, scenarioData).map(a => a.id);
+
+    // Determine source of monthly data
+    let detSeries;
+    let simStartDate;
+    let horizonMonths;
+    let injections = [];
+    let injectionMap = new Map();
+
+    if (hasMC) {
+      // Invested mode: use MC series
+      detSeries = mcDetails.detSeries;
+      simStartDate = toUtcMonthStart(mcDetails.simulationStartDate);
+      horizonMonths = mcDetails.horizonMonths;
+      injections = mcDetails.injections || [];
+      injectionMap = new Map(injections.map(inj => [inj.monthIndex, inj.amount]));
+    } else {
+      // Non-invested mode: build deterministic baseline series
+      // [ALIGNMENT FIX] Use canonical simulation start year from projection if available
+      const firstProjYear = parseInt(projection.yearlyBreakdown[0]?.year);
+      const startYear = Number.isFinite(firstProjYear) ? firstProjYear : new Date().getUTCFullYear();
+      simStartDate = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0));
+
+      // Calculate horizon from projection - must match the yearly breakdown
+      const firstYear = parseInt(projection.yearlyBreakdown[0]?.year || startYear);
+      const lastYear = parseInt(projection.yearlyBreakdown[projection.yearlyBreakdown.length - 1]?.year || firstYear);
+
+      // Horizon is from start of first year to the theoretical death date if available
+      const deathDate = userData?.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
+      if (deathDate) {
+        const firstYearNum = parseInt(firstYear);
+        horizonMonths = Math.max(1, (deathDate.getUTCFullYear() - firstYearNum) * 12 + deathDate.getUTCMonth());
+      } else {
+        horizonMonths = (lastYear - firstYear) * 12 + 11;
+      }
+
+      // Build deterministic monthly series (reuse existing function)
+      detSeries = calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets, activeFilters, scenarioData);
+
+      console.log('[EXPORT NONINV ALIGN]', {
+        simStartDate: simStartDate.toISOString(),
+        firstProjYear,
+        startYear,
+        horizonMonths,
+        detLen: detSeries?.length
+      });
+    }
+
+    // [SIM START ALIGN] Verify matching origins across modes
+    console.log('[SIM START ALIGN]', {
+      mode: hasMC ? 'Invested/MC' : 'Non-Invested/Baseline',
+      simStartDate: simStartDate.toISOString(),
+      startYearRunKey: projection?.yearlyBreakdown?.[0]?.year
+    });
+    // [PARTICLE ARITHMETIC] Initialize running balances for exact table audit
+    let runningNonInvestedWealth = 0;
+    let runningInvestedPrincipal = 0;
+
+    assets.forEach(asset => {
+      const id = asset.id || asset.name;
+      if (!activeFilters[`asset-${id}`]) return;
+      const isLiquid = asset.category === 'Liquid';
+      const isInvested = investedAssetIds.includes(id) || asset.strategy === 'Invested';
+
+      const amount = parseFloat(asset.adjustedAmount || asset.amount || 0);
+      const availDate = asset.availabilityDate ? toUtcMonthStart(asset.availabilityDate) : null;
+
+      if (availDate && availDate <= simStartDate) {
+        if (isInvested) {
+          runningInvestedPrincipal += amount;
+        } else if (isLiquid) {
+          runningNonInvestedWealth += amount;
+        }
+      }
+    });
+
+    const monthlyData = [];
+    for (let m = 0; m <= horizonMonths; m++) {
+      const date = new Date(simStartDate);
+      date.setUTCMonth(date.getUTCMonth() + m);
+
+      // Format date as dd.mm.yyyy (end of month)
+      const lastDayOfMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
+      const dateStr = `${String(lastDayOfMonth.getUTCDate()).padStart(2, '0')}.${String(lastDayOfMonth.getUTCMonth() + 1).padStart(2, '0')}.${lastDayOfMonth.getUTCFullYear()}`;
+
+
+      // Calculate flows by summing individual items (Strict Spec)
+      let IncomeFlow = 0;
+      let CostFlow = 0;
+      let NonInvestedAssetFlow = 0;
+      let InvestContributionFlow = 0;
+
+      const simStartRef_Stable = new Date(simStartDate); // Consistent with timeline start
+
+      // 1. Income Flows
+      incomes.forEach(inc => {
+        if (!activeFilters[`income-${inc.id || inc.name}`]) return;
+        const amt = calculateMonthlyAmount(
+          parseFloat(inc.amount || 0),
+          inc.frequency || 'Monthly',
+          inc.startDate,
+          inc.endDate,
+          date,
+          simStartRef_Stable
+        );
+        IncomeFlow += amt;
+      });
+
+      // 2. Cost Flows
+      const allCostItems = [...costs, ...debts];
+      allCostItems.forEach(c => {
+        const prefix = costs.includes(c) ? 'cost-' : 'debt-';
+        if (!activeFilters[`${prefix}${c.id || c.name}`]) return;
+
+        CostFlow += calculateMonthlyAmount(
+          parseFloat(c.amount || 0),
+          c.frequency || 'Monthly',
+          c.startDate,
+          c.endDate,
+          date,
+          simStartRef_Stable
+        );
+      });
+
+      // 3. Asset "Flows" (Periodic) and Invest Contributions
+      assets.forEach(a => {
+        if (!activeFilters[`asset-${a.id || a.name}`]) return;
+        const amount = parseFloat(a.adjustedAmount || a.amount || 0);
+        const isInvested = investedAssetIds.includes(a.id || a.name) || a.strategy === 'Invested';
+
+        if (a.availabilityType === 'Period') {
+          const flow = calculateMonthlyAmount(amount, 'Monthly', a.startDate, a.endDate, date, simStartRef_Stable);
+          if (isInvested) {
+            InvestContributionFlow += flow;
+          } else {
+            NonInvestedAssetFlow += flow;
+          }
+        } else if (a.availabilityDate) {
+          // One-time assets: Check if available this month and > simStartRef
+          const availDate = new Date(a.availabilityDate);
+          if (availDate > simStartRef_Stable &&
+            availDate.getUTCFullYear() === date.getUTCFullYear() &&
+            availDate.getUTCMonth() === date.getUTCMonth()) {
+            if (isInvested) {
+              InvestContributionFlow += amount;
+            } else {
+              // One-time assets are STOCKS. They update wealth but traditionally 
+              // aren't in the generic "IncomeFlow" if we follow stock/flow separation.
+              // We'll map them to NonInvestedAssetFlow to capture the balance change reason.
+              NonInvestedAssetFlow += amount;
+            }
+          }
+        }
+      });
+
+      // Always update running balances for every month (including m=0)
+      // This ensures we reach 100% agreement with the engine's principalPath[m+1]
+      // representing the state AFTER that month's simulation step.
+      runningNonInvestedWealth += (IncomeFlow - CostFlow + NonInvestedAssetFlow);
+      runningInvestedPrincipal += InvestContributionFlow;
+
+      const NonInvestedWealth = runningNonInvestedWealth;
+      const InvestedValue_P0 = runningInvestedPrincipal;
+
+      // [STRICT TABLE ARITHMETIC] 
+      // Rule: Totals MUST equal NonInvested + InvestedValue
+      const BaselineTotal = NonInvestedWealth + InvestedValue_P0;
+
+      // [ALIGNMENT FIX] The table row labeled 31.MM.YYYY represents the state AFTER that month's simulation.
+      // In the engine, the state after month m is at index m+1 (where index 0 is the start of simulation).
+      // We use Math.min(..., horizonMonths) for safety at the very end of the horizon.
+      const engineIdx = Math.min(m + 1, horizonMonths);
+
+      const getGainDelta = (percentileKey) => {
+        if (!hasMC || !mcDetails.percentiles?.[percentileKey]) return 0;
+        const marketVal = mcDetails.percentiles[percentileKey][engineIdx] || 0;
+        // Use the engine's principal for the Delta calculation to ensure market gain is isolated correctly
+        const principalVal = (mcDetails.principalPath && mcDetails.principalPath[engineIdx] !== undefined)
+          ? mcDetails.principalPath[engineIdx]
+          : runningInvestedPrincipal;
+        return marketVal - principalVal;
+      };
+
+      const portGainP5 = getGainDelta('p5');
+      const portGainP10 = getGainDelta('p10');
+      const portGainP25 = getGainDelta('p25');
+      const portGainP50 = getGainDelta('p50');
+      const portGainP75 = getGainDelta('p75');
+      const portGainP90 = getGainDelta('p90');
+      const portGainP95 = getGainDelta('p95');
+
+      const InvestedValue_P5 = hasMC ? (InvestedValue_P0 + portGainP5) : null;
+      const InvestedValue_P10 = hasMC ? (InvestedValue_P0 + portGainP10) : null;
+      const InvestedValue_P25 = hasMC ? (InvestedValue_P0 + portGainP25) : null;
+      const InvestedValue_P50 = hasMC ? (InvestedValue_P0 + portGainP50) : null;
+      const InvestedValue_P75 = hasMC ? (InvestedValue_P0 + portGainP75) : null;
+      const InvestedValue_P90 = hasMC ? (InvestedValue_P0 + portGainP90) : null;
+      const InvestedValue_P95 = hasMC ? (InvestedValue_P0 + portGainP95) : null;
+
+      const finalTotalP5 = hasMC ? (NonInvestedWealth + InvestedValue_P5) : null;
+      const finalTotalP10 = hasMC ? (NonInvestedWealth + InvestedValue_P10) : null;
+      const finalTotalP25 = hasMC ? (NonInvestedWealth + InvestedValue_P25) : null;
+      const finalTotalP50 = hasMC ? (NonInvestedWealth + InvestedValue_P50) : null;
+      const finalTotalP75 = hasMC ? (NonInvestedWealth + InvestedValue_P75) : null;
+      const finalTotalP90 = hasMC ? (NonInvestedWealth + InvestedValue_P90) : null;
+      const finalTotalP95 = hasMC ? (NonInvestedWealth + InvestedValue_P95) : null;
+
+      // Check for injection
+      const hasInjection = injectionMap.has(m);
+      const injectionAmount = injectionMap.get(m) || 0;
+
+      // Debug columns
+      const year = lastDayOfMonth.getUTCFullYear();
+      const isYearEnd = (lastDayOfMonth.getUTCMonth() === 11);
+
+      const P = InvestedValue_P0; // Align debug principal with arithmetic principal
+      const D = detSeries?.[engineIdx] || 0;
+      const B = NonInvestedWealth;
+      const P_engine = (hasMC ? (mcDetails.principalPath?.[engineIdx] || 0) : 0);
+      const identityDiff = Math.abs((D - P_engine) - B); // Keep drift check vs engine
+
+      monthlyData.push({
+        Date_EOM: dateStr,
+        MonthIndex: m,
+        IncomeFlow: Math.round(IncomeFlow),
+        CostFlow: Math.round(CostFlow),
+        NetFlow: Math.round(IncomeFlow - CostFlow),
+        NonInvestedAssetFlow: Math.round(NonInvestedAssetFlow),
+        InvestContributionFlow: Math.round(InvestContributionFlow),
+        NonInvestedWealth_EOM: Math.round(NonInvestedWealth),
+        PrincipalInvested_EOM: Math.round(P),
+        InvestedValue_P0_EOM: Math.round(InvestedValue_P0),
+        InvestedValue_P5_EOM: InvestedValue_P5 !== null ? Math.round(InvestedValue_P5) : null,
+        InvestedValue_P10_EOM: InvestedValue_P10 !== null ? Math.round(InvestedValue_P10) : null,
+        InvestedValue_P50_EOM: InvestedValue_P50 !== null ? Math.round(InvestedValue_P50) : Math.round(InvestedValue_P0),
+        InvestedValue_P95_EOM: InvestedValue_P95 !== null ? Math.round(InvestedValue_P95) : null,
+        BaselineTotal_EOM: Math.round(BaselineTotal),
+        Total_P5_EOM: finalTotalP5 !== null ? Math.round(finalTotalP5) : null,
+        Total_P10_EOM: finalTotalP10 !== null ? Math.round(finalTotalP10) : null,
+        Total_P50_EOM: Math.round(finalTotalP50),
+        Total_P95_EOM: finalTotalP95 !== null ? Math.round(finalTotalP95) : null,
+        InjectionFlag: hasInjection,
+        InjectionAmount: hasInjection ? Math.round(injectionAmount) : 0,
+        // Debug columns
+        Year: year,
+        IsYearEndSampled: isYearEnd,
+        IdentityDiff_0Pct: Math.round(identityDiff)
+      });
+
+      // [EXPORT INVESTED CHECK] Log injection month and final month
+      const isInjection = (m > 0 && Math.round(InvestContributionFlow) !== 0);
+      const isFinal = (m === horizonMonths);
+      if (hasMC && (isInjection || isFinal)) {
+        console.log('[EXPORT INVESTED CHECK]', {
+          m,
+          date: dateStr,
+          baseVal: Math.round(B),
+          principal: Math.round(P),
+          investedP0: Math.round(InvestedValue_P0),
+          investedP5: Math.round(InvestedValue_P5),
+          totalP50: Math.round(BaselineTotal),
+          totalDetReference: Math.round(D)
+        });
+      }
+    }
+
+    console.log('[DATA EXPORT MODE]', {
+      isInvested,
+      hasMC,
+      rowsExported: monthlyData.length
+    });
+
+    return monthlyData;
+  };
+
+  // Navigate to data table
+  const handleShowData = () => {
+    console.log('[MONTHLY DATA CLICK]', {
+      isInvested,
+      hasMC: !!monteCarloProjections?.details,
+      hasProjection: !!projection,
+      projectionYears: projection?.yearlyBreakdown?.length,
+      assetsLen: assets?.length,
+    });
+
+    try {
+      const monthlyData = prepareMonthlyDataForTable();
+      console.log('[MONTHLY DATA PREPARED]', {
+        rows: monthlyData?.length,
+        first: monthlyData?.[0],
+        last: monthlyData?.[monthlyData.length - 1]
+      });
+
+      const metadata = {
+        simulationStartDate: monteCarloProjections?.details?.simulationStartDate || (projection?.yearlyBreakdown?.[0]?.year ? `${projection.yearlyBreakdown[0].year}-01-01` : null),
+        horizonMonths: monteCarloProjections?.details?.horizonMonths || (monthlyData?.length ? monthlyData.length - 1 : 0),
+        retirementDate: scenarioData?.wishedRetirementDate
+      };
+
+      navigate('/simulation-data', { state: { monthlyData, metadata } });
+    } catch (e) {
+      console.error('[MONTHLY DATA ERROR]', e);
+      alert('Monthly data failed: ' + (e?.message ?? e));
+    }
+  };
+
   // Generate PDF Report
   const generatePDF = async () => {
     try {
       setGeneratingPdf(true);
-
       const pdf = new jsPDF('p', 'mm', 'a4');
 
       // Page tracking object
@@ -1500,6 +1843,19 @@ const ScenarioResult = () => {
 
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
       currentPage++;
+
+      // ===== PAGE 3A/3B: MONTE CARLO DETAILS (New) =====
+      const hasMC = !!monteCarloProjections?.details?.percentiles?.p5 && !!monteCarloProjections?.details?.percentiles?.p10;
+      if (isInvested && hasMC) {
+        // Page A: Overview
+        // We pass updated totalPages estimate? No, keep consistent defaults.
+        generateMonteCarloOverview(pdf, monteCarloProjections.details, language, currentPage, summaryData.totalPages);
+        currentPage++;
+
+        // Page B: Conservative Outcomes
+        generateConservativeOutcomes(pdf, monteCarloProjections.details, projection, chartData, language, currentPage, summaryData.totalPages);
+        currentPage++;
+      }
 
       // ===== PAGE 4: PERSONAL INFO =====
       pageNumbers.personal = currentPage;
@@ -1627,103 +1983,6 @@ const ScenarioResult = () => {
   };
 
 
-  // Export to Excel
-  const exportExcel = () => {
-    try {
-      const wb = XLSX.utils.book_new();
-
-      // Summary Sheet
-      const summaryData = [
-        ['Can I Quit? - Retirement Simulation'],
-        ['Generated:', new Date().toLocaleDateString()],
-        [],
-        ['Parameters'],
-        ['Name:', `${userData?.firstName || ''} ${userData?.lastName || ''}`],
-        ['Birth Date:', userData?.birthDate ? new Date(userData.birthDate).toLocaleDateString() : 'N/A'],
-        ['Retirement Date:', new Date(location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate).toLocaleDateString()],
-        ['Option:', scenarioData?.retirementOption || 'option1'],
-        [],
-        ['Results'],
-        ['Final Balance (CHF):', Math.round(projection.finalBalance)],
-        ['Status:', projection.canQuit ? 'Positive' : 'Negative']
-      ];
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-
-      // Projection Sheet
-      const projectionData = projection.yearlyBreakdown.map(row => ({
-        Year: row.year,
-        Age: row.year - new Date(userData.birthDate).getFullYear(),
-        'Total Income (CHF)': Math.round(row.income),
-        'Total Costs (CHF)': Math.round(row.costs),
-        'Net Result (CHF)': Math.round(row.annualBalance),
-        'Cumulative Balance (CHF)': Math.round(row.cumulativeBalance)
-      }));
-      const wsProjection = XLSX.utils.json_to_sheet(projectionData);
-      XLSX.utils.book_append_sheet(wb, wsProjection, 'Projection');
-
-      // Incomes Sheet
-      const activeIncomes = incomes.filter(i => activeFilters[`income-${i.id || i.name}`]);
-      if (activeIncomes.length > 0) {
-        const incomesData = activeIncomes.map(i => ({
-          Name: i.name,
-          'Amount (CHF)': Math.round(parseFloat(i.adjustedAmount || i.amount)),
-          Frequency: i.frequency,
-          'Start Date': i.startDate || '',
-          'End Date': i.endDate || ''
-        }));
-        const wsIncomes = XLSX.utils.json_to_sheet(incomesData);
-        XLSX.utils.book_append_sheet(wb, wsIncomes, 'Incomes');
-      }
-
-      // Costs Sheet
-      const activeCosts = costs.filter(c => activeFilters[`cost-${c.id || c.name}`]);
-      if (activeCosts.length > 0) {
-        const costsData = activeCosts.map(c => ({
-          Name: c.name,
-          'Amount (CHF)': Math.round(parseFloat(c.adjustedAmount || c.amount)),
-          Frequency: c.frequency,
-          'Start Date': c.startDate || '',
-          'End Date': c.endDate || ''
-        }));
-        const wsCosts = XLSX.utils.json_to_sheet(costsData);
-        XLSX.utils.book_append_sheet(wb, wsCosts, 'Costs');
-      }
-
-      // Assets & Debts Sheet
-      const activeAssets = assets.filter(a => activeFilters[`asset-${a.id || a.name}`]);
-      const activeDebts = debts.filter(d => activeFilters[`debt-${d.id || d.name}`]);
-      if (activeAssets.length > 0 || activeDebts.length > 0) {
-        const assetsDebtsData = [
-          ['Assets'],
-          ['Name', 'Amount (CHF)', 'Category', 'Availability'],
-          ...activeAssets.map(a => [
-            a.name,
-            Math.round(parseFloat(a.adjustedAmount || a.amount)),
-            a.category || '',
-            a.availabilityDate || a.availabilityTimeframe || ''
-          ]),
-          [],
-          ['Debts'],
-          ['Name', 'Amount (CHF)', 'Availability'],
-          ...activeDebts.map(d => [
-            d.name,
-            Math.round(parseFloat(d.adjustedAmount || d.amount)),
-            d.madeAvailableDate || d.madeAvailableTimeframe || ''
-          ])
-        ];
-        const wsAssetsDebts = XLSX.utils.aoa_to_sheet(assetsDebtsData);
-        XLSX.utils.book_append_sheet(wb, wsAssetsDebts, 'Assets & Debts');
-      }
-
-      // Write file
-      XLSX.writeFile(wb, `retirement-simulation-${new Date().toISOString().split('T')[0]}.xlsx`);
-      // toast.success(language === 'fr' ? 'Fichier Excel exporté' : 'Excel file exported'); // Assuming toast is defined elsewhere
-    } catch (error) {
-      console.error('Error exporting Excel:', error);
-      // toast.error(language === 'fr' ? 'Erreur lors de l\'export Excel' : 'Error exporting Excel'); // Assuming toast is defined elsewhere
-    }
-  };
 
   // Helper to format item label with details
   const formatItemLabel = (item, type = 'standard') => {
@@ -1771,67 +2030,7 @@ const ScenarioResult = () => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      return (
-        <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs min-w-[600px]">
-          {/* Header Row: Year left, Balances right */}
-          <div className="flex justify-between items-center bg-gray-900/50 p-2 -mx-3 -mt-3 mb-2 border-b border-gray-700 rounded-t">
-            <p className="font-bold text-sm text-gray-100 pl-1">{language === 'fr' ? `Année ${label}` : `Year ${label}`}</p>
-
-            <div className="flex gap-4">
-              <div className={`flex items-center gap-2 font-bold ${data.annualBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                <span className="text-gray-400 font-normal">{language === 'fr' ? 'Annuel:' : 'Annual:'}</span>
-                <span>{Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
-              </div>
-              <div className="flex items-center gap-2 font-bold text-blue-300">
-                <span className="text-gray-400 font-normal">{language === 'fr' ? 'Cumulé:' : 'Cumul:'}</span>
-                <span>{Math.round(data.cumulativeBalance).toLocaleString()}</span>
-              </div>
-              {data.monteCarloValue !== undefined && (
-                <div className="flex items-center gap-2 font-bold text-blue-500 ml-2 border-l border-gray-600 pl-4">
-                  <span className="text-gray-400 font-normal">MC 50%:</span>
-                  <span>{Math.round(data.monteCarloValue).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-6 mb-2 mt-3">
-            <div className="flex-1">
-              <p className="font-semibold text-green-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)'}</p>
-              {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => (
-                <div key={name} className="flex justify-between gap-4">
-                  <span>{name}</span>
-                  <span>{Math.round(val).toLocaleString()}</span>
-                </div>
-              ))}
-              {data.activatedOwnings > 0 && (
-                <div className="flex justify-between gap-4 text-pink-400 font-medium">
-                  <span>{language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'}</span>
-                  <span>{Math.round(data.activatedOwnings).toLocaleString()}</span>
-                </div>
-              )}
-              <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
-                <span>Total</span>
-                <span>{Math.round(data.income + (data.activatedOwnings || 0)).toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="flex-1">
-              <p className="font-semibold text-red-400 mb-1 border-b border-gray-600 pb-1">{language === 'fr' ? 'Dépenses (CHF)' : 'Costs (CHF)'}</p>
-              {Object.entries(data.costBreakdown || {}).map(([name, val]) => (
-                <div key={name} className="flex justify-between gap-4">
-                  <span>{name}</span>
-                  <span>{Math.round(val).toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="border-t border-gray-600 mt-1 pt-1 flex justify-between font-bold">
-                <span>Total</span>
-                <span>{Math.round(data.costs).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
+      return <DetailedTooltipContent data={data} language={language} isPdf={false} />;
     }
     return null;
   };
@@ -1843,94 +2042,119 @@ const ScenarioResult = () => {
   // New Blue Line = (Baseline - Constant Invested) + MC Invested.
   // This ensures the Blue Line inherits all cash flow dips, housing jumps, etc from the main simulation.
   // UNIFIED CHART DATA LOGIC:
-  // We want the Monte Carlo lines (Blue/Amber/Red) to represent "Total Wealth" just like the Baseline (Gray).
-  // Current Baseline = Cash Flows + Constant Invested Amount (0% return).
-  // Current MC Result (pXX) = The Invested Amount (Growing).
-  // New Line = (Baseline - Constant Invested) + MC Invested.
-  // This ensures the lines inherit all cash flow dips, housing jumps, etc from the main simulation.
+  // Use centralized helpers to recompose Total Wealth = (Baseline - NominalInvested) + MCInvested
+  // The dashed baseline also uses the recomposed (Cash-Only) baseline.
+
+  // Calculate isInvested BEFORE chartData useMemo (needed inside the useMemo)
+  const isInvested = useMemo(() => hasInvestedBook(scenarioData, assets), [scenarioData, assets]);
+
   const chartData = useMemo(() => {
     if (!projection?.yearlyBreakdown) return [];
 
-    // If no MC, just return baseline data
-    if (!monteCarloProjections?.p50) {
+    // If no MC projections, just return raw baseline data
+    if (!monteCarloProjections?.details) {
       return projection.yearlyBreakdown;
     }
 
-    // Determine initial invested amount safely
-    let initialInvested = 0;
-    if (monteCarloProjections.details?.totalAmount) {
-      initialInvested = parseFloat(monteCarloProjections.details.totalAmount);
-    } else if (monteCarloProjections.investedBookDetails?.totalAmount) {
-      initialInvested = parseFloat(monteCarloProjections.investedBookDetails.totalAmount);
-    } else if (monteCarloProjections.p50?.[0]?.value) {
-      initialInvested = parseFloat(monteCarloProjections.p50[0].value);
+    // Golden Recomposition Logic
+
+    // [Phase 9b] Strict Timing Reference - Normalise via UTC context to avoid drift
+    const simStartDate = toUtcMonthStart(monteCarloProjections.details.simulationStartDate);
+
+    // [SIM START UTC CHECK] Hard validation for zero drift
+    console.log("[SIM START UTC CHECK]", {
+      raw: monteCarloProjections?.details?.simulationStartDate,
+      normalizedISO: simStartDate.toISOString(),
+      utcYear: simStartDate.getUTCFullYear(),
+      utcMonth: simStartDate.getUTCMonth()
+    });
+    if (simStartDate.getUTCMonth() !== 0) {
+      console.error("[UTC DRIFT DETECTED] simulationStartDate drifted from Jan to month", simStartDate.getUTCMonth(), {
+        raw: monteCarloProjections?.details?.simulationStartDate,
+        iso: simStartDate.toISOString()
+      });
     }
 
-    if (isNaN(initialInvested)) initialInvested = 0;
+    // [UI RECOMP META]
+    const mcDetails = monteCarloProjections.details;
+    const detSeries = mcDetails.detSeries;
+    console.log("[UI RECOMP META]", {
+      simStartDate: simStartDate.toISOString(),
+      detSeriesLen: detSeries?.length,
+      principalLen: mcDetails?.principalPath?.length,
+      p5Len: mcDetails?.percentiles?.p5?.length
+    });
 
+    // [INDEX SAFETY] Calculate safe bounds with hardening
+    const detLen = detSeries?.length ?? 0;
+    const pLen = mcDetails?.principalPath?.length ?? detLen;
+    const p5Len = mcDetails?.percentiles?.p5?.length ?? detLen;
+    const p10Len = mcDetails?.percentiles?.p10?.length ?? detLen;
+
+    // Early return if no data
+    if (detLen === 0) {
+      console.warn('[CHART DATA] No detSeries data, returning empty');
+      return [];
+    }
+
+    // Prevent -1 by using Math.max(0, ...)
+    const lastMonthlyIdx = Math.max(0, Math.min(detLen, pLen, p5Len, p10Len) - 1);
+
+    // 2. Map Yearly Breakdown to these series
     return projection.yearlyBreakdown.map((row, index) => {
-      // Total Wealth from Baseline
-      const totalBase = parseFloat(row.cumulativeBalance) || 0;
       const rowYear = parseInt(row.year);
 
-      // Calculate how much of the "Invested" capital is currently recognized in the Baseline (Liquid)
-      // This is necessary because Baseline treats assets as "becoming available" at specific dates,
-      // whereas Monte Carlo simulation (currently) assumes invested assets are held from the start (or aligned).
-      // To correctly splice them, we must subtract ONLY the portion of invested capital that is currently sitting in the Baseline.
-      let investedInBaseline = 0;
+      // Compute year-end index
+      const computedYearEndIdx = getYearEndMonthIndex(simStartDate, rowYear);
 
-      if (monteCarloProjections.details?.portfolioAssets || monteCarloProjections.investedBookDetails?.assets) {
-        const investedAssetsList = monteCarloProjections.details?.portfolioAssets || monteCarloProjections.investedBookDetails?.assets;
+      // Clamp to safe bounds (prevent negative and overflow)
+      const safeIdx = Math.min(Math.max(0, computedYearEndIdx), lastMonthlyIdx);
 
-        investedAssetsList.forEach(asset => {
-          // Find original asset to check dates
-          // Note: portfolioAssets uses 'assetId', investedBookDetails might use 'id'. Check both.
-          const lookupId = asset.assetId || asset.id;
-          const originalAsset = assets.find(a => (a.id === lookupId || a.name === asset.productName));
+      // GOLDEN DEFINITIONS EVALUATED AT safeIdx using pre-computed detSeries
+      const mcDetails = monteCarloProjections.details;
+      const detSeries = mcDetails.detSeries;
 
-          if (originalAsset) {
-            const amount = parseFloat(originalAsset.adjustedAmount || originalAsset.amount || 0);
+      const baseVal = calculateRecomposedBaselineAtIndex(mcDetails, detSeries, safeIdx);
+      const rawMc50Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p50');
+      const rawMc25Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p25');
+      const rawMc10Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p10');
+      const rawMc5Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p5');
 
-            // Logic mimics Baseline: When does it enter the equation?
-            let isAvailable = true;
-            if (originalAsset.availabilityDate) {
-              const availYear = new Date(originalAsset.availabilityDate).getFullYear();
-              if (availYear > rowYear) isAvailable = false;
-            }
-            // (Asset periods handled as flow, usually not invested lump sum, but if so, handle here? Assuming availabilityDate for now)
+      // [Phase 11] Force Numeric fallback (No more domain trimming)
+      const mc50Val = Number.isFinite(rawMc50Val) ? rawMc50Val : baseVal;
+      const mc25Val = Number.isFinite(rawMc25Val) ? rawMc25Val : baseVal;
+      const mc10Val = Number.isFinite(rawMc10Val) ? rawMc10Val : baseVal;
+      const mc5Val = Number.isFinite(rawMc5Val) ? rawMc5Val : baseVal;
 
-            if (isAvailable) {
-              investedInBaseline += amount;
-            }
-          } else {
-            // Fallback: assume available if we can't find specific logic
-            investedInBaseline += parseFloat(asset.amount || 0);
-          }
+      // [FINAL IDENTITY CHECK] + [YEAR-END CLAMP LOG]
+      if (index === projection.yearlyBreakdown.length - 1) {
+        const lastYear = rowYear;
+        const P_end = mcDetails.principalPath ? mcDetails.principalPath[safeIdx] : 0;
+        const expected_B_end = parseFloat(row.cumulativeBalance || 0) - P_end;
+
+        console.log("[YEAR-END CLAMP]", {
+          detLen,
+          lastMonthlyIdx,
+          computedYearEndIdx,
+          safeIdx,
+          baselineNonInv: Math.round(baseVal),
+          investedP0: Math.round(P_end),
+          baselineTotal: Math.round(baseVal + P_end)
         });
-      } else {
-        // Fallback if no details
-        investedInBaseline = initialInvested;
+
+        console.log("[FINAL IDENTITY CHECK]", {
+          lastYear,
+          safeIdx,
+          D_end: detSeries[safeIdx],
+          P_end,
+          B_end: baseVal,
+          expected_B_end,
+          projTotal_end: row.cumulativeBalance,
+          pass: Math.abs(baseVal - expected_B_end) < 1
+        });
       }
 
-      // Helper to calculate wealth for a percentile
-      const calcWealth = (percentilePath) => {
-        if (!percentilePath) return totalBase;
-
-        let mcInvestedVal = initialInvested; // default (flat)
-        // MC Simulation Value (Asset Value at Year X)
-        const mcRow = percentilePath.find(m => parseInt(m.year) === rowYear);
-        if (mcRow && !isNaN(parseFloat(mcRow.value))) {
-          mcInvestedVal = parseFloat(mcRow.value);
-        }
-
-        // Logic:
-        // TotalBase includes [Liquid Cash] + [available InvestedPrincipal].
-        // We want to show [Liquid Cash] + [MC Market Value].
-        // So: (TotalBase - available InvestedPrincipal) + MC Market Value.
-        return (totalBase - investedInBaseline) + mcInvestedVal;
-      };
-
-      // Trend & Color Logic
+      // Trend & Color Logic (Preserved)
       const prevRow = index > 0 ? projection.yearlyBreakdown[index - 1] : null;
       const getColors = (current, previous, type, baseFill) => {
         const colors = {};
@@ -1957,23 +2181,106 @@ const ScenarioResult = () => {
         return colors;
       };
 
+      // [YEAR-END SAMPLING PROBE] - Phase 8: Fixed arithmetic (total5 = mc5Val)
+      if ([2048, 2049, 2050, 2051, 2052].includes(rowYear)) {
+        const yearEndIdx = getYearEndMonthIndex(simStartDate, rowYear);
+        const yearEndYM = monthIndexToYearMonth(simStartDate, yearEndIdx);
+        const yearStartIdx = dateToMonthIndex(simStartDate, `${rowYear}-01-01`);
+        const yearStartYM = monthIndexToYearMonth(simStartDate, yearStartIdx);
+
+        const reportedInjections = mcDetails.reportedInjections || [];
+        const injMonthIndex = reportedInjections[0]?.monthIndex;
+
+        console.log("[YEAR-END SAMPLING PROBE]", {
+          rowYear,
+          yearEndIdx,
+          yearEndYM,
+          yearStartIdx,
+          yearStartYM,
+          injMonthIndex,
+          P: Math.round(mcDetails.principalPath?.[safeIdx] || 0),
+          D: Math.round(baseVal + (mcDetails.principalPath?.[safeIdx] || 0)),
+          B: Math.round(baseVal),
+          mc5Total: Math.round(mc5Val), // [Phase 8] mc5Val is already TOTAL wealth
+          isPreInjection: (injMonthIndex !== undefined && safeIdx <= injMonthIndex)
+        });
+      }
+
       return {
         ...row,
+        // OVERWRITE cumulativeBalance for the dashed line
+        // In invested mode: Total Baseline (NonInvWealth + InvestedP0)
+        // In non-invested mode: Cash-Only Baseline (NonInvWealth)
+        cumulativeBalance: isInvested
+          ? baseVal + (mcDetails.principalPath?.[safeIdx] || 0)
+          : baseVal,
         incomeColors: getColors(row.incomeBreakdown || {}, prevRow?.incomeBreakdown || {}, 'income', '#22c55e'),
         activatedOwingsColors: getColors(row.activatedOwingsBreakdown || {}, prevRow?.activatedOwingsBreakdown || {}, 'activatedOwnings', '#ec4899'),
         costColors: getColors(row.costBreakdown || {}, prevRow?.costBreakdown || {}, 'negCosts', '#ef4444'),
-        mc50: calcWealth(monteCarloProjections.p50),
-        mc25: calcWealth(monteCarloProjections.p25),
-        mc10: calcWealth(monteCarloProjections.p10),
-        mc5: calcWealth(monteCarloProjections.p5)
+        mc50: mc50Val,
+        mc25: mc25Val,
+        mc10: mc10Val,
+        mc5: mc5Val
       };
     });
-  }, [projection, monteCarloProjections, assets, showTrendHighlight]);
 
-  const isInvested = useMemo(() => hasInvestedBook(scenarioData, assets), [scenarioData, assets]);
+    // [BASELINE SERIES SELECTED] Log once to verify correct mapping
+    if (mapped.length > 0) {
+      const lastIdx = projection.yearlyBreakdown.length - 1;
+      const lastComputedIdx = getYearEndMonthIndex(simStartDate, parseInt(projection.yearlyBreakdown[lastIdx].year));
+      const lastSafeIdx = Math.min(Math.max(0, lastComputedIdx), lastMonthlyIdx);
+      const lastBaseVal = calculateRecomposedBaselineAtIndex(mcDetails, detSeries, lastSafeIdx);
+      const lastPrincipal = mcDetails.principalPath?.[lastSafeIdx] || 0;
+      const lastBaselineTotal = lastBaseVal + lastPrincipal;
+
+      console.log('[BASELINE SERIES SELECTED]', {
+        mode: isInvested ? 'invested' : 'nonInvested',
+        baselineKey: isInvested ? 'baselineTotal (NonInvWealth + InvestedP0)' : 'baseVal (NonInvWealth)',
+        lastBaselineValue: isInvested ? Math.round(lastBaselineTotal) : Math.round(lastBaseVal),
+        lastNonInvWealth: Math.round(lastBaseVal),
+        lastInvestedP0: Math.round(lastPrincipal)
+      });
+    }
+
+    // [MC SERIES AUDIT]
+    const auditData = mapped;
+    const firstYear = auditData[0]?.year;
+    const lastYear = auditData.at(-1)?.year;
+    const count = auditData.length;
+    const earliestFiniteMC5Year = auditData.find(r => Number.isFinite(r.mc5))?.year;
+    const earliestDivergenceYear = auditData.find(r => Number.isFinite(r.mc5) && Math.abs(r.mc5 - r.cumulativeBalance) > 1)?.year;
+    const holes = auditData.filter(r => r.mc5 === undefined || r.mc5 === null || isNaN(r.mc5)).length;
+
+    console.log("[MC SERIES AUDIT]", {
+      firstYear, lastYear, count,
+      earliestFiniteMC5Year,
+      earliestDivergenceYear,
+      holes,
+      sampleFirst3: auditData.slice(0, 3).map(r => ({ year: r.year, base: r.cumulativeBalance, mc5: r.mc5, mc10: r.mc10, mc25: r.mc25 })),
+      sampleAround2049: auditData.filter(r => [2047, 2048, 2049, 2050].includes(r.year)).map(r => ({ year: r.year, base: r.cumulativeBalance, mc5: r.mc5, mc10: r.mc10, mc25: r.mc25 }))
+    });
+
+    return auditData;
+  }, [projection, monteCarloProjections, showTrendHighlight, scenarioData, assets]);
+
   const finalChartRow = chartData && chartData.length > 0 ? chartData[chartData.length - 1] : null;
-  const finalBaselineBalance = projection.finalBalance;
-  const final5Balance = (isInvested && finalChartRow) ? finalChartRow.mc5 : null;
+
+  // RULE 3: Baseline Consistency
+  // finalBaselineBalance MUST match the chart's recomposed baseline B(t) when investments exist.
+  const finalBaselineBalance = (isInvested && finalChartRow) ? finalChartRow.cumulativeBalance : projection.finalBalance;
+
+  // POLISH: Ensure undefined mc5 becomes null, not undefined, to avoid Math.round(undefined) -> NaN
+  const final5Balance = (isInvested && finalChartRow && finalChartRow.mc5 !== undefined) ? finalChartRow.mc5 : null;
+
+  // [UI Baseline Consistency] dev-only probe
+  if (chartData && chartData.length > 0) {
+    console.log("[UI Baseline Consistency]", {
+      isInvested,
+      chartBaselineFinal: chartData.at(-1)?.cumulativeBalance,
+      projectionFinalBalance: projection?.finalBalance,
+      baselineCardValue: finalBaselineBalance
+    });
+  }
 
   // Calculate the offset for the zero line in the gradient
   const getGradientOffset = (dataKeys) => {
@@ -2006,10 +2313,13 @@ const ScenarioResult = () => {
       const birthDate = new Date(userData?.birthDate);
       const years = Math.floor(retirementAge);
       const months = Math.round((retirementAge - years) * 12);
-      retireDate = new Date(birthDate);
-      retireDate.setFullYear(retireDate.getFullYear() + years);
-      retireDate.setMonth(retireDate.getMonth() + months + 1);
-      retireDate.setDate(1);
+
+      // [Phase 9b] Use UTC to prevent local drift
+      retireDate = new Date(Date.UTC(
+        birthDate.getUTCFullYear() + years,
+        birthDate.getUTCMonth() + months + 1,
+        1, 0, 0, 0, 0
+      ));
     } else if (option === 'option3' && projection?.simRetirementDate) {
       retireDate = new Date(projection.simRetirementDate);
     } else {
@@ -2178,13 +2488,36 @@ const ScenarioResult = () => {
               {language === 'fr' ? 'Générer rapport' : 'Generate report'}
             </Button>
             <Button
-              onClick={exportExcel}
+              onClick={() => {
+                // Ensure typed arrays are converted for serialization (fixes NaN issues in Details page)
+                const deepArrayFrom = (obj) => {
+                  if (!obj || typeof obj !== 'object') return obj;
+                  if (obj instanceof Float64Array || obj instanceof Float32Array) return Array.from(obj);
+                  if (Array.isArray(obj)) return obj.map(deepArrayFrom);
+                  const res = {};
+                  for (let k in obj) res[k] = deepArrayFrom(obj[k]);
+                  return res;
+                };
+                const serializableProjections = deepArrayFrom(monteCarloProjections);
+                navigate('/monte-carlo-details', { state: { mcProjections: serializableProjections } });
+              }}
               variant="outline"
               size="sm"
+              disabled={!isInvested || !monteCarloProjections}
               className="flex items-center gap-2"
             >
-              <Download className="h-4 w-4" />
-              {language === 'fr' ? 'Exporter données' : 'Export data'}
+              <Activity className="h-4 w-4" />
+              {language === 'fr' ? 'Détails MC' : 'MC Details'}
+            </Button>
+            <Button
+              onClick={handleShowData}
+              variant="outline"
+              size="sm"
+              disabled={isInvested ? !monteCarloProjections?.details : !projection?.yearlyBreakdown}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              {language === 'fr' ? 'Données mensuelles' : 'Monthly Data'}
             </Button>
           </div>
         }
@@ -2371,7 +2704,12 @@ const ScenarioResult = () => {
         <div className="mb-6">
           <Card className="h-[600px]">
             <CardHeader className="py-4">
-              <CardTitle className="text-sm font-semibold">{language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}</CardTitle>
+              <CardTitle className="text-sm font-semibold">
+                {language === 'fr' ? 'Projection Financière en CHF' : 'Financial Projection in CHF'}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {language === 'fr' ? '(Valeurs de fin d\'année)' : '(Year-End Values)'}*
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="h-[550px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -2399,12 +2737,21 @@ const ScenarioResult = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
-                  <XAxis dataKey="year" fontSize={10} axisLine={false} tickLine={false} dy={10} />
+                  <XAxis
+                    dataKey="year"
+                    interval={0}
+                    fontSize={10}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#FFFFFF' }}
+                    dy={10}
+                  />
                   <YAxis
                     hide={false}
                     fontSize={10}
                     axisLine={false}
                     tickLine={false}
+                    tick={{ fill: '#FFFFFF' }}
                     tickFormatter={(val) => val === 0 ? "0" : `${(val / 1000).toFixed(0)}k`}
                   />
                   <ReferenceLine y={0} stroke="#FFFFFF" strokeWidth={2} />
@@ -2412,7 +2759,7 @@ const ScenarioResult = () => {
 
                   {showBaseline && (
                     <Area
-                      type="monotone"
+                      type="linear"
                       dataKey="cumulativeBalance"
                       stroke={isInvested ? "#9ca3af" : "url(#splitColorBaseline)"}
                       strokeDasharray={isInvested ? "5 5" : "0"}
@@ -2434,39 +2781,43 @@ const ScenarioResult = () => {
                     />
                   )}
 
-                  {/* MC Lines */}
-                  {show25thPercentile && isInvested && monteCarloProjections && (
-                    <Line type="monotone" dataKey="mc25" stroke="#f59e0b" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 25%' : '25% (Conservative)'}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
-                        }
-                        return null;
-                      }}
-                    />
-                  )}
-                  {show10thPercentile && isInvested && monteCarloProjections && (
-                    <Line type="monotone" dataKey="mc10" stroke="#9333ea" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 10% (Pessimiste)' : '10% (Pessimistic)'}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill="#9333ea" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
-                        }
-                        return null;
-                      }}
-                    />
-                  )}
-                  {show5thPercentile && isInvested && monteCarloProjections && (
-                    <Line type="monotone" dataKey="mc5" stroke="url(#splitColorMC5)" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
-                      label={(props) => {
-                        const { x, y, value, index } = props;
-                        if (chartData && index === chartData.length - 1) {
-                          return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
-                        }
-                        return null;
-                      }}
-                    />
+                  {/* [Phase 8] MC Lines - Simplified gating and explicit Total Wealth semantics */}
+                  {isInvested && monteCarloProjections?.details && (
+                    <>
+                      {show25thPercentile && (
+                        <Line type="linear" dataKey="mc25" stroke="#f59e0b" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 25%' : '25% (Conservative)'}
+                          label={(props) => {
+                            const { x, y, value, index } = props;
+                            if (chartData && index === chartData.length - 1) {
+                              return <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
+                            }
+                            return null;
+                          }}
+                        />
+                      )}
+                      {show10thPercentile && (
+                        <Line type="linear" dataKey="mc10" stroke="#9333ea" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 10% (Pessimiste)' : '10% (Pessimistic)'}
+                          label={(props) => {
+                            const { x, y, value, index } = props;
+                            if (chartData && index === chartData.length - 1) {
+                              return <text x={x} y={y} dx={10} dy={4} fill="#9333ea" fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
+                            }
+                            return null;
+                          }}
+                        />
+                      )}
+                      {show5thPercentile && (
+                        <Line type="linear" dataKey="mc5" stroke="url(#splitColorMC5)" strokeWidth={2} dot={false} name={language === 'fr' ? 'Monte Carlo 5% (Très Pessimiste)' : '5% (Very Pessimistic)'}
+                          label={(props) => {
+                            const { x, y, value, index } = props;
+                            if (chartData && index === chartData.length - 1) {
+                              return <text x={x} y={y} dx={10} dy={4} fill={value >= 0 ? "#10b981" : "#ef4444"} fontSize={16} fontWeight="bold" textAnchor="start">{Math.round(value).toLocaleString('de-CH')}</text>;
+                            }
+                            return null;
+                          }}
+                        />
+                      )}
+                    </>
                   )}
 
                   <Bar dataKey="income" barSize={11} fill="#22c55e" name={language === 'fr' ? 'Revenus annuels' : 'Annual Income'} stackId="bars" shape={<CustomBarShape />} />
@@ -2489,6 +2840,11 @@ const ScenarioResult = () => {
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
+            <div className="px-6 pb-4 text-[10px] text-muted-foreground italic">
+              {language === 'fr'
+                ? "* Les valeurs P5/P10 investies sont des valeurs de fin d'année (après évolution du marché)."
+                : "* Invested P5/P10 shown as end-of-year values after market evolution."}
+            </div>
           </Card>
         </div>
 
@@ -2706,7 +3062,7 @@ const ScenarioResult = () => {
                   </div>
                 </CardContent>
                 <div className="absolute bottom-4 right-4">
-                  <Button variant="link" size="sm" onClick={() => navigate('/capital-management')} className="text-primary text-xs flex items-center gap-2">
+                  <Button variant="link" size="sm" onClick={() => navigate('/capital-setup')} className="text-primary text-xs flex items-center gap-2">
                     {language === 'fr' ? 'Accéder à la configuration du capital' : 'Go to Capital management setup'}
                     <ChevronUp className="h-4 w-4 rotate-90" />
                   </Button>

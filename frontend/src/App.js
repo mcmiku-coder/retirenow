@@ -10,6 +10,7 @@ import Landing from './pages/Landing';
 import Information from './pages/Information';
 import MonteCarloHelp from './pages/MonteCarloHelp';
 import MonteCarloAudit from './pages/MonteCarloAudit';
+import MonteCarloDetails from './pages/MonteCarloDetails';
 import AdminApp from './pages/admin/AdminApp';
 import PersonalInfo from './pages/PersonalInfo';
 import RetirementOverview from './pages/RetirementOverview';
@@ -39,6 +40,7 @@ import Disclaimer from './pages/legal/Disclaimer';
 import Contact from './pages/legal/Contact';
 import DetailedGraph from './pages/DetailedGraph';
 import PromoClip from './pages/PromoClip';
+import SimulationDataTable from './pages/SimulationDataTable';
 import Footer from './components/Footer';
 
 import { trackPageVisit } from './utils/analytics';
@@ -171,9 +173,19 @@ function AppRoutes() {
             <ScenarioResult />
           </ProtectedRoute>
         } />
+        <Route path="/monte-carlo-details" element={
+          <ProtectedRoute>
+            <MonteCarloDetails />
+          </ProtectedRoute>
+        } />
         <Route path="/detailed-graph" element={
           <ProtectedRoute>
             <DetailedGraph />
+          </ProtectedRoute>
+        } />
+        <Route path="/simulation-data" element={
+          <ProtectedRoute>
+            <SimulationDataTable />
           </ProtectedRoute>
         } />
         <Route path="/admin/*" element={<AdminApp />} />

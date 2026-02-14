@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../utils/apiConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -9,7 +10,7 @@ import { toast } from 'sonner';
 import {
     TrendingUp, Plus, Trash2, Download, AlertTriangle,
     CheckCircle, XCircle, Edit2, X, Info, RotateCcw,
-    Landmark, Home, Coins, Banknote
+    Landmark, Home, Coins, Banknote, Save
 } from 'lucide-react';
 import {
     CATALOG_VERSION,
@@ -46,11 +47,13 @@ export default function AdminInstruments({ token }) {
     const [validationErrors, setValidationErrors] = useState([]);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [editingInstrument, setEditingInstrument] = useState(null);
+    const [parseErrors, setParseErrors] = useState([]); // CSV parse errors
     const [newInstrument, setNewInstrument] = useState({
         id: '',
         name: '',
         assetClass: 'Equities',
-        frequency: 'annual',
+        quotationCurrency: 'CHF',
+        frequency: 'monthly', // ALWAYS monthly (architectural requirement)
         active: true,
         timeSeries: []
     });
@@ -76,12 +79,16 @@ export default function AdminInstruments({ token }) {
         }).join('\n');
     };
 
-    // Helper: Convert CSV to time series JSON (accepts dd.mm.yyyy)
+    // Helper: Convert CSV to time series JSON with STRICT validation
+    // Returns both parsed data and any errors encountered
     const csvToTimeSeries = (csv) => {
-        if (!csv || csv.trim() === '') return [];
+        if (!csv || csv.trim() === '') {
+            return { timeSeries: [], errors: [] };
+        }
 
         const lines = csv.trim().split('\n');
         const timeSeries = [];
+        const parseErrors = [];
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -89,36 +96,67 @@ export default function AdminInstruments({ token }) {
 
             const parts = line.split(',');
             if (parts.length !== 2) {
-                console.warn(`Invalid CSV line ${i + 1}: ${line}`);
+                parseErrors.push(`Line ${i + 1}: Invalid format (expected dd.mm.yyyy,value)`);
                 continue;
             }
 
             const dateStr = parts[0].trim();
-            const value = parseFloat(parts[1].trim());
+            const valueStr = parts[1].trim();
 
             // Parse dd.mm.yyyy format
             const dateParts = dateStr.split('.');
             if (dateParts.length !== 3) {
-                console.warn(`Invalid date format at line ${i + 1}: ${dateStr} (expected dd.mm.yyyy)`);
+                parseErrors.push(`Line ${i + 1}: Invalid date format "${dateStr}" (expected dd.mm.yyyy)`);
                 continue;
             }
 
-            const day = dateParts[0].padStart(2, '0');
-            const month = dateParts[1].padStart(2, '0');
-            const year = dateParts[2];
+            const day = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]);
+            const year = parseInt(dateParts[2]);
 
-            // Convert to YYYY-MM-DD for storage
-            const date = `${year}-${month}-${day}`;
+            // Validate date components
+            if (isNaN(day) || isNaN(month) || isNaN(year)) {
+                parseErrors.push(`Line ${i + 1}: Invalid date "${dateStr}" (non-numeric components)`);
+                continue;
+            }
+
+            if (month < 1 || month > 12) {
+                parseErrors.push(`Line ${i + 1}: Invalid month ${month} (must be 1-12)`);
+                continue;
+            }
+
+            if (day < 1 || day > 31) {
+                parseErrors.push(`Line ${i + 1}: Invalid day ${day} (must be 1-31)`);
+                continue;
+            }
+
+            if (year < 1900 || year > 2100) {
+                parseErrors.push(`Line ${i + 1}: Invalid year ${year} (must be 1900-2100)`);
+                continue;
+            }
+
+            // Parse and validate value
+            const value = parseFloat(valueStr);
 
             if (isNaN(value)) {
-                console.warn(`Invalid value at line ${i + 1}: ${parts[1]}`);
+                parseErrors.push(`Line ${i + 1}: Invalid value "${valueStr}" (must be numeric)`);
                 continue;
             }
+
+            if (value <= 0) {
+                parseErrors.push(`Line ${i + 1}: Value must be > 0 (got ${value})`);
+                continue;
+            }
+
+            // Convert to YYYY-MM-DD for storage
+            const paddedDay = String(day).padStart(2, '0');
+            const paddedMonth = String(month).padStart(2, '0');
+            const date = `${year}-${paddedMonth}-${paddedDay}`;
 
             timeSeries.push({ date, value });
         }
 
-        return timeSeries;
+        return { timeSeries, errors: parseErrors };
     };
 
     const validateAllInstruments = () => {
@@ -162,10 +200,12 @@ export default function AdminInstruments({ token }) {
             id: '',
             name: '',
             assetClass: 'Equities',
-            frequency: 'annual',
+            quotationCurrency: 'CHF',
+            frequency: 'monthly', // ALWAYS monthly
             active: true,
             timeSeries: []
         });
+        setParseErrors([]);
         setEditingInstrument(null);
         setShowAddDialog(false);
     };
@@ -219,6 +259,67 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
             `Catalog v${newVersion} generated! Save to shared/instruments/instrumentCatalog.js, commit to Git, and deploy.`,
             { duration: 10000 }
         );
+    };
+
+    // Overwrite Source File (Dev Only)
+    const handleOverwriteSource = async () => {
+        // Validation Warning (Non-blocking for Dev convenience)
+        if (validationErrors.length > 0) {
+            if (!window.confirm(`⚠️ WARNING: There are ${validationErrors.length} validation errors in the catalog.\n\nRunning the app with invalid instruments may cause crashes.\n\nDo you want to proceed anyway?`)) {
+                return;
+            }
+        }
+
+        if (!window.confirm("⚠️ DANGER: This will overwrite 'frontend/src/shared/instruments/instrumentCatalog.js' on the server disk.\n\nAre you running locally and sure you want to do this?")) {
+            return;
+        }
+
+        const newVersion = CATALOG_VERSION + 1;
+        const timestamp = new Date().toISOString().split('T')[0];
+
+        const code = `/**
+ * INSTRUMENT CATALOG - Code-Owned Source File
+ * 
+ * This file contains the complete instrument catalog with 20-25 years of historical data.
+ * Loaded in-memory at runtime. Changes require Git commit and deployment.
+ * 
+ * DO NOT EDIT MANUALLY - Use Admin Authoring Tool at /admin/instruments
+ * 
+ * Version: ${newVersion}
+ * Last Updated: ${timestamp}
+ */
+
+export const CATALOG_VERSION = ${newVersion};
+
+export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
+`;
+
+        try {
+            const activeToken = token || sessionStorage.getItem('admin_token');
+            // Use full URL to avoid proxy issues, just in case
+            const response = await fetch(`${API_BASE_URL}/api/admin/save-instrument-catalog`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${activeToken}`
+                },
+                body: JSON.stringify({ code })
+            });
+
+            if (response.ok) {
+                toast.success("Source file overwritten successfully! Reloading application...", { duration: 2000 });
+                // Force reload to pick up new catalog
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                const data = await response.json();
+                toast.error(`Failed to overwrite: ${data.detail}`);
+            }
+        } catch (error) {
+            console.error("Overwrite error:", error);
+            toast.error("Error connecting to server");
+        }
     };
 
     const downloadFile = (filename, content) => {
@@ -350,6 +451,18 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                             </Button>
 
                             <Button
+                                onClick={handleOverwriteSource}
+                                // disabled={validationErrors.length > 0} // Enabled for power users
+                                variant="destructive"
+                                size="sm"
+                                className="h-9"
+                                title="Directly overwrite the source file on disk (Dev Only)"
+                            >
+                                <Save className="h-4 w-4 mr-2" />
+                                Overwrite Source
+                            </Button>
+
+                            <Button
                                 onClick={handleResetToCode}
                                 variant="outline"
                                 size="sm"
@@ -390,6 +503,7 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                         <th className="text-left p-3 font-medium">ID</th>
                                         <th className="text-left p-3 font-medium">Name</th>
                                         <th className="text-left p-3 font-medium">Asset Class</th>
+                                        <th className="text-left p-3 font-medium">Currency</th>
                                         <th className="text-left p-3 font-medium">Frequency</th>
                                         <th className="text-left p-3 font-medium">Data Points</th>
                                         <th className="text-left p-3 font-medium">Active</th>
@@ -414,6 +528,7 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                                         <span className="text-sm font-medium">{inst.assetClass}</span>
                                                     </div>
                                                 </td>
+                                                <td className="p-3 text-sm font-mono">{inst.quotationCurrency || 'CHF'}</td>
                                                 <td className="p-3 text-sm">{inst.frequency}</td>
                                                 <td className="p-3 text-sm">
                                                     {metrics ? metrics.dataPoints : 0}
@@ -438,7 +553,9 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                                             variant="ghost"
                                                             onClick={() => {
                                                                 setEditingInstrument(inst);
-                                                                setNewInstrument({ ...inst });
+                                                                // Force frequency to monthly (architectural requirement)
+                                                                setNewInstrument({ ...inst, quotationCurrency: inst.quotationCurrency || 'CHF', frequency: 'monthly' });
+                                                                setParseErrors([]);
                                                                 setShowAddDialog(true);
                                                             }}
                                                             className="text-blue-600 hover:text-blue-700"
@@ -498,11 +615,12 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                         onClick={() => {
                                             setShowAddDialog(false);
                                             setEditingInstrument(null);
+                                            setParseErrors([]);
                                             setNewInstrument({
                                                 id: '',
                                                 name: '',
                                                 assetClass: 'Equities',
-                                                frequency: 'annual',
+                                                frequency: 'monthly',
                                                 active: true,
                                                 timeSeries: []
                                             });
@@ -547,16 +665,24 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                 </div>
 
                                 <div>
+                                    <Label>Quotation Currency *</Label>
+                                    <Input
+                                        value={newInstrument.quotationCurrency}
+                                        onChange={(e) => setNewInstrument({ ...newInstrument, quotationCurrency: e.target.value })}
+                                        placeholder="e.g., CHF, USD, EUR"
+                                    />
+                                </div>
+
+                                <div>
                                     <Label>Frequency</Label>
-                                    <select
-                                        value={newInstrument.frequency}
-                                        onChange={(e) => setNewInstrument({ ...newInstrument, frequency: e.target.value })}
-                                        className="w-full p-2 border rounded bg-slate-800 text-white border-slate-600"
-                                    >
-                                        <option value="annual">Annual</option>
-                                        <option value="monthly">Monthly</option>
-                                        <option value="daily">Daily</option>
-                                    </select>
+                                    <Input
+                                        value="monthly"
+                                        disabled
+                                        className="bg-muted cursor-not-allowed"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Only monthly frequency is supported (architectural requirement)
+                                    </p>
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -570,22 +696,62 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                 </div>
 
                                 <div>
-                                    <Label>Time Series Data (CSV Format) *</Label>
+                                    <Label>Time Series Data (Monthly PRICES only) *</Label>
+
+                                    <Alert className="mb-2 bg-blue-500/10 border-blue-500">
+                                        <Info className="h-4 w-4" />
+                                        <AlertDescription className="text-sm">
+                                            <strong>MANDATORY:</strong> Upload monthly PRICES or NAV only.
+                                            <br />• NOT returns, percentages, or normalized indices
+                                            <br />• NOT annual data (monthly only)
+                                            <br />• Format: dd.mm.yyyy,price (one per line)
+                                            <br />• Minimum 24 consecutive months required
+                                            <br />• No gaps, no duplicates, ascending order
+                                        </AlertDescription>
+                                    </Alert>
+
                                     <textarea
                                         value={timeSeriesToCSV(newInstrument.timeSeries)}
                                         onChange={(e) => {
-                                            const timeSeries = csvToTimeSeries(e.target.value);
-                                            setNewInstrument({ ...newInstrument, timeSeries });
+                                            const result = csvToTimeSeries(e.target.value);
+                                            setNewInstrument({ ...newInstrument, timeSeries: result.timeSeries });
+                                            setParseErrors(result.errors);
                                         }}
-                                        placeholder="31.12.2000,100&#13;&#10;31.12.2001,105&#13;&#10;31.12.2002,110&#13;&#10;..."
+                                        placeholder="31.01.2000,100&#13;&#10;29.02.2000,102&#13;&#10;31.03.2000,105&#13;&#10;..."
                                         className="w-full p-2 border rounded bg-slate-800 text-white border-slate-600 font-mono text-sm h-48"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Enter one data point per line in format: <code className="bg-muted px-1 rounded">dd.mm.yyyy,value</code>
-                                    </p>
-                                    <p className="text-xs text-green-600 mt-1">
-                                        ✓ Parsed {newInstrument.timeSeries?.length || 0} data points
-                                    </p>
+
+                                    {/* Parse errors */}
+                                    {parseErrors.length > 0 && (
+                                        <Alert className="mt-2 border-red-500 bg-red-500/10">
+                                            <XCircle className="h-4 w-4 text-red-600" />
+                                            <AlertTitle className="text-red-600">Parse Errors ({parseErrors.length})</AlertTitle>
+                                            <AlertDescription>
+                                                <div className="max-h-32 overflow-y-auto">
+                                                    <ul className="list-disc list-inside text-xs space-y-0.5">
+                                                        {parseErrors.slice(0, 10).map((err, i) => (
+                                                            <li key={i} className="text-red-700">{err}</li>
+                                                        ))}
+                                                        {parseErrors.length > 10 && (
+                                                            <li className="text-red-700 font-semibold">... and {parseErrors.length - 10} more errors</li>
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    {/* Validation summary */}
+                                    <div className="text-xs mt-2 space-y-1">
+                                        <p className={newInstrument.timeSeries?.length > 0 ? "text-green-600" : "text-muted-foreground"}>
+                                            ✓ Parsed {newInstrument.timeSeries?.length || 0} data points
+                                        </p>
+                                        {newInstrument.timeSeries?.length > 0 && (
+                                            <p className="text-muted-foreground">
+                                                Date range: {newInstrument.timeSeries[0].date} to {newInstrument.timeSeries[newInstrument.timeSeries.length - 1].date}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <Alert>
@@ -602,11 +768,12 @@ export const INSTRUMENT_CATALOG = ${JSON.stringify(instruments, null, 4)};
                                         onClick={() => {
                                             setShowAddDialog(false);
                                             setEditingInstrument(null);
+                                            setParseErrors([]);
                                             setNewInstrument({
                                                 id: '',
                                                 name: '',
                                                 assetClass: 'Equities',
-                                                frequency: 'annual',
+                                                frequency: 'monthly',
                                                 active: true,
                                                 timeSeries: []
                                             });

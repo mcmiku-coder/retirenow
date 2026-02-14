@@ -625,6 +625,36 @@ async def save_promo_source(request: Request, admin_user: dict = Depends(require
         logger.error(f"Failed to overwrite source file: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 
+@api_router.post("/admin/save-instrument-catalog")
+async def save_instrument_catalog(request: Request, admin_user: dict = Depends(require_admin)):
+    """
+    Overwrite the instrument catalog source file with provided content.
+    DEV ONLY FEATURE - Writes directly to frontend/src/shared/instruments/instrumentCatalog.js
+    """
+    try:
+        data = await request.json()
+        code = data.get('code')
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="Missing code content")
+
+        # Path to frontend file (relative to backend/server.py)
+        # backend/server.py -> ../frontend/src/shared/instruments/instrumentCatalog.js
+        source_path = ROOT_DIR.parent / "frontend" / "src" / "shared" / "instruments" / "instrumentCatalog.js"
+        
+        # Ensure directory exists
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(source_path, "w", encoding="utf-8") as f:
+            f.write(code)
+            
+        logger.info(f"Instrument catalog overwritten successfully at {source_path}")
+        return {"success": True, "message": "Instrument catalog overwritten successfully"}
+            
+    except Exception as e:
+        logger.error(f"Failed to overwrite instrument catalog: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
+
 @api_router.post("/admin/stats")
 
 async def get_admin_stats(admin_user: dict = Depends(require_admin)):

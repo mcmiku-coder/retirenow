@@ -5,8 +5,8 @@ const DetailedTooltipContent = ({ data, language, isPdf = false }) => {
 
     // Adjust styles for PDF mode vs Web mode
     const containerClass = isPdf
-        ? "bg-white text-black p-3 rounded shadow-lg border border-gray-300 text-xs w-full"
-        : "bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs w-full";
+        ? "bg-white text-black p-3 rounded shadow-lg border border-gray-300 text-xs w-full min-w-[650px]"
+        : "bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700 text-xs w-full min-w-[690px]";
 
     const headerClass = isPdf
         ? "flex justify-between items-center bg-gray-100 p-2 -mx-3 -mt-3 mb-2 border-b border-gray-300 rounded-t"
@@ -21,19 +21,23 @@ const DetailedTooltipContent = ({ data, language, isPdf = false }) => {
 
     return (
         <div className={containerClass}>
-            {/* Header Row: Year left, Balances right */}
+            {/* Header Row: Year left, Baseline/MC-P5 right */}
             <div className={headerClass}>
-                <p className={headerTextClass}>{language === 'fr' ? `Année ${data.year}` : `Year ${data.year}`}</p>
+                <p className={headerTextClass}>
+                    {language === 'fr' ? `Fin de l'année ${data.year}` : `End of year ${data.year}`}
+                </p>
 
-                <div className="flex gap-4">
-                    <div className={`flex items-center gap-2 font-bold ${data.annualBalance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        <span className={labelClass}>{language === 'fr' ? 'Annuel:' : 'Annual:'}</span>
-                        <span>{Math.round(data.annualBalance || (data.income - data.costs)).toLocaleString()}</span>
+                <div className="flex gap-8">
+                    <div className="flex items-center gap-2 font-bold text-gray-100">
+                        <span className={labelClass}>{language === 'fr' ? 'Base line' : 'Base line'}</span>
+                        <span className="text-yellow-500">{Math.round(data.cumulativeBalance).toLocaleString()} CHF</span>
                     </div>
-                    <div className="flex items-center gap-2 font-bold text-blue-500">
-                        <span className={labelClass}>{language === 'fr' ? 'Cumulé:' : 'Cumul:'}</span>
-                        <span>{Math.round(data.cumulativeBalance).toLocaleString()}</span>
-                    </div>
+                    {data.mc5 !== undefined && (
+                        <div className="flex items-center gap-2 font-bold text-gray-100 border-l border-gray-600 pl-4">
+                            <span className={labelClass}>MC-P5</span>
+                            <span className="text-blue-400">{Math.round(data.mc5).toLocaleString()} CHF</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -71,6 +75,16 @@ const DetailedTooltipContent = ({ data, language, isPdf = false }) => {
                         <span>{Math.round(data.costs).toLocaleString()}</span>
                     </div>
                 </div>
+            </div>
+
+            {/* Balance Section */}
+            <div className={`${topBorderClass} mt-4 pt-3 flex flex-col gap-1`}>
+                <p className="font-bold text-gray-300">
+                    {language === 'fr' ? `${data.year} Balance (CHF)` : `${data.year} Balance (CHF)`}
+                </p>
+                <p className={`text-sm font-bold ${data.annualBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {Math.round(data.annualBalance).toLocaleString()}
+                </p>
             </div>
         </div>
     );
