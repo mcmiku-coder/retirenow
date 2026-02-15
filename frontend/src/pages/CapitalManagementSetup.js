@@ -23,9 +23,6 @@ const CapitalManagementSetup = () => {
     const [loading, setLoading] = useState(true);
     const [tableRows, setTableRows] = useState([]);
     const [isClusterMode, setIsClusterMode] = useState(false);
-    const [showProductPicker, setShowProductPicker] = useState(false);
-    const [selectedRowIndex, setSelectedRowIndex] = useState(null);
-    const [selectedProductId, setSelectedProductId] = useState(null);
     const [assetClassFilter, setAssetClassFilter] = useState(null); // null = show all
     const [highlightedPeriod, setHighlightedPeriod] = useState({}); // { productId: 'loss' | 'gain' | null }
     const [deathDate, setDeathDate] = useState('');
@@ -58,20 +55,34 @@ const CapitalManagementSetup = () => {
         try {
             const scenarioData = await getScenarioData(user.email, masterKey);
 
+            // Create investmentSelections map for compatibility/legacy
+            const investmentSelections = {};
+
             // Transform tableRows into "Asset" like objects for the simulation
             // explicitly marking them as 'Invested' and mapping startDate to availabilityDate
-            const investedBook = tableRows.map(row => ({
-                id: row.id,
-                name: row.name,
-                amount: parseFloat(row.amount || 0), // Use the user-adjusted amount
-                strategy: 'Invested',
-                availabilityDate: row.startDate,
-                endDate: row.endDate,
-                // Ensure we keep the product selection ID if needed (though it's in investmentSelections)
-                selectedProduct: row.selectedProduct
-            }));
+            const investedBook = tableRows.map(row => {
+                // Populate investmentSelections map
+                if (row.selectedProduct) {
+                    investmentSelections[row.id] = row.selectedProduct;
+                }
+
+                return {
+                    id: row.id,
+                    name: row.name,
+                    amount: parseFloat(row.amount || 0), // Use the user-adjusted amount
+                    strategy: 'Invested',
+                    availabilityDate: row.startDate,
+                    endDate: row.endDate,
+                    // Ensure we keep the product selection ID if needed (though it's in investmentSelections)
+                    selectedProduct: row.selectedProduct,
+                    // Save grouping info
+                    groupedWith: row.groupedWith,
+                    investGroupName: row.investGroupName
+                };
+            });
 
             scenarioData.investedBook = investedBook;
+            scenarioData.investmentSelections = investmentSelections; // Save the map too
 
             await saveScenarioData(user.email, masterKey, scenarioData);
             navigate('/result');
@@ -164,6 +175,9 @@ const CapitalManagementSetup = () => {
                     }));
 
                     // Restore saved product selections
+                    // Priority: 
+                    // 1. investmentSelections (legacy map) - if present, use it (migration path)
+                    // 2. savedItem.selectedProduct (new direct storage)
                     if (scenarioData.investmentSelections) {
                         rows.forEach(row => {
                             if (scenarioData.investmentSelections[row.id]) {
@@ -172,14 +186,22 @@ const CapitalManagementSetup = () => {
                         });
                     }
 
+                    // Apply savedItem.selectedProduct if not already set by legacy map
+                    rows.forEach((row, index) => {
+                        const id = `cluster-${index}`; // Re-derive ID to be safe or use row.id
+                        const savedItem = savedBookMap.get(row.id);
+                        if (!row.selectedProduct && savedItem && savedItem.selectedProduct) {
+                            row.selectedProduct = savedItem.selectedProduct;
+                        }
+                    });
+
                     setTableRows(rows);
                 } else {
                     // Individual mode
-                    // Create a lookup map for saved invested book items (reusing map if possible but scoping here for clarity)
+                    // Create a lookup map for saved invested book items
                     const savedBookMap = new Map();
                     if (scenarioData.investedBook && Array.isArray(scenarioData.investedBook)) {
                         scenarioData.investedBook.forEach(item => {
-                            // Use ID if available
                             if (item.id) savedBookMap.set(item.id, item);
                         });
                     }
@@ -188,11 +210,18 @@ const CapitalManagementSetup = () => {
                         const id = asset.id || `asset-${index}`;
                         const savedItem = savedBookMap.get(id);
 
-                        // If saved item exists, prefer its values (Scenario Override)
-                        // Otherwise fallback to calculated defaults (Master Data)
                         const amount = savedItem ? parseFloat(savedItem.amount) : parseFloat(asset.adjustedAmount || asset.amount || 0);
                         const startDate = savedItem ? savedItem.availabilityDate : (asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0]);
                         const endDate = savedItem ? savedItem.endDate : (userData?.theoreticalDeathDate || '');
+
+                        const groupedWith = savedItem ? (savedItem.groupedWith || 'not grouped') : 'not grouped';
+                        const investGroupName = savedItem ? (savedItem.investGroupName || asset.name) : asset.name;
+
+                        // Fix Persistence: Load selectedProduct from savedItem
+                        let selectedProduct = null;
+                        if (savedItem && savedItem.selectedProduct) {
+                            selectedProduct = savedItem.selectedProduct;
+                        }
 
                         return {
                             id,
@@ -200,12 +229,14 @@ const CapitalManagementSetup = () => {
                             amount,
                             startDate,
                             endDate,
-                            selectedProduct: null,
-                            originalAsset: asset
+                            selectedProduct,
+                            originalAsset: asset,
+                            groupedWith,
+                            investGroupName
                         };
                     });
 
-                    // Restore saved product selections
+                    // Restore saved product selections from legacy map (overrides if present)
                     if (scenarioData.investmentSelections) {
                         rows.forEach(row => {
                             if (scenarioData.investmentSelections[row.id]) {
@@ -263,6 +294,12 @@ const CapitalManagementSetup = () => {
         setSelectedProductId(null);
     };
 
+    const updateProductSelection = (index, productId) => {
+        const updatedRows = [...tableRows];
+        updatedRows[index].selectedProduct = productId;
+        setTableRows(updatedRows);
+    };
+
     const updateRow = (index, field, value) => {
         const updatedRows = [...tableRows];
         updatedRows[index][field] = value;
@@ -296,41 +333,22 @@ const CapitalManagementSetup = () => {
         return <div className="p-8 text-center">{language === 'fr' ? 'Chargement...' : 'Loading...'}</div>;
     }
 
-    if (showProductPicker) {
-        return (
-            <div className="min-h-screen bg-background text-foreground animate-in slide-in-from-bottom-4 duration-300" data-testid="product-picker-page">
-                {/* Sticky Header */}
-                <div className="border-b bg-card shadow-sm sticky top-0 z-50">
-                    <div className="max-w-[1600px] mx-auto p-4 relative flex items-center justify-center">
-                        {/* Centered Title */}
-                        <div className="text-center">
-                            <h2 className="text-2xl font-bold flex items-center justify-center gap-2 mb-1 tracking-tight font-sans">
-                                {language === 'fr' ? 'Sélectionner un produit d\'investissement' : 'Select Investment Product'}
-                            </h2>
-                            <p className="text-sm text-muted-foreground">
-                                {language === 'fr' ? 'Choisissez le produit qui correspond à votre stratégie' : 'Choose the product matching your strategy'}
-                            </p>
-                        </div>
 
-                        {/* Right Actions */}
-                        <div className="absolute right-4 flex gap-3">
-                            <Button variant="outline" onClick={() => setShowProductPicker(false)}>
-                                {language === 'fr' ? 'Annuler' : 'Cancel'}
-                            </Button>
-                            <Button
-                                onClick={saveProductSelection}
-                                disabled={!selectedProductId}
-                                className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-                            >
-                                {language === 'fr' ? 'Sauvegarder la sélection' : 'Save Selection'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
 
-                <div className="max-w-[1600px] mx-auto p-6 pb-20">
-                    {/* Asset Class Filter Buttons */}
-                    <div className="flex gap-3 mb-8 flex-wrap justify-center sticky top-[80px] z-40 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full border shadow-sm w-fit mx-auto px-6">
+    return (
+        <div className="flex-grow py-6" data-testid="capital-management-page">
+            <PageHeader
+                title={language === 'fr' ? 'Gestion du capital' : 'Capital management setup'}
+                subtitle={language === 'fr'
+                    ? 'Définissez la stratégie d\'investissement pour vos actifs liquides'
+                    : 'Define investment strategy for your liquid assets'}
+            />
+
+            <div className="w-[80%] mx-auto px-4">
+
+                {/* Investment Product Carousel - Moved to Top */}
+                <div className="mb-8">
+                    <div className="flex gap-3 mb-4 flex-wrap justify-center py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full border shadow-sm w-fit mx-auto px-6">
                         <button
                             onClick={() => setAssetClassFilter(null)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-medium ${assetClassFilter === null
@@ -397,7 +415,6 @@ const CapitalManagementSetup = () => {
                         </button>
                     </div>
 
-
                     <style>{`
                         .scrollbar-hide::-webkit-scrollbar {
                             display: none;
@@ -408,171 +425,146 @@ const CapitalManagementSetup = () => {
                         }
                     `}</style>
 
-                    <RadioGroup value={selectedProductId} onValueChange={setSelectedProductId}>
-                        <div className="relative group/carousel w-full min-w-0 rounded-xl overflow-hidden">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute left-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
-                                onClick={scrollLeft}
-                            >
-                                <ChevronLeft className="h-6 w-6" />
-                            </Button>
+                    <div className="relative group/carousel w-full min-w-0 rounded-xl overflow-hidden bg-card border shadow-sm p-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
+                            onClick={scrollLeft}
+                        >
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
 
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
-                                onClick={scrollRight}
-                            >
-                                <ChevronRight className="h-6 w-6" />
-                            </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm border shadow-lg hover:bg-background hidden md:flex"
+                            onClick={scrollRight}
+                        >
+                            <ChevronRight className="h-6 w-6" />
+                        </Button>
 
-                            <div
-                                ref={scrollContainerRef}
-                                className="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory px-4 scrollbar-hide"
-                            >
-                                {investmentProducts
-                                    .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
-                                    .map((product) => {
-                                        const isSelected = selectedProductId === product.id;
-                                        return (
-                                            <div key={product.id} className="min-w-[300px] md:min-w-[340px] snap-center pt-2">
-                                                <Card
-                                                    className={`h-full relative cursor-pointer hover:border-primary transition-all duration-200 ${isSelected ? 'ring-2 ring-primary border-primary shadow-xl scale-[1.02]' : 'hover:shadow-md'
-                                                        }`}
-                                                    onClick={() => setSelectedProductId(previous => previous === product.id ? null : product.id)}
-                                                >
-                                                    <CardContent className="p-5">
-                                                        <div className="flex items-start justify-between mb-4">
-                                                            <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
-                                                                {product.assetClass === 'Equities' && <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                                {product.assetClass === 'Bonds' && <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                                {product.assetClass === 'Real Estate' && <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                                {product.assetClass === 'Money Market' && <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                                {product.assetClass === 'Commodities' && <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
-                                                            </div>
-                                                            <RadioGroupItem value={product.id} id={product.id} className="mt-1" />
+                        <div
+                            ref={scrollContainerRef}
+                            className="flex overflow-x-auto pb-4 gap-6 snap-x snap-mandatory px-4 scrollbar-hide"
+                        >
+                            {investmentProducts
+                                .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
+                                .map((product) => {
+                                    return (
+                                        <div key={product.id} className="min-w-[300px] md:min-w-[340px] snap-center pt-2">
+                                            <Card
+                                                className={`h-full relative hover:border-primary transition-all duration-200 hover:shadow-md cursor-default`}
+                                            >
+                                                <CardContent className="p-5">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className={`p-2 rounded-lg ${getAssetClassStyle(product.assetClass).bgColor}`}>
+                                                            {product.assetClass === 'Equities' && <TrendingUp className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                            {product.assetClass === 'Bonds' && <Landmark className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                            {product.assetClass === 'Real Estate' && <Home className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                            {product.assetClass === 'Money Market' && <Banknote className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                            {product.assetClass === 'Commodities' && <Coins className={`h-5 w-5 ${getAssetClassStyle(product.assetClass).color}`} />}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <h3 className="font-bold text-lg leading-tight mb-1 tracking-tight font-sans">{product.name}</h3>
+                                                        <div className="text-sm text-muted-foreground font-mono">{product.ticker}</div>
+                                                    </div>
+
+                                                    <div className={`mb-4 w-full h-32`}>
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <LineChart data={product.performanceData}>
+                                                                <XAxis
+                                                                    dataKey="date"
+                                                                    axisLine={false}
+                                                                    tickLine={false}
+                                                                    tick={{ fontSize: 10, fill: '#888888' }}
+                                                                    minTickGap={30}
+                                                                    tickFormatter={(value) => {
+                                                                        return value.split('-')[0];
+                                                                    }}
+                                                                />
+                                                                <YAxis hide domain={['auto', 'auto']} />
+                                                                <Tooltip
+                                                                    contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                                                                    itemStyle={{ padding: 0 }}
+                                                                    labelFormatter={(value) => {
+                                                                        return value;
+                                                                    }}
+                                                                />
+                                                                {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (() => {
+                                                                    const [startYear, endYear] = product.metrics.max3YLossPeriod.split('-');
+                                                                    const startData = product.performanceData.find(d => d.date.startsWith(startYear));
+                                                                    const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(endYear));
+                                                                    if (startData && endData) {
+                                                                        return <ReferenceArea x1={startData.date} x2={endData.date} fill="red" fillOpacity={0.2} />;
+                                                                    }
+                                                                    return null;
+                                                                })()}
+
+                                                                {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (() => {
+                                                                    const period = String(product.metrics.max3YGainPeriod);
+                                                                    const startData = product.performanceData.find(d => d.date.startsWith(period));
+                                                                    const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(period));
+                                                                    if (startData && endData) {
+                                                                        return <ReferenceArea x1={startData.date} x2={endData.date} fill="green" fillOpacity={0.2} />;
+                                                                    }
+                                                                    return null;
+                                                                })()}
+
+                                                                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                                                            </LineChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
+                                                        <div>
+                                                            <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return (25y)'}</span>
+                                                            <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Volatilité' : 'Volatility'}</span>
+                                                            <span className="font-semibold">{product.metrics.avgVolatility}%</span>
                                                         </div>
 
-                                                        <div className="mb-4">
-                                                            <h3 className="font-bold text-lg leading-tight mb-1 tracking-tight font-sans">{product.name}</h3>
-                                                            <div className="text-sm text-muted-foreground font-mono">{product.ticker}</div>
+                                                        <div
+                                                            className="cursor-pointer hover:bg-red-50 p-1 -ml-1 rounded transition-colors group"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'loss' ? null : 'loss' }));
+                                                            }}
+                                                        >
+                                                            <span className="text-muted-foreground block text-xs group-hover:text-red-600 transition-colors">{language === 'fr' ? 'Perte Max' : 'Max Loss'}</span>
+                                                            <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
+                                                            {product.metrics.max3YLossPeriod && (
+                                                                <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YLossPeriod})</span>
+                                                            )}
                                                         </div>
 
-                                                        <div className={`mb-4 w-full ${isSelected ? 'h-40' : 'h-32'}`}>
-                                                            <ResponsiveContainer width="100%" height="100%">
-                                                                <LineChart data={product.performanceData}>
-                                                                    <XAxis
-                                                                        dataKey="date"
-                                                                        axisLine={false}
-                                                                        tickLine={false}
-                                                                        tick={{ fontSize: 10, fill: '#888888' }}
-                                                                        minTickGap={30}
-                                                                        tickFormatter={(value) => {
-                                                                            // value is date string YYYY-MM-DD
-                                                                            return value.split('-')[0];
-                                                                        }}
-                                                                    />
-                                                                    <YAxis hide domain={['auto', 'auto']} />
-                                                                    <Tooltip
-                                                                        contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
-                                                                        itemStyle={{ padding: 0 }}
-                                                                        labelFormatter={(value) => {
-                                                                            // Format tooltip date
-                                                                            return value;
-                                                                        }}
-                                                                    />
-
-                                                                    {/* Highlight Max Loss Period */}
-                                                                    {highlightedPeriod[product.id] === 'loss' && product.metrics.max3YLossPeriod && (() => {
-                                                                        const [startYear, endYear] = product.metrics.max3YLossPeriod.split('-');
-                                                                        const startData = product.performanceData.find(d => d.date.startsWith(startYear));
-                                                                        const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(endYear));
-                                                                        if (startData && endData) {
-                                                                            return <ReferenceArea x1={startData.date} x2={endData.date} fill="red" fillOpacity={0.2} />;
-                                                                        }
-                                                                        return null;
-                                                                    })()}
-
-                                                                    {/* Highlight Max Gain Period */}
-                                                                    {highlightedPeriod[product.id] === 'gain' && product.metrics.max3YGainPeriod && (() => {
-                                                                        const period = String(product.metrics.max3YGainPeriod);
-                                                                        // It's a single year string based on my catalogHelpers implementation ("YYYY")
-                                                                        const startData = product.performanceData.find(d => d.date.startsWith(period));
-                                                                        const endData = [...product.performanceData].reverse().find(d => d.date.startsWith(period));
-                                                                        if (startData && endData) {
-                                                                            return <ReferenceArea x1={startData.date} x2={endData.date} fill="green" fillOpacity={0.2} />;
-                                                                        }
-                                                                        return null;
-                                                                    })()}
-
-                                                                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                                                                </LineChart>
-                                                            </ResponsiveContainer>
+                                                        <div
+                                                            className="text-right cursor-pointer hover:bg-green-50 p-1 -mr-1 rounded transition-colors group"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'gain' ? null : 'gain' }));
+                                                            }}
+                                                        >
+                                                            <span className="text-muted-foreground block text-xs group-hover:text-green-600 transition-colors">{language === 'fr' ? 'Gain Max' : 'Max Gain'}</span>
+                                                            <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
+                                                            {product.metrics.max3YGainPeriod && (
+                                                                <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YGainPeriod})</span>
+                                                            )}
                                                         </div>
-
-                                                        <div className="grid grid-cols-2 gap-3 text-sm pt-4 border-t">
-                                                            <div>
-                                                                <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Rendement (25a)' : 'Avg Return (25y)'}</span>
-                                                                <span className="font-semibold text-green-600">+{product.metrics.avgReturn}%</span>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <span className="text-muted-foreground block text-xs">{language === 'fr' ? 'Volatilité' : 'Volatility'}</span>
-                                                                <span className="font-semibold">{product.metrics.avgVolatility}%</span>
-                                                            </div>
-
-                                                            <div
-                                                                className="cursor-pointer hover:bg-red-50 p-1 -ml-1 rounded transition-colors group"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'loss' ? null : 'loss' }));
-                                                                }}
-                                                            >
-                                                                <span className="text-muted-foreground block text-xs group-hover:text-red-600 transition-colors">{language === 'fr' ? 'Perte Max' : 'Max Loss'}</span>
-                                                                <span className="font-semibold text-red-600">{product.metrics.max3YLoss}%</span>
-                                                                {isSelected && product.metrics.max3YLossPeriod && (
-                                                                    <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YLossPeriod})</span>
-                                                                )}
-                                                            </div>
-
-                                                            <div
-                                                                className="text-right cursor-pointer hover:bg-green-50 p-1 -mr-1 rounded transition-colors group"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setHighlightedPeriod(prev => ({ ...prev, [product.id]: prev[product.id] === 'gain' ? null : 'gain' }));
-                                                                }}
-                                                            >
-                                                                <span className="text-muted-foreground block text-xs group-hover:text-green-600 transition-colors">{language === 'fr' ? 'Gain Max' : 'Max Gain'}</span>
-                                                                <span className="font-semibold text-green-600">+{product.metrics.max3YGain}%</span>
-                                                                {isSelected && product.metrics.max3YGainPeriod && (
-                                                                    <span className="text-[10px] text-muted-foreground ml-1">({product.metrics.max3YGainPeriod})</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    );
+                                })}
                         </div>
-                    </RadioGroup>
+                    </div>
                 </div>
-            </div>
-        );
-    }
 
-    return (
-        <div className="flex-grow py-6" data-testid="capital-management-page">
-            <PageHeader
-                title={language === 'fr' ? 'Gestion du capital' : 'Capital management setup'}
-                subtitle={language === 'fr'
-                    ? 'Définissez la stratégie d\'investissement pour vos actifs liquides'
-                    : 'Define investment strategy for your liquid assets'}
-            />
-
-            <div className="w-[80%] mx-auto px-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>
@@ -593,77 +585,110 @@ const CapitalManagementSetup = () => {
                                 <table className="w-full">
                                     <thead className="bg-muted/50">
                                         <tr>
-                                            <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                                            <th className="text-right p-3 font-semibold">{language === 'fr' ? 'Montant ajusté' : 'Adjusted Amount'}</th>
-                                            <th className="text-left p-3 font-semibold min-w-[240px]">{language === 'fr' ? 'Date de début' : 'Start Date'}</th>
-                                            <th className="text-left p-3 font-semibold min-w-[240px]">{language === 'fr' ? 'Date de fin' : 'End Date'}</th>
-                                            <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Produit' : 'Product'}</th>
-                                            <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Produit sélectionné' : 'Selected Product'}</th>
-                                            <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
+                                            <th className="p-3 text-left font-medium w-[20%]">{language === 'fr' ? 'Nom du Cluster' : 'Cluster Name'}</th>
+                                            <th className="p-3 text-left font-medium w-[15%]">{language === 'fr' ? 'Montant' : 'Amount'}</th>
+                                            <th className="p-3 text-left font-medium w-[15%]">{language === 'fr' ? 'Date de disponibilité' : 'Availability Date'}</th>
+                                            <th className="p-3 text-left font-medium w-[15%]">{language === 'fr' ? 'Date de fin' : 'End Date'}</th>
+                                            <th className="p-3 text-left font-medium w-[20%]">{language === 'fr' ? 'Produit' : 'Product'}</th>
+                                            <th className="p-3 text-left font-medium w-[15%]">{language === 'fr' ? 'Groupé avec' : 'Grouped with'}</th>
+                                            <th className="p-3 text-left font-medium w-[15%]">{language === 'fr' ? 'Nom Invest/Groupe' : 'Invest/Group name'}</th>
+                                            <th className="p-3 text-left font-medium w-[5%]"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {tableRows.map((row, index) => (
-                                            <tr key={row.id} className="border-b hover:bg-muted/30">
-                                                <td className="p-3 font-medium">{row.name}</td>
-                                                <td className="p-3 text-right">
-                                                    <Input
-                                                        type="number"
-                                                        value={row.amount}
-                                                        onChange={(e) => updateRow(index, 'amount', e.target.value)}
-                                                        className="max-w-[150px] ml-auto text-right"
-                                                    />
-                                                </td>
-                                                <td className="p-3">
-                                                    <DateInputWithShortcuts
-                                                        value={row.startDate}
-                                                        onChange={(e) => updateRow(index, 'startDate', e.target.value)}
-                                                        className="min-w-[200px]"
-                                                        retirementDate={wishedRetirementDate}
-                                                        legalDate={legalRetirementDate}
-                                                        mode="start"
-                                                    />
-                                                </td>
-                                                <td className="p-3">
-                                                    <DateInputWithShortcuts
-                                                        value={row.endDate}
-                                                        onChange={(e) => updateRow(index, 'endDate', e.target.value)}
-                                                        className="min-w-[200px]"
-                                                        retirementDate={wishedRetirementDate}
-                                                        legalDate={legalRetirementDate}
-                                                        deathDate={deathDate}
-                                                        mode="end"
-                                                    />
-                                                </td>
-                                                <td className="p-3 text-center">
-                                                    <Button
-                                                        onClick={() => openProductPicker(index)}
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="gap-2"
-                                                    >
-                                                        <TrendingUp className="h-4 w-4" />
-                                                        {language === 'fr' ? 'Ajouter/Modifier' : 'Add/Edit Invest'}
-                                                    </Button>
-                                                </td>
-                                                <td className="p-3 text-center font-medium">
-                                                    {getProductName(row.selectedProduct)}
-                                                </td>
-                                                <td className="p-3">
-                                                    <div className="flex justify-center">
+                                        {tableRows.map((row, index) => {
+                                            // Determine available parents for "Grouped with" dropdown
+                                            // Filter out:
+                                            // 1. The row itself
+                                            // 2. Rows that are already grouped (a row cannot be a parent if it is a child) - *Correction*: Usually simple hierarchy, let's just avoid circular
+                                            // For simplicity based on prompt: "dropdown with 'not grouped' as default and options from other asset names"
+                                            const availableParents = tableRows.filter((r, i) => i !== index && (!r.groupedWith || r.groupedWith === 'not grouped'));
+
+                                            return (
+                                                <tr key={row.id} className="border-b hover:bg-muted/50 transition-colors">
+                                                    <td className="p-3 font-medium">{row.name}</td>
+                                                    <td className="p-3">
+                                                        <Input
+                                                            type="number"
+                                                            value={row.amount}
+                                                            onChange={(e) => updateRow(index, 'amount', e.target.value)}
+                                                            className="min-w-[120px]"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <DateInputWithShortcuts
+                                                            value={row.startDate}
+                                                            onChange={(e) => updateRow(index, 'startDate', e.target.value)}
+                                                            className="min-w-[150px]"
+                                                            retirementDate={wishedRetirementDate}
+                                                            legalDate={legalRetirementDate}
+                                                            mode="start"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <DateInputWithShortcuts
+                                                            value={row.endDate}
+                                                            onChange={(e) => updateRow(index, 'endDate', e.target.value)}
+                                                            className="min-w-[150px]"
+                                                            retirementDate={wishedRetirementDate}
+                                                            legalDate={legalRetirementDate}
+                                                            deathDate={deathDate}
+                                                            mode="end"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <select
+                                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                            value={row.selectedProduct || ''}
+                                                            onChange={(e) => updateProductSelection(index, e.target.value)}
+                                                        >
+                                                            <option value="" className="bg-card text-foreground">{language === 'fr' ? 'Sélectionner...' : 'Select...'}</option>
+                                                            {investmentProducts
+                                                                .filter(product => assetClassFilter === null || product.assetClass === assetClassFilter)
+                                                                .map(product => (
+                                                                    <option key={product.id} value={product.id} className="bg-card text-foreground">
+                                                                        {product.name} ({product.ticker})
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <select
+                                                            className="flex h-9 w-full rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                            value={row.groupedWith || 'not grouped'}
+                                                            onChange={(e) => updateRow(index, 'groupedWith', e.target.value)}
+                                                        >
+                                                            <option value="not grouped" className="bg-card text-foreground">{language === 'fr' ? 'Non groupé' : 'not grouped'}</option>
+                                                            {availableParents.map(parent => (
+                                                                <option key={parent.id} value={parent.id} className="bg-card text-foreground">
+                                                                    {parent.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        {(!row.groupedWith || row.groupedWith === 'not grouped') && (
+                                                            <Input
+                                                                type="text"
+                                                                value={row.investGroupName !== undefined ? row.investGroupName : row.name}
+                                                                onChange={(e) => updateRow(index, 'investGroupName', e.target.value)}
+                                                                className="min-w-[150px]"
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="p-3 text-right">
                                                         <Button
-                                                            onClick={() => splitRow(index)}
                                                             variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0"
-                                                            title={language === 'fr' ? 'Diviser' : 'Split'}
+                                                            size="icon"
+                                                            onClick={() => splitRow(index)}
+                                                            title={language === 'fr' ? 'Diviser la ligne' : 'Split row'}
                                                         >
                                                             <Split className="h-4 w-4" />
                                                         </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
