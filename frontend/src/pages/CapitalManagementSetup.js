@@ -175,15 +175,35 @@ const CapitalManagementSetup = () => {
                     setTableRows(rows);
                 } else {
                     // Individual mode
-                    const rows = liquidInvestedAssets.map((asset, index) => ({
-                        id: asset.id || `asset-${index}`,
-                        name: asset.name,
-                        amount: parseFloat(asset.adjustedAmount || asset.amount || 0),
-                        startDate: asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0],
-                        endDate: userData?.theoreticalDeathDate || '',
-                        selectedProduct: null,
-                        originalAsset: asset
-                    }));
+                    // Create a lookup map for saved invested book items (reusing map if possible but scoping here for clarity)
+                    const savedBookMap = new Map();
+                    if (scenarioData.investedBook && Array.isArray(scenarioData.investedBook)) {
+                        scenarioData.investedBook.forEach(item => {
+                            // Use ID if available
+                            if (item.id) savedBookMap.set(item.id, item);
+                        });
+                    }
+
+                    const rows = liquidInvestedAssets.map((asset, index) => {
+                        const id = asset.id || `asset-${index}`;
+                        const savedItem = savedBookMap.get(id);
+
+                        // If saved item exists, prefer its values (Scenario Override)
+                        // Otherwise fallback to calculated defaults (Master Data)
+                        const amount = savedItem ? parseFloat(savedItem.amount) : parseFloat(asset.adjustedAmount || asset.amount || 0);
+                        const startDate = savedItem ? savedItem.availabilityDate : (asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0]);
+                        const endDate = savedItem ? savedItem.endDate : (userData?.theoreticalDeathDate || '');
+
+                        return {
+                            id,
+                            name: asset.name,
+                            amount,
+                            startDate,
+                            endDate,
+                            selectedProduct: null,
+                            originalAsset: asset
+                        };
+                    });
 
                     // Restore saved product selections
                     if (scenarioData.investmentSelections) {
@@ -552,7 +572,7 @@ const CapitalManagementSetup = () => {
                     : 'Define investment strategy for your liquid assets'}
             />
 
-            <div className="max-w-[1400px] mx-auto px-4">
+            <div className="w-[80%] mx-auto px-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>
@@ -649,32 +669,40 @@ const CapitalManagementSetup = () => {
                             </div>
                         )}
 
-                        <div className="mt-8 flex justify-end gap-4">
+                        <div className="mt-8 flex">
                             <Button
                                 variant="outline"
                                 onClick={handleReset}
-                                className="mr-auto text-muted-foreground hover:text-foreground"
+                                className="mr-auto text-muted-foreground hover:text-foreground border-dashed"
                             >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 {language === 'fr' ? 'Réinitialiser' : 'Reset defaults'}
                             </Button>
-
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate('/data-review')}
-                            >
-                                {language === 'fr' ? 'Retour' : 'Back'}
-                            </Button>
-                            <Button
-                                onClick={handleContinue}
-                                className="bg-blue-600 hover:bg-blue-700"
-                                disabled={isSaving}
-                            >
-                                {isSaving ? (language === 'fr' ? 'Sauvegarde...' : 'Saving...') : (language === 'fr' ? 'Continuer vers le verdict' : 'Continue to Verdict')}
-                            </Button>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* External Navigation Buttons */}
+                <div className="mt-12 flex justify-between items-center relative">
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate('/data-review')}
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground pl-0 hover:bg-transparent"
+                    >
+                        <ChevronLeft className="h-6 w-6" />
+                        <span className="text-lg">{language === 'fr' ? 'Retour' : 'Back'}</span>
+                    </Button>
+
+                    <div className="absolute left-1/2 -translate-x-1/2 transform">
+                        <Button
+                            onClick={handleContinue}
+                            disabled={isSaving}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-6 text-xl rounded-full shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                        >
+                            {isSaving ? (language === 'fr' ? 'Sauvegarde...' : 'Saving...') : (language === 'fr' ? 'Continuer vers le verdict' : 'Continue to Verdict')}
+                        </Button>
+                    </div>
+                </div>
             </div>
         </div>
     );
