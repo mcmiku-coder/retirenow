@@ -1956,7 +1956,7 @@ const DataReview = () => {
         }
       />
 
-      <div className="w-[80%] mx-auto">
+      <div className="w-[65%] mx-auto">
         {/* Dynamic Datalist for Cluster Tags */}
 
         {/* Dynamic Datalist for Cluster Tags */}
@@ -1990,13 +1990,13 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[18%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold w-[12%]">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{t('scenario.endDate')}</th>
+
                       <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
@@ -2142,16 +2142,7 @@ const DataReview = () => {
                             )}
                           </td>
 
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={income.clusterTag || ''}
-                              onChange={(e) => updateIncomeField(income.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
+
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
@@ -2212,14 +2203,14 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
-                      <th className="text-center p-3 font-semibold">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
-                      <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[18%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold w-[12%]">{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{language === 'fr' ? 'Type de dispo.' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
+                      <th className="text-center p-3 font-semibold w-[10%]">{language === 'fr' ? 'Investir ?' : 'Invest?'}</th>
+
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -2329,16 +2320,7 @@ const DataReview = () => {
                               <div className="text-center text-muted-foreground">-</div>
                             )}
                           </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={asset.clusterTag || ''}
-                              onChange={(e) => updateAsset(asset.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px] ml-auto" // Added ml-auto to align right content similar to text-right header
-                            />
-                          </td>
+
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
@@ -2410,13 +2392,13 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{t('scenario.name')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.originalValue')}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{t('scenario.adjustedValue')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.frequency')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.startDate')}</th>
-                      <th className="text-left p-3 font-semibold">{t('scenario.endDate')}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[18%]">{t('scenario.name')}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.originalValue')}</th>
+                      <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.adjustedValue')}</th>
+                      <th className="text-left p-3 font-semibold w-[12%]">{t('scenario.frequency')}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{t('scenario.startDate')}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{t('scenario.endDate')}</th>
+
                       <th className="text-center p-3 font-semibold w-[80px]">{t('scenario.actions')}</th>
                     </tr>
                   </thead>
@@ -2493,16 +2475,7 @@ const DataReview = () => {
                                 mode="end"
                               />}
                           </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={cost.clusterTag || ''}
-                              onChange={(e) => updateCostField(cost.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                          </td>
+
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">
                               <Button
@@ -2566,12 +2539,11 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
-                      <th className="text-right p-3 font-semibold w-[10%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                      <th className="text-left p-3 font-semibold">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
-                      <th className="text-left p-3 font-semibold w-[15%]">{language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'}</th>
+                      <th className="text-left p-3 font-semibold w-[22%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
+                      <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
+                      <th className="text-right p-3 font-semibold w-[15%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
+                      <th className="text-left p-3 font-semibold w-[14%]">{language === 'fr' ? 'Détails de disponibilité' : 'Availability Details'}</th>
                       <th className="text-center p-3 font-semibold w-[80px]">{language === 'fr' ? 'Actions' : 'Actions'}</th>
                     </tr>
                   </thead>
@@ -2644,16 +2616,6 @@ const DataReview = () => {
                                 mode="start"
                               />
                             )}
-                          </td>
-                          <td className="p-3">
-                            <Input
-                              type="text"
-                              list="cluster-options"
-                              placeholder={language === 'fr' ? 'Sélectionner ou taper...' : 'Select or type...'}
-                              value={outflow.clusterTag || ''}
-                              onChange={(e) => updateOutflow(outflow.id, 'clusterTag', e.target.value)}
-                              className="max-w-[150px]"
-                            />
                           </td>
                           <td className="p-3">
                             <div className="flex gap-2 justify-center">

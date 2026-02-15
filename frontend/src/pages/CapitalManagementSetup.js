@@ -22,7 +22,7 @@ const CapitalManagementSetup = () => {
     const { t, language } = useLanguage();
     const [loading, setLoading] = useState(true);
     const [tableRows, setTableRows] = useState([]);
-    const [isClusterMode, setIsClusterMode] = useState(false);
+
     const [assetClassFilter, setAssetClassFilter] = useState(null); // null = show all
     const [highlightedPeriod, setHighlightedPeriod] = useState({}); // { productId: 'loss' | 'gain' | null }
     const [deathDate, setDeathDate] = useState('');
@@ -142,111 +142,55 @@ const CapitalManagementSetup = () => {
                     asset => asset.category === 'Liquid' && asset.strategy === 'Invested'
                 );
 
-                // Check if any have cluster tags
-                const hasClusters = liquidInvestedAssets.some(asset => asset.clusterTag && asset.clusterTag.trim() !== '');
-
-                setIsClusterMode(hasClusters);
-
-                if (hasClusters) {
-                    // Group by cluster
-                    const clusterMap = {};
-                    liquidInvestedAssets.forEach(asset => {
-                        const cluster = asset.clusterTag || 'Unclustered';
-                        if (!clusterMap[cluster]) {
-                            clusterMap[cluster] = {
-                                name: cluster,
-                                totalAmount: 0,
-                                assets: []
-                            };
-                        }
-                        clusterMap[cluster].totalAmount += parseFloat(asset.adjustedAmount || asset.amount || 0);
-                        clusterMap[cluster].assets.push(asset);
+                // Individual mode
+                // Create a lookup map for saved invested book items
+                const savedBookMap = new Map();
+                if (scenarioData.investedBook && Array.isArray(scenarioData.investedBook)) {
+                    scenarioData.investedBook.forEach(item => {
+                        if (item.id) savedBookMap.set(item.id, item);
                     });
-
-                    const rows = Object.values(clusterMap).map((cluster, index) => ({
-                        id: `cluster-${index}`,
-                        name: cluster.name,
-                        amount: cluster.totalAmount,
-                        // Heuristic: Use date of first component, or Today
-                        startDate: cluster.assets[0]?.availabilityDate ? cluster.assets[0].availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0],
-                        endDate: userData?.theoreticalDeathDate || '',
-                        selectedProduct: null,
-                        assets: cluster.assets
-                    }));
-
-                    // Restore saved product selections
-                    // Priority: 
-                    // 1. investmentSelections (legacy map) - if present, use it (migration path)
-                    // 2. savedItem.selectedProduct (new direct storage)
-                    if (scenarioData.investmentSelections) {
-                        rows.forEach(row => {
-                            if (scenarioData.investmentSelections[row.id]) {
-                                row.selectedProduct = scenarioData.investmentSelections[row.id];
-                            }
-                        });
-                    }
-
-                    // Apply savedItem.selectedProduct if not already set by legacy map
-                    rows.forEach((row, index) => {
-                        const id = `cluster-${index}`; // Re-derive ID to be safe or use row.id
-                        const savedItem = savedBookMap.get(row.id);
-                        if (!row.selectedProduct && savedItem && savedItem.selectedProduct) {
-                            row.selectedProduct = savedItem.selectedProduct;
-                        }
-                    });
-
-                    setTableRows(rows);
-                } else {
-                    // Individual mode
-                    // Create a lookup map for saved invested book items
-                    const savedBookMap = new Map();
-                    if (scenarioData.investedBook && Array.isArray(scenarioData.investedBook)) {
-                        scenarioData.investedBook.forEach(item => {
-                            if (item.id) savedBookMap.set(item.id, item);
-                        });
-                    }
-
-                    const rows = liquidInvestedAssets.map((asset, index) => {
-                        const id = asset.id || `asset-${index}`;
-                        const savedItem = savedBookMap.get(id);
-
-                        const amount = savedItem ? parseFloat(savedItem.amount) : parseFloat(asset.adjustedAmount || asset.amount || 0);
-                        const startDate = savedItem ? savedItem.availabilityDate : (asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0]);
-                        const endDate = savedItem ? savedItem.endDate : (userData?.theoreticalDeathDate || '');
-
-                        const groupedWith = savedItem ? (savedItem.groupedWith || 'not grouped') : 'not grouped';
-                        const investGroupName = savedItem ? (savedItem.investGroupName || asset.name) : asset.name;
-
-                        // Fix Persistence: Load selectedProduct from savedItem
-                        let selectedProduct = null;
-                        if (savedItem && savedItem.selectedProduct) {
-                            selectedProduct = savedItem.selectedProduct;
-                        }
-
-                        return {
-                            id,
-                            name: asset.name,
-                            amount,
-                            startDate,
-                            endDate,
-                            selectedProduct,
-                            originalAsset: asset,
-                            groupedWith,
-                            investGroupName
-                        };
-                    });
-
-                    // Restore saved product selections from legacy map (overrides if present)
-                    if (scenarioData.investmentSelections) {
-                        rows.forEach(row => {
-                            if (scenarioData.investmentSelections[row.id]) {
-                                row.selectedProduct = scenarioData.investmentSelections[row.id];
-                            }
-                        });
-                    }
-
-                    setTableRows(rows);
                 }
+
+                const rows = liquidInvestedAssets.map((asset, index) => {
+                    const id = asset.id || `asset-${index}`;
+                    const savedItem = savedBookMap.get(id);
+
+                    const amount = savedItem ? parseFloat(savedItem.amount) : parseFloat(asset.adjustedAmount || asset.amount || 0);
+                    const startDate = savedItem ? savedItem.availabilityDate : (asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0]);
+                    const endDate = savedItem ? savedItem.endDate : (userData?.theoreticalDeathDate || '');
+
+                    const groupedWith = savedItem ? (savedItem.groupedWith || 'not grouped') : 'not grouped';
+                    const investGroupName = savedItem ? (savedItem.investGroupName || asset.name) : asset.name;
+
+                    // Fix Persistence: Load selectedProduct from savedItem
+                    let selectedProduct = null;
+                    if (savedItem && savedItem.selectedProduct) {
+                        selectedProduct = savedItem.selectedProduct;
+                    }
+
+                    return {
+                        id,
+                        name: asset.name,
+                        amount,
+                        startDate,
+                        endDate,
+                        selectedProduct,
+                        originalAsset: asset,
+                        groupedWith,
+                        investGroupName
+                    };
+                });
+
+                // Restore saved product selections from legacy map (overrides if present)
+                if (scenarioData.investmentSelections) {
+                    rows.forEach(row => {
+                        if (scenarioData.investmentSelections[row.id]) {
+                            row.selectedProduct = scenarioData.investmentSelections[row.id];
+                        }
+                    });
+                }
+
+                setTableRows(rows);
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -568,9 +512,8 @@ const CapitalManagementSetup = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            {isClusterMode
-                                ? (language === 'fr' ? 'Investissements par cluster' : 'Investments by Cluster')
-                                : (language === 'fr' ? 'Investissements individuels' : 'Individual Investments')}
+                            {/* Removed isClusterMode ternary, always showing Individual Investments title or removing conditional logic if preferred */}
+                            {language === 'fr' ? 'Investissements individuels' : 'Individual Investments'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
