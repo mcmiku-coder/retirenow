@@ -13,8 +13,9 @@ import { investmentProducts, getAssetClassStyle } from '../data/investmentProduc
 import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
 import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
-import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw, ChevronLeft, ChevronRight, Scissors, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
+
 
 const CapitalManagementSetup = () => {
     const navigate = useNavigate();
@@ -44,6 +45,101 @@ const CapitalManagementSetup = () => {
         }
     };
 
+
+
+    const splitRow = (index) => {
+        const row = tableRows[index];
+        const newRow = {
+            ...row,
+            id: `${row.id}-split-${Date.now()}`,
+            startDate: row.endDate,
+            endDate: deathDate
+        };
+
+        const updatedRows = [...tableRows];
+        updatedRows.splice(index + 1, 0, newRow);
+        setTableRows(updatedRows);
+    };
+
+    // Palette for divided row badges
+    const divideColors = [
+        'bg-blue-100 text-blue-800 border-blue-200',
+        'bg-green-100 text-green-800 border-green-200',
+        'bg-purple-100 text-purple-800 border-purple-200',
+        'bg-orange-100 text-orange-800 border-orange-200',
+        'bg-pink-100 text-pink-800 border-pink-200',
+        'bg-indigo-100 text-indigo-800 border-indigo-200',
+        'bg-teal-100 text-teal-800 border-teal-200',
+    ];
+
+    const divideRow = (index) => {
+        const row = tableRows[index];
+        const currentAmount = parseFloat(row.amount);
+        const halfAmount = Math.floor(currentAmount / 2);
+        const remainingAmount = currentAmount - halfAmount; // Handle odd numbers
+
+        const divideGroupId = `div-${Date.now()}`;
+        // Pick a random color from palette
+        const divideColor = divideColors[Math.floor(Math.random() * divideColors.length)];
+
+        // Update current row (Become 'Divided A')
+        const updatedRow = {
+            ...row,
+            amount: remainingAmount,
+            divideGroupId,
+            originalDivisionTotal: currentAmount,
+            divideRole: 'A',
+            divideColor
+        };
+
+        // Create new divided row (Become 'Divided B')
+        const newRow = {
+            ...row,
+            id: `${row.id}-divide-${Date.now()}`,
+            name: row.name, // Keep original name, badge will distinguish
+            amount: halfAmount,
+            // Keep same dates (Concurrent)
+            startDate: row.startDate,
+            endDate: row.endDate,
+            divideGroupId,
+            originalDivisionTotal: currentAmount,
+            divideRole: 'B',
+            divideColor
+        };
+
+        const updatedRows = [...tableRows];
+        updatedRows[index] = updatedRow; // Update original
+        updatedRows.splice(index + 1, 0, newRow); // Insert split
+        setTableRows(updatedRows);
+    };
+
+    const removeDivide = (index) => {
+        const rowToDelete = tableRows[index];
+        if (!rowToDelete.divideGroupId || rowToDelete.divideRole !== 'B') return;
+
+        const updatedRows = [...tableRows];
+
+        // Find partner (Divided A)
+        const partnerIndex = updatedRows.findIndex(r => r.divideGroupId === rowToDelete.divideGroupId && r.id !== rowToDelete.id);
+
+        if (partnerIndex !== -1) {
+            const partnerRow = updatedRows[partnerIndex];
+            // Restore total amount and remove division properties
+            updatedRows[partnerIndex] = {
+                ...partnerRow,
+                amount: parseFloat(partnerRow.originalDivisionTotal),
+                divideGroupId: null,
+                originalDivisionTotal: null,
+                divideRole: null,
+                divideColor: null
+            };
+        }
+
+        // Remove the 'Divided B' row
+        updatedRows.splice(index, 1);
+        setTableRows(updatedRows);
+    };
+
     useEffect(() => {
         loadData();
     }, [user, masterKey]);
@@ -67,19 +163,64 @@ const CapitalManagementSetup = () => {
                 }
 
                 return {
+                    // Copy original asset properties (crucial for simulation engine to know asset type, currency, etc. for new rows)
+                    ...row.originalAsset,
+
                     id: row.id,
-                    name: row.name,
+                    // Append A/B to name to ensure uniqueness in simulation/graphs
+                    name: row.divideRole ? `${row.name} (${row.divideRole === 'A' ? 'A' : 'B'})` : row.name,
                     amount: parseFloat(row.amount || 0), // Use the user-adjusted amount
+                    adjustedAmount: parseFloat(row.amount || 0), // CRITICAL: Overwrite original adjustedAmount
                     strategy: 'Invested',
+                    // Force Liquid Assets to be treated as Initial Capital (available at t=0)
+                    isInitialCapital: true,
                     availabilityDate: row.startDate,
                     endDate: row.endDate,
                     // Ensure we keep the product selection ID if needed (though it's in investmentSelections)
                     selectedProduct: row.selectedProduct,
                     // Save grouping info
                     groupedWith: row.groupedWith,
-                    investGroupName: row.investGroupName
+                    investGroupName: row.investGroupName,
+                    // Save linked division info
+                    divideGroupId: row.divideGroupId,
+                    originalDivisionTotal: row.originalDivisionTotal,
+                    divideRole: row.divideRole,
+                    divideColor: row.divideColor
                 };
             });
+
+
+            // 1. Filter out existing Liquid & Invested assets from currentAssets (we will replace them)
+            const otherAssets = (scenarioData.currentAssets || []).filter(
+                asset => !(asset.category === 'Liquid' && asset.strategy === 'Invested')
+            );
+
+            // 2. Create new assets from tableRows
+            const newLiquidAssets = tableRows.map(row => ({
+                ...row.originalAsset, // Base properties from original
+                id: row.id,
+                name: row.name,
+                amount: parseFloat(row.amount || 0),
+                adjustedAmount: parseFloat(row.amount || 0), // Important for simulation
+                availabilityDate: row.startDate,
+                endDate: row.endDate,
+                strategy: 'Invested',
+                category: 'Liquid',
+                // Fix Simulation: Ensure product ID is available in proper fields
+                selectedProduct: row.selectedProduct,
+                productId: row.selectedProduct,
+
+                // Persistence for divided rows
+                divideGroupId: row.divideGroupId,
+                originalDivisionTotal: row.originalDivisionTotal,
+                divideRole: row.divideRole,
+                divideColor: row.divideColor,
+                groupedWith: row.groupedWith,
+                investGroupName: row.investGroupName
+            }));
+
+            // 3. Update scenarioData
+            // DO NOT update currentAssets with simulation-specific splits (this corrupts Data Review)
 
             scenarioData.investedBook = investedBook;
             scenarioData.investmentSelections = investmentSelections; // Save the map too
@@ -151,34 +292,76 @@ const CapitalManagementSetup = () => {
                     });
                 }
 
-                const rows = liquidInvestedAssets.map((asset, index) => {
-                    const id = asset.id || `asset-${index}`;
-                    const savedItem = savedBookMap.get(id);
+                const rows = liquidInvestedAssets.flatMap((asset, index) => {
+                    const baseId = asset.id || `asset-${index}`; // This is the ID of the original asset
 
-                    const amount = savedItem ? parseFloat(savedItem.amount) : parseFloat(asset.adjustedAmount || asset.amount || 0);
-                    const startDate = savedItem ? savedItem.availabilityDate : (asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0]);
-                    const endDate = savedItem ? savedItem.endDate : (userData?.theoreticalDeathDate || '');
+                    // Find all saved rows that belong to this asset
+                    // They match if savedItem.id == baseId OR savedItem.id starts with baseId + '-'
+                    const assetRows = [];
 
-                    const groupedWith = savedItem ? (savedItem.groupedWith || 'not grouped') : 'not grouped';
-                    const investGroupName = savedItem ? (savedItem.investGroupName || asset.name) : asset.name;
-
-                    // Fix Persistence: Load selectedProduct from savedItem
-                    let selectedProduct = null;
-                    if (savedItem && savedItem.selectedProduct) {
-                        selectedProduct = savedItem.selectedProduct;
+                    if (scenarioData.investedBook && Array.isArray(scenarioData.investedBook)) {
+                        scenarioData.investedBook.forEach(item => {
+                            if (item.id === baseId || (item.id && item.id.toString().startsWith(`${baseId}-`))) {
+                                assetRows.push(item);
+                            }
+                        });
                     }
 
-                    return {
-                        id,
+                    // If we found saved rows, map them back to table rows
+                    if (assetRows.length > 0) {
+                        return assetRows.map(savedItem => {
+                            const id = savedItem.id;
+                            const amount = parseFloat(savedItem.amount);
+                            const startDate = savedItem.availabilityDate;
+                            const endDate = savedItem.endDate;
+
+                            const divideGroupId = savedItem.divideGroupId;
+                            const originalDivisionTotal = parseFloat(savedItem.originalDivisionTotal || 0);
+                            const divideRole = savedItem.divideRole;
+                            const divideColor = savedItem.divideColor;
+
+                            const groupedWith = savedItem.groupedWith || 'not grouped';
+                            const investGroupName = savedItem.investGroupName || asset.name;
+
+                            let selectedProduct = null;
+                            if (savedItem.selectedProduct) {
+                                selectedProduct = savedItem.selectedProduct;
+                            }
+
+                            return {
+                                id,
+                                name: asset.name, // Always use current asset name
+                                amount,
+                                startDate,
+                                endDate,
+                                selectedProduct,
+                                originalAsset: asset,
+                                groupedWith,
+                                investGroupName,
+                                divideGroupId,
+                                originalDivisionTotal,
+                                divideRole,
+                                divideColor
+                            };
+                        });
+                    }
+
+                    // If no saved data for this asset, create default row
+                    return [{
+                        id: baseId,
                         name: asset.name,
-                        amount,
-                        startDate,
-                        endDate,
-                        selectedProduct,
+                        amount: parseFloat(asset.adjustedAmount || asset.amount || 0),
+                        startDate: asset.availabilityDate ? asset.availabilityDate.split('T')[0] : new Date().toISOString().split('T')[0],
+                        endDate: userData?.theoreticalDeathDate || '',
+                        selectedProduct: null,
                         originalAsset: asset,
-                        groupedWith,
-                        investGroupName
-                    };
+                        groupedWith: 'not grouped',
+                        investGroupName: asset.name,
+                        divideGroupId: null,
+                        originalDivisionTotal: 0,
+                        divideRole: null,
+                        divideColor: null
+                    }];
                 });
 
                 // Restore saved product selections from legacy map (overrides if present)
@@ -247,22 +430,25 @@ const CapitalManagementSetup = () => {
     const updateRow = (index, field, value) => {
         const updatedRows = [...tableRows];
         updatedRows[index][field] = value;
+
+        // Auto-update linked divided row amounts
+        if (field === 'amount' && updatedRows[index].divideGroupId) {
+            const row = updatedRows[index];
+            const newAmount = parseFloat(value || 0);
+            const total = parseFloat(row.originalDivisionTotal);
+
+            // Find partner
+            const partnerIndex = updatedRows.findIndex(r => r.divideGroupId === row.divideGroupId && r.id !== row.id);
+            if (partnerIndex !== -1) {
+                const partnerAmount = Math.max(0, total - newAmount);
+                updatedRows[partnerIndex].amount = partnerAmount;
+            }
+        }
+
         setTableRows(updatedRows);
     };
 
-    const splitRow = (index) => {
-        const row = tableRows[index];
-        const newRow = {
-            ...row,
-            id: `${row.id}-split-${Date.now()}`,
-            startDate: row.endDate,
-            endDate: deathDate
-        };
 
-        const updatedRows = [...tableRows];
-        updatedRows.splice(index + 1, 0, newRow);
-        setTableRows(updatedRows);
-    };
 
     const formatAmount = (amount) => {
         return `CHF ${parseFloat(amount || 0).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -549,7 +735,27 @@ const CapitalManagementSetup = () => {
 
                                             return (
                                                 <tr key={row.id} className="border-b hover:bg-muted/50 transition-colors">
-                                                    <td className="p-3 font-medium">{row.name}</td>
+                                                    <td className="p-3 font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            {row.name}
+                                                            {row.divideRole && (
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${row.divideColor || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                                    Divided {row.divideRole}
+                                                                </span>
+                                                            )}
+                                                            {row.divideRole === 'B' && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => removeDivide(index)}
+                                                                    title={language === 'fr' ? 'Supprimer la division' : 'Remove division'}
+                                                                    className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 ml-1"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </td>
                                                     <td className="p-3">
                                                         <Input
                                                             type="number"
@@ -620,14 +826,25 @@ const CapitalManagementSetup = () => {
                                                         )}
                                                     </td>
                                                     <td className="p-3 text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => splitRow(index)}
-                                                            title={language === 'fr' ? 'Diviser la ligne' : 'Split row'}
-                                                        >
-                                                            <Split className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => divideRow(index)}
+                                                                title={language === 'fr' ? 'Diviser le montant (concurrent)' : 'Divide amount (concurrent)'}
+                                                                disabled={!!row.divideRole} // Disable divide if already divided (simple for now)
+                                                            >
+                                                                <Scissors className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => splitRow(index)}
+                                                                title={language === 'fr' ? 'Diviser la durée (temporel)' : 'Split duration (temporal)'}
+                                                            >
+                                                                <Split className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );

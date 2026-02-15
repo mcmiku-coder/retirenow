@@ -29,6 +29,17 @@ export function hasInvestedBook(scenarioData, assets) {
  * Get all invested assets that form the Invested Book
  */
 export function getInvestedBookAssets(assets, scenarioData) {
+    // 1. Prioritize explicitly saved Invested Book (contains splits/divisions/custom rows)
+    if (scenarioData?.investedBook && Array.isArray(scenarioData.investedBook) && scenarioData.investedBook.length > 0) {
+        return scenarioData.investedBook.filter(asset => {
+            // Ensure it has a product linked (either via property or map)
+            // and usually strategy is 'Invested' (though book implies it)
+            const hasProduct = asset.productId || asset.selectedProduct || (scenarioData.investmentSelections && scenarioData.investmentSelections[asset.id]);
+            return hasProduct;
+        });
+    }
+
+    // 2. Fallback: Filter regular assets map (Legacy behavior)
     if (!scenarioData?.investmentSelections) return [];
     return assets.filter(asset => {
         const productId = scenarioData.investmentSelections[asset.id];
@@ -45,6 +56,7 @@ export async function runInvestedBookSimulation(params) {
     const assets = params?.assets;
 
     const investedAssets = getInvestedBookAssets(assets, scenarioData);
+
     if (!investedAssets || investedAssets.length === 0) return null;
 
     // 1. Prepare Configuration
@@ -118,6 +130,7 @@ export async function runInvestedBookSimulation(params) {
 
             // Ensure startMonthIndex is at least 0
             const injectionMonth = Math.max(0, startMonthIndex);
+
             engineCashflows.push({
                 monthIndex: injectionMonth,
                 amount: amount,
