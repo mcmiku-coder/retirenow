@@ -145,7 +145,7 @@ export const translations = {
     retirementBenefitsHelp: {
       title: "Help me fill the benefit and simulation input page",
       subtitle: "Guidance on how to complete your retirement benefits information",
-      contentPlaceholder: "Content coming soon..."
+      content: "On this page you will input information about your known retirement benefits\n\nYou will also be asked at what age you wish to simulate the financial feasibility of your retirement\n\nLPP Pension plans have various rules on how the benefits are distributed. Some pension plans exclusively distribute pensions, some other capital and it is also common to propose a mix of both.\n\nOnce answering the distribution nature you will be prompted to input the necessary data that you should find in your pension plan statements.\n\nImportant notice: if you choose a mixed benefit type of your pension plan, be sure to fill in each capital and pension field, with the adjusted amount, due to the splitting.\n\ni.e if your projected LPP capital at age X is 1000000 and the projected pension at the same age is 50’000 (conversion rate of 5%) you will obviously need to adapt your benefits accordingly. Let’s say you wish to take 500000 in capital, you will input 25’000 as the yearly pension (500’000x5% conversion rate)"
     },
 
     // Income Page
@@ -389,6 +389,7 @@ export const translations = {
 
     // Common
     common: {
+      back: "Back",
       loading: "Loading...",
       error: "Error",
       success: "Success",
@@ -651,7 +652,7 @@ export const translations = {
     retirementBenefitsHelp: {
       title: "Aidez-moi à remplir la page des prestations et simulation",
       subtitle: "Guide pour compléter vos informations de retraite",
-      contentPlaceholder: "Contenu à venir..."
+      content: "Sur cette page, vous allez saisir les informations concernant vos prestations de retraite connues.\n\nIl vous sera également demandé à quel âge vous souhaitez simuler la faisabilité financière de votre retraite.\n\nLes plans de prévoyance LPP ont diverses règles sur la manière dont les prestations sont distribuées. Certains plans distribuent exclusivement des rentes, d'autres du capital, et il est également courant de proposer un mélange des deux.\n\nUne fois que vous aurez répondu à la nature de la distribution, vous serez invité à saisir les données nécessaires que vous devriez trouver dans vos certificats de caisse de pension.\n\nAvis important : si vous choisissez un type de prestation mixte pour votre plan de prévoyance, veillez à remplir chaque champ de capital et de rente, avec le montant ajusté, en raison de la répartition.\n\nPar exemple, si votre capital LPP projeté à l'âge X est de 1 000 000 et que la rente projetée au même âge est de 50 000 (taux de conversion de 5 %), vous devrez évidemment adapter vos prestations en conséquence. Disons que vous souhaitez retirer 500 000 en capital, vous saisirez 25 000 comme rente annuelle (taux de conversion de 500 000 x 5 %)."
     },
 
     // Income Page
@@ -895,6 +896,7 @@ export const translations = {
 
     // Common
     common: {
+      back: "Retour",
       loading: "Chargement...",
       error: "Erreur",
       success: "Succès",
