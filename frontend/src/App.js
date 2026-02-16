@@ -39,6 +39,7 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Disclaimer from './pages/legal/Disclaimer';
 import Contact from './pages/legal/Contact';
 import DetailedGraph from './pages/DetailedGraph';
+import InvestFlowGraph from './pages/InvestFlowGraph';
 import PromoClip from './pages/PromoClip';
 import SimulationDataTable from './pages/SimulationDataTable';
 import Footer from './components/Footer';
@@ -63,7 +64,7 @@ const PageTracker = () => {
 // Global header component that shows on appropriate pages
 const GlobalHeader = () => {
   const location = useLocation();
-  const hiddenPaths = ['/', '/information', '/security', '/detailed-graph'];
+  const hiddenPaths = ['/', '/information', '/security', '/detailed-graph', '/invest-flow-graph'];
 
   // Hide on admin routes
   if (hiddenPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
@@ -181,6 +182,11 @@ function AppRoutes() {
         <Route path="/detailed-graph" element={
           <ProtectedRoute>
             <DetailedGraph />
+          </ProtectedRoute>
+        } />
+        <Route path="/invest-flow-graph" element={
+          <ProtectedRoute>
+            <InvestFlowGraph />
           </ProtectedRoute>
         } />
         <Route path="/simulation-data" element={

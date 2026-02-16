@@ -37,6 +37,16 @@ export const toUtcMonthStart = (input) => {
             return createUtc(y, m);
         }
 
+        // [FIX] Support Swiss/German format DD.MM.YYYY (which V8 might parse as MM/DD/YYYY or fail)
+        const dmyMatch = input.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+        if (dmyMatch) {
+            const d = parseInt(dmyMatch[1], 10);
+            const m = parseInt(dmyMatch[2], 10) - 1; // 0-based
+            const y = parseInt(dmyMatch[3], 10);
+            // Ignore day, force 1st
+            return createUtc(y, m);
+        }
+
         // Fallback for other strings (e.g. ISO DateTime)
         const d = new Date(input);
         if (!isNaN(d.getTime())) {

@@ -945,6 +945,9 @@ const ScenarioResult = () => {
     };
   }, [userData, scenarioData, location.state, activeFilters, assets, debts, incomes, costs, retirementData, activateAllOwnings, owningsActivationDate]);
 
+  // Navigation to Invest Flow Graph
+
+
   // Calculate Projection using iterative approach for Option 3 or single run for others
   useEffect(() => {
     if (loading || !userData) return;
@@ -1095,7 +1098,7 @@ const ScenarioResult = () => {
 
   // Debounced recalculation when retirement age changes
   // MODIFIED: We now use onValueCommit for "heavy" updates (State Sync).
-  // This effect is kept for pure visual feedback if needed, but we disable the heavy recalculation here to avoid double-firing.
+  // This effect is kept for pure visual feedback if needed, but let's stick to the robust commited change.
   useEffect(() => {
     // Disabled in favor of onValueCommit -> synchronizeSimulationState
     // If we want instant visual feedback, we can keep a lightweight recalc, but let's stick to the robust commited change.
@@ -2474,6 +2477,40 @@ const ScenarioResult = () => {
     return <g>{elements}</g>;
   };
 
+  const handleNavigateToInvestFlow = () => {
+    if (!monteCarloProjections || !monteCarloProjections.details) {
+      toast.error(language === 'fr' ? 'Veuillez lancer la simulation Monte Carlo d\'abord' : 'Please run Monte Carlo simulation first');
+      return;
+    }
+
+    // Prepare data for serialization
+    const deepArrayFrom = (obj) => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (obj instanceof Float64Array || obj instanceof Float32Array) return Array.from(obj);
+      if (Array.isArray(obj)) return obj.map(deepArrayFrom);
+      const res = {};
+      for (let k in obj) res[k] = deepArrayFrom(obj[k]);
+      return res;
+    };
+
+    const serializableDetails = deepArrayFrom(monteCarloProjections.details);
+
+    // Re-calculate simulation start date logic to pass correct context
+    const firstProjYear = projection?.yearlyBreakdown?.[0]?.year;
+    const startYear = firstProjYear ? parseInt(firstProjYear) : new Date().getUTCFullYear();
+    const simStartDate = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0)).toISOString();
+
+    navigate('/invest-flow-graph', {
+      state: {
+        monteCarloDetails: serializableDetails,
+        simulationStartDate: simStartDate,
+        // Pass context for "Back" button to work smoothly
+        // We reuse the current location state to preserve previous context
+        ...location.state
+      }
+    });
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -2496,6 +2533,15 @@ const ScenarioResult = () => {
             >
               <LineChartIcon className="h-4 w-4" />
               {language === 'fr' ? 'Graphique détaillé' : 'Detailed graph'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNavigateToInvestFlow}
+              className="flex items-center gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              {language === 'fr' ? 'Graph Flux invest' : 'Invest Flow graph'}
             </Button>
             <Button
               onClick={generatePDF}
@@ -3053,7 +3099,7 @@ const ScenarioResult = () => {
                         const style = product ? getAssetClassStyle(product.assetClass) : { color: 'text-gray-400', bgColor: 'bg-gray-400/10' };
 
                         const startDate = asset.availabilityDate || currentYearStr;
-                        const endDate = deathDateStr;
+                        const endDate = asset.endDate || deathDateStr;
 
                         return (
                           <div key={asset.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/5 border border-muted/10">

@@ -40,11 +40,33 @@ export function getInvestedBookAssets(assets, scenarioData) {
     }
 
     // 2. Fallback: Filter regular assets map (Legacy behavior)
-    if (!scenarioData?.investmentSelections) return [];
+    if (!scenarioData?.investmentSelections) {
+        console.warn("[MC Diagnosis] No investmentSelections found in scenarioData");
+        return [];
+    }
+
+    // [DIAGNOSIS LOGGING]
+    console.log("[MC Diagnosis] Filtering Invested Assets", {
+        totalAssets: assets.length,
+        selectionKeys: Object.keys(scenarioData.investmentSelections),
+        assets: assets.map(a => ({ id: a.id, name: a.name, strategy: a.strategy, amount: a.amount }))
+    });
+
     return assets.filter(asset => {
         const productId = scenarioData.investmentSelections[asset.id];
-        const hasProduct = productId && getProductById(productId);
-        return hasProduct && asset.strategy === 'Invested';
+        const product = productId ? getProductById(productId) : null;
+        const hasProduct = !!product;
+        const isInvested = asset.strategy === 'Invested';
+
+        if (asset.strategy === 'Invested' && !hasProduct) {
+            console.warn(`[MC Diagnosis] Asset Excluded: ${asset.name} (${asset.id})`, {
+                reason: 'Missing Product',
+                productIdInMap: productId,
+                productFound: !!product
+            });
+        }
+
+        return hasProduct && isInvested;
     });
 }
 
@@ -145,7 +167,8 @@ export async function runInvestedBookSimulation(params) {
             engineCashflows.push({
                 monthIndex: injectionMonth,
                 amount: amount,
-                assetId: asset.id
+                assetId: asset.id,
+                name: product.name // Use product name for tooltip consistency
             });
         }
     });
@@ -189,6 +212,7 @@ export async function runInvestedBookSimulation(params) {
             horizonMonths: horizonMonths,
             investedAssetsDetails: engineAssets,
             investedCashflows: engineCashflows, // Expose raw cashflow schedule for PDF reporting
+            injections: engineCashflows, // [FIX] Expose as 'injections' for InvestFlowGraph compatibility
 
             // [Feature] Realized Capital Decomposition
             realizedPercentiles: {
@@ -210,6 +234,53 @@ export async function runInvestedBookSimulation(params) {
                 p95: result.percentiles.p95_invested
             }
         };
+
+        // [FIX] Post-Process: Synthesize Investment Exits (ISOLATED VISUAL LOGIC)
+        // We modify 'injections' for the Graph Bars (safe).
+        // We create 'graphPrincipalPath' for the Blue Line/Bar breakdown (safe).
+        // We DO NOT touch 'principalPath' or 'percentiles' used by the Main Engine/ScenarioResult.
+
+        // 0. Clone Principal Path for Graph Visualization Only
+        simRes.graphPrincipalPath = new Float64Array(result.principalPath);
+
+        // A. Map asset IDs to their total principal (Initial + Injections)
+        const assetPrincipalMap = new Map();
+        engineAssets.forEach(a => assetPrincipalMap.set(a.id, a.initialValue || 0));
+        engineCashflows.forEach(f => {
+            const current = assetPrincipalMap.get(f.assetId) || 0;
+            assetPrincipalMap.set(f.assetId, current + f.amount);
+        });
+
+        // B. Generate Exit Flows and Adjust Graph Principal Path
+        engineAssets.forEach(asset => {
+            if (asset.exitMonthIndex && asset.exitMonthIndex > 0 && asset.exitMonthIndex <= horizonMonths) {
+                const totalPrincipal = assetPrincipalMap.get(asset.id) || 0;
+
+                if (totalPrincipal > 0) {
+                    // 1. Add Negative Flow for Graph (Red Bars)
+                    simRes.injections.push({
+                        monthIndex: asset.exitMonthIndex, // The month it exits
+                        amount: -totalPrincipal,
+                        isExit: true,
+                        assetId: asset.id,
+                        name: asset.name
+                    });
+
+                    // 2. Adjust Visual Principal Path (Blue Line/Bar)
+                    // From exit month onwards, the active principal is reduced visually
+                    const path = simRes.graphPrincipalPath;
+                    for (let t = asset.exitMonthIndex + 1; t < path.length; t++) {
+                        path[t] -= totalPrincipal;
+                    }
+
+                    if (asset.exitMonthIndex < path.length) {
+                        path[asset.exitMonthIndex] -= totalPrincipal;
+                    }
+
+                    console.log(`[MC Graph-Process] Synthesized Visual Exit for ${asset.name} at Month ${asset.exitMonthIndex}: -${totalPrincipal}`);
+                }
+            }
+        });
 
         // SAFETY LOG (User Request)
         console.log("[MC] sim?", !!simRes, "p5?", !!simRes?.percentiles?.p5, "p10?", !!simRes?.percentiles?.p10);
