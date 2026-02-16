@@ -103,32 +103,66 @@ const InvestFlowGraph = () => {
             if (yData.posFlows.length > globalMaxPos) globalMaxPos = yData.posFlows.length;
             if (yData.negFlows.length > globalMaxNeg) globalMaxNeg = yData.negFlows.length;
 
-            // Map to Layer Keys
+            // Map to Layer Keys for Rendering
             yData.posFlows.forEach((flow, i) => {
                 yData[`posLayer${i}`] = flow.amount;
-                yData[`posMeta${i}`] = flow; // Metadata for tooltip
+                yData[`posMeta${i}`] = flow;
             });
             yData.negFlows.forEach((flow, i) => {
                 yData[`negLayer${i}`] = flow.amount;
                 yData[`negMeta${i}`] = flow;
             });
 
+            // [UI-ENHANCE] Calculate Totals for Labels
+            const totalPos = yData.posFlows.reduce((sum, f) => sum + f.amount, 0);
+            const totalNeg = yData.negFlows.reduce((sum, f) => sum + f.amount, 0);
+            yData.totalPos = totalPos;
+            yData.totalNeg = totalNeg;
+            yData.netFlow = totalPos + totalNeg;
+
             return yData;
         });
 
-        // 2 & 3. Get Principal and Portfolio Value (EOY) (Already handled in loop above? No, need to pull values)
+        // 2 & 3. Get Principal and Portfolio Value (EOY)
         // [FIX] Use isolated 'graphPrincipalPath' if available
         const principalPath = details.graphPrincipalPath || details.principalPath;
         const portfolioPath = details.percentiles[scenario];
 
+        // [NEW] Track total injected principal up to each year's end
+        const injections = details.injections || [];
+
         processedArray.forEach(yData => {
             const idx = yData.lastMonthIndex;
+
+            // Populate basic values
             if (idx < principalPath.length) {
                 yData.investedPrincipal = principalPath[idx];
             }
             if (portfolioPath && idx < portfolioPath.length) {
-                yData.portfolioValue = portfolioPath[idx];
+                yData.totalPortfolioValue = portfolioPath[idx]; // Keep original for reference maybe?
             }
+
+            // Calculate cumulative injections up to this year's end
+            const totalInjectedUpToNow = injections
+                .filter(inj => inj.monthIndex <= idx && inj.amount > 0)
+                .reduce((sum, inj) => sum + inj.amount, 0);
+
+            // New Valuation Logic:
+            // Valuation = Active Principal + Gains
+            // Gains = Total Portfolio Value - Total Principal Injected
+            // Displayed Valuation = InvestedPrincipal + (TotalValue - TotalInjected)
+            const currentPrincipal = yData.investedPrincipal || 0;
+            const totalValue = portfolioPath && idx < portfolioPath.length ? portfolioPath[idx] : 0;
+
+            const gainLoss = totalValue - totalInjectedUpToNow;
+            yData.portfolioValue = currentPrincipal + gainLoss;
+
+            // [UI-ENHANCE] Calculate anchor for labels AFTER values are set
+            yData.maxYearlyValue = Math.max(
+                yData.portfolioValue || 0,
+                yData.investedPrincipal || 0,
+                Math.abs(yData.netFlow || 0)
+            );
         });
 
         return { processedData: processedArray, maxP: globalMaxPos, maxN: globalMaxNeg };
@@ -191,7 +225,7 @@ const InvestFlowGraph = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
-                            <span>{language === 'fr' ? 'Valorisation Portefeuille Investi' : 'Invested Portfolio Valuation'}</span>
+                            <span>{language === 'fr' ? 'Valeur investissements avec gains/pertes accumulés' : 'Investment valuation incl. cumulated gain/loss'}</span>
                         </div>
                     </div>
                 </div>

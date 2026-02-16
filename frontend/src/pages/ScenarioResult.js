@@ -2502,11 +2502,11 @@ const ScenarioResult = () => {
 
     navigate('/invest-flow-graph', {
       state: {
-        monteCarloDetails: serializableDetails,
-        simulationStartDate: simStartDate,
         // Pass context for "Back" button to work smoothly
         // We reuse the current location state to preserve previous context
-        ...location.state
+        ...location.state,
+        monteCarloDetails: serializableDetails,
+        simulationStartDate: simStartDate,
       }
     });
   };
