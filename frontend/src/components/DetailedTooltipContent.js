@@ -33,9 +33,16 @@ const DetailedTooltipContent = ({ data, language, isPdf = false }) => {
                         <span className="text-yellow-500">{Math.round(data.cumulativeBalance).toLocaleString()} CHF</span>
                     </div>
                     {data.mc5 !== undefined && (
-                        <div className="flex items-center gap-2 font-bold text-gray-100 border-l border-gray-600 pl-4">
-                            <span className={labelClass}>MC-P5</span>
-                            <span className="text-blue-400">{Math.round(data.mc5).toLocaleString()} CHF</span>
+                        <div className="flex flex-col border-l border-gray-600 pl-4">
+                            <div className="flex items-center gap-2 font-bold text-gray-100">
+                                <span className={labelClass}>MC-P5</span>
+                                <span className="text-blue-400">{Math.round(data.mc5).toLocaleString()} CHF</span>
+                            </div>
+                            {data.mc5_realized > 0 && (
+                                <div className="text-[10px] text-gray-400 mt-0.5">
+                                    <span>({language === 'fr' ? 'Inv:' : 'Inv:'} {Math.round(data.mc5_invested || 0).toLocaleString()} + {language === 'fr' ? 'Réalisé:' : 'Realized:'} {Math.round(data.mc5_realized).toLocaleString()})</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

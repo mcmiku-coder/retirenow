@@ -91,6 +91,15 @@ export async function runInvestedBookSimulation(params) {
         // OR if you explicitly intend it to be available now (defaulting to False for safety here per user request)
         let isAvailableAtStart = false;
         let startMonthIndex = -1;
+        let exitMonthIndex = -1;
+
+        if (asset.endDate) {
+            const endDateObj = toUtcMonthStart(asset.endDate);
+            // End Date Logic: If user sets End Date, we sell the asset at that month index.
+            // dateToMonthIndex returns 0 for Jan 2026. 
+            // If End Date is Jan 2032 (Index 72), we want to sell it then.
+            exitMonthIndex = dateToMonthIndex(simStart, endDateObj);
+        }
 
         if (asset.availabilityDate) {
             const availDate = toUtcMonthStart(asset.availabilityDate);
@@ -114,6 +123,7 @@ export async function runInvestedBookSimulation(params) {
                 portfolioName: asset.name, // The user's portfolio name (e.g. '3a (1)')
                 assetClass: product.assetClass,
                 initialValue: amount,
+                exitMonthIndex: exitMonthIndex,
                 performanceData: product.performanceData || []
             });
             initialInvested.push(asset);
@@ -125,6 +135,7 @@ export async function runInvestedBookSimulation(params) {
                 portfolioName: asset.name, // The user's portfolio name (e.g. '3a (1)')
                 assetClass: product.assetClass,
                 initialValue: 0, // Starts empty
+                exitMonthIndex: exitMonthIndex,
                 performanceData: product.performanceData || []
             });
 
@@ -177,7 +188,27 @@ export async function runInvestedBookSimulation(params) {
             simulationStartDate: simulationStartDate.toISOString(), // Expose Strict Date for UI/PDF
             horizonMonths: horizonMonths,
             investedAssetsDetails: engineAssets,
-            investedCashflows: engineCashflows // Expose raw cashflow schedule for PDF reporting
+            investedCashflows: engineCashflows, // Expose raw cashflow schedule for PDF reporting
+
+            // [Feature] Realized Capital Decomposition
+            realizedPercentiles: {
+                p5: result.percentiles.p5_realized,
+                p10: result.percentiles.p10_realized,
+                p25: result.percentiles.p25_realized,
+                p50: result.percentiles.p50_realized,
+                p75: result.percentiles.p75_realized,
+                p90: result.percentiles.p90_realized,
+                p95: result.percentiles.p95_realized
+            },
+            investedPercentiles: {
+                p5: result.percentiles.p5_invested,
+                p10: result.percentiles.p10_invested,
+                p25: result.percentiles.p25_invested,
+                p50: result.percentiles.p50_invested,
+                p75: result.percentiles.p75_invested,
+                p90: result.percentiles.p90_invested,
+                p95: result.percentiles.p95_invested
+            }
         };
 
         // SAFETY LOG (User Request)

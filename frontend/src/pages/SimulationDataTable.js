@@ -69,6 +69,11 @@ const SimulationDataTable = () => {
         { key: 'InvestedValue_P10_EOM', label: language === 'fr' ? 'Portefeuille P10 (FM)' : 'Invested Value P10 (EOM)', width: 140, format: 'currency' },
         { key: 'InvestedValue_P50_EOM', label: language === 'fr' ? 'Portefeuille P50 (FM)' : 'Invested Value P50 (EOM)', width: 140, format: 'currency' },
         { key: 'InvestedValue_P95_EOM', label: language === 'fr' ? 'Portefeuille P95 (FM)' : 'Invested Value P95 (EOM)', width: 140, format: 'currency' },
+
+        { key: 'RealizedValue_P5_EOM', label: language === 'fr' ? 'Capital Réalisé P5 (FM)' : 'Realized Capital P5 (EOM)', width: 140, format: 'currency' },
+        { key: 'RealizedValue_P10_EOM', label: language === 'fr' ? 'Capital Réalisé P10 (FM)' : 'Realized Capital P10 (EOM)', width: 140, format: 'currency' },
+        { key: 'RealizedValue_P50_EOM', label: language === 'fr' ? 'Capital Réalisé P50 (FM)' : 'Realized Capital P50 (EOM)', width: 140, format: 'currency' },
+        { key: 'RealizedValue_P95_EOM', label: language === 'fr' ? 'Capital Réalisé P95 (FM)' : 'Realized Capital P95 (EOM)', width: 140, format: 'currency' },
         { key: 'BaselineTotal_EOM', label: language === 'fr' ? 'Total Baseline (FM)' : 'Baseline Total (EOM)', width: 160, format: 'currency' },
         { key: 'Total_P5_EOM', label: language === 'fr' ? 'Total P5 (FM)' : 'Total P5 (EOM)', width: 140, format: 'currency' },
         { key: 'Total_P10_EOM', label: language === 'fr' ? 'Total P10 (FM)' : 'Total P10 (EOM)', width: 140, format: 'currency' },
@@ -184,39 +189,40 @@ const SimulationDataTable = () => {
                         />
                     </div>
 
-                    {/* Table */}
-                    <div className="border rounded-lg overflow-hidden">
-                        {/* Header */}
-                        <div className="flex bg-gray-800 border-b-2 border-gray-600 sticky top-0 z-20">
-                            {visibleColumns.map((col, index) => (
-                                <div
-                                    key={col.key}
-                                    style={{ width: col.width }}
-                                    className={`px-3 py-3 text-sm font-semibold text-gray-100 flex-shrink-0 ${index === 0 ? 'sticky left-0 bg-gray-800 z-30' : ''}`}
-                                >
-                                    {col.label}
-                                </div>
-                            ))}
-                        </div>
+                    <div className="border rounded-lg overflow-hidden flex flex-col h-[70vh]">
+                        <div className="overflow-auto flex-1">
+                            {/* Header */}
+                            <div className="flex bg-gray-800 border-b-2 border-gray-600 sticky top-0 z-20 min-w-max">
+                                {visibleColumns.map((col, index) => (
+                                    <div
+                                        key={col.key}
+                                        style={{ width: col.width }}
+                                        className={`px-3 py-3 text-sm font-semibold text-gray-100 flex-shrink-0 ${index === 0 ? 'sticky left-0 bg-gray-800 z-30 shadow-[1px_0_0_0_rgba(255,255,255,0.1)]' : ''}`}
+                                    >
+                                        {col.label}
+                                    </div>
+                                ))}
+                            </div>
 
-                        {/* Body */}
-                        <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
-                            {filteredData.map((row, index) => (
-                                <div key={index} className="flex border-b border-gray-700 hover:bg-gray-800 bg-gray-900">
-                                    {visibleColumns.map((col, colIndex) => (
-                                        <div
-                                            key={col.key}
-                                            style={{ width: col.width }}
-                                            className={`px-3 py-2 text-sm flex-shrink-0 ${colIndex === 0 ? 'sticky left-0 bg-gray-900 z-10' : ''} ${col.colorConditional
-                                                ? (row[col.key] >= 0 ? 'text-green-400' : 'text-red-400')
-                                                : 'text-gray-100'
-                                                }`}
-                                        >
-                                            {formatValue(row[col.key], col.format)}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
+                            {/* Body */}
+                            <div className="min-w-max">
+                                {filteredData.map((row, index) => (
+                                    <div key={index} className="flex border-b border-gray-700 hover:bg-gray-800 bg-gray-900">
+                                        {visibleColumns.map((col, colIndex) => (
+                                            <div
+                                                key={col.key}
+                                                style={{ width: col.width }}
+                                                className={`px-3 py-2 text-sm flex-shrink-0 ${colIndex === 0 ? 'sticky left-0 bg-gray-900 z-10 shadow-[1px_0_0_0_rgba(255,255,255,0.1)]' : ''} ${col.colorConditional
+                                                    ? (row[col.key] >= 0 ? 'text-green-400' : 'text-red-400')
+                                                    : 'text-gray-100'
+                                                    }`}
+                                            >
+                                                {formatValue(row[col.key], col.format)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </CardContent>

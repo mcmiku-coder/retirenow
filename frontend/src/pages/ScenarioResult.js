@@ -1671,39 +1671,45 @@ const ScenarioResult = () => {
       // We use Math.min(..., horizonMonths) for safety at the very end of the horizon.
       const engineIdx = Math.min(m + 1, horizonMonths);
 
-      const getGainDelta = (percentileKey) => {
-        if (!hasMC || !mcDetails.percentiles?.[percentileKey]) return 0;
-        const marketVal = mcDetails.percentiles[percentileKey][engineIdx] || 0;
-        // Use the engine's principal for the Delta calculation to ensure market gain is isolated correctly
-        const principalVal = (mcDetails.principalPath && mcDetails.principalPath[engineIdx] !== undefined)
-          ? mcDetails.principalPath[engineIdx]
-          : runningInvestedPrincipal;
-        return marketVal - principalVal;
+      const getComponentVal = (componentKey, percentileKey) => {
+        if (!hasMC || !mcDetails[componentKey]?.[percentileKey]) return null;
+        return mcDetails[componentKey][percentileKey][engineIdx] || 0;
       };
 
-      const portGainP5 = getGainDelta('p5');
-      const portGainP10 = getGainDelta('p10');
-      const portGainP25 = getGainDelta('p25');
-      const portGainP50 = getGainDelta('p50');
-      const portGainP75 = getGainDelta('p75');
-      const portGainP90 = getGainDelta('p90');
-      const portGainP95 = getGainDelta('p95');
+      // Invested Component (Market Value of active assets)
+      const InvestedValue_P5 = getComponentVal('investedPercentiles', 'p5');
+      const InvestedValue_P10 = getComponentVal('investedPercentiles', 'p10');
+      const InvestedValue_P25 = getComponentVal('investedPercentiles', 'p25');
+      const InvestedValue_P50 = getComponentVal('investedPercentiles', 'p50');
+      const InvestedValue_P75 = getComponentVal('investedPercentiles', 'p75');
+      const InvestedValue_P90 = getComponentVal('investedPercentiles', 'p90');
+      const InvestedValue_P95 = getComponentVal('investedPercentiles', 'p95');
 
-      const InvestedValue_P5 = hasMC ? (InvestedValue_P0 + portGainP5) : null;
-      const InvestedValue_P10 = hasMC ? (InvestedValue_P0 + portGainP10) : null;
-      const InvestedValue_P25 = hasMC ? (InvestedValue_P0 + portGainP25) : null;
-      const InvestedValue_P50 = hasMC ? (InvestedValue_P0 + portGainP50) : null;
-      const InvestedValue_P75 = hasMC ? (InvestedValue_P0 + portGainP75) : null;
-      const InvestedValue_P90 = hasMC ? (InvestedValue_P0 + portGainP90) : null;
-      const InvestedValue_P95 = hasMC ? (InvestedValue_P0 + portGainP95) : null;
+      // Realized Component (Cash form of sold assets)
+      const RealizedValue_P5 = getComponentVal('realizedPercentiles', 'p5');
+      const RealizedValue_P10 = getComponentVal('realizedPercentiles', 'p10');
+      const RealizedValue_P25 = getComponentVal('realizedPercentiles', 'p25');
+      const RealizedValue_P50 = getComponentVal('realizedPercentiles', 'p50');
+      const RealizedValue_P75 = getComponentVal('realizedPercentiles', 'p75');
+      const RealizedValue_P90 = getComponentVal('realizedPercentiles', 'p90');
+      const RealizedValue_P95 = getComponentVal('realizedPercentiles', 'p95');
 
-      const finalTotalP5 = hasMC ? (NonInvestedWealth + InvestedValue_P5) : null;
-      const finalTotalP10 = hasMC ? (NonInvestedWealth + InvestedValue_P10) : null;
-      const finalTotalP25 = hasMC ? (NonInvestedWealth + InvestedValue_P25) : null;
-      const finalTotalP50 = hasMC ? (NonInvestedWealth + InvestedValue_P50) : null;
-      const finalTotalP75 = hasMC ? (NonInvestedWealth + InvestedValue_P75) : null;
-      const finalTotalP90 = hasMC ? (NonInvestedWealth + InvestedValue_P90) : null;
-      const finalTotalP95 = hasMC ? (NonInvestedWealth + InvestedValue_P95) : null;
+      // [ALIGNMENT FIX] Use Engine Total Percentiles directly to match Chart Logic
+      const EngineTotal_P5 = getComponentVal('percentiles', 'p5');
+      const EngineTotal_P10 = getComponentVal('percentiles', 'p10');
+      const EngineTotal_P50 = getComponentVal('percentiles', 'p50');
+      const EngineTotal_P95 = getComponentVal('percentiles', 'p95');
+
+      // Total Wealth = Baseline (Non-Invested Cash) + Engine Total (Invested + Realized)
+      const getTotalFromEngine = (engineTotal) => {
+        if (engineTotal === null) return null;
+        return NonInvestedWealth + (engineTotal || 0);
+      };
+
+      const finalTotalP5 = getTotalFromEngine(EngineTotal_P5);
+      const finalTotalP10 = getTotalFromEngine(EngineTotal_P10);
+      const finalTotalP50 = getTotalFromEngine(EngineTotal_P50);
+      const finalTotalP95 = getTotalFromEngine(EngineTotal_P95);
 
       // Check for injection
       const hasInjection = injectionMap.has(m);
@@ -1730,15 +1736,27 @@ const ScenarioResult = () => {
         NonInvestedWealth_EOM: Math.round(NonInvestedWealth),
         PrincipalInvested_EOM: Math.round(P),
         InvestedValue_P0_EOM: Math.round(InvestedValue_P0),
+
+        // Active Invested Value (Market)
         InvestedValue_P5_EOM: InvestedValue_P5 !== null ? Math.round(InvestedValue_P5) : null,
         InvestedValue_P10_EOM: InvestedValue_P10 !== null ? Math.round(InvestedValue_P10) : null,
         InvestedValue_P50_EOM: InvestedValue_P50 !== null ? Math.round(InvestedValue_P50) : Math.round(InvestedValue_P0),
         InvestedValue_P95_EOM: InvestedValue_P95 !== null ? Math.round(InvestedValue_P95) : null,
+
+        // Realized Value (Cash from Sales)
+        RealizedValue_P5_EOM: RealizedValue_P5 !== null ? Math.round(RealizedValue_P5) : null,
+        RealizedValue_P10_EOM: RealizedValue_P10 !== null ? Math.round(RealizedValue_P10) : null,
+        RealizedValue_P50_EOM: RealizedValue_P50 !== null ? Math.round(RealizedValue_P50) : null,
+        RealizedValue_P95_EOM: RealizedValue_P95 !== null ? Math.round(RealizedValue_P95) : null,
+
         BaselineTotal_EOM: Math.round(BaselineTotal),
+
+        // Total Wealth (Sum of all 3 buckets)
         Total_P5_EOM: finalTotalP5 !== null ? Math.round(finalTotalP5) : null,
         Total_P10_EOM: finalTotalP10 !== null ? Math.round(finalTotalP10) : null,
         Total_P50_EOM: Math.round(finalTotalP50),
         Total_P95_EOM: finalTotalP95 !== null ? Math.round(finalTotalP95) : null,
+
         InjectionFlag: hasInjection,
         InjectionAmount: hasInjection ? Math.round(injectionAmount) : 0,
         // Debug columns
@@ -2220,7 +2238,9 @@ const ScenarioResult = () => {
         mc50: mc50Val,
         mc25: mc25Val,
         mc10: mc10Val,
-        mc5: mc5Val
+        mc5: mc5Val,
+        mc5_realized: mcDetails.realizedPercentiles?.p5?.[safeIdx] || 0,
+        mc5_invested: mcDetails.investedPercentiles?.p5?.[safeIdx] || 0
       };
     });
 

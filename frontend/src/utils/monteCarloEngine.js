@@ -275,6 +275,7 @@ export class MonteCarloEngine {
         // 3. Initialize State
         // Flattened array: [iter 0 asset 0, iter 0 asset 1, ..., iter k asset i]
         const state = new Float64Array(iterations * nAssets);
+        const realizedState = new Float64Array(iterations); // Tracks realized cash per iteration
 
         for (let k = 0; k < iterations; k++) {
             for (let i = 0; i < nAssets; i++) {
@@ -287,15 +288,18 @@ export class MonteCarloEngine {
         const percentiles = {};
         pLevels.forEach(p => {
             percentiles[`p${p}`] = new Float64Array(horizonMonths + 1);
+            percentiles[`p${p}_invested`] = new Float64Array(horizonMonths + 1);
+            percentiles[`p${p}_realized`] = new Float64Array(horizonMonths + 1);
         });
 
         // 5. Initial Percentiles (Month 0)
-        const initialTotal = initialCash + assets.reduce((s, a) => s + a.initialValue, 0);
-
         // [CLEAN ROOM] Rule 1: principalPath Initialization
         // Must represent ONLY nominal invested principal P(t).
         // initialPrincipal = sum(initialValue of invested assets only). No initialCash.
         const initialPrincipal = assets.reduce((s, a) => s + (a.initialValue || 0), 0);
+
+        // Initial Total
+        const initialTotal = initialCash + initialPrincipal;
 
         const principalPath = new Float64Array(horizonMonths + 1);
         let currentPrincipal = initialPrincipal;
@@ -303,6 +307,8 @@ export class MonteCarloEngine {
 
         pLevels.forEach(p => {
             percentiles[`p${p}`][0] = initialTotal;
+            percentiles[`p${p}_invested`][0] = initialTotal; // At t=0, everything is invested
+            percentiles[`p${p}_realized`][0] = 0;
         });
 
         // Track Injections for Reporting
@@ -320,6 +326,9 @@ export class MonteCarloEngine {
 
         // Buffers
         const totals = new Float64Array(iterations);
+        const totalsInvested = new Float64Array(iterations);
+        const totalsRealized = new Float64Array(iterations);
+
         const factors = new Float64Array(nFactors); // Independent normals
         const shocks = new Float64Array(nFactors);  // Correlated (Covariance-scaled)
 
@@ -420,16 +429,41 @@ export class MonteCarloEngine {
                     }
                 }
 
-                totals[k] = portValue;
+                // 6e. Asset Exit / Realisation Logic
+                // If asset expires at this month t, move value to Realized State
+                // [FIX] Use (t - 1) to align 0-based monthIndex with 1-based loop
+                for (let i = 0; i < nAssets; i++) {
+                    if (assets[i].exitMonthIndex === (t - 1)) {
+                        const val = state[offset + i];
+                        realizedState[k] += val;
+                        state[offset + i] = 0;
+                        // portValue (Invested) should decrease by this amount
+                        portValue -= val;
+                    }
+                }
+
+                totalsInvested[k] = portValue;
+                totalsRealized[k] = realizedState[k];
+                totals[k] = portValue + realizedState[k];
             }
 
             // 7. Compute Percentiles (Safe Sort)
             // Convert pLevels to 0..1 decimals
             const pDecimals = pLevels.map(p => p / 100);
-            const computed = calculatePercentiles(totals, pDecimals);
+
+            // Compute Totals
+            const computedTotals = calculatePercentiles(totals, pDecimals);
+
+            // Compute Invested
+            const computedInvested = calculatePercentiles(totalsInvested, pDecimals);
+
+            // Compute Realized
+            const computedRealized = calculatePercentiles(totalsRealized, pDecimals);
 
             pLevels.forEach((p, idx) => {
-                percentiles[`p${p}`][t] = computed[pDecimals[idx]];
+                percentiles[`p${p}`][t] = computedTotals[pDecimals[idx]];
+                percentiles[`p${p}_invested`][t] = computedInvested[pDecimals[idx]];
+                percentiles[`p${p}_realized`][t] = computedRealized[pDecimals[idx]];
             });
         }
 
