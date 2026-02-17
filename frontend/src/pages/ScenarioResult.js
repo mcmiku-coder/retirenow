@@ -1516,7 +1516,8 @@ const ScenarioResult = () => {
       simStartDate = toUtcMonthStart(mcDetails.simulationStartDate);
       horizonMonths = mcDetails.horizonMonths;
       injections = mcDetails.injections || [];
-      injectionMap = new Map(injections.map(inj => [inj.monthIndex, inj.amount]));
+      // Full injection trace for tooltips
+      injectionMap = new Map(injections.map(inj => [inj.monthIndex, inj]));
     } else {
       // Non-invested mode: build deterministic baseline series
       // [ALIGNMENT FIX] Use canonical simulation start year from projection if available
@@ -1525,28 +1526,19 @@ const ScenarioResult = () => {
       simStartDate = new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0));
 
       // Calculate horizon from projection - must match the yearly breakdown
-      const firstYear = parseInt(projection.yearlyBreakdown[0]?.year || startYear);
-      const lastYear = parseInt(projection.yearlyBreakdown[projection.yearlyBreakdown.length - 1]?.year || firstYear);
+      const lastYear = parseInt(projection.yearlyBreakdown[projection.yearlyBreakdown.length - 1]?.year || startYear);
 
       // Horizon is from start of first year to the theoretical death date if available
       const deathDate = userData?.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
       if (deathDate) {
-        const firstYearNum = parseInt(firstYear);
+        const firstYearNum = parseInt(startYear);
         horizonMonths = Math.max(1, (deathDate.getUTCFullYear() - firstYearNum) * 12 + deathDate.getUTCMonth());
       } else {
-        horizonMonths = (lastYear - firstYear) * 12 + 11;
+        horizonMonths = (lastYear - startYear) * 12 + 11;
       }
 
       // Build deterministic monthly series (reuse existing function)
       detSeries = calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets, activeFilters, scenarioData);
-
-      console.log('[EXPORT NONINV ALIGN]', {
-        simStartDate: simStartDate.toISOString(),
-        firstProjYear,
-        startYear,
-        horizonMonths,
-        detLen: detSeries?.length
-      });
     }
 
     // [SIM START ALIGN] Verify matching origins across modes
@@ -1556,14 +1548,19 @@ const ScenarioResult = () => {
       startYearRunKey: projection?.yearlyBreakdown?.[0]?.year
     });
     // [PARTICLE ARITHMETIC] Initialize running balances for exact table audit
-    let runningNonInvestedWealth = 0;
-    let runningInvestedPrincipal = 0;
+    // 3 categories of running balances
+    let runningLiquidNonInvested = 0;
+    let runningInvestedPrincipal = 0; // Net Principal (decreases on exit)
+    let runningInvestedBasis = 0;     // Cumulative Cost Basis (stays constant on exit)
+    let runningIlliquidWealth = 0;
 
     assets.forEach(asset => {
       const id = asset.id || asset.name;
       if (!activeFilters[`asset-${id}`]) return;
-      const isLiquid = asset.category === 'Liquid';
+
+      const isLiquid = asset.category === 'Liquid' || !asset.category; // Default to liquid
       const isInvested = investedAssetIds.includes(id) || asset.strategy === 'Invested';
+      const isIlliquid = asset.category === 'Illiquid' || asset.category === 'Real Estate' || asset.category === 'Immobilier';
 
       const amount = parseFloat(asset.adjustedAmount || asset.amount || 0);
       const availDate = asset.availabilityDate ? toUtcMonthStart(asset.availabilityDate) : null;
@@ -1571,13 +1568,18 @@ const ScenarioResult = () => {
       if (availDate && availDate <= simStartDate) {
         if (isInvested) {
           runningInvestedPrincipal += amount;
-        } else if (isLiquid) {
-          runningNonInvestedWealth += amount;
+          runningInvestedBasis += amount;
+        } else if (isIlliquid) {
+          runningIlliquidWealth += amount;
+        } else {
+          runningLiquidNonInvested += amount;
         }
       }
     });
 
     const monthlyData = [];
+    let previousTotalP5 = null;
+
     for (let m = 0; m <= horizonMonths; m++) {
       const date = new Date(simStartDate);
       date.setUTCMonth(date.getUTCMonth() + m);
@@ -1590,23 +1592,17 @@ const ScenarioResult = () => {
       // Calculate flows by summing individual items (Strict Spec)
       let IncomeFlow = 0;
       let CostFlow = 0;
-      let NonInvestedAssetFlow = 0;
+      let LiquidNonInvestedFlow = 0;
       let InvestContributionFlow = 0;
+      let externalInvestmentInflow = 0;
+      let IlliquidFlow = 0;
 
       const simStartRef_Stable = new Date(simStartDate); // Consistent with timeline start
 
       // 1. Income Flows
       incomes.forEach(inc => {
         if (!activeFilters[`income-${inc.id || inc.name}`]) return;
-        const amt = calculateMonthlyAmount(
-          parseFloat(inc.amount || 0),
-          inc.frequency || 'Monthly',
-          inc.startDate,
-          inc.endDate,
-          date,
-          simStartRef_Stable
-        );
-        IncomeFlow += amt;
+        IncomeFlow += calculateMonthlyAmount(parseFloat(inc.amount || 0), inc.frequency || 'Monthly', inc.startDate, inc.endDate, date, simStartRef_Stable);
       });
 
       // 2. Cost Flows
@@ -1614,119 +1610,125 @@ const ScenarioResult = () => {
       allCostItems.forEach(c => {
         const prefix = costs.includes(c) ? 'cost-' : 'debt-';
         if (!activeFilters[`${prefix}${c.id || c.name}`]) return;
-
-        CostFlow += calculateMonthlyAmount(
-          parseFloat(c.amount || 0),
-          c.frequency || 'Monthly',
-          c.startDate,
-          c.endDate,
-          date,
-          simStartRef_Stable
-        );
+        CostFlow += calculateMonthlyAmount(parseFloat(c.amount || 0), c.frequency || 'Monthly', c.startDate, c.endDate, date, simStartRef_Stable);
       });
 
-      // 3. Asset "Flows" (Periodic) and Invest Contributions
+      // 3. Asset Flows
       assets.forEach(a => {
         if (!activeFilters[`asset-${a.id || a.name}`]) return;
         const amount = parseFloat(a.adjustedAmount || a.amount || 0);
         const isInvested = investedAssetIds.includes(a.id || a.name) || a.strategy === 'Invested';
+        const isIlliquid = a.category === 'Illiquid' || a.category === 'Real Estate' || a.category === 'Immobilier';
 
         if (a.availabilityType === 'Period') {
           const flow = calculateMonthlyAmount(amount, 'Monthly', a.startDate, a.endDate, date, simStartRef_Stable);
           if (isInvested) {
-            InvestContributionFlow += flow;
+            if (!hasMC) {
+              InvestContributionFlow += flow;
+              externalInvestmentInflow += flow;
+            }
+          } else if (isIlliquid) {
+            IlliquidFlow += flow;
           } else {
-            NonInvestedAssetFlow += flow;
+            LiquidNonInvestedFlow += flow;
           }
         } else if (a.availabilityDate) {
-          // One-time assets: Check if available this month and > simStartRef
-          const availDate = new Date(a.availabilityDate);
-          if (availDate > simStartRef_Stable &&
-            availDate.getUTCFullYear() === date.getUTCFullYear() &&
-            availDate.getUTCMonth() === date.getUTCMonth()) {
+          const availDate = toUtcMonthStart(a.availabilityDate);
+          if (availDate > simStartRef_Stable && availDate.getUTCFullYear() === date.getUTCFullYear() && availDate.getUTCMonth() === date.getUTCMonth()) {
             if (isInvested) {
-              InvestContributionFlow += amount;
+              if (!hasMC) {
+                InvestContributionFlow += amount;
+                externalInvestmentInflow += amount;
+              }
+            } else if (isIlliquid) {
+              IlliquidFlow += amount;
             } else {
-              // One-time assets are STOCKS. They update wealth but traditionally 
-              // aren't in the generic "IncomeFlow" if we follow stock/flow separation.
-              // We'll map them to NonInvestedAssetFlow to capture the balance change reason.
-              NonInvestedAssetFlow += amount;
+              LiquidNonInvestedFlow += amount;
             }
           }
         }
       });
 
+      // 4. Handle Portfolio Injections & Exits (Principal changes)
+      // Accumulate all injections/exits for this specific month index
+      const monthInjections = injections.filter(inj => inj.monthIndex === m);
+      monthInjections.forEach(inj => {
+        // principal flows: contributions(+) or exits(-)
+        InvestContributionFlow += (inj.amount || 0);
+
+        // Yield Calculation Flow: ONLY external new money injections
+        // Exits (isExit: true) are internal reallocation to 'Realized', not new money.
+        if (!inj.isExit) {
+          externalInvestmentInflow += (inj.amount || 0);
+        }
+      });
+      const injection = monthInjections[0] || null; // For tooltip metadata (primary event)
+
       // Always update running balances for every month (including m=0)
-      // This ensures we reach 100% agreement with the engine's principalPath[m+1]
-      // representing the state AFTER that month's simulation step.
-      runningNonInvestedWealth += (IncomeFlow - CostFlow + NonInvestedAssetFlow);
+      runningLiquidNonInvested += (IncomeFlow - CostFlow + LiquidNonInvestedFlow);
       runningInvestedPrincipal += InvestContributionFlow;
+      runningInvestedBasis += externalInvestmentInflow;
+      runningIlliquidWealth += IlliquidFlow;
 
-      const NonInvestedWealth = runningNonInvestedWealth;
-      const InvestedValue_P0 = runningInvestedPrincipal;
-
-      // [STRICT TABLE ARITHMETIC] 
-      // Rule: Totals MUST equal NonInvested + InvestedValue
-      const BaselineTotal = NonInvestedWealth + InvestedValue_P0;
-
-      // [ALIGNMENT FIX] The table row labeled 31.MM.YYYY represents the state AFTER that month's simulation.
-      // In the engine, the state after month m is at index m+1 (where index 0 is the start of simulation).
-      // We use Math.min(..., horizonMonths) for safety at the very end of the horizon.
       const engineIdx = Math.min(m + 1, horizonMonths);
+      const getComponentVal = (componentKey, pKey) => (hasMC && mcDetails[componentKey]?.[pKey]) ? (mcDetails[componentKey][pKey][engineIdx] || 0) : null;
 
-      const getComponentVal = (componentKey, percentileKey) => {
-        if (!hasMC || !mcDetails[componentKey]?.[percentileKey]) return null;
-        return mcDetails[componentKey][percentileKey][engineIdx] || 0;
-      };
+      // Extract Target P-Levels
+      const Invested_P5 = getComponentVal('investedPercentiles', 'p5');
+      const Invested_P10 = getComponentVal('investedPercentiles', 'p10');
+      const Invested_P25 = getComponentVal('investedPercentiles', 'p25');
+      const Invested_P50 = getComponentVal('investedPercentiles', 'p50');
+      const Invested_P75 = getComponentVal('investedPercentiles', 'p75');
+      const Invested_P90 = getComponentVal('investedPercentiles', 'p90');
+      const Invested_P95 = getComponentVal('investedPercentiles', 'p95');
 
-      // Invested Component (Market Value of active assets)
-      const InvestedValue_P5 = getComponentVal('investedPercentiles', 'p5');
-      const InvestedValue_P10 = getComponentVal('investedPercentiles', 'p10');
-      const InvestedValue_P25 = getComponentVal('investedPercentiles', 'p25');
-      const InvestedValue_P50 = getComponentVal('investedPercentiles', 'p50');
-      const InvestedValue_P75 = getComponentVal('investedPercentiles', 'p75');
-      const InvestedValue_P90 = getComponentVal('investedPercentiles', 'p90');
-      const InvestedValue_P95 = getComponentVal('investedPercentiles', 'p95');
+      const Realized_P5 = getComponentVal('realizedPercentiles', 'p5');
+      const Realized_P10 = getComponentVal('realizedPercentiles', 'p10');
+      const Realized_P25 = getComponentVal('realizedPercentiles', 'p25');
+      const Realized_P50 = getComponentVal('realizedPercentiles', 'p50');
+      const Realized_P75 = getComponentVal('realizedPercentiles', 'p75');
+      const Realized_P90 = getComponentVal('realizedPercentiles', 'p90');
+      const Realized_P95 = getComponentVal('realizedPercentiles', 'p95');
 
-      // Realized Component (Cash form of sold assets)
-      const RealizedValue_P5 = getComponentVal('realizedPercentiles', 'p5');
-      const RealizedValue_P10 = getComponentVal('realizedPercentiles', 'p10');
-      const RealizedValue_P25 = getComponentVal('realizedPercentiles', 'p25');
-      const RealizedValue_P50 = getComponentVal('realizedPercentiles', 'p50');
-      const RealizedValue_P75 = getComponentVal('realizedPercentiles', 'p75');
-      const RealizedValue_P90 = getComponentVal('realizedPercentiles', 'p90');
-      const RealizedValue_P95 = getComponentVal('realizedPercentiles', 'p95');
-
-      // [ALIGNMENT FIX] Use Engine Total Percentiles directly to match Chart Logic
       const EngineTotal_P5 = getComponentVal('percentiles', 'p5');
       const EngineTotal_P10 = getComponentVal('percentiles', 'p10');
+      const EngineTotal_P25 = getComponentVal('percentiles', 'p25');
       const EngineTotal_P50 = getComponentVal('percentiles', 'p50');
+      const EngineTotal_P75 = getComponentVal('percentiles', 'p75');
+      const EngineTotal_P90 = getComponentVal('percentiles', 'p90');
       const EngineTotal_P95 = getComponentVal('percentiles', 'p95');
 
-      // Total Wealth = Baseline (Non-Invested Cash) + Engine Total (Invested + Realized)
-      const getTotalFromEngine = (engineTotal) => {
-        if (engineTotal === null) return null;
-        return NonInvestedWealth + (engineTotal || 0);
-      };
+      // Total Wealth = Non-Invested + Illiquid + Engine Total
+      const activeBase = runningLiquidNonInvested + runningIlliquidWealth;
+      const finalTotalP5 = activeBase + (EngineTotal_P5 || Math.round(runningInvestedPrincipal));
+      const finalTotalP10 = activeBase + (EngineTotal_P10 || Math.round(runningInvestedPrincipal));
+      const finalTotalP25 = activeBase + (EngineTotal_P25 || Math.round(runningInvestedPrincipal));
+      const finalTotalP50 = activeBase + (EngineTotal_P50 || Math.round(runningInvestedPrincipal));
+      const finalTotalP75 = activeBase + (EngineTotal_P75 || Math.round(runningInvestedPrincipal));
+      const finalTotalP90 = activeBase + (EngineTotal_P90 || Math.round(runningInvestedPrincipal));
+      const finalTotalP95 = activeBase + (EngineTotal_P95 || Math.round(runningInvestedPrincipal));
 
-      const finalTotalP5 = getTotalFromEngine(EngineTotal_P5);
-      const finalTotalP10 = getTotalFromEngine(EngineTotal_P10);
-      const finalTotalP50 = getTotalFromEngine(EngineTotal_P50);
-      const finalTotalP95 = getTotalFromEngine(EngineTotal_P95);
+      // Calculate Wealth Delta (Monthly Change in Total P5)
+      let wealthDelta = 0;
+      if (previousTotalP5 !== null) {
+        wealthDelta = finalTotalP5 - previousTotalP5;
+      }
+      previousTotalP5 = finalTotalP5;
 
-      // Check for injection
-      const hasInjection = injectionMap.has(m);
-      const injectionAmount = injectionMap.get(m) || 0;
+      // Calculate Investment Yield (Market Gains/Losses in P5)
+      // Cumulative Gain = (Portfolio + Realized) - Total Principal Basis
+      let cumulativeGainP5 = 0;
+      let cumulativeGainP10 = 0;
+      let cumulativeGainP25 = 0;
+      if (hasMC) {
+        cumulativeGainP5 = (EngineTotal_P5 || 0) - runningInvestedBasis;
+        cumulativeGainP10 = (EngineTotal_P10 || 0) - runningInvestedBasis;
+        cumulativeGainP25 = (EngineTotal_P25 || 0) - runningInvestedBasis;
+      }
 
       // Debug columns
       const year = lastDayOfMonth.getUTCFullYear();
       const isYearEnd = (lastDayOfMonth.getUTCMonth() === 11);
-
-      const P = InvestedValue_P0; // Align debug principal with arithmetic principal
-      const D = detSeries?.[engineIdx] || 0;
-      const B = NonInvestedWealth;
-      const P_engine = (hasMC ? (mcDetails.principalPath?.[engineIdx] || 0) : 0);
-      const identityDiff = Math.abs((D - P_engine) - B); // Keep drift check vs engine
 
       monthlyData.push({
         Date_EOM: dateStr,
@@ -1734,55 +1736,57 @@ const ScenarioResult = () => {
         IncomeFlow: Math.round(IncomeFlow),
         CostFlow: Math.round(CostFlow),
         NetFlow: Math.round(IncomeFlow - CostFlow),
-        NonInvestedAssetFlow: Math.round(NonInvestedAssetFlow),
         InvestContributionFlow: Math.round(InvestContributionFlow),
-        NonInvestedWealth_EOM: Math.round(NonInvestedWealth),
-        PrincipalInvested_EOM: Math.round(P),
-        InvestedValue_P0_EOM: Math.round(InvestedValue_P0),
+        LiquidNonInvestedFlow: Math.round(LiquidNonInvestedFlow),
+        IlliquidFlow: Math.round(IlliquidFlow),
+        WealthDelta: Math.round(wealthDelta),
+        InvestedYield_P5: Math.round(cumulativeGainP5),
+        InvestedYield_P10: Math.round(cumulativeGainP10),
+        InvestedYield_P25: Math.round(cumulativeGainP25),
 
-        // Active Invested Value (Market)
-        InvestedValue_P5_EOM: InvestedValue_P5 !== null ? Math.round(InvestedValue_P5) : null,
-        InvestedValue_P10_EOM: InvestedValue_P10 !== null ? Math.round(InvestedValue_P10) : null,
-        InvestedValue_P50_EOM: InvestedValue_P50 !== null ? Math.round(InvestedValue_P50) : Math.round(InvestedValue_P0),
-        InvestedValue_P95_EOM: InvestedValue_P95 !== null ? Math.round(InvestedValue_P95) : null,
+        // 3 Categories
+        LiquidNonInvested_EOM: Math.round(runningLiquidNonInvested),
+        InvestedPrincipal_EOM: Math.round(runningInvestedPrincipal),
+        IlliquidWealth_EOM: Math.round(runningIlliquidWealth),
 
-        // Realized Value (Cash from Sales)
-        RealizedValue_P5_EOM: RealizedValue_P5 !== null ? Math.round(RealizedValue_P5) : null,
-        RealizedValue_P10_EOM: RealizedValue_P10 !== null ? Math.round(RealizedValue_P10) : null,
-        RealizedValue_P50_EOM: RealizedValue_P50 !== null ? Math.round(RealizedValue_P50) : null,
-        RealizedValue_P95_EOM: RealizedValue_P95 !== null ? Math.round(RealizedValue_P95) : null,
+        // Portfolio Detail (Investor View)
+        InvestedMarketValue_P5: Invested_P5 !== null ? Math.round(Invested_P5) : Math.round(runningInvestedPrincipal),
+        InvestedMarketValue_P10: Invested_P10 !== null ? Math.round(Invested_P10) : null,
+        InvestedMarketValue_P25: Invested_P25 !== null ? Math.round(Invested_P25) : null,
+        InvestedMarketValue_P50: Invested_P50 !== null ? Math.round(Invested_P50) : null,
+        InvestedMarketValue_P75: Invested_P75 !== null ? Math.round(Invested_P75) : null,
+        InvestedMarketValue_P90: Invested_P90 !== null ? Math.round(Invested_P90) : null,
+        InvestedMarketValue_P95: Invested_P95 !== null ? Math.round(Invested_P95) : null,
 
-        BaselineTotal_EOM: Math.round(BaselineTotal),
+        RealizedCapital_P5: Realized_P5 !== null ? Math.round(Realized_P5) : 0,
+        RealizedCapital_P10: Realized_P10 !== null ? Math.round(Realized_P10) : null,
+        RealizedCapital_P25: Realized_P25 !== null ? Math.round(Realized_P25) : null,
+        RealizedCapital_P50: Realized_P50 !== null ? Math.round(Realized_P50) : null,
+        RealizedCapital_P75: Realized_P75 !== null ? Math.round(Realized_P75) : null,
+        RealizedCapital_P90: Realized_P90 !== null ? Math.round(Realized_P90) : null,
+        RealizedCapital_P95: Realized_P95 !== null ? Math.round(Realized_P95) : null,
 
-        // Total Wealth (Sum of all 3 buckets)
-        Total_P5_EOM: finalTotalP5 !== null ? Math.round(finalTotalP5) : null,
+        // Totals
+        Total_P5_EOM: Math.round(finalTotalP5),
         Total_P10_EOM: finalTotalP10 !== null ? Math.round(finalTotalP10) : null,
-        Total_P50_EOM: Math.round(finalTotalP50),
+        Total_P25_EOM: finalTotalP25 !== null ? Math.round(finalTotalP25) : null,
+        Total_P50_EOM: finalTotalP50 !== null ? Math.round(finalTotalP50) : null,
+        Total_P75_EOM: finalTotalP75 !== null ? Math.round(finalTotalP75) : null,
+        Total_P90_EOM: finalTotalP90 !== null ? Math.round(finalTotalP90) : null,
         Total_P95_EOM: finalTotalP95 !== null ? Math.round(finalTotalP95) : null,
 
-        InjectionFlag: hasInjection,
-        InjectionAmount: hasInjection ? Math.round(injectionAmount) : 0,
-        // Debug columns
-        Year: year,
-        IsYearEndSampled: isYearEnd,
-        IdentityDiff_0Pct: Math.round(identityDiff)
-      });
+        // Metadata for Tooltips
+        InjectionEvent: injection ? {
+          amount: Math.round(injection.amount),
+          name: injection.name,
+          isExit: injection.isExit,
+          realizedInP5: Realized_P5
+        } : null,
 
-      // [EXPORT INVESTED CHECK] Log injection month and final month
-      const isInjection = (m > 0 && Math.round(InvestContributionFlow) !== 0);
-      const isFinal = (m === horizonMonths);
-      if (hasMC && (isInjection || isFinal)) {
-        console.log('[EXPORT INVESTED CHECK]', {
-          m,
-          date: dateStr,
-          baseVal: Math.round(B),
-          principal: Math.round(P),
-          investedP0: Math.round(InvestedValue_P0),
-          investedP5: Math.round(InvestedValue_P5),
-          totalP50: Math.round(BaselineTotal),
-          totalDetReference: Math.round(D)
-        });
-      }
+        // Debug/Meta
+        Year: year,
+        IsYearEnd: (lastDayOfMonth.getUTCMonth() === 11),
+      });
     }
 
     console.log('[DATA EXPORT MODE]', {
