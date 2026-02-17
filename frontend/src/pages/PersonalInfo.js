@@ -220,7 +220,7 @@ const PersonalInfo = () => {
               <img
                 src={gender === 'female' ? '/gender_F.png' : '/gender_M.png'}
                 alt="Retirement path illustration"
-                className="w-full h-auto rounded-lg shadow-xl border border-border/50"
+                className="w-[70%] h-auto rounded-lg shadow-xl border border-border/50"
               />
             </div>
           )}
