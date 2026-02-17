@@ -216,7 +216,7 @@ const Costs = () => {
 
   return (
     <div className="flex-grow py-6" data-testid="costs-page">
-      <div className="w-[80%] mx-auto mb-6 px-4">
+      <div className="w-[70%] mx-auto mb-6 px-4">
       </div>
 
       <PageHeader
@@ -248,14 +248,14 @@ const Costs = () => {
         }
       />
 
-      <div className="w-[80%] mx-auto px-4">
+      <div className="w-[70%] mx-auto px-4">
 
         <form onSubmit={handleSubmit}>
           {/* Help Button */}
 
 
           <div className="bg-card border rounded-lg p-6 mb-6 overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[720px]">
               <thead className="bg-muted/50">
                 <tr className="border-b">
                   <th className="text-left p-2 font-semibold">{t('costs.name')}</th>
@@ -289,7 +289,7 @@ const Costs = () => {
                     </td>
                     <td className="p-2">
                       {row.name === 'Rent/Mortgage' ? (
-                        <div className="flex gap-1 h-10 w-full min-w-[200px]">
+                        <div className="flex gap-1 h-10 w-full min-w-[140px]">
                           <Button
                             type="button"
                             onClick={async () => {
@@ -320,7 +320,7 @@ const Costs = () => {
                               }
                             }}
                             placeholder="0"
-                            className="flex-1 min-w-[80px] text-right h-full"
+                            className="flex-1 min-w-[50px] text-right h-full px-2"
                           />
                         </div>
                       ) : (
@@ -335,7 +335,7 @@ const Costs = () => {
                             }
                           }}
                           placeholder="0"
-                          className="min-w-[100px] text-right"
+                          className="min-w-[70px] text-right"
                         />
                       )}
                     </td>

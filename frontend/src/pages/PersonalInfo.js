@@ -19,6 +19,7 @@ const PersonalInfo = () => {
   const { t } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [analysisType, setAnalysisType] = useState('individual'); // 'individual' or 'couple'
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [residence] = useState('Switzerland'); // Default to Switzerland, field removed from UI
@@ -53,6 +54,7 @@ const PersonalInfo = () => {
           if (data) {
             setBirthDate(data.birthDate || '');
             setGender(data.gender || '');
+            setFirstName(data.firstName || '');
             setAnalysisType(data.analysisType || 'individual');
             // residence is now hardcoded to Switzerland
           }
@@ -96,6 +98,7 @@ const PersonalInfo = () => {
       const userData = {
         birthDate,
         gender,
+        firstName,
         analysisType,
         residence
       };
@@ -134,7 +137,7 @@ const PersonalInfo = () => {
       />
 
       <div className="max-w-6xl mx-auto px-4">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-[800px] mx-auto">
 
           <form id="personal-info-form" onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
             {/* Analysis Type Selection */}
@@ -168,45 +171,67 @@ const PersonalInfo = () => {
               </RadioGroup>
             </div>
 
-            <div>
-              <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
-              <div className="relative">
-                <HelpCircle className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
+                <div className="relative">
+                  <HelpCircle className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    data-testid="birth-date-input"
+                    id="birthDate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    required
+                    className="pl-10 w-full"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
+                <Select value={gender} onValueChange={setGender} required>
+                  <SelectTrigger data-testid="gender-select">
+                    <SelectValue placeholder={t('personalInfo.gender')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
+                    <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="firstName">{t('personalInfo.firstName')}</Label>
                 <Input
-                  data-testid="birth-date-input"
-                  id="birthDate"
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  required
-                  className="pl-10"
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder={t('personalInfo.firstNamePlaceholder')}
+                  className="w-full"
                 />
               </div>
             </div>
-
-            <div>
-              <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
-              <Select value={gender} onValueChange={setGender} required>
-                <SelectTrigger data-testid="gender-select">
-                  <SelectValue placeholder={t('personalInfo.gender')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
-                  <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-
           </form>
 
-          <div className="flex justify-center mt-6">
+          {/* Gender-based Illustration */}
+          {gender && (
+            <div className="mt-8 flex justify-center animate-in fade-in zoom-in duration-500">
+              <img
+                src={gender === 'female' ? '/gender_F.png' : '/gender_M.png'}
+                alt="Retirement path illustration"
+                className="w-full h-auto rounded-lg shadow-xl border border-border/50"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-center mt-8">
             <Button
               data-testid="next-btn"
               type="submit"
               form="personal-info-form"
               size="lg"
-              className="px-12 text-lg"
+              className="px-12 text-lg shadow-lg hover:shadow-xl transition-all"
               disabled={loading}
             >
               {loading ? t('personalInfo.saving') : t('personalInfo.continue')}

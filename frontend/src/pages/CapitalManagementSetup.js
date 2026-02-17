@@ -882,9 +882,9 @@ const CapitalManagementSetup = () => {
                         <Button
                             onClick={handleContinue}
                             disabled={isSaving}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-6 text-xl rounded-full shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-6 text-xl shadow-lg transition-all hover:scale-105 hover:shadow-xl"
                         >
-                            {isSaving ? (language === 'fr' ? 'Sauvegarde...' : 'Saving...') : (language === 'fr' ? 'Continuer vers le verdict' : 'Continue to Verdict')}
+                            {isSaving ? (language === 'fr' ? 'Sauvegarde...' : 'Saving...') : (language === 'fr' ? 'Lancer la simulation' : 'Run simulation')}
                         </Button>
                     </div>
                 </div>

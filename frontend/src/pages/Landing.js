@@ -221,14 +221,6 @@ const Landing = () => {
               {showRegister ? t('auth.createAccount') : t('auth.login')}
             </h2>
 
-            {showRegister && (
-              <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-md">
-                <p className="text-sm text-yellow-200 font-semibold mb-2">⚠️ {t('landing.securityWarning').split(':')[0]}:</p>
-                <p className="text-sm text-yellow-100">
-                  {t('landing.securityWarning').split(':').slice(1).join(':')}
-                </p>
-              </div>
-            )}
 
             {registerSuccess ? (
               <div className="text-center">

@@ -9,7 +9,6 @@ export const translations = {
       learnMore: "Learn more about the solution before creating your account",
       createAccount: "Create Account",
       login: "Login",
-      securityWarning: "Important: Your password is the only key to your data. We cannot recover it if lost.",
       features: {
         title: "What we analyze",
         income: "Income Sources",
@@ -116,7 +115,9 @@ export const translations = {
       continue: "Continue",
       saving: "Saving...",
       saveSuccess: "Personal information saved",
-      saveFailed: "Failed to save personal information"
+      saveFailed: "Failed to save personal information",
+      firstName: "First Name",
+      firstNamePlaceholder: "optional input"
     },
 
     // Retirement Overview Page
@@ -515,10 +516,9 @@ export const translations = {
       title: "quit?",
       subtitle: "Une retraite anticipée? C'est possible?",
       description: "Un outil complet de planification de retraite qui analyse vos revenus, dépenses et épargne pour déterminer si vous pouvez quitter votre emploi et prendre une retraite anticipée.",
-      learnMore: "En savoir plus sur la solution avant de créer un compte",
+      learnMore: "En savoir plus avant de créer un compte",
       createAccount: "Créer un compte",
       login: "Connexion",
-      securityWarning: "Important : Votre mot de passe est la seule clé de vos données. Nous ne pouvons pas le récupérer en cas de perte.",
       features: {
         title: "Ce que nous analysons",
         income: "Sources de revenus",
@@ -625,7 +625,9 @@ export const translations = {
       continue: "Continuer",
       saving: "Enregistrement...",
       saveSuccess: "Informations personnelles enregistrées",
-      saveFailed: "Échec de l'enregistrement des informations personnelles"
+      saveFailed: "Échec de l'enregistrement des informations personnelles",
+      firstName: "Prénom",
+      firstNamePlaceholder: "saisie optionnelle"
     },
 
     // Retirement Overview Page

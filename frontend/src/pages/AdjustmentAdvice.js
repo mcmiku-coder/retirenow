@@ -105,7 +105,7 @@ const AdjustmentAdvice = () => {
                 setCosts(currentCosts);
 
                 // Initialize Adjustment Rows
-                const targetCostKeys = ['Vacation', 'Private transportation', 'Taxes'];
+                const targetCostKeys = ['Vacation', 'Private transportation', 'Taxes', 'Rent/Mortgage'];
                 const usedIds = new Set();
 
                 // Pre-identify all costs that match our target keys to prevent duplicates in "Other"
@@ -314,6 +314,11 @@ const AdjustmentAdvice = () => {
             return language === 'fr'
                 ? 'Vos impôts diminuent souvent après la retraite en raison de la baisse des revenus, ajustez le montant à partir de l\'âge de la retraite'
                 : 'Your taxes often decrease after retirement due to lower income, set a new amount starting from retirement age';
+        }
+        if (originalName === 'Rent/Mortgage') {
+            return language === 'fr'
+                ? 'Vos frais de logement diminueront probablement dans les dernières années de votre vie. Dans ce cas, pourquoi ne pas réduire un peu cette dépense à un âge cible choisi,'
+                : 'Your lodging cost will probably decrease in the later years of your life. In such case why not lower this expense a bit at a chosen target age,';
         }
         return '';
     };

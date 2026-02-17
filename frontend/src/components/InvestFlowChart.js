@@ -49,36 +49,40 @@ const InvestFlowChart = ({ data, language, selectedScenario, maxPosLayers = 0, m
 
         return (
             <g transform={`translate(${x},${y - 10 - groupShift})`}>
-                {/* 1. Positive Flow (Top) */}
+                {/* 1. Positive Flow (Top) - Left Aligned */}
                 {totalPos > 0 && (
                     <text
-                        x={0} y={0} textAnchor="middle"
+                        x={-30} y={0} textAnchor="start"
                         fill={colors.barPositive} fontSize={fontSize + 1} fontWeight="bold"
                     >
                         +{formatShortCurrency(totalPos)}
                     </text>
                 )}
 
-                {/* 2. Principal (Middle-Top) */}
-                <text
-                    x={0} y={totalPos > 0 ? lineSpacing : 0} textAnchor="middle"
-                    fill={colors.barInfo} fontSize={fontSize}
-                >
-                    {formatShortCurrency(d.investedPrincipal)}
-                </text>
+                {/* 2. Principal (Middle-Top) - Centered */}
+                {d.investedPrincipal !== 0 && (
+                    <text
+                        x={0} y={totalPos > 0 ? lineSpacing : 0} textAnchor="middle"
+                        fill={colors.barInfo} fontSize={fontSize}
+                    >
+                        {formatShortCurrency(d.investedPrincipal)}
+                    </text>
+                )}
 
-                {/* 3. Valuation (Middle-Bottom) */}
-                <text
-                    x={0} y={(totalPos > 0 ? 2 : 1) * lineSpacing} textAnchor="middle"
-                    fill={valueColor} fontSize={fontSize + 1} fontWeight="bold"
-                >
-                    {formatShortCurrency(d.portfolioValue)}
-                </text>
+                {/* 3. Valuation (Middle-Bottom) - Right Aligned */}
+                {d.portfolioValue !== 0 && (
+                    <text
+                        x={30} y={(totalPos > 0 ? 2 : 1) * lineSpacing} textAnchor="end"
+                        fill={valueColor} fontSize={fontSize + 1} fontWeight="bold"
+                    >
+                        {formatShortCurrency(d.portfolioValue)}
+                    </text>
+                )}
 
-                {/* 4. Negative Flow (Bottom) */}
+                {/* 4. Negative Flow (Bottom) - Left Aligned */}
                 {totalNeg < 0 && (
                     <text
-                        x={0} y={(stackCount - 1) * lineSpacing} textAnchor="middle"
+                        x={-30} y={(stackCount - 1) * lineSpacing} textAnchor="start"
                         fill={colors.barNegative} fontSize={fontSize + 1} fontWeight="bold"
                     >
                         {formatShortCurrency(totalNeg)}
@@ -250,6 +254,7 @@ const InvestFlowChart = ({ data, language, selectedScenario, maxPosLayers = 0, m
                         data={data}
                         dataKey="maxYearlyValue"
                         shape={CustomStackedLabel}
+                        legendType="none"
                     />
 
                 </ComposedChart>

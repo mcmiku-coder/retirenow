@@ -298,7 +298,7 @@ const AssetsOverview = () => {
 
     return (
         <div className="min-h-screen py-6">
-            <div className="w-[80%] mx-auto mb-6 px-4">
+            <div className="w-[68%] mx-auto mb-6 px-4">
             </div>
 
             <PageHeader
@@ -308,7 +308,7 @@ const AssetsOverview = () => {
                     : 'Define your current assets, expected inflows, and projected outflows'}
             />
 
-            <div className="w-[80%] mx-auto px-4">
+            <div className="w-[68%] mx-auto px-4">
                 <div className="w-full mx-auto">
 
                     <form onSubmit={handleSubmit} className="space-y-8">
