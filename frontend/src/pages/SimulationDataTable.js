@@ -142,6 +142,7 @@ const SimulationDataTable = () => {
             label: language === 'fr' ? 'Compte Courant' : 'Cash (Non-Inv)',
             width: 140,
             format: 'currency',
+            colorConditional: true,
             tooltip: language === 'fr' ? "Total des liquidités disponibles non exposées au marché (Comptes, épargne, cash)." : "Total available liquidity not exposed to market fluctuations (Accounts, savings, cash).",
             source: language === 'fr' ? "Pages Actifs (Catégorie Liquide, non investi)." : "Asset pages (Liquid category, non-invested)."
         },
