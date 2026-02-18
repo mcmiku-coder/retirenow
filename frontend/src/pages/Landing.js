@@ -89,7 +89,7 @@ const Landing = () => {
           onClick={() => setShowVideo(false)}
         >
           <div
-            className="relative w-full max-w-5xl aspect-video bg-black shadow-2xl overflow-hidden border border-zinc-800"
+            className="relative w-full max-w-7xl bg-black shadow-2xl overflow-hidden border border-zinc-800 rounded-lg"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -100,7 +100,7 @@ const Landing = () => {
             </button>
             <video
               src={language === 'fr' ? '/videos/promo_fr.mp4' : '/videos/promo_en.mp4'}
-              className="w-full h-full"
+              className="w-full h-auto block"
               controls
               autoPlay
               onEnded={() => {
