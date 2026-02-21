@@ -10,13 +10,13 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { saveUserData, getUserData } from '../utils/database';
-import { Trash2, Plus, HelpCircle } from 'lucide-react';
+import { Trash2, Plus, HelpCircle, User, Calendar, Users } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
   const { user, masterKey } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -137,45 +137,66 @@ const PersonalInfo = () => {
       />
 
       <div className="max-w-6xl mx-auto px-4">
-        <div className="max-w-[800px] mx-auto">
+        <div className="max-w-[900px] mx-auto">
 
-          <form id="personal-info-form" onSubmit={handleSubmit} className="bg-card border rounded-lg p-8 space-y-6">
-            {/* Analysis Type Selection */}
-            <div>
-              <Label className="text-base font-semibold mb-3 block">{t('personalInfo.analysisType')}</Label>
-              <RadioGroup
-                value={analysisType}
-                onValueChange={(value) => {
-                  if (value === 'couple') {
-                    setShowComingSoonModal(true);
-                    // Keep it on individual
-                    setAnalysisType('individual');
-                  } else {
-                    setAnalysisType(value);
-                  }
-                }}
-                className="flex gap-4"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="individual" id="individual" />
-                  <Label htmlFor="individual" className="text-sm cursor-pointer">
-                    {t('personalInfo.individualSituation')}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="couple" id="couple" />
-                  <Label htmlFor="couple" className="text-sm cursor-pointer">
-                    {t('personalInfo.coupleSituation')}
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+          {/* Analysis Type Selection — outside the box */}
+          <div className="mb-4 flex items-center gap-4">
+            <span className="text-sm font-semibold text-foreground">{t('personalInfo.analysisType')}</span>
+            <RadioGroup
+              value={analysisType}
+              onValueChange={(value) => {
+                if (value === 'couple') {
+                  setShowComingSoonModal(true);
+                  setAnalysisType('individual');
+                } else {
+                  setAnalysisType(value);
+                }
+              }}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="individual" id="individual" />
+                <Label htmlFor="individual" className="text-sm cursor-pointer">
+                  {t('personalInfo.individualSituation')}
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="couple" id="couple" />
+                <Label htmlFor="couple" className="text-sm cursor-pointer">
+                  {t('personalInfo.coupleSituation')}
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div>
-                <Label htmlFor="birthDate">{t('personalInfo.birthDate')}</Label>
-                <div className="relative">
-                  <HelpCircle className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <form id="personal-info-form" onSubmit={handleSubmit}>
+            <div className="bg-card border rounded-xl overflow-hidden flex items-stretch">
+
+              {/* Fields — left */}
+              <div className="flex-1 flex items-center divide-x divide-border">
+
+                {/* First Name */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <User className="h-3.5 w-3.5 shrink-0" />
+                    <Label htmlFor="firstName" className="cursor-pointer">{t('personalInfo.firstName')}</Label>
+                  </div>
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder={t('personalInfo.firstNamePlaceholder')}
+                    className="border-0 bg-transparent p-0 h-8 text-base font-bold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">{language === 'fr' ? 'Utilisé dans toutes les simulations' : 'Used across all simulations'}</p>
+                </div>
+
+                {/* Date of Birth */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    <Label htmlFor="birthDate" className="cursor-pointer">{t('personalInfo.birthDate')}</Label>
+                  </div>
                   <Input
                     data-testid="birth-date-input"
                     id="birthDate"
@@ -183,47 +204,56 @@ const PersonalInfo = () => {
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
                     required
-                    className="pl-10 w-full"
+                    className="border-0 bg-transparent p-0 h-8 text-base font-bold focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">{language === 'fr' ? 'Calcul de votre date de retraite' : 'Used to calculate retirement date'}</p>
                 </div>
+
+                {/* Gender */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Users className="h-3.5 w-3.5 shrink-0" />
+                    <Label htmlFor="gender" className="cursor-pointer">{t('personalInfo.gender')}</Label>
+                  </div>
+                  <Select value={gender} onValueChange={setGender} required>
+                    <SelectTrigger data-testid="gender-select" className="border-0 bg-transparent p-0 h-8 text-base font-bold focus:ring-0 shadow-none">
+                      <SelectValue placeholder={t('personalInfo.gender')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
+                      <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">{language === 'fr' ? 'Pour les statistiques longévité' : 'For life expectancy statistics'}</p>
+                </div>
+
               </div>
 
-              <div>
-                <Label htmlFor="gender">{t('personalInfo.gender')}</Label>
-                <Select value={gender} onValueChange={setGender} required>
-                  <SelectTrigger data-testid="gender-select">
-                    <SelectValue placeholder={t('personalInfo.gender')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male" data-testid="gender-male">{t('personalInfo.male')}</SelectItem>
-                    <SelectItem value="female" data-testid="gender-female">{t('personalInfo.female')}</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Avatar panel — right */}
+              <div className="w-[100px] shrink-0 bg-muted/30 flex items-center justify-center border-l border-border">
+                {gender && birthDate ? (() => {
+                  const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
+                  const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
+                  const gCode = gender === 'female' ? 'F' : 'M';
+                  const color = 'blue';
+                  return (
+                    <div className="w-[100px] h-[100px] overflow-hidden">
+                      <img
+                        key={`${gCode}_${bracket}_${color}`}
+                        src={`/avatar_${gCode}_${bracket}_${color}.png`}
+                        alt="avatar"
+                        className="w-[calc(100%+20px)] h-[calc(100%+20px)] -ml-[10px] -mt-[10px] object-cover animate-in fade-in zoom-in duration-300"
+                      />
+                    </div>
+                  );
+                })() : (
+                  <div className="w-12 h-12 rounded-full bg-muted border-2 border-dashed border-border/60 opacity-40" />
+                )}
               </div>
 
-              <div>
-                <Label htmlFor="firstName">{t('personalInfo.firstName')}</Label>
-                <Input
-                  id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder={t('personalInfo.firstNamePlaceholder')}
-                  className="w-full"
-                />
-              </div>
             </div>
           </form>
 
-          {/* Gender-based Illustration */}
-          {gender && (
-            <div className="mt-8 flex justify-center animate-in fade-in zoom-in duration-500">
-              <img
-                src={gender === 'female' ? '/gender_F.png' : '/gender_M.png'}
-                alt="Retirement path illustration"
-                className="w-[70%] h-auto rounded-lg shadow-xl border border-border/50"
-              />
-            </div>
-          )}
 
           <div className="flex justify-center mt-8">
             <Button
