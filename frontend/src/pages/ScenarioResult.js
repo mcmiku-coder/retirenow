@@ -56,7 +56,6 @@ import {
 } from '../utils/pdfPageGenerators4';
 
 import {
-  generateMonteCarloOverview,
   generateConservativeOutcomes
 } from '../utils/pdfMonteCarloGenerators';
 
@@ -1869,18 +1868,7 @@ const ScenarioResult = () => {
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
       currentPage++;
 
-      // ===== PAGE 3A/3B: MONTE CARLO DETAILS (New) =====
-      const hasMC = !!monteCarloProjections?.details?.percentiles?.p5 && !!monteCarloProjections?.details?.percentiles?.p10;
-      if (isInvested && hasMC) {
-        // Page A: Overview
-        // We pass updated totalPages estimate? No, keep consistent defaults.
-        generateMonteCarloOverview(pdf, monteCarloProjections.details, language, currentPage, summaryData.totalPages);
-        currentPage++;
 
-        // Page B: Conservative Outcomes - REMOVED per user request
-        // generateConservativeOutcomes(pdf, monteCarloProjections.details, projection, chartData, language, currentPage, summaryData.totalPages);
-        // currentPage++;
-      }
 
       // ===== PAGE 4: PERSONAL INFO =====
       pageNumbers.personal = currentPage;

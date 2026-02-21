@@ -165,7 +165,7 @@ const ExpenseWizard = () => {
                     <span className="bg-[#EF5343]/15 text-[#EF5343] w-9 h-9 rounded-full flex items-center justify-center text-base font-bold shrink-0">
                         {id}
                     </span>
-                    <h3 className="text-sm font-medium text-white truncate font-sans" title={label}>{label}</h3>
+                    <h3 className="text-base font-medium text-white truncate font-sans" title={label}>{label}</h3>
                 </div>
 
                 <RadioGroup
@@ -218,7 +218,7 @@ const ExpenseWizard = () => {
             <div className="max-w-[95%] xl:max-w-7xl mx-auto px-4 w-full">
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 flex gap-5 text-emerald-400 mb-8 mt-2 shadow-sm">
                     <Info className="h-6 w-6 shrink-0" />
-                    <p className="text-lg font-medium leading-relaxed">
+                    <p className="text-base font-medium leading-relaxed">
                         {t('costs.helpModal.intro')}
                     </p>
                 </div>

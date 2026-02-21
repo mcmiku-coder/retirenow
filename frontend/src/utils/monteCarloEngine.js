@@ -101,14 +101,36 @@ export class MonteCarloEngine {
         const assetStats = assets.map((a, i) => {
             const series = alignedSeries[i];
 
-            // Max Drawdown calculation from history
+            // Max Drawdown calculation from history (with period tracking)
             let maxDD = 0;
             let peak = series[0].value;
+            let peakDate = series[0].date;
+            let maxDDPeakDate = series[0].date;
+            let maxDDTroughDate = series[0].date;
+
+            const fmtMonthYear = (dateStr) => {
+                // dateStr is "YYYY-MM-DD"
+                if (!dateStr || dateStr === 'N/A') return dateStr;
+                const parts = dateStr.split('-');
+                if (parts.length >= 2) return `${parts[1]}.${parts[0]}`;
+                return dateStr;
+            };
+
             for (const pt of series) {
-                if (pt.value > peak) peak = pt.value;
-                const dd = (pt.value - peak) / peak;
-                if (dd < maxDD) maxDD = dd;
+                if (pt.value > peak) {
+                    peak = pt.value;
+                    peakDate = pt.date;
+                } else {
+                    const dd = (pt.value - peak) / peak;
+                    if (dd < maxDD) {
+                        maxDD = dd;
+                        maxDDPeakDate = peakDate;
+                        maxDDTroughDate = pt.date;
+                    }
+                }
             }
+
+            const maxDrawdownPeriod = `${fmtMonthYear(maxDDPeakDate)} → ${fmtMonthYear(maxDDTroughDate)}`;
 
             return {
                 id: a.id,
@@ -119,6 +141,7 @@ export class MonteCarloEngine {
                 meanReturnAnnual: (Number.isFinite(means[i]) ? means[i] : 0) * 12 * 100, // Converted to %
                 volatilityAnnual: (Number.isFinite(stdevs[i]) ? stdevs[i] : 0) * Math.sqrt(12) * 100, // Converted to %
                 maxDrawdown: (Number.isFinite(maxDD) ? maxDD : 0) * 100, // Converted to %
+                maxDrawdownPeriod,
                 historyCount: series.length,
                 startDate: series[0]?.date || 'N/A',
                 endDate: series[series.length - 1]?.date || 'N/A'
