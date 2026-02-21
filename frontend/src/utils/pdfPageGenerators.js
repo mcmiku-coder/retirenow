@@ -125,10 +125,9 @@ export const generateTableOfContents = (pdf, pageNumbers, language) => {
     // Define TOC entries
     const tocEntries = [
         { key: 'summary', labelEn: 'Simulation Summary', labelFr: 'Résumé de la Simulation' },
-        { key: 'personal', labelEn: 'Personal Information', labelFr: 'Informations Personnelles' },
+        { key: 'personal', labelEn: 'Personal Info & Simulation Choice', labelFr: 'Informations personnelles et choix de la simulation' },
         { key: 'incomeAssets', labelEn: 'Income & Assets', labelFr: 'Revenus et Actifs' },
         { key: 'costDebts', labelEn: 'Costs & Debts', labelFr: 'Dépenses et Dettes' },
-        { key: 'simChoice', labelEn: 'Simulation Choice', labelFr: 'Choix de Simulation' },
         { key: 'benefits', labelEn: 'Retirement Benefits', labelFr: 'Prestations de Retraite' },
         { key: 'dataReview', labelEn: 'Data Review', labelFr: 'Révision des Données' },
         { key: 'graph', labelEn: 'Results Graph (Landscape)', labelFr: 'Graphique des Résultats (Paysage)' },

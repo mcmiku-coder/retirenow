@@ -1877,14 +1877,48 @@ const ScenarioResult = () => {
         generateMonteCarloOverview(pdf, monteCarloProjections.details, language, currentPage, summaryData.totalPages);
         currentPage++;
 
-        // Page B: Conservative Outcomes
-        generateConservativeOutcomes(pdf, monteCarloProjections.details, projection, chartData, language, currentPage, summaryData.totalPages);
-        currentPage++;
+        // Page B: Conservative Outcomes - REMOVED per user request
+        // generateConservativeOutcomes(pdf, monteCarloProjections.details, projection, chartData, language, currentPage, summaryData.totalPages);
+        // currentPage++;
       }
 
       // ===== PAGE 4: PERSONAL INFO =====
       pageNumbers.personal = currentPage;
-      generatePersonalInfo(pdf, userData, scenarioData, language, currentPage, summaryData.totalPages);
+      // ===== PAGE 4: PERSONAL INFO =====
+      pageNumbers.personal = currentPage;
+
+      // [Phase 9c] Calculate missing PDF fields on the fly
+      const birthDateObj = new Date(userData.birthDate);
+      const currentAge = new Date().getFullYear() - birthDateObj.getFullYear();
+      const legalRetireDate = getLegalRetirementDate(userData.birthDate, userData.gender);
+
+      // Corrected Life Expectancy Calculation
+      let calcLifeExpectancy = userData.gender === 'female' ? '85' : '81';
+      if (userData.theoreticalDeathDate) {
+        const dParts = userData.theoreticalDeathDate.includes('.') ? userData.theoreticalDeathDate.split('.') : null;
+        const deathDateObj = dParts
+          ? new Date(dParts[2], dParts[1] - 1, dParts[0])
+          : new Date(userData.theoreticalDeathDate);
+
+        if (!isNaN(deathDateObj.getTime())) {
+          // Calculate based on year diff
+          calcLifeExpectancy = (deathDateObj.getFullYear() - birthDateObj.getFullYear()).toString();
+        }
+      }
+
+      const enrichedUserData = {
+        ...userData,
+        currentAge: currentAge
+      };
+
+      const enrichedScenarioData = {
+        ...scenarioData,
+        legalRetirementDate: legalRetireDate,
+        legalRetirementAge: userData.gender === 'female' ? '64' : '65', // Standard Swiss Legal Ages
+        lifeExpectancy: calcLifeExpectancy
+      };
+
+      generatePersonalInfo(pdf, enrichedUserData, enrichedScenarioData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
       // ===== PAGE 5: INCOME & ASSETS =====
@@ -1897,10 +1931,8 @@ const ScenarioResult = () => {
       generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages);
       currentPage++;
 
-      // ===== PAGE 7: SIMULATION CHOICE =====
-      pageNumbers.simChoice = currentPage;
-      generateSimulationChoice(pdf, scenarioData, userData, language, currentPage, summaryData.totalPages);
-      currentPage++;
+      // ===== PAGE 7: SIMULATION CHOICE (merged into Personal Info, see page 4) =====
+      // generateSimulationChoice is no longer called as a separate page
 
       // ===== PAGE 8: RETIREMENT BENEFITS =====
       pageNumbers.benefits = currentPage;

@@ -15,14 +15,14 @@ import {
 } from './pdfHelpers';
 
 /**
- * Page 4: Personal Information and Life Expectancy
+ * Page 4: Personal Information and Simulation Choice (merged)
  */
 export const generatePersonalInfo = (pdf, userData, scenarioData, language, pageNum, totalPages) => {
     pdf.addPage();
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Informations Personnelles' : 'Personal Information',
+        language === 'fr' ? 'Informations personnelles et choix de la simulation' : 'Personal Information & Simulation Choice',
         null,
         20
     );
@@ -72,8 +72,81 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         margin: { left: 15, right: 15 }
     });
 
+    yPos = pdf.lastAutoTable.finalY + 15;
+
+    // ===== SIMULATION CHOICE SECTION (merged) =====
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(language === 'fr' ? 'Choix de Simulation' : 'Simulation Choice', 15, yPos);
+    yPos += 8;
+
+    // Retirement option text
+    const option = scenarioData?.retirementOption || 'option1';
+    const rawRetireDate = scenarioData?.wishedRetirementDate || userData?.theoreticalDeathDate;
+    const retireDate = rawRetireDate ? new Date(rawRetireDate) : null;
+    const birthDateForSim = userData?.birthDate ? new Date(userData.birthDate) : null;
+    const retireAge = (retireDate && birthDateForSim) ? retireDate.getFullYear() - birthDateForSim.getFullYear() : '?';
+
+    let optionText = '';
+    if (option === 'option0') {
+        optionText = language === 'fr' ? `Retraite à l'âge légal (65 ans)` : `Legal Retirement Age (65 years)`;
+    } else if (option === 'option1') {
+        optionText = language === 'fr'
+            ? `Retraite anticipée avec pension LPP à ${retireAge} ans`
+            : `Early Retirement with LPP Pension at age ${retireAge}`;
+    } else if (option === 'option2') {
+        optionText = language === 'fr'
+            ? `Retraite anticipée avec capital LPP à ${retireAge} ans`
+            : `Early Retirement with LPP Capital at age ${retireAge}`;
+    }
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(optionText, 20, yPos);
+    yPos += 10;
+
+    // Retirement details table
+    const detailsData = [
+        [
+            language === 'fr' ? 'Âge de Retraite Souhaité' : 'Desired Retirement Age',
+            `${retireAge} ${language === 'fr' ? 'ans' : 'years'}`
+        ],
+        [
+            language === 'fr' ? 'Date de Retraite Souhaitée' : 'Desired Retirement Date',
+            formatDate(scenarioData?.wishedRetirementDate)
+        ]
+    ];
+
+    if (scenarioData?.pensionCapital && option !== 'option0') {
+        detailsData.push([
+            language === 'fr' ? 'Capital de Pension Actuel' : 'Current Pension Capital',
+            formatCurrency(scenarioData.pensionCapital)
+        ]);
+    }
+
+    if (scenarioData?.projectedLPPPension && option === 'option1') {
+        detailsData.push([
+            language === 'fr' ? 'Pension LPP Projetée (Annuelle)' : 'Projected LPP Pension (Annual)',
+            formatCurrency(scenarioData.projectedLPPPension)
+        ]);
+    }
+
+    autoTable(pdf, {
+        startY: yPos,
+        body: detailsData,
+        theme: 'plain',
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 80 },
+            1: { halign: 'left' }
+        },
+        margin: { left: 20 }
+    });
+
     addPageNumber(pdf, pageNum, totalPages, language);
 };
+
 
 /**
  * Page 5: Income and Assets
