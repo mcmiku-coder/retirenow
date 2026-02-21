@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { getScenarioData, saveScenarioData, getUserData } from '../utils/database';
-import { investmentProducts, getAssetClassStyle } from '../data/investmentProducts';
+import { investmentProducts, getAssetClassStyle, getProductById } from '../data/investmentProducts';
 import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
 import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
-import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw, ChevronLeft, ChevronRight, Scissors, Trash2 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts';
+import { Split, TrendingUp, TrendingDown, Home, Landmark, Banknote, Coins, RefreshCw, ChevronLeft, ChevronRight, Scissors, Trash2, Eye, Loader2, X } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea, Legend, CartesianGrid } from 'recharts';
+import { MonteCarloEngine } from '../utils/monteCarloEngine';
+import { alignTimeSeries } from '../utils/monteCarloUtils';
+import { calculateMetrics } from '../shared/instruments/catalogHelpers';
 
 
 const CapitalManagementSetup = () => {
@@ -32,6 +35,12 @@ const CapitalManagementSetup = () => {
 
     const [isSaving, setIsSaving] = useState(false);
     const scrollContainerRef = React.useRef(null);
+
+    // Preview state
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewResult, setPreviewResult] = useState(null);
+    const [previewError, setPreviewError] = useState(null);
 
     const scrollLeft = () => {
         if (scrollContainerRef.current) {
@@ -450,6 +459,246 @@ const CapitalManagementSetup = () => {
 
 
 
+    const handlePreview = async () => {
+        // Validate: every row must have a product selected
+        const missing = tableRows.filter(r => !r.selectedProduct);
+        if (missing.length > 0) {
+            setPreviewError(
+                language === 'fr'
+                    ? `Veuillez sélectionner un produit pour toutes les lignes avant la prévisualisation.`
+                    : `Please select a product for all rows before previewing.`
+            );
+            setPreviewVisible(true);
+            return;
+        }
+        setPreviewError(null);
+        setPreviewVisible(true);
+        setPreviewLoading(true);
+        setPreviewResult(null);
+
+        try {
+            const now = new Date();
+
+            // --- Compute horizon from row end dates (MAX, not min) ---
+            const endDates = tableRows
+                .map(r => r.endDate ? new Date(r.endDate) : null)
+                .filter(Boolean);
+            const maxEndDate = endDates.length > 0
+                ? new Date(Math.max(...endDates.map(d => d.getTime())))
+                : new Date(now.getFullYear() + 20, 0, 1);
+            const horizonMonths = Math.max(24, Math.min(600,
+                (maxEndDate.getFullYear() - now.getFullYear()) * 12 +
+                (maxEndDate.getMonth() - now.getMonth())
+            ));
+
+            // --- Build engine assets + scheduled cashflows based on startDate ---
+            const engineAssets = [];
+            const scheduledCashflows = [];
+            const seenProductIds = new Set();
+            // Track max exit month per product (to set exitMonthIndex)
+            const productExitMonths = new Map();
+
+            tableRows.forEach(row => {
+                const product = investmentProducts.find(p => p.id === row.selectedProduct);
+                const amount = parseFloat(row.amount) || 0;
+                const startDate = row.startDate ? new Date(row.startDate) : now;
+                const endDate = row.endDate ? new Date(row.endDate) : maxEndDate;
+
+                // Month offset from today when cash becomes available
+                const startMonthOffset = Math.max(0, Math.round(
+                    (startDate.getFullYear() - now.getFullYear()) * 12 +
+                    (startDate.getMonth() - now.getMonth())
+                ));
+
+                // Month offset when this row's investment exits
+                const exitMonthOffset = Math.round(
+                    (endDate.getFullYear() - now.getFullYear()) * 12 +
+                    (endDate.getMonth() - now.getMonth())
+                );
+
+                // Keep the LATEST exit for this product across all its rows
+                const prevExit = productExitMonths.get(product.id) ?? 0;
+                productExitMonths.set(product.id, Math.max(prevExit, exitMonthOffset));
+
+                if (!seenProductIds.has(product.id)) {
+                    seenProductIds.add(product.id);
+                    engineAssets.push({
+                        id: product.id,
+                        name: product.name,
+                        initialValue: startMonthOffset === 0 ? amount : 0,
+                        performanceData: product.performanceData,
+                        // exitMonthIndex will be set after all rows are processed
+                    });
+                } else {
+                    const existing = engineAssets.find(a => a.id === product.id);
+                    if (existing && startMonthOffset === 0) {
+                        existing.initialValue += amount;
+                    }
+                }
+
+                // Future-dated amounts → cashflow injection at the right month
+                if (startMonthOffset > 0 && startMonthOffset <= horizonMonths) {
+                    scheduledCashflows.push({
+                        assetId: product.id,
+                        monthIndex: startMonthOffset,
+                        amount: amount,
+                    });
+                }
+            });
+
+            // Apply exitMonthIndex to assets that end before the horizon
+            engineAssets.forEach(asset => {
+                const exitMonth = productExitMonths.get(asset.id);
+                if (exitMonth !== undefined && exitMonth < horizonMonths) {
+                    asset.exitMonthIndex = exitMonth;
+                }
+            });
+
+            // --- Run MC engine (10 000 iterations, same as final simulation) ---
+            const engine = new MonteCarloEngine(Date.now());
+            const mcResult = engine.run({
+                assets: engineAssets,
+                cashflows: scheduledCashflows,
+                horizonMonths,
+                iterations: 10000,
+                initialCash: 0,
+            });
+
+            // --- Historical overlay: normalize each product to 100 at index 0 ---
+            const uniqueProducts = [...new Map(tableRows.map(r => {
+                const p = investmentProducts.find(pr => pr.id === r.selectedProduct);
+                return [p.id, p];
+            })).values()];
+
+            const rawSeries = uniqueProducts.map(p => p.performanceData);
+            const aligned = alignTimeSeries(rawSeries);
+
+            const histData = aligned[0].map((pt, i) => {
+                const point = { date: pt.date };
+                uniqueProducts.forEach((p, pi) => {
+                    const base = aligned[pi][0].value;
+                    point[p.id] = base > 0 ? (aligned[pi][i].value / base) * 100 : 100;
+                });
+                return point;
+            });
+
+            // --- Per-product metrics ---
+            const metricsArr = uniqueProducts.map((p, pi) => {
+                const m = calculateMetrics(p.performanceData);
+                // Use aligned series to compute total return — matches the chart's date range
+                const alignedSerie = aligned[pi];
+                const alignedFirst = alignedSerie && alignedSerie.length > 0 ? alignedSerie[0].value : 0;
+                const alignedLast = alignedSerie && alignedSerie.length > 0 ? alignedSerie[alignedSerie.length - 1].value : 0;
+                const alignedTotalReturn = alignedFirst > 0 ? (alignedLast - alignedFirst) / alignedFirst : 0;
+                return {
+                    name: p.name,
+                    id: p.id,
+                    initial: tableRows
+                        .filter(r => r.selectedProduct === p.id)
+                        .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0),
+                    meanReturn: m ? m.meanReturn : 0,
+                    volatility: m ? m.volatility : 0,
+                    maxDrawdown: m ? m.maxDrawdown : 0,
+                    max3yLoss: m ? m.maxDrawdown : 0,  // proxy
+                    max3yGain: m ? m.bestYear : 0,
+                    startValue: m ? m.startValue : 0,
+                    endValue: m ? m.endValue : 0,
+                    totalReturn: alignedTotalReturn,  // aligned period = matches chart
+                };
+            });
+
+            // --- Helper to format date as mm.yyyy ---
+            const fmtMonYr = (dateStr) => {
+                if (!dateStr) return '—';
+                const d = new Date(dateStr);
+                return `${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+            };
+
+            // Total committed capital (all rows)
+            const totalInitial = tableRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+
+            // Capital effectively invested on day 0
+            const startingAmount = engineAssets.reduce((s, a) => s + a.initialValue, 0);
+
+            // Future injections with human-readable info
+            const injections = tableRows
+                .filter(r => {
+                    const sd = r.startDate ? new Date(r.startDate) : now;
+                    const offset = Math.max(0, Math.round(
+                        (sd.getFullYear() - now.getFullYear()) * 12 +
+                        (sd.getMonth() - now.getMonth())
+                    ));
+                    return offset > 0 && offset <= horizonMonths;
+                })
+                .map(r => {
+                    const product = investmentProducts.find(p => p.id === r.selectedProduct);
+                    return {
+                        ticker: product ? product.ticker : r.selectedProduct,
+                        amount: parseFloat(r.amount) || 0,
+                        date: fmtMonYr(r.startDate),
+                    };
+                });
+
+            // Per-row instrument summary for section 3
+            const rowDetails = tableRows.map(r => {
+                const product = investmentProducts.find(p => p.id === r.selectedProduct);
+                return {
+                    ticker: product ? product.ticker : r.selectedProduct,
+                    name: product ? product.name : r.selectedProduct,
+                    amount: parseFloat(r.amount) || 0,
+                    startDate: fmtMonYr(r.startDate || now.toISOString()),
+                    endDate: fmtMonYr(r.endDate),
+                };
+            });
+
+            // Exits: rows whose endDate is before maxEndDate (asset leaves portfolio early)
+            const exits = tableRows
+                .filter(r => {
+                    if (!r.endDate) return false;
+                    const ed = new Date(r.endDate);
+                    const offset = Math.round(
+                        (ed.getFullYear() - now.getFullYear()) * 12 +
+                        (ed.getMonth() - now.getMonth())
+                    );
+                    return offset > 0 && offset < horizonMonths;
+                })
+                .map(r => {
+                    const product = investmentProducts.find(p => p.id === r.selectedProduct);
+                    return {
+                        ticker: product ? product.ticker : r.selectedProduct,
+                        amount: parseFloat(r.amount) || 0,
+                        date: fmtMonYr(r.endDate),
+                    };
+                });
+
+            // --- MC summary stats ---
+            const p25Final = mcResult.percentiles.p25 ? mcResult.percentiles.p25[horizonMonths] : 0;
+            const p5Final = mcResult.percentiles.p5 ? mcResult.percentiles.p5[horizonMonths] : 0;
+            const p10Final = mcResult.percentiles.p10 ? mcResult.percentiles.p10[horizonMonths] : 0;
+
+            setPreviewResult({
+                mcResult,
+                horizonMonths,
+                histData,
+                uniqueProducts,
+                metricsArr,
+                totalInitial,
+                startingAmount,
+                injections,
+                exits,
+                rowDetails,
+                p25Final,
+                p5Final,
+                p10Final,
+            });
+        } catch (err) {
+            console.error('Preview error:', err);
+            setPreviewError(language === 'fr' ? 'Erreur lors de la prévisualisation.' : 'Preview error occurred.');
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
     const formatAmount = (amount) => {
         return `CHF ${parseFloat(amount || 0).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     };
@@ -854,16 +1103,238 @@ const CapitalManagementSetup = () => {
                             </div>
                         )}
 
-                        <div className="mt-8 flex">
+                        <div className="mt-8 flex justify-between items-center gap-4">
                             <Button
                                 variant="outline"
                                 onClick={handleReset}
-                                className="mr-auto text-muted-foreground hover:text-foreground border-dashed"
+                                className="text-muted-foreground hover:text-foreground border-dashed"
                             >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 {language === 'fr' ? 'Réinitialiser' : 'Reset defaults'}
                             </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handlePreview}
+                                disabled={previewLoading}
+                                className="flex items-center gap-2 border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                            >
+                                {previewLoading
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Eye className="h-4 w-4" />}
+                                {language === 'fr' ? 'Aperçu du rendement combiné' : 'Preview Combined Return'}
+                            </Button>
                         </div>
+
+                        {/* ===== PREVIEW SECTION ===== */}
+                        {previewVisible && (
+                            <div className="mt-6 border border-blue-500/20 rounded-xl bg-slate-950/50 p-5 relative">
+                                <button
+                                    className="absolute top-3 right-3 text-slate-500 hover:text-slate-300"
+                                    onClick={() => { setPreviewVisible(false); setPreviewResult(null); setPreviewError(null); }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+
+                                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-4">
+                                    {language === 'fr' ? 'Aperçu du rendement combiné' : 'Preview Combined Return'}
+                                </h3>
+
+                                {previewError && (
+                                    <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                                        {previewError}
+                                    </div>
+                                )}
+
+                                {previewLoading && (
+                                    <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
+                                        <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+                                        <span>{language === 'fr' ? 'Calcul en cours (10 000 itérations)...' : 'Computing (10,000 iterations)...'}</span>
+                                    </div>
+                                )}
+
+                                {previewResult && !previewLoading && (() => {
+                                    const { mcResult, horizonMonths, histData, uniqueProducts, metricsArr, totalInitial, startingAmount, injections, exits, rowDetails, p25Final, p5Final, p10Final } = previewResult;
+
+                                    // Build MC chart data from percentile arrays
+                                    const mcChartData = Array.from({ length: horizonMonths + 1 }, (_, i) => ({
+                                        month: i,
+                                        p5: mcResult.percentiles.p5 ? mcResult.percentiles.p5[i] : 0,
+                                        p10: mcResult.percentiles.p10 ? mcResult.percentiles.p10[i] : 0,
+                                        p25: mcResult.percentiles.p25 ? mcResult.percentiles.p25[i] : 0,
+                                    }));
+
+                                    const fmtChf = v => `CHF ${Math.round(v).toLocaleString('de-CH')}`;
+                                    const fmtPct = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+                                    const productColors = ['#60a5fa', '#34d399', '#f59e0b', '#a78bfa', '#f87171', '#38bdf8'];
+
+                                    // Metric row helper
+                                    const MetricRow = ({ label, value, color }) => (
+                                        <div className="flex justify-between items-center py-0.5">
+                                            <span className="text-[10px] text-white">{label}</span>
+                                            <span className={`text-[11px] font-semibold ${color || 'text-slate-300'}`}>{value}</span>
+                                        </div>
+                                    );
+
+                                    return (
+                                        <div className="space-y-6">
+                                            {/* Chart 1 — Monte Carlo */}
+                                            <div>
+                                                <p className="text-xs text-slate-400 font-medium mb-2">
+                                                    {language === 'fr' ? '📊 Simulation Monte Carlo' : '📊 Monte Carlo Simulation'}
+                                                    <span className="text-slate-600 ml-2 text-[10px]">({horizonMonths} {language === 'fr' ? 'mois' : 'months'})</span>
+                                                </p>
+                                                <div className="flex gap-3">
+                                                    <div className="flex-1 h-[500px]">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <LineChart data={mcChartData} margin={{ top: 4, right: 65, bottom: 0, left: 0 }}>
+                                                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                                                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={v => (new Date().getFullYear() + Math.floor(v / 12)).toString()} minTickGap={40} />
+                                                                <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={v => `${Math.round(v / 1000)}k`} width={40} />
+                                                                <Tooltip
+                                                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                                                                    formatter={(v, name) => [fmtChf(v), name.toUpperCase()]}
+                                                                    labelFormatter={v => `Mois ${v}`}
+                                                                />
+                                                                <Line type="monotone" dataKey="p5" stroke="#f87171" strokeWidth={1.5}
+                                                                    dot={(props) => {
+                                                                        if (props.index !== mcChartData.length - 1) return <g key={props.key} />;
+                                                                        return <g key={props.key}><circle cx={props.cx} cy={props.cy} r={3} fill="#f87171" /><text x={props.cx + 6} y={props.cy + 4} fill="#f87171" fontSize={9} fontWeight="bold">{`${Math.round((props.value || 0) / 1000)}k`}</text></g>;
+                                                                    }}
+                                                                    strokeDasharray="4 2" name="P5" />
+                                                                <Line type="monotone" dataKey="p10" stroke="#fb923c" strokeWidth={1.5}
+                                                                    dot={(props) => {
+                                                                        if (props.index !== mcChartData.length - 1) return <g key={props.key} />;
+                                                                        return <g key={props.key}><circle cx={props.cx} cy={props.cy} r={3} fill="#fb923c" /><text x={props.cx + 6} y={props.cy + 4} fill="#fb923c" fontSize={9} fontWeight="bold">{`${Math.round((props.value || 0) / 1000)}k`}</text></g>;
+                                                                    }}
+                                                                    strokeDasharray="4 2" name="P10" />
+                                                                <Line type="monotone" dataKey="p25" stroke="#60a5fa" strokeWidth={2}
+                                                                    dot={(props) => {
+                                                                        if (props.index !== mcChartData.length - 1) return <g key={props.key} />;
+                                                                        return <g key={props.key}><circle cx={props.cx} cy={props.cy} r={4} fill="#60a5fa" /><text x={props.cx + 7} y={props.cy + 4} fill="#60a5fa" fontSize={10} fontWeight="bold">{`${Math.round((props.value || 0) / 1000)}k`}</text></g>;
+                                                                    }}
+                                                                    name="P25" />
+                                                                <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                            </LineChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                    {/* MC metrics box */}
+                                                    <div className="w-[270px] shrink-0 bg-slate-900 rounded-lg p-3 border border-slate-800 text-xs space-y-1 overflow-y-auto max-h-[500px]">
+                                                        <p className="text-[10px] text-slate-500 font-semibold uppercase mb-2">{language === 'fr' ? 'Simulation Monte Carlo' : 'Monte Carlo Simulation'}</p>
+
+                                                        {/* 1. Capital de départ */}
+                                                        <MetricRow label={language === 'fr' ? '① Capital départ' : '① Starting capital'} value={fmtChf(startingAmount)} color="text-white" />
+
+                                                        {/* 2. Injections futures */}
+                                                        {injections.length > 0 && (
+                                                            <div className="border-t border-slate-800 pt-1 mt-1">
+                                                                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">{language === 'fr' ? '② Injections' : '② Injections'}</p>
+                                                                {injections.map((inj, i) => (
+                                                                    <div key={i} className="flex justify-between items-center py-0.5">
+                                                                        <span className="text-[10px] text-white">{inj.date} · <span className="text-slate-400">{inj.ticker}</span></span>
+                                                                        <span className="text-[11px] font-semibold text-emerald-400">+{fmtChf(inj.amount)}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* 3. Sorties anticipées */}
+                                                        {exits && exits.length > 0 && (
+                                                            <div className="border-t border-slate-800 pt-1 mt-1">
+                                                                <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">{language === 'fr' ? '③ Sorties' : '③ Exits'}</p>
+                                                                {exits.map((ex, i) => (
+                                                                    <div key={i} className="flex justify-between items-center py-0.5">
+                                                                        <span className="text-[10px] text-white">{ex.date} · <span className="text-slate-400">{ex.ticker}</span></span>
+                                                                        <span className="text-[11px] font-semibold text-red-400">-{fmtChf(ex.amount)}<span className="text-[9px] text-slate-500 ml-1">(réf.)</span></span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Résultats MC */}
+                                                        <div className="border-t border-slate-800 pt-1 mt-2">
+                                                            <MetricRow label="P5 final" value={fmtChf(p5Final)} color="text-red-400" />
+                                                            <MetricRow label="P10 final" value={fmtChf(p10Final)} color="text-orange-400" />
+                                                            <MetricRow label="P25 final" value={fmtChf(p25Final)} color="text-blue-400" />
+                                                        </div>
+
+                                                        {/* 3. Instruments */}
+                                                        <div className="border-t border-slate-800 pt-1 mt-2">
+                                                            <p className="text-[9px] text-slate-500 uppercase font-semibold mb-1">{language === 'fr' ? '③ Instruments' : '③ Instruments'}</p>
+                                                            {rowDetails.map((rd, i) => (
+                                                                <div key={i} className="mb-1.5">
+                                                                    <p className="text-[10px] text-white font-semibold truncate" title={rd.name}>{rd.ticker}</p>
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-[9px] text-slate-400">{rd.startDate} → {rd.endDate}</span>
+                                                                        <span className="text-[10px] text-slate-300 font-medium">{fmtChf(rd.amount)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Chart 2 — Historical overlay */}
+                                            <div>
+                                                <p className="text-xs text-slate-400 font-medium mb-2">
+                                                    {language === 'fr' ? '📈 Historique normalisé (base 100)' : '📈 Historical Overlay (base 100)'}
+                                                </p>
+                                                <div className="flex gap-3">
+                                                    <div className="flex-1 h-[500px]">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <LineChart data={histData} margin={{ top: 4, right: 65, bottom: 0, left: 0 }}>
+                                                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                                                <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={v => v.substring(0, 4)} minTickGap={50} />
+                                                                <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickFormatter={v => v.toFixed(0)} width={35} />
+                                                                <Tooltip
+                                                                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                                                                    formatter={(v, name) => [`${v.toFixed(1)}`, name]}
+                                                                />
+                                                                {uniqueProducts.map((p, i) => {
+                                                                    const color = productColors[i % productColors.length];
+                                                                    return (
+                                                                        <Line
+                                                                            key={p.id}
+                                                                            type="monotone"
+                                                                            dataKey={p.id}
+                                                                            name={p.ticker || p.id}
+                                                                            stroke={color}
+                                                                            strokeWidth={1.5}
+                                                                            dot={(props) => {
+                                                                                if (props.index !== histData.length - 1) return <g key={props.key} />;
+                                                                                return <g key={props.key}><circle cx={props.cx} cy={props.cy} r={3} fill={color} /><text x={props.cx + 6} y={props.cy + 4} fill={color} fontSize={9} fontWeight="bold">{`${(props.value || 0).toFixed(1)}`}</text></g>;
+                                                                            }}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                                <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                            </LineChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                    {/* Historical metrics box */}
+                                                    <div className="w-[270px] shrink-0 bg-slate-900 rounded-lg p-3 border border-slate-800 text-xs space-y-1">
+                                                        <p className="text-[10px] text-slate-500 font-semibold uppercase mb-2">{language === 'fr' ? 'Métriques hist.' : 'Hist. Metrics'}</p>
+                                                        {metricsArr.map((m, i) => (
+                                                            <div key={m.id} className={i > 0 ? 'border-t border-slate-800 pt-1 mt-1' : ''}>
+                                                                <p className="text-[9px] font-bold truncate" style={{ color: productColors[i % productColors.length] }}>{m.name}</p>
+                                                                <MetricRow label={language === 'fr' ? 'Valeur init.' : 'Initial'} value={fmtChf(m.initial)} />
+                                                                <MetricRow label={language === 'fr' ? 'Rend. total' : 'Total Return'} value={fmtPct(m.totalReturn * 100)} color={m.totalReturn >= 0 ? 'text-emerald-400' : 'text-red-400'} />
+                                                                <MetricRow label={language === 'fr' ? 'Rend. ann.' : 'Ann. Return'} value={fmtPct(m.meanReturn)} color={m.meanReturn >= 0 ? 'text-emerald-400' : 'text-red-400'} />
+                                                                <MetricRow label={language === 'fr' ? 'Volatilité' : 'Volatility'} value={fmtPct(m.volatility)} />
+                                                                <MetricRow label="Max DD" value={fmtPct(m.maxDrawdown)} color="text-red-400" />
+                                                                <MetricRow label={language === 'fr' ? 'Perte 3a' : 'Max 3y Loss'} value={fmtPct(m.max3yLoss)} color="text-red-400" />
+                                                                <MetricRow label={language === 'fr' ? 'Gain 3a' : 'Max 3y Gain'} value={fmtPct(m.max3yGain)} color="text-emerald-400" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
