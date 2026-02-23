@@ -1,6 +1,12 @@
 // Translations for English and French
 export const translations = {
   en: {
+    common: {
+      loading: "Loading...",
+      error: "An error occurred",
+      cancel: "Cancel",
+      confirm: "Confirm"
+    },
     // Landing Page
     landing: {
       title: "quit?",
@@ -117,7 +123,11 @@ export const translations = {
       saveSuccess: "Personal information saved",
       saveFailed: "Failed to save personal information",
       firstName: "First Name",
-      firstNamePlaceholder: "optional input"
+      firstNamePlaceholder: "optional input",
+      resetToDefault: "Reset to defaults",
+      resetConfirmTitle: "Are you sure?",
+      resetConfirmDesc: "This will permanently delete ALL your data for all simulation sections (income, costs, assets, etc.). This action cannot be undone.",
+      resetSuccess: "Data reset successfully"
     },
 
     // Retirement Overview Page
@@ -517,6 +527,12 @@ export const translations = {
   },
 
   fr: {
+    common: {
+      loading: "Chargement...",
+      error: "Une erreur est survenue",
+      cancel: "Annuler",
+      confirm: "Confirmer"
+    },
 
     // Landing Page
     landing: {
@@ -634,7 +650,11 @@ export const translations = {
       saveSuccess: "Informations personnelles enregistrées",
       saveFailed: "Échec de l'enregistrement des informations personnelles",
       firstName: "Prénom",
-      firstNamePlaceholder: "saisie optionnelle"
+      firstNamePlaceholder: "saisie optionnelle",
+      resetToDefault: "Réinitialiser les données",
+      resetConfirmTitle: "Êtes-vous sûr ?",
+      resetConfirmDesc: "Cela supprimera définitivement TOUTES vos données pour toutes les sections de simulation (revenus, coûts, actifs, etc.). Cette action est irréversible.",
+      resetSuccess: "Données réinitialisées avec succès"
     },
 
     // Retirement Overview Page

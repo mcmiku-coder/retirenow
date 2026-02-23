@@ -7,10 +7,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { saveUserData, getUserData } from '../utils/database';
-import { Trash2, Plus, HelpCircle, User, Calendar, Users } from 'lucide-react';
+import { saveUserData, getUserData, clearUserData } from '../utils/database';
+import { Trash2, Plus, HelpCircle, User, Calendar, Users, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
 const PersonalInfo = () => {
@@ -27,6 +27,7 @@ const PersonalInfo = () => {
   const [residence] = useState('Switzerland'); // Default to Switzerland, field removed from UI
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Get email safely
   const userEmail = user?.email;
@@ -122,6 +123,36 @@ const PersonalInfo = () => {
     } catch (error) {
       console.error('Save error:', error);
       toast.error(t('personalInfo.saveFailed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!userEmail) return;
+
+    setLoading(true);
+    try {
+      // Total flush of all session data
+      await clearUserData(userEmail);
+
+      // Reset local state
+      setBirthDate('');
+      setGender('');
+      setFirstName('');
+      setBirthDate2('');
+      setGender2('');
+      setFirstName2('');
+      setAnalysisType('individual');
+
+      toast.success(t('personalInfo.resetSuccess'));
+      setShowResetConfirm(false);
+
+      // Optional: force reload logic if some components need a fresh start
+      // but clearing all local state + database should be enough for current session
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast.error(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -357,7 +388,7 @@ const PersonalInfo = () => {
           </form>
 
 
-          <div className="flex justify-center mt-8">
+          <div className="flex flex-col items-center gap-4 mt-8">
             <Button
               data-testid="next-btn"
               type="submit"
@@ -368,9 +399,52 @@ const PersonalInfo = () => {
             >
               {loading ? t('personalInfo.saving') : t('personalInfo.continue')}
             </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowResetConfirm(true)}
+              className="text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1.5"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              {t('personalInfo.resetToDefault')}
+            </Button>
           </div>
         </div>
       </div>
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('personalInfo.resetConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('personalInfo.resetConfirmDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={loading}
+              className="mt-0"
+            >
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReset}
+              disabled={loading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  {t('personalInfo.saving')}
+                </>
+              ) : t('common.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
     </div>
