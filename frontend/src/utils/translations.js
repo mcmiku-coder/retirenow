@@ -1,12 +1,6 @@
 // Translations for English and French
 export const translations = {
   en: {
-    common: {
-      loading: "Loading...",
-      error: "An error occurred",
-      cancel: "Cancel",
-      confirm: "Confirm"
-    },
     // Landing Page
     landing: {
       title: "quit?",
@@ -413,6 +407,7 @@ export const translations = {
       success: "Success",
       save: "Save",
       cancel: "Cancel",
+      confirm: "Confirm",
       close: "Close",
       delete: "Delete",
       edit: "Edit",
@@ -527,13 +522,6 @@ export const translations = {
   },
 
   fr: {
-    common: {
-      loading: "Chargement...",
-      error: "Une erreur est survenue",
-      cancel: "Annuler",
-      confirm: "Confirmer"
-    },
-
     // Landing Page
     landing: {
       title: "quit?",
@@ -938,6 +926,7 @@ export const translations = {
       success: "Succès",
       save: "Enregistrer",
       cancel: "Annuler",
+      confirm: "Confirmer",
       close: "Fermer",
       delete: "Supprimer",
       edit: "Modifier",
