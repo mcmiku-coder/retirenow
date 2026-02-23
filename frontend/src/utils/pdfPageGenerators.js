@@ -235,44 +235,82 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
     pdf.setTextColor(0, 0, 0);
     const metricsTitle = language === 'fr' ? 'Métriques Clés' : 'Key Metrics';
     pdf.text(metricsTitle, 20, yPos);
-    yPos += 10;
+    yPos += 5;
 
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
+    const isCouple = data.isCouple;
+    const metricsHead = isCouple
+        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
 
-    const metrics = [
-        {
-            labelEn: 'Projected Balance at Death',
-            labelFr: 'Solde Projeté au Décès',
-            value: formatCurrency(data.finalBalance)
-        },
-        {
-            labelEn: 'Retirement Age',
-            labelFr: 'Âge de Retraite',
-            value: data.retirementAge || 'N/A'
-        },
-        {
-            labelEn: 'Years in Retirement',
-            labelFr: 'Années de Retraite',
-            value: data.yearsInRetirement || 'N/A'
-        },
-        {
-            labelEn: 'Theoretical Death Date',
-            labelFr: 'Date de Décès Théorique',
-            value: formatDate(data.deathDate)
-        }
+    const metricsData = [
+        [
+            language === 'fr' ? 'Âge de Retraite' : 'Retirement Age',
+            data.retirementAge || 'N/A'
+        ],
+        [
+            language === 'fr' ? 'Années de Retraite' : 'Years in Retirement',
+            data.yearsInRetirement || 'N/A'
+        ],
+        [
+            language === 'fr' ? 'Date de Décès Théorique' : 'Theoretical Death Date',
+            formatDate(data.deathDate)
+        ]
     ];
 
-    metrics.forEach(metric => {
-        const label = language === 'fr' ? metric.labelFr : metric.labelEn;
-        pdf.text(`${label}:`, 25, yPos);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(String(metric.value), 120, yPos);
-        pdf.setFont('helvetica', 'normal');
-        yPos += 7;
+    if (isCouple) {
+        metricsData[0].push(data.retirementAge2 || 'N/A');
+        metricsData[1].push(data.yearsInRetirement2 || 'N/A');
+        metricsData[2].push(formatDate(data.deathDate2));
+    }
+
+    // Add Balance as a separate section below the person-specific metrics
+    autoTable(pdf, {
+        startY: yPos,
+        head: metricsHead,
+        body: metricsData,
+        theme: 'plain',
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fontStyle: 'bold' },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 70 }
+        },
+        margin: { left: 20 }
     });
 
-    yPos += 10;
+    yPos = pdf.lastAutoTable.finalY + 10;
+
+    // Financial Balance Section
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(language === 'fr' ? 'Solde Financier' : 'Financial Balance', 20, yPos);
+    yPos += 5;
+
+    const financialData = [
+        [
+            language === 'fr' ? 'Solde Projeté au Décès (Baseline)' : 'Projected Balance at Death (Baseline)',
+            formatCurrency(data.finalBaselineBalance !== undefined ? data.finalBaselineBalance : data.finalBalance)
+        ]
+    ];
+
+    if (data.isInvested && data.final5Balance !== null) {
+        financialData.push([
+            language === 'fr' ? 'Solde Projeté au Décès (Monte Carlo 5%)' : 'Projected Balance at Death (Monte Carlo 5%)',
+            formatCurrency(data.final5Balance)
+        ]);
+    }
+
+    autoTable(pdf, {
+        startY: yPos,
+        body: financialData,
+        theme: 'plain',
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 100 }
+        },
+        margin: { left: 20 }
+    });
+
+    yPos = pdf.lastAutoTable.finalY + 15;
 
     // Reference to detailed view
     pdf.setFontSize(9);

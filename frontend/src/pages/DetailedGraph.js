@@ -14,6 +14,9 @@ const DetailedGraph = () => {
     const [chartData, setChartData] = useState([]);
     const [summaryData, setSummaryData] = useState({});
     const [retirementDate, setRetirementDate] = useState(null);
+    const [retirementAge, setRetirementAge] = useState(null);
+    const [retirementDate2, setRetirementDate2] = useState(null);
+    const [retirementAge2, setRetirementAge2] = useState(null);
 
     // Focus Years State
     const [focusYears, setFocusYears] = useState([
@@ -47,10 +50,11 @@ const DetailedGraph = () => {
             setChartData(processedData);
             setSummaryData(location.state.summaryData);
 
-            // Get retirement date from state
-            if (location.state?.retirementDate) {
-                setRetirementDate(location.state.retirementDate);
-            }
+            // Get retirement date and age from state
+            if (location.state?.retirementDate) setRetirementDate(location.state.retirementDate);
+            if (location.state?.retirementAge) setRetirementAge(location.state.retirementAge);
+            if (location.state?.retirementDate2) setRetirementDate2(location.state.retirementDate2);
+            if (location.state?.retirementAge2) setRetirementAge2(location.state.retirementAge2);
 
             // Get focusYears from state or localStorage (Persist settings across sessions)
             let loadedYears = null;
@@ -276,6 +280,9 @@ const DetailedGraph = () => {
                     <DetailedChart
                         chartData={chartData}
                         retirementDate={retirementDate}
+                        retirementAge={retirementAge}
+                        retirementDate2={retirementDate2}
+                        retirementAge2={retirementAge2}
                         language={language}
                         focusYears={focusYears}
                         showMC5={graphOptions.showMC5}
@@ -283,6 +290,11 @@ const DetailedGraph = () => {
                         showMC25={graphOptions.showMC25}
                         showMC50={graphOptions.showMC50}
                         showActivatedOwnings={graphOptions.showActivatedOwnings}
+                        p1Name={summaryData.firstName}
+                        p2Name={summaryData.firstName2}
+                        deathDate={summaryData.deathDate}
+                        deathDate2={summaryData.deathDate2}
+                        isCouple={summaryData.isCouple}
                     />
                 </div>
 
@@ -304,6 +316,8 @@ const DetailedGraph = () => {
                                         data={yearData}
                                         language={language}
                                         isPdf={false}
+                                        p1Name={summaryData.firstName}
+                                        p2Name={summaryData.firstName2}
                                     />
                                 </div>
                             );

@@ -138,6 +138,8 @@ export const translations = {
     retirementBenefits: {
       title: "Retirement benefits and simulation age input",
       subtitle: "Select the retirement pillars that you will benefit from and how you plan to use them",
+      person1Tab: "Person 1",
+      person2Tab: "Person 2",
       helpButton: "Help me fill this page"
     },
 
@@ -158,6 +160,8 @@ export const translations = {
       frequency: "Frequency",
       startDate: "Start Date",
       endDate: "End Date",
+      person: "Person",
+      shared: "Shared",
       actions: "Actions",
       addIncome: "Add Income Source",
       reset: "Reset to Defaults",
@@ -169,6 +173,7 @@ export const translations = {
       saveFailed: "Failed to save income data",
       resetSuccess: "Income reset to defaults",
       incomeDeleted: "Income source deleted",
+      consolidated: "Consolidated",
       // Default income names
       salary: "Net Salary",
       avs: "AVS",
@@ -187,6 +192,8 @@ export const translations = {
       frequency: "Frequency",
       startDate: "Start Date",
       endDate: "End Date",
+      person: "Person",
+      shared: "Shared",
       actions: "Actions",
       addCost: "Add Cost",
       reset: "Reset to Defaults",
@@ -647,6 +654,8 @@ export const translations = {
     retirementBenefits: {
       title: "Prestations de retraite et âge de simulation",
       subtitle: "Sélectionnez les piliers de retraite dont vous bénéficierez et comment vous prévoyez de les utiliser",
+      person1Tab: "Personne 1",
+      person2Tab: "Personne 2",
       helpButton: "Aidez-moi à remplir cette page"
     },
 
@@ -666,6 +675,8 @@ export const translations = {
       frequency: "Fréquence",
       startDate: "Date de début",
       endDate: "Date de fin",
+      person: "Personne",
+      shared: "Partagé",
       actions: "Actions",
       addIncome: "Ajouter une source de revenu",
       reset: "Réinitialiser",
@@ -677,6 +688,7 @@ export const translations = {
       saveFailed: "Échec de l'enregistrement des revenus",
       resetSuccess: "Revenus réinitialisés",
       incomeDeleted: "Source de revenu supprimée",
+      consolidated: "Consolidé",
       // Default income names
       salary: "Salaire Net",
       avs: "AVS",
@@ -695,6 +707,8 @@ export const translations = {
       frequency: "Fréquence",
       startDate: "Date de début",
       endDate: "Date de fin",
+      person: "Personne",
+      shared: "Partagé",
       actions: "Actions",
       addCost: "Ajouter une dépense",
       reset: "Réinitialiser",

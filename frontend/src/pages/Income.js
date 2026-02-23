@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { saveIncomeData, getIncomeData, getUserData, getScenarioData } from '../utils/database';
-import { Trash2, Plus, HelpCircle } from 'lucide-react';
+import { Trash2, Plus, HelpCircle, User } from 'lucide-react';
+import { getIncomeData, saveIncomeData, getUserData, getScenarioData } from '../utils/database';
 import PageHeader from '../components/PageHeader';
 import DateInputWithShortcuts from '../components/DateInputWithShortcuts';
 
@@ -33,11 +34,17 @@ const Income = () => {
   ]);
   const [nextId, setNextId] = useState(5);
   const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = useState(null);
 
-  // Date shortcut states
-  const [wishedRetirementDate, setWishedRetirementDate] = useState('');
-  const [retirementLegalDate, setRetirementLegalDate] = useState('');
-  const [deathDate, setDeathDate] = useState('');
+  // Date shortcut states for Person 1
+  const [p1WishedRetirementDate, setP1WishedRetirementDate] = useState('');
+  const [p1RetirementLegalDate, setP1RetirementLegalDate] = useState('');
+  const [p1DeathDate, setP1DeathDate] = useState('');
+
+  // Date shortcut states for Person 2
+  const [p2WishedRetirementDate, setP2WishedRetirementDate] = useState('');
+  const [p2RetirementLegalDate, setP2RetirementLegalDate] = useState('');
+  const [p2DeathDate, setP2DeathDate] = useState('');
 
   useEffect(() => {
     if (!user || !masterKey) {
@@ -56,32 +63,57 @@ const Income = () => {
         }
 
         // Pre-fill dates based on retirement data
-        const userData = await getUserData(user.email, masterKey);
+        const userDataResult = await getUserData(user.email, masterKey);
         const scenarioData = await getScenarioData(user.email, masterKey);
 
-        if (userData) {
-          // Calculate retirement date
-          const birthDate = new Date(userData.birthDate);
-          const retirementDate = new Date(birthDate);
-          retirementDate.setFullYear(retirementDate.getFullYear() + 65);
-          retirementDate.setMonth(retirementDate.getMonth() + 1);
-          const retirementDateStr = retirementDate.toISOString().split('T')[0];
+        if (userDataResult) {
+          setUserData(userDataResult);
+          const userData = userDataResult; // Local ref for the rest of the effect logic
+          const today = new Date().toISOString().split('T')[0];
 
-          // Use the theoretical death date from API
-          const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
+          // Person 1 Dates
+          const p1BirthDate = new Date(userData.birthDate);
+          const p1Legal = new Date(p1BirthDate);
+          p1Legal.setUTCFullYear(p1Legal.getUTCFullYear() + 65);
+          p1Legal.setUTCMonth(p1Legal.getUTCMonth() + 1);
+          const p1LegalStrFallBack = p1Legal.toISOString().split('T')[0];
+          const p1LegalStr = userData.retirementLegalDate || p1LegalStrFallBack;
+          const p1DeathStr = userData.theoreticalDeathDate || p1LegalStr;
 
-          // Set state for shortcuts
-          setRetirementLegalDate(retirementDateStr);
-          setDeathDate(deathDateStr);
-          setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
+          setP1RetirementLegalDate(p1LegalStr);
+          setP1DeathDate(p1DeathStr);
+          setP1WishedRetirementDate(scenarioData?.wishedRetirementDate || p1LegalStr);
+
+          // Person 2 Dates
+          let p2LegalStr = '', p2DeathStr = '', p2WishedStr = '';
+          if (userData.analysisType === 'couple' && userData.birthDate2) {
+            const p2BirthDate = new Date(userData.birthDate2);
+            const p2Legal = new Date(p2BirthDate);
+            p2Legal.setUTCFullYear(p2Legal.getUTCFullYear() + 65);
+            p2Legal.setUTCMonth(p2Legal.getUTCMonth() + 1);
+            const p2LegalStrFallBack = p2Legal.toISOString().split('T')[0];
+            p2LegalStr = userData.retirementLegalDate2 || p2LegalStrFallBack;
+            p2DeathStr = userData.theoreticalDeathDate2 || p2LegalStr;
+            p2WishedStr = scenarioData?.wishedRetirementDate2 || p2LegalStr;
+
+            setP2RetirementLegalDate(p2LegalStr);
+            setP2DeathDate(p2DeathStr);
+            setP2WishedRetirementDate(p2WishedStr);
+          }
 
           // Only set default rows if no data exists
           if (!data || data.length === 0) {
-            const today = new Date().toISOString().split('T')[0];
-            setRows([
-              { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
-            ]);
-            setNextId(2);
+            const defaultRows = [
+              { id: 1, name: 'Net Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: p1LegalStr, locked: true, owner: 'p1' }
+            ];
+
+            if (userData.analysisType === 'couple') {
+              defaultRows.push({ id: 2, name: 'Net Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: p2LegalStr, locked: true, owner: 'p2' });
+              setNextId(3);
+            } else {
+              setNextId(2);
+            }
+            setRows(defaultRows);
           }
         }
 
@@ -111,19 +143,34 @@ const Income = () => {
     if (userData) {
       const today = new Date().toISOString().split('T')[0];
 
+      // Person 1 legal retirement date
       const birthDate = new Date(userData.birthDate);
-      const retirementDate = new Date(birthDate);
-      retirementDate.setFullYear(retirementDate.getFullYear() + 65);
-      retirementDate.setMonth(retirementDate.getMonth() + 1);
-      const retirementDateStr = retirementDate.toISOString().split('T')[0];
+      const p1Legal = new Date(birthDate);
+      p1Legal.setUTCFullYear(p1Legal.getUTCFullYear() + 65);
+      p1Legal.setUTCMonth(p1Legal.getUTCMonth() + 1);
+      const p1LegalStrFallBack = p1Legal.toISOString().split('T')[0];
+      const p1LegalStr = userData.retirementLegalDate || p1LegalStrFallBack;
 
-      // Use the theoretical death date from API
-      const deathDateStr = userData.theoreticalDeathDate || retirementDateStr;
+      const defaultRows = [
+        { id: 1, name: 'Net Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: p1LegalStr, locked: true, owner: 'p1' }
+      ];
 
-      setRows([
-        { id: 1, name: 'Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: retirementDateStr, locked: true }
-      ]);
-      setNextId(2);
+      if (userData.analysisType === 'couple' && userData.birthDate2) {
+        // Person 2 legal retirement date
+        const birthDate2 = new Date(userData.birthDate2);
+        const p2Legal = new Date(birthDate2);
+        p2Legal.setUTCFullYear(p2Legal.getUTCFullYear() + 65);
+        p2Legal.setUTCMonth(p2Legal.getUTCMonth() + 1);
+        const p2LegalStrFallBack = p2Legal.toISOString().split('T')[0];
+        const p2LegalStr = userData.retirementLegalDate2 || p2LegalStrFallBack;
+
+        defaultRows.push({ id: 2, name: 'Net Salary', amount: '', frequency: 'Monthly', category: '', startDate: today, endDate: p2LegalStr, locked: true, owner: 'p2' });
+        setNextId(3);
+      } else {
+        setNextId(2);
+      }
+
+      setRows(defaultRows);
     }
   };
 
@@ -136,7 +183,8 @@ const Income = () => {
       category: '',
       startDate: '',
       endDate: '',
-      locked: false
+      locked: false,
+      owner: userData?.analysisType === 'couple' ? 'shared' : 'p1'
     }]);
     setNextId(nextId + 1);
   };
@@ -215,6 +263,9 @@ const Income = () => {
             <table className="w-full min-w-[900px]">
               <thead className="bg-muted/50">
                 <tr className="border-b">
+                  {userData?.analysisType === 'couple' && (
+                    <th className="text-left p-2 font-semibold">{t('income.person')}</th>
+                  )}
                   <th className="text-left p-2 font-semibold">{t('income.name')}</th>
                   <th className="text-left p-2 font-semibold">{t('income.amount')}</th>
                   <th className="text-left p-2 font-semibold">{t('income.frequency')}</th>
@@ -226,6 +277,23 @@ const Income = () => {
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={row.id} className="border-b last:border-0">
+                    {userData?.analysisType === 'couple' && (
+                      <td className="p-2">
+                        <Select
+                          value={row.owner || 'shared'}
+                          onValueChange={(value) => updateRow(row.id, 'owner', value)}
+                        >
+                          <SelectTrigger className={`w-[130px] font-medium ${(row.owner === 'p1') ? 'text-blue-400' : (row.owner === 'p2') ? 'text-purple-400' : 'text-gray-400'}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="p1" className="text-blue-400 font-medium">{userData?.firstName || t('income.person1') || 'Person 1'}</SelectItem>
+                            <SelectItem value="p2" className="text-purple-400 font-medium">{userData?.firstName2 || t('income.person2') || 'Person 2'}</SelectItem>
+                            <SelectItem value="shared" className="text-gray-400">{t('income.shared')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    )}
                     <td className="p-2">
                       {row.locked ? (
                         <Input
@@ -284,8 +352,8 @@ const Income = () => {
                         value={row.startDate}
                         onChange={(e) => updateRow(row.id, 'startDate', e.target.value)}
                         className="w-fit"
-                        retirementDate={wishedRetirementDate}
-                        legalDate={retirementLegalDate}
+                        retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                        legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
                         mode="start"
                       />
                     </td>
@@ -296,12 +364,13 @@ const Income = () => {
                         onChange={(e) => updateRow(row.id, 'endDate', e.target.value)}
                         disabled={row.frequency === 'One-time'}
                         className="w-fit"
-                        retirementDate={wishedRetirementDate}
-                        legalDate={retirementLegalDate}
-                        deathDate={deathDate}
+                        retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                        legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
+                        deathDate={row.owner === 'p2' ? p2DeathDate : (row.owner === 'shared' ? (p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate) : p1DeathDate)}
                         mode="end"
                       />
                     </td>
+
                     <td className="p-2">
                       <Button
                         data-testid={`income-delete-${index}`}

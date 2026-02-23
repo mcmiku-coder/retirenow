@@ -27,6 +27,13 @@ const AssetsOverview = () => {
     const [nextAssetId, setNextAssetId] = useState(4);
     const [nextOutflowId, setNextOutflowId] = useState(3);
     const [loading, setLoading] = useState(true);
+    const [userData, setUserData] = useState(null);
+    const [p1RetirementLegalDate, setP1RetirementLegalDate] = useState('');
+    const [p1WishedRetirementDate, setP1WishedRetirementDate] = useState('');
+    const [p1DeathDate, setP1DeathDate] = useState('');
+    const [p2RetirementLegalDate, setP2RetirementLegalDate] = useState('');
+    const [p2WishedRetirementDate, setP2WishedRetirementDate] = useState('');
+    const [p2DeathDate, setP2DeathDate] = useState('');
 
     const timeframeOptions = [
         { value: 'within_5y', label: language === 'fr' ? 'dans les 5 prochaines années' : 'within next 5 years' },
@@ -47,34 +54,76 @@ const AssetsOverview = () => {
             try {
                 // Get theoretical death date from user data
                 const userData = await getUserData(user.email, masterKey);
-                const deathDate = userData?.theoreticalDeathDate || '';
-                setTheoreticalDeathDate(deathDate);
-
-                if (userData) {
-                    const legalDate = getLegalRetirementDate(userData.birthDate, userData.gender);
-                    setLegalRetirementDate(legalDate.toISOString().split('T')[0]);
-                }
+                setUserData(userData);
 
                 const scenarioData = await getScenarioData(user.email, masterKey);
-                setWishedRetirementDate(scenarioData?.wishedRetirementDate || (userData ? getLegalRetirementDate(userData.birthDate, userData.gender).toISOString().split('T')[0] : ''));
+
+                if (userData) {
+                    // Person 1 Dates
+                    const p1Legal = getLegalRetirementDate(userData.birthDate, userData.gender);
+                    const p1LegalStr = p1Legal.toISOString().split('T')[0];
+                    setP1RetirementLegalDate(p1LegalStr);
+                    setP1WishedRetirementDate(scenarioData?.wishedRetirementDate || p1LegalStr);
+
+                    if (userData.theoreticalDeathDate) {
+                        setP1DeathDate(userData.theoreticalDeathDate);
+                    } else {
+                        const approx = userData.gender === 'male' ? 80 : 85;
+                        const d = new Date(userData.birthDate);
+                        d.setUTCFullYear(d.getUTCFullYear() + approx);
+                        setP1DeathDate(d.toISOString().split('T')[0]);
+                    }
+
+                    // Person 2 Dates
+                    if (userData.analysisType === 'couple' && userData.birthDate2) {
+                        const p2Legal = getLegalRetirementDate(userData.birthDate2, userData.gender2);
+                        const p2LegalStr = p2Legal.toISOString().split('T')[0];
+                        setP2RetirementLegalDate(p2LegalStr);
+                        setP2WishedRetirementDate(scenarioData?.wishedRetirementDate2 || p2LegalStr);
+
+                        if (userData.theoreticalDeathDate2) {
+                            setP2DeathDate(userData.theoreticalDeathDate2);
+                        } else {
+                            const approx = userData.gender2 === 'male' ? 80 : 85;
+                            const d = new Date(userData.birthDate2);
+                            d.setUTCFullYear(d.getUTCFullYear() + approx);
+                            setP2DeathDate(d.toISOString().split('T')[0]);
+                        }
+                    }
+                }
 
                 const savedData = await getAssetsData(user.email, masterKey);
                 const today = new Date().toISOString().split('T')[0];
 
                 if (savedData && savedData.currentAssets && savedData.currentAssets.length > 0) {
-                    setCurrentAssets(savedData.currentAssets);
-                    setProjectedOutflows(savedData.projectedOutflows || savedData.desiredOutflows || getDefaultOutflows(deathDate));
-                    const maxAssetId = Math.max(...savedData.currentAssets.map(r => r.id));
+                    // Ensure owner exists for saved assets
+                    const assetsWithOwner = savedData.currentAssets.map(a => ({
+                        ...a,
+                        owner: a.owner || (userData?.analysisType === 'couple' ? 'shared' : 'p1')
+                    }));
+                    setCurrentAssets(assetsWithOwner);
+
+                    // Ensure owner exists for saved outflows
+                    const savedOutflows = savedData.projectedOutflows || savedData.desiredOutflows || [];
+                    const outflowsWithOwner = savedOutflows.length > 0
+                        ? savedOutflows.map(o => ({
+                            ...o,
+                            owner: o.owner || (userData?.analysisType === 'couple' ? 'shared' : 'p1')
+                        }))
+                        : getDefaultOutflows(p1Death, p2Death);
+
+                    setProjectedOutflows(outflowsWithOwner);
+
+                    const maxAssetId = Math.max(...assetsWithOwner.map(r => r.id));
                     setNextAssetId(maxAssetId + 1);
-                    if ((savedData.projectedOutflows || savedData.desiredOutflows) && (savedData.projectedOutflows || savedData.desiredOutflows).length > 0) {
-                        const outflows = savedData.projectedOutflows || savedData.desiredOutflows;
-                        const maxOutflowId = Math.max(...outflows.map(r => r.id));
+                    if (outflowsWithOwner.length > 0) {
+                        const maxOutflowId = Math.max(...outflowsWithOwner.map(r => r.id));
                         setNextOutflowId(maxOutflowId + 1);
                     }
                 } else {
                     // Initialize with default rows
                     setCurrentAssets(getDefaultAssets(today));
-                    setProjectedOutflows(getDefaultOutflows(deathDate));
+                    setProjectedOutflows(getDefaultOutflows(p1Death, p2Death));
                 }
             } catch (error) {
                 console.error('Error loading assets data:', error);
@@ -97,6 +146,7 @@ const AssetsOverview = () => {
             availabilityType: 'Date',
             availabilityDate: today,
             availabilityTimeframe: '',
+            owner: 'shared',
             locked: false
         },
         {
@@ -108,6 +158,7 @@ const AssetsOverview = () => {
             availabilityType: 'Date',
             availabilityDate: today,
             availabilityTimeframe: '',
+            owner: 'shared',
             locked: false
         },
         {
@@ -119,30 +170,36 @@ const AssetsOverview = () => {
             availabilityType: 'Date',
             availabilityDate: '',
             availabilityTimeframe: '',
+            owner: 'shared',
             locked: false
         }
     ];
 
-    const getDefaultOutflows = (deathDate) => [
-        {
-            id: 1,
-            name: language === 'fr' ? 'Donations avant décès' : 'Donations before death',
-            amount: '',
-            category: 'none',
-            madeAvailableDate: '',
-            madeAvailableTimeframe: '',
-            locked: false
-        },
-        {
-            id: 2,
-            name: language === 'fr' ? 'Transmission au décès' : 'Transmission at death',
-            amount: '',
-            category: 'Illiquid',
-            madeAvailableDate: deathDate,
-            madeAvailableTimeframe: '',
-            locked: false
-        }
-    ];
+    const getDefaultOutflows = (p1Death, p2Death) => {
+        const sharedDeathDate = (p1Death > p2Death) ? p1Death : p2Death;
+        return [
+            {
+                id: 1,
+                name: language === 'fr' ? 'Donations avant décès' : 'Donations before death',
+                amount: '',
+                category: 'none',
+                madeAvailableDate: '',
+                madeAvailableTimeframe: '',
+                owner: 'shared',
+                locked: false
+            },
+            {
+                id: 2,
+                name: language === 'fr' ? 'Transmission au décès' : 'Transmission at death',
+                amount: '',
+                category: 'Illiquid',
+                madeAvailableDate: sharedDeathDate,
+                madeAvailableTimeframe: '',
+                owner: 'shared',
+                locked: false
+            }
+        ];
+    };
 
     // Current Assets functions
     const updateAsset = (id, field, value) => {
@@ -161,6 +218,7 @@ const AssetsOverview = () => {
             preserve: 'No',
             availabilityDate: today,
             availabilityTimeframe: '',
+            owner: userData?.analysisType === 'couple' ? 'shared' : 'p1',
             locked: false
         }]);
         setNextAssetId(nextAssetId + 1);
@@ -237,6 +295,7 @@ const AssetsOverview = () => {
             category: 'none',
             madeAvailableDate: '',
             madeAvailableTimeframe: '',
+            owner: userData?.analysisType === 'couple' ? 'shared' : 'p1',
             locked: false
         }]);
         setNextOutflowId(nextOutflowId + 1);
@@ -247,7 +306,7 @@ const AssetsOverview = () => {
     };
 
     const resetOutflows = async () => {
-        const newOutflows = getDefaultOutflows(theoreticalDeathDate);
+        const newOutflows = getDefaultOutflows(p1DeathDate, p2DeathDate);
         setProjectedOutflows(newOutflows);
         setNextOutflowId(3);
 
@@ -324,17 +383,37 @@ const AssetsOverview = () => {
                                     <table className="w-full">
                                         <thead className="bg-muted/50">
                                             <tr className="border-b">
+                                                {userData?.analysisType === 'couple' && (
+                                                    <th className="text-left p-2 font-semibold" style={{ width: '130px' }}>{language === 'fr' ? 'Personne' : 'Person'}</th>
+                                                )}
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '130px' }}>{language === 'fr' ? 'Catégorie' : 'Category'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '130px' }}>{language === 'fr' ? 'Type' : 'Availability Type'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '220px' }}>{language === 'fr' ? 'Valeur' : 'Availability Value'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {currentAssets.map((row) => (
                                                 <tr key={row.id} className="border-b hover:bg-muted/30">
+                                                    {userData?.analysisType === 'couple' && (
+                                                        <td className="p-2">
+                                                            <Select
+                                                                value={row.owner || 'shared'}
+                                                                onValueChange={(value) => updateAsset(row.id, 'owner', value)}
+                                                            >
+                                                                <SelectTrigger className={`w-[130px] font-medium ${(row.owner === 'p1') ? 'text-blue-400' : (row.owner === 'p2') ? 'text-purple-400' : 'text-gray-400'}`}>
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="p1" className="text-blue-400 font-medium">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</SelectItem>
+                                                                    <SelectItem value="p2" className="text-purple-400 font-medium">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</SelectItem>
+                                                                    <SelectItem value="shared" className="text-gray-400">{language === 'fr' ? 'Partagé' : 'Shared'}</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </td>
+                                                    )}
                                                     <td className="p-2">
                                                         <Input
                                                             value={row.name}
@@ -406,12 +485,13 @@ const AssetsOverview = () => {
                                                                 value={row.availabilityDate}
                                                                 onChange={(e) => updateAsset(row.id, 'availabilityDate', e.target.value)}
                                                                 className="w-fit"
-                                                                retirementDate={wishedRetirementDate}
-                                                                legalDate={legalRetirementDate}
+                                                                retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                                                                legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
                                                                 mode="start"
                                                             />
                                                         )}
                                                     </td>
+
                                                     <td className="p-2 text-center">
                                                         <Button
                                                             type="button"
@@ -453,16 +533,36 @@ const AssetsOverview = () => {
                                     <table className="w-full">
                                         <thead className="bg-muted/50">
                                             <tr className="border-b">
+                                                {userData?.analysisType === 'couple' && (
+                                                    <th className="text-left p-2 font-semibold" style={{ width: '130px' }}>{language === 'fr' ? 'Personne' : 'Person'}</th>
+                                                )}
                                                 <th className="text-left p-2 font-semibold" style={{ width: '200px' }}>{language === 'fr' ? 'Nom' : 'Name'}</th>
                                                 <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Montant (CHF)' : 'Amount (CHF)'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '150px' }}>{language === 'fr' ? 'Type de disponibilité' : 'Availability Type'}</th>
-                                                <th className="text-left p-2 font-semibold" style={{ width: '250px' }}>{language === 'fr' ? 'Valeur de dispo.' : 'Availability Value'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '130px' }}>{language === 'fr' ? 'Type' : 'Availability Type'}</th>
+                                                <th className="text-left p-2 font-semibold" style={{ width: '220px' }}>{language === 'fr' ? 'Valeur' : 'Availability Value'}</th>
                                                 <th className="text-center p-2 font-semibold" style={{ width: '80px' }}>{language === 'fr' ? 'Actions' : 'Actions'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {projectedOutflows.map((row) => (
                                                 <tr key={row.id} className="border-b hover:bg-muted/30">
+                                                    {userData?.analysisType === 'couple' && (
+                                                        <td className="p-2">
+                                                            <Select
+                                                                value={row.owner || 'shared'}
+                                                                onValueChange={(value) => updateOutflow(row.id, 'owner', value)}
+                                                            >
+                                                                <SelectTrigger className={`w-[130px] font-medium ${(row.owner === 'p1') ? 'text-blue-400' : (row.owner === 'p2') ? 'text-purple-400' : 'text-gray-400'}`}>
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="p1" className="text-blue-400 font-medium">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</SelectItem>
+                                                                    <SelectItem value="p2" className="text-purple-400 font-medium">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</SelectItem>
+                                                                    <SelectItem value="shared" className="text-gray-400">{language === 'fr' ? 'Partagé' : 'Shared'}</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </td>
+                                                    )}
                                                     <td className="p-2">
                                                         <Input
                                                             value={row.name}
@@ -519,13 +619,14 @@ const AssetsOverview = () => {
                                                                 value={row.madeAvailableDate}
                                                                 onChange={(e) => updateOutflow(row.id, 'madeAvailableDate', e.target.value)}
                                                                 className="w-fit"
-                                                                retirementDate={wishedRetirementDate}
-                                                                legalDate={legalRetirementDate}
-                                                                deathDate={theoreticalDeathDate}
+                                                                retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                                                                legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
+                                                                deathDate={row.owner === 'p2' ? p2DeathDate : (row.owner === 'shared' ? (p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate) : p1DeathDate)}
                                                                 mode="end"
                                                             />
                                                         )}
                                                     </td>
+
                                                     <td className="p-2 text-center">
                                                         <Button
                                                             type="button"

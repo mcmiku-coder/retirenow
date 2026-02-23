@@ -3,7 +3,11 @@ import { ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, L
 import DetailedTooltipContent from './DetailedTooltipContent';
 
 const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, focusYears = [],
-    showMC50 = false, showMC25 = false, showMC10 = false, showMC5 = false, showActivatedOwnings = false
+    showMC50 = false, showMC25 = false, showMC10 = false, showMC5 = false, showActivatedOwnings = false,
+    retirementAge = null, retirementDate2 = null, retirementAge2 = null,
+    p1Name = 'Max', p2Name = 'Mary',
+    deathDate = null, deathDate2 = null,
+    isCouple = false
 }) => {
 
     // Format currency for display
@@ -117,7 +121,15 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
-            return <DetailedTooltipContent data={data} language={language} isPdf={isPdf} />;
+            return (
+                <DetailedTooltipContent
+                    data={data}
+                    language={language}
+                    isPdf={isPdf}
+                    p1Name={p1Name}
+                    p2Name={p2Name}
+                />
+            );
         }
         return null;
     };
@@ -179,23 +191,99 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     {/* Zero reference line */}
                     <ReferenceLine y={0} stroke={isPdf ? "#000000" : "#ffffff"} strokeWidth={2} />
 
-                    {/* Retirement date line */}
-                    {retirementDate && (
-                        <ReferenceLine
-                            x={new Date(retirementDate).getFullYear()}
-                            stroke="#f59042"
-                            strokeDasharray="3 3"
-                            strokeWidth={2}
-                            label={{
-                                position: 'insideTopRight',
-                                dy: 20,
-                                value: `Retirement: ${new Date(retirementDate).toLocaleDateString('de-CH')}`,
-                                fill: '#f59042',
-                                fontSize: 18,
-                                fontWeight: 'bold'
-                            }}
-                        />
-                    )}
+                    {/* Retirement Date Markers */}
+                    {(() => {
+                        const d1 = retirementDate;
+                        const d2 = retirementDate2;
+
+                        // Determine positioning
+                        const p1IsEarlier = !d2 || new Date(d1) <= new Date(d2);
+
+                        return (
+                            <>
+                                {d1 && (
+                                    <ReferenceLine
+                                        x={new Date(d1).getFullYear()}
+                                        stroke="#3b82f6"
+                                        strokeDasharray="3 3"
+                                        strokeWidth={2}
+                                        label={{
+                                            position: p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
+                                            dy: 20,
+                                            dx: p1IsEarlier ? -5 : 5,
+                                            value: `${language === 'fr' ? 'Retraite' : 'Retirement'} Max${retirementAge ? ` (${retirementAge}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
+                                            fill: '#3b82f6',
+                                            fontSize: 18,
+                                            fontWeight: 'bold',
+                                            textAnchor: p1IsEarlier ? 'end' : 'start'
+                                        }}
+                                    />
+                                )}
+                                {d2 && (
+                                    <ReferenceLine
+                                        x={new Date(d2).getFullYear()}
+                                        stroke="#a855f7"
+                                        strokeDasharray="3 3"
+                                        strokeWidth={2}
+                                        label={{
+                                            position: !p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
+                                            dy: 20,
+                                            dx: !p1IsEarlier ? -5 : 5,
+                                            value: `${language === 'fr' ? 'Retraite' : 'Retirement'} Mary${retirementAge2 ? ` (${retirementAge2}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
+                                            fill: '#a855f7',
+                                            fontSize: 18,
+                                            fontWeight: 'bold',
+                                            textAnchor: !p1IsEarlier ? 'end' : 'start'
+                                        }}
+                                    />
+                                )}
+                            </>
+                        );
+                    })()}
+
+                    {/* Death Date Marker (Earliest) - ONLY for Couples */}
+                    {(() => {
+                        const d1 = deathDate ? new Date(deathDate) : null;
+                        const d2 = deathDate2 ? new Date(deathDate2) : null;
+
+                        let firstDeathDate = null;
+                        let firstDeathPerson = null;
+
+                        if (d1 && !isNaN(d1.getTime())) {
+                            firstDeathDate = d1;
+                            firstDeathPerson = 'p1';
+                        }
+
+                        if (d2 && !isNaN(d2.getTime())) {
+                            if (!firstDeathDate || d2 < firstDeathDate) {
+                                firstDeathDate = d2;
+                                firstDeathPerson = 'p2';
+                            }
+                        }
+
+                        if (!isCouple || !firstDeathDate) return null;
+
+                        const personName = firstDeathPerson === 'p1' ? p1Name : p2Name;
+                        const strokeColor = firstDeathPerson === 'p1' ? '#3b82f6' : '#a855f7';
+
+                        return (
+                            <ReferenceLine
+                                x={firstDeathDate.getFullYear()}
+                                stroke={strokeColor}
+                                strokeWidth={4}
+                                label={{
+                                    position: 'insideBottomRight',
+                                    dy: -40,
+                                    dx: 10,
+                                    value: `${language === 'fr' ? 'espérance de vie de' : 'life expectancy of'} ${personName}`,
+                                    fill: strokeColor,
+                                    fontSize: isPdf ? 16 : 22,
+                                    fontWeight: '900',
+                                    textAnchor: 'start'
+                                }}
+                            />
+                        );
+                    })()}
 
                     {/* Focus Years Bars */}
                     {focusYears.map((focus, index) => focus.active && focus.year && (

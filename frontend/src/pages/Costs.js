@@ -35,11 +35,17 @@ const Costs = () => {
   const [nextId, setNextId] = useState(11);
   const [loading, setLoading] = useState(false);
   const [salaryAmount, setSalaryAmount] = useState(0);
+  const [userData, setUserData] = useState(null);
 
-  // Date shortcut states
-  const [wishedRetirementDate, setWishedRetirementDate] = useState('');
-  const [retirementLegalDate, setRetirementLegalDate] = useState('');
-  const [deathDate, setDeathDate] = useState('');
+  // Date shortcut states for Person 1
+  const [p1WishedRetirementDate, setP1WishedRetirementDate] = useState('');
+  const [p1RetirementLegalDate, setP1RetirementLegalDate] = useState('');
+  const [p1DeathDate, setP1DeathDate] = useState('');
+
+  // Date shortcut states for Person 2
+  const [p2WishedRetirementDate, setP2WishedRetirementDate] = useState('');
+  const [p2RetirementLegalDate, setP2RetirementLegalDate] = useState('');
+  const [p2DeathDate, setP2DeathDate] = useState('');
 
   // Get translated cost name
   const getCostName = (englishName) => {
@@ -99,24 +105,48 @@ const Costs = () => {
         const scenarioData = await getScenarioData(user.email, masterKey);
 
         if (userData) {
-          // Calculate retirement date
-          const birthDate = new Date(userData.birthDate);
-          const retirementDate = new Date(birthDate);
-          retirementDate.setFullYear(retirementDate.getFullYear() + 65);
-          retirementDate.setMonth(retirementDate.getMonth() + 1);
-          const retirementDateStr = retirementDate.toISOString().split('T')[0];
+          setUserData(userData);
+          // Calculate retirement date Person 1
+          const p1BirthDate = new Date(userData.birthDate);
+          const p1Legal = new Date(p1BirthDate);
+          p1Legal.setFullYear(p1Legal.getFullYear() + 65);
+          p1Legal.setMonth(p1Legal.getMonth() + 1);
+          const p1LegalStr = p1Legal.toISOString().split('T')[0];
+          const p1DeathStr = userData.theoreticalDeathDate || p1LegalStr;
 
-          // Use the theoretical death date from API
-          const deathDateStr = userData.theoreticalDeathDate || retirementDateStr; // Fallback to retirement if not set
+          setP1RetirementLegalDate(p1LegalStr);
+          setP1DeathDate(p1DeathStr);
+          setP1WishedRetirementDate(scenarioData?.wishedRetirementDate || p1LegalStr);
 
-          // Set state for shortcuts
-          setRetirementLegalDate(retirementDateStr);
-          setDeathDate(deathDateStr);
-          setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
+          // Person 2 Dates
+          let p2DeathStr = '';
+          if (userData.analysisType === 'couple' && userData.birthDate2) {
+            const p2BirthDate = new Date(userData.birthDate2);
+            const p2Legal = new Date(p2BirthDate);
+            p2Legal.setFullYear(p2Legal.getFullYear() + 65);
+            p2Legal.setMonth(p2Legal.getMonth() + 1);
+            const p2LegalStr = p2Legal.toISOString().split('T')[0];
+            p2DeathStr = userData.theoreticalDeathDate2 || p2LegalStr;
+            const p2WishedStr = scenarioData?.wishedRetirementDate2 || p2LegalStr;
+
+            setP2RetirementLegalDate(p2LegalStr);
+            setP2DeathDate(p2DeathStr);
+            setP2WishedRetirementDate(p2WishedStr);
+          }
 
           if (!data || data.length === 0) {
             const defaultRows = await getDefaultRows();
-            setRows(defaultRows);
+            // Default owner for costs: 
+            // - rent/mortgage (first row) is 'shared'
+            // - others are 'consolidated'
+            const finalDefaults = defaultRows.map((r, idx) => ({
+              ...r,
+              owner: userData.analysisType === 'couple'
+                ? (idx === 0 ? 'shared' : 'consolidated')
+                : 'p1',
+              endDate: userData.analysisType === 'couple' ? (p1DeathStr > p2DeathStr ? p1DeathStr : p2DeathStr) : p1DeathStr
+            }));
+            setRows(finalDefaults);
           }
         }
       } catch (error) {
@@ -129,9 +159,26 @@ const Costs = () => {
   const updateRow = (id, field, value) => {
     setRows(rows.map(row => {
       if (row.id === id) {
-        const updated = { ...row, [field]: value };
+        let updated = { ...row, [field]: value };
         if (field === 'frequency' && value === 'One-time') {
           updated.endDate = '';
+        }
+
+        // Dynamic End Date on Owner Change
+        if (field === 'owner') {
+          const maxDeathDate = p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate;
+          const currentDeathDate = row.owner === 'p2' ? p2DeathDate : (row.owner === 'shared' ? maxDeathDate : p1DeathDate);
+
+          // Only update if it looks like a default death date (to protect custom edits)
+          if (!row.endDate || row.endDate === currentDeathDate) {
+            if (value === 'p1') {
+              updated.endDate = p1DeathDate;
+            } else if (value === 'p2') {
+              updated.endDate = p2DeathDate;
+            } else if (value === 'shared' || value === 'consolidated') {
+              updated.endDate = maxDeathDate;
+            }
+          }
         }
         return updated;
       }
@@ -141,14 +188,27 @@ const Costs = () => {
 
   const resetToDefaults = async () => {
     const defaultRows = await getDefaultRows();
-    setRows(defaultRows);
+    const maxDeathDate = p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate;
+
+    // In couple mode, ensure owner is 'consolidated' (except rent) and endDate is max death date
+    const finalDefaults = defaultRows.map((r, idx) => ({
+      ...r,
+      owner: userData?.analysisType === 'couple'
+        ? (idx === 0 ? 'shared' : 'consolidated')
+        : 'p1',
+      endDate: userData?.analysisType === 'couple' ? maxDeathDate : p1DeathDate
+    }));
+
+    setRows(finalDefaults);
     setNextId(11);
   };
 
   const addRow = async () => {
-    const userData = await getUserData(user.email, masterKey);
     const today = new Date().toISOString().split('T')[0];
-    const deathDateStr = userData?.theoreticalDeathDate || today;
+    const isCouple = userData?.analysisType === 'couple';
+    const defaultOwner = isCouple ? 'consolidated' : 'p1';
+    const maxDeathDate = p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate;
+    const defaultEndDate = isCouple ? maxDeathDate : p1DeathDate;
 
     setRows([...rows, {
       id: nextId,
@@ -157,9 +217,10 @@ const Costs = () => {
       frequency: 'Monthly',
       category: '',
       startDate: today,
-      endDate: deathDateStr,
+      endDate: defaultEndDate,
       locked: false,
-      categoryLocked: false
+      categoryLocked: false,
+      owner: defaultOwner
     }]);
     setNextId(nextId + 1);
   };
@@ -258,6 +319,9 @@ const Costs = () => {
             <table className="w-full min-w-[720px]">
               <thead className="bg-muted/50">
                 <tr className="border-b">
+                  {userData?.analysisType === 'couple' && (
+                    <th className="text-left p-2 font-semibold">{t('costs.person')}</th>
+                  )}
                   <th className="text-left p-2 font-semibold">{t('costs.name')}</th>
                   <th className="text-left p-2 font-semibold">{t('costs.amount')}</th>
                   <th className="text-left p-2 font-semibold">{t('costs.frequency')}</th>
@@ -270,6 +334,24 @@ const Costs = () => {
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={row.id} className="border-b last:border-0">
+                    {userData?.analysisType === 'couple' && (
+                      <td className="p-2">
+                        <Select
+                          value={row.owner || 'shared'}
+                          onValueChange={(value) => updateRow(row.id, 'owner', value)}
+                        >
+                          <SelectTrigger className={`w-[130px] font-medium ${(row.owner === 'p1') ? 'text-blue-400' : (row.owner === 'p2') ? 'text-purple-400' : (row.owner === 'consolidated') ? 'text-amber-400' : 'text-gray-400'}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="p1" className="text-blue-400 font-medium">{userData?.firstName || t('income.person1') || 'Person 1'}</SelectItem>
+                            <SelectItem value="p2" className="text-purple-400 font-medium">{userData?.firstName2 || t('income.person2') || 'Person 2'}</SelectItem>
+                            <SelectItem value="shared" className="text-gray-400">{t('income.shared')}</SelectItem>
+                            <SelectItem value="consolidated" className="text-amber-400 font-medium">{t('income.consolidated')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    )}
                     <td className="p-2">
                       {row.locked ? (
                         <Input
@@ -389,8 +471,8 @@ const Costs = () => {
                         value={row.startDate}
                         onChange={(e) => updateRow(row.id, 'startDate', e.target.value)}
                         className="w-fit"
-                        retirementDate={wishedRetirementDate}
-                        legalDate={retirementLegalDate}
+                        retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                        legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
                         mode="start"
                       />
                     </td>
@@ -401,12 +483,13 @@ const Costs = () => {
                         onChange={(e) => updateRow(row.id, 'endDate', e.target.value)}
                         disabled={row.frequency === 'One-time'}
                         className="w-fit"
-                        retirementDate={wishedRetirementDate}
-                        legalDate={retirementLegalDate}
-                        deathDate={deathDate}
+                        retirementDate={row.owner === 'p2' ? p2WishedRetirementDate : p1WishedRetirementDate}
+                        legalDate={row.owner === 'p2' ? p2RetirementLegalDate : p1RetirementLegalDate}
+                        deathDate={row.owner === 'p2' ? p2DeathDate : (row.owner === 'shared' ? (p1DeathDate > p2DeathDate ? p1DeathDate : p2DeathDate) : p1DeathDate)}
                         mode="end"
                       />
                     </td>
+
                     <td className="p-2">
                       <Button
                         data-testid={`cost-delete-${index}`}

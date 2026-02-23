@@ -8,15 +8,16 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { toast } from 'sonner';
 import { ChevronLeft, Info } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
-import { getCostData, saveCostData, getIncomeData } from '../utils/database';
+import { getCostData, saveCostData, getIncomeData, getUserData } from '../utils/database';
 
 const ExpenseWizard = () => {
     const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [userData, setUserData] = useState(null);
+    const [combinedSalary, setCombinedSalary] = useState(0);
     const [salaryAmount, setSalaryAmount] = useState(0);
-
     const [helpAnswers, setHelpAnswers] = useState({
         hasCar: null,
         vacationCosts: null,
@@ -36,12 +37,22 @@ const ExpenseWizard = () => {
 
         const loadInitialData = async () => {
             try {
+                // Fetch User Data for analysisType
+                const uData = await getUserData(user.email, masterKey);
+                setUserData(uData);
+
                 const incomeData = await getIncomeData(user.email, masterKey);
                 if (incomeData && incomeData.length > 0) {
-                    const salaryRow = incomeData.find(r => r.name === 'Salary' || r.name === 'Net Salary');
-                    if (salaryRow && salaryRow.amount) {
-                        setSalaryAmount(parseFloat(salaryRow.amount) || 0);
-                    }
+                    // Person 1 Salary
+                    const p1SalaryRow = incomeData.find(r => (r.name === 'Salary' || r.name === 'Net Salary') && r.owner === 'p1');
+                    const p1Salary = p1SalaryRow ? (parseFloat(p1SalaryRow.amount) || 0) : 0;
+                    setSalaryAmount(p1Salary);
+
+                    // Person 2 Salary
+                    const p2SalaryRow = incomeData.find(r => (r.name === 'Salary' || r.name === 'Net Salary') && r.owner === 'p2');
+                    const p2Salary = p2SalaryRow ? (parseFloat(p2SalaryRow.amount) || 0) : 0;
+
+                    setCombinedSalary(p1Salary + p2Salary);
                 }
             } catch (error) {
                 console.error('Error loading initial data for wizard:', error);
@@ -60,92 +71,106 @@ const ExpenseWizard = () => {
         setLoading(true);
         try {
             const currentRows = await getCostData(user.email, masterKey) || [];
-            const monthlyTax = salaryAmount * 0.18;
-            const roundedTax = Math.ceil(monthlyTax / 100) * 100;
+            const isCouple = userData?.analysisType === 'couple';
+            const multiplier = isCouple ? 2 : 1;
 
-            let updatedRows = [...currentRows];
+            // Date calculations (reusing the same logic from CostsPage for consistency)
+            const today = new Date().toISOString().split('T')[0];
+            let maxDeathDate = today;
+            if (userData) {
+                const p1Birth = new Date(userData.birthDate);
+                const p1Legal = new Date(p1Birth);
+                p1Legal.setUTCFullYear(p1Legal.getUTCFullYear() + 65);
+                p1Legal.setUTCMonth(p1Legal.getUTCMonth() + 1);
+                const p1LegalStr = p1Legal.toISOString().split('T')[0];
+                const p1Death = userData.theoreticalDeathDate || p1LegalStr;
 
-            if (helpAnswers.hasCar === false) {
-                updatedRows = updatedRows.filter(row => row.name !== 'Private transportation');
-            } else if (helpAnswers.hasCar === true) {
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Private transportation' ? { ...row, amount: '600' } : row
-                );
-            }
+                maxDeathDate = p1Death;
 
-            if (helpAnswers.vacationCosts !== null) {
-                let vacationAmount = '5000';
-                if (helpAnswers.vacationCosts === 'high') vacationAmount = '10000';
-                else if (helpAnswers.vacationCosts === 'moderate') vacationAmount = '5000';
-                else if (helpAnswers.vacationCosts === 'low') vacationAmount = '2000';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Vacation' ? { ...row, amount: vacationAmount } : row
-                );
-            }
-
-            if (helpAnswers.goesOutOften !== null) {
-                const restaurantAmount = helpAnswers.goesOutOften ? '400' : '100';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Restaurants' ? { ...row, amount: restaurantAmount } : row
-                );
-            }
-
-            if (helpAnswers.foodExpenses !== null) {
-                let foodAmount = '500';
-                if (helpAnswers.foodExpenses === 'high') foodAmount = '800';
-                else if (helpAnswers.foodExpenses === 'moderate') foodAmount = '500';
-                else if (helpAnswers.foodExpenses === 'low') foodAmount = '350';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Food' ? { ...row, amount: foodAmount } : row
-                );
-            }
-
-            if (helpAnswers.privateInsurance !== null) {
-                const insuranceAmount = helpAnswers.privateInsurance ? '900' : '600';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Health insurance' ? { ...row, amount: insuranceAmount } : row
-                );
-            }
-
-            if (helpAnswers.publicTransport !== null) {
-                if (helpAnswers.publicTransport === 'never') {
-                    updatedRows = updatedRows.filter(row => row.name !== 'Public transportation');
-                } else if (helpAnswers.publicTransport === 'sometimes') {
-                    updatedRows = updatedRows.map(row =>
-                        row.name === 'Public transportation' ? { ...row, amount: '100' } : row
-                    );
-                } else if (helpAnswers.publicTransport === 'always') {
-                    updatedRows = updatedRows.map(row =>
-                        row.name === 'Public transportation' ? { ...row, amount: '300' } : row
-                    );
+                if (isCouple && userData.birthDate2) {
+                    const p2Birth = new Date(userData.birthDate2);
+                    const p2Legal = new Date(p2Birth);
+                    p2Legal.setUTCFullYear(p2Legal.getUTCFullYear() + 65);
+                    p2Legal.setUTCMonth(p2Legal.getUTCMonth() + 1);
+                    const p2LegalStr = p2Legal.toISOString().split('T')[0];
+                    const p2Death = userData.theoreticalDeathDate2 || p2LegalStr;
+                    if (p2Death > maxDeathDate) maxDeathDate = p2Death;
                 }
             }
 
+            // TAX CALCULATION
+            const taxRate = isCouple ? 0.20 : 0.18;
+            const taxBase = isCouple ? combinedSalary : salaryAmount;
+            const monthlyTax = taxBase * taxRate;
+            const roundedTax = Math.ceil(monthlyTax / 100) * 100;
+
+            const updateMap = new Map();
+
+            // Map questions to row names and amounts
+            if (helpAnswers.hasCar === true) updateMap.set('Private transportation', 600 * multiplier);
+            if (helpAnswers.vacationCosts !== null) {
+                let amt = 5000;
+                if (helpAnswers.vacationCosts === 'high') amt = 10000;
+                else if (helpAnswers.vacationCosts === 'low') amt = 2000;
+                updateMap.set('Vacation', amt * multiplier);
+            }
+            if (helpAnswers.goesOutOften !== null) updateMap.set('Restaurants', (helpAnswers.goesOutOften ? 400 : 100) * multiplier);
+            if (helpAnswers.foodExpenses !== null) {
+                let amt = 500;
+                if (helpAnswers.foodExpenses === 'high') amt = 800;
+                else if (helpAnswers.foodExpenses === 'low') amt = 350;
+                updateMap.set('Food', amt * multiplier);
+            }
+            if (helpAnswers.privateInsurance !== null) updateMap.set('Health insurance', (helpAnswers.privateInsurance ? 900 : 600) * multiplier);
+            if (helpAnswers.publicTransport !== null && helpAnswers.publicTransport !== 'never') {
+                updateMap.set('Public transportation', (helpAnswers.publicTransport === 'always' ? 300 : 100) * multiplier);
+            }
             if (helpAnswers.clothingShopping !== null) {
-                let clothingAmount = '300';
-                if (helpAnswers.clothingShopping === 'veryOften') clothingAmount = '500';
-                else if (helpAnswers.clothingShopping === 'reasonably') clothingAmount = '300';
-                else if (helpAnswers.clothingShopping === 'rarely') clothingAmount = '100';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Clothing' ? { ...row, amount: clothingAmount } : row
-                );
+                let amt = 300;
+                if (helpAnswers.clothingShopping === 'veryOften') amt = 500;
+                else if (helpAnswers.clothingShopping === 'rarely') amt = 100;
+                updateMap.set('Clothing', amt * multiplier);
             }
-
             if (helpAnswers.tvInternetCosts !== null) {
-                let tvAmount = '200';
-                if (helpAnswers.tvInternetCosts === 'high') tvAmount = '400';
-                else if (helpAnswers.tvInternetCosts === 'moderate') tvAmount = '200';
-                else if (helpAnswers.tvInternetCosts === 'low') tvAmount = '80';
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'TV/Internet/Phone' ? { ...row, amount: tvAmount } : row
-                );
+                let amt = 200;
+                if (helpAnswers.tvInternetCosts === 'high') amt = 400;
+                else if (helpAnswers.tvInternetCosts === 'low') amt = 80;
+                updateMap.set('TV/Internet/Phone', amt * multiplier);
             }
+            if (roundedTax > 0) updateMap.set('Taxes', roundedTax);
 
-            if (roundedTax > 0) {
-                updatedRows = updatedRows.map(row =>
-                    row.name === 'Taxes' ? { ...row, amount: String(roundedTax) } : row
-                );
-            }
+            // Special handling for removed rows
+            let updatedRows = [...currentRows];
+            if (helpAnswers.hasCar === false) updatedRows = updatedRows.filter(r => r.name !== 'Private transportation');
+            if (helpAnswers.publicTransport === 'never') updatedRows = updatedRows.filter(r => r.name !== 'Public transportation');
+
+            // Find max ID for new rows
+            let maxId = updatedRows.length > 0 ? Math.max(...updatedRows.map(r => r.id)) : 0;
+
+            // Updated existing rows or track which ones we haven't seen
+            updateMap.forEach((amt, rowName) => {
+                const existingIndex = updatedRows.findIndex(r => r.name === rowName);
+                if (existingIndex > -1) {
+                    updatedRows[existingIndex] = {
+                        ...updatedRows[existingIndex],
+                        amount: String(amt),
+                        owner: (rowName === 'Taxes' && isCouple) ? 'shared' : (updatedRows[existingIndex].owner || (isCouple ? 'shared' : 'p1'))
+                    };
+                } else {
+                    // Add new row if missing
+                    updatedRows.push({
+                        id: ++maxId,
+                        name: rowName,
+                        amount: String(amt),
+                        frequency: rowName === 'Vacation' ? 'Yearly' : 'Monthly',
+                        startDate: today,
+                        endDate: maxDeathDate,
+                        locked: true,
+                        categoryLocked: true,
+                        owner: isCouple ? 'shared' : 'p1'
+                    });
+                }
+            });
 
             await saveCostData(user.email, masterKey, updatedRows);
             toast.success(language === 'fr' ? 'Configuration appliquée !' : 'Configuration applied!');

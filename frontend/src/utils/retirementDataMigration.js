@@ -55,8 +55,8 @@ export function migrateToV2(legacyData, userData) {
         return createEmptyV2Schema(userData);
     }
 
-    // If already v2, return as-is
-    if (legacyData.version === 2) {
+    // If already v2 (version flag or presence of new fields), return as-is
+    if (legacyData.version === 2 || legacyData.questionnaire || legacyData.benefitsData) {
         return legacyData;
     }
 

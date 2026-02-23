@@ -16,6 +16,7 @@ const RetirementOverview = () => {
   const { user, masterKey } = useAuth();
   const { t, language } = useLanguage();
   const [retirementData, setRetirementData] = useState(null);
+  const [retirementData2, setRetirementData2] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,11 +37,20 @@ const RetirementOverview = () => {
         const retirementResult = calculateLifeExpectancy(data.birthDate, data.gender);
         setRetirementData(retirementResult);
 
+        let retirementResult2 = null;
+        if (data.analysisType === 'couple' && data.birthDate2 && data.gender2) {
+          retirementResult2 = calculateLifeExpectancy(data.birthDate2, data.gender2);
+          setRetirementData2(retirementResult2);
+        }
+
         await saveUserData(userEmail, masterKey, {
           ...data,
           retirementLegalDate: retirementResult.retirement_legal_date,
           theoreticalDeathDate: retirementResult.theoretical_death_date,
-          lifeExpectancyYears: retirementResult.life_expectancy_years
+          lifeExpectancyYears: retirementResult.life_expectancy_years,
+          retirementLegalDate2: retirementResult2?.retirement_legal_date || null,
+          theoreticalDeathDate2: retirementResult2?.theoretical_death_date || null,
+          lifeExpectancyYears2: retirementResult2?.life_expectancy_years || null
         });
       } catch (error) {
         console.error('Error in loadRetirementData:', error);
@@ -59,12 +69,12 @@ const RetirementOverview = () => {
     return new Date(dateString).toLocaleDateString(locale, { year: 'numeric', month: 'short' });
   };
 
-  // Avatar — same convention as PersonalInfo: /avatar_{M|F}_{40|50|60}_{blue|red}.png
-  const getAvatarSrc = () => {
-    if (!userData?.gender || !userData?.birthDate) return null;
-    const age = new Date().getFullYear() - new Date(userData.birthDate).getFullYear();
+  // Avatar — same convention as PersonalInfo
+  const getAvatarSrc = (gender, birthDate) => {
+    if (!gender || !birthDate) return null;
+    const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
     const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
-    const gCode = userData.gender === 'female' ? 'F' : 'M';
+    const gCode = gender === 'female' ? 'F' : 'M';
     return `/avatar_${gCode}_${bracket}_blue.png`;
   };
 
@@ -104,65 +114,133 @@ const RetirementOverview = () => {
         subtitle={t('retirementOverview.subtitle')}
       />
 
-      <div className="max-w-[900px] w-full mx-auto px-4">
-
+      <div className="max-w-[900px] w-full mx-auto px-4 space-y-8">
+        {/* Person 1 Card */}
         {retirementData && (
-          <div
-            className="bg-card border rounded-xl overflow-hidden flex items-stretch mb-8"
-            data-testid="retirement-date-card"
-          >
-            {/* 3 stats — left */}
-            <div className="flex-1 flex items-center divide-x divide-border">
-
-              {/* Legal Retirement Date */}
-              <div className="flex-1 px-6 py-5" data-testid="retirement-date">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
-                  <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  {t('retirementOverview.legalRetirement')}
+          <div className="space-y-3">
+            {userData?.analysisType === 'couple' && (
+              <div className="flex items-center gap-2 px-1">
+                <div className="h-4 w-1 bg-primary rounded-full" />
+                <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                  {userData.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}
+                </span>
+              </div>
+            )}
+            <div
+              className="bg-card border rounded-xl overflow-hidden flex items-stretch"
+              data-testid="retirement-date-card"
+            >
+              {/* 3 stats — left */}
+              <div className="flex-1 flex items-center divide-x divide-border">
+                {/* Legal Retirement Date */}
+                <div className="flex-1 px-6 py-5" data-testid="retirement-date">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.legalRetirement')}
+                  </div>
+                  <p className="text-2xl font-bold">{formatDate(retirementData.retirement_legal_date)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.legalRetirementDesc')}</p>
                 </div>
-                <p className="text-2xl font-bold">{formatDate(retirementData.retirement_legal_date)}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.legalRetirementDesc')}</p>
+
+                {/* Life Expectancy */}
+                <div className="flex-1 px-6 py-5" data-testid="life-expectancy">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Heart className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.lifeExpectancy')}
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {Math.round(retirementData.life_expectancy_years)} {t('retirementOverview.years')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.lifeExpectancyDesc')}</p>
+                </div>
+
+                {/* Theoretical Death Date */}
+                <div className="flex-1 px-6 py-5" data-testid="death-date">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.theoreticalDeath')}
+                  </div>
+                  <p className="text-2xl font-bold">{formatDate(retirementData.theoretical_death_date)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.theoreticalDeathDesc')}</p>
+                </div>
               </div>
 
-              {/* Life Expectancy */}
-              <div className="flex-1 px-6 py-5" data-testid="life-expectancy">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
-                  <Heart className="h-3.5 w-3.5 shrink-0" />
-                  {t('retirementOverview.lifeExpectancy')}
-                </div>
-                <p className="text-2xl font-bold">
-                  {Math.round(retirementData.life_expectancy_years)} {t('retirementOverview.years')}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.lifeExpectancyDesc')}</p>
+              {/* Avatar panel — right */}
+              <div className="w-[100px] shrink-0 bg-muted/30 flex items-center justify-center border-l border-border">
+                {(() => {
+                  const src = getAvatarSrc(userData.gender, userData.birthDate);
+                  return src ? (
+                    <div className="w-[100px] h-[100px] overflow-hidden">
+                      <img src={src} alt="avatar" className="w-[calc(100%+20px)] h-[calc(100%+20px)] -ml-[10px] -mt-[10px] object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-muted border-2 border-dashed border-border/60 opacity-40" />
+                  );
+                })()}
               </div>
-
-              {/* Theoretical Death Date */}
-              <div className="flex-1 px-6 py-5" data-testid="death-date">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
-                  <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-                  {t('retirementOverview.theoreticalDeath')}
-                </div>
-                <p className="text-2xl font-bold">{formatDate(retirementData.theoretical_death_date)}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.theoreticalDeathDesc')}</p>
-              </div>
-
             </div>
+          </div>
+        )}
 
-            {/* Avatar panel — right */}
-            <div className="w-[100px] shrink-0 bg-muted/30 flex items-center justify-center border-l border-border">
-              {avatarSrc ? (
-                <div className="w-[100px] h-[100px] overflow-hidden">
-                  <img
-                    src={avatarSrc}
-                    alt="avatar"
-                    className="w-[calc(100%+20px)] h-[calc(100%+20px)] -ml-[10px] -mt-[10px] object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-muted border-2 border-dashed border-border/60 opacity-40" />
-              )}
+        {/* Person 2 Card */}
+        {userData?.analysisType === 'couple' && retirementData2 && (
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-4 w-1 bg-primary rounded-full" />
+              <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                {userData.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}
+              </span>
             </div>
+            <div className="bg-card border rounded-xl overflow-hidden flex items-stretch">
+              {/* 3 stats — left */}
+              <div className="flex-1 flex items-center divide-x divide-border">
+                {/* Legal Retirement Date */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.legalRetirement')}
+                  </div>
+                  <p className="text-2xl font-bold">{formatDate(retirementData2.retirement_legal_date)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.legalRetirementDesc')}</p>
+                </div>
 
+                {/* Life Expectancy */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <Heart className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.lifeExpectancy')}
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {Math.round(retirementData2.life_expectancy_years)} {t('retirementOverview.years')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.lifeExpectancyDesc')}</p>
+                </div>
+
+                {/* Theoretical Death Date */}
+                <div className="flex-1 px-6 py-5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-2">
+                    <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                    {t('retirementOverview.theoreticalDeath')}
+                  </div>
+                  <p className="text-2xl font-bold">{formatDate(retirementData2.theoretical_death_date)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('retirementOverview.theoreticalDeathDesc')}</p>
+                </div>
+              </div>
+
+              {/* Avatar panel — right */}
+              <div className="w-[100px] shrink-0 bg-muted/30 flex items-center justify-center border-l border-border">
+                {(() => {
+                  const src = getAvatarSrc(userData.gender2, userData.birthDate2);
+                  return src ? (
+                    <div className="w-[100px] h-[100px] overflow-hidden">
+                      <img src={src} alt="avatar" className="w-[calc(100%+20px)] h-[calc(100%+20px)] -ml-[10px] -mt-[10px] object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-muted border-2 border-dashed border-border/60 opacity-40" />
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         )}
 

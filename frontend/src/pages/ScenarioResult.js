@@ -17,12 +17,13 @@ import { toUtcMonthStart, getSimulationStartDate, getYearEndMonthIndex, monthInd
 
 import { getProductById, getAssetClassStyle } from '../data/investmentProducts';
 import { Slider } from '../components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
-import { ChevronDown, ChevronUp, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle, Activity } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle, Activity, User } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DetailedChart from '../components/DetailedChart';
 import DetailedTooltipContent from '../components/DetailedTooltipContent';
@@ -87,6 +88,7 @@ const ScenarioResult = () => {
   const [retirementData, setRetirementData] = useState(null);
   const [realEstateData, setRealEstateData] = useState(null);
   const [scenarioData, setScenarioData] = useState(null);
+  const isCouple = userData?.analysisType === 'couple';
 
   // UI State
   const [isTableOpen, setIsTableOpen] = useState(false);
@@ -104,6 +106,7 @@ const ScenarioResult = () => {
 
   // Retirement Age Slider State
   const [retirementAge, setRetirementAge] = useState(null); // Will be set from scenarioData
+  const [retirementAge2, setRetirementAge2] = useState(null);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [baselineProjection, setBaselineProjection] = useState(null);
   const [missingPages, setMissingPages] = useState([]);
@@ -122,7 +125,8 @@ const ScenarioResult = () => {
   const [missingDataDialog, setMissingDataDialog] = useState({
     isOpen: false,
     type: null, // 'pension' | 'capital'
-    age: null
+    age: null,
+    personId: 'p1'
   });
   const [missingDataValue, setMissingDataValue] = useState('');
 
@@ -206,7 +210,6 @@ const ScenarioResult = () => {
               });
             }
           });
-
           // B. Remove deleted? (Optional but good for sync)
           // If an item in finalIncomes looks like a "profile income" (has ID in iData format? or just check if it was supposed to be there)
           // Risky to delete without clear differentiation from "Retirement" items.
@@ -228,26 +231,33 @@ const ScenarioResult = () => {
         );
 
         // SMART MERGE: Costs
-        // Start with cData (Fresh) to ensure structure matches DB
-        let finalCosts = cData || [];
-        const savedCosts = location.state?.adjustedCosts || sData?.adjustedCosts || [];
+        // Start with savedCosts to ensure we don't lose split rows or adjustments
+        let finalCosts = location.state?.adjustedCosts || sData?.adjustedCosts || [];
 
-        if (savedCosts.length > 0) {
-          finalCosts = finalCosts.map(fresh => {
-            const saved = savedCosts.find(s => s.id === fresh.id);
-            if (saved) {
+        if (cData && cData.length > 0) {
+          // Sync with fresh DB data
+          cData.forEach(freshCost => {
+            const idx = finalCosts.findIndex(fc => (fc.id && freshCost.id && fc.id === freshCost.id) || (fc.name === freshCost.name && !fc.parentId));
+
+            if (idx >= 0) {
+              const saved = finalCosts[idx];
               const isDirty = parseFloat(saved.amount) !== parseFloat(saved.adjustedAmount);
-              return {
-                ...fresh,
-                ...saved, // Apply Scenario Overrides (startDate, endDate, frequency, adjustedAmount, etc.)
-                amount: fresh.amount,
-                adjustedAmount: isDirty ? saved.adjustedAmount : fresh.amount
+              finalCosts[idx] = {
+                ...freshCost,
+                ...saved,
+                amount: freshCost.amount,
+                adjustedAmount: isDirty ? saved.adjustedAmount : freshCost.amount
               };
+            } else {
+              finalCosts.push({
+                ...freshCost,
+                adjustedAmount: freshCost.amount,
+                isActive: true
+              });
             }
-            return { ...fresh, adjustedAmount: fresh.amount };
           });
-          // Note: We deliberately drop "Simulation Only" costs that are not in cData,
-          // to enforce "DB is Truth" sync behavior requested by user.
+        } else if (!finalCosts.length) {
+          finalCosts = cData || [];
         }
 
         finalCosts = finalCosts.filter(c => Math.abs(parseFloat(c.adjustedAmount || c.amount) || 0) > 0);
@@ -415,6 +425,27 @@ const ScenarioResult = () => {
           setShowTrendHighlight(true);
         }
 
+        // Initialize retirement ages for both
+        // RULE: Source of truth = Retirement Data (Questionnaire)
+        const age1 = rData?.p1?.questionnaire?.simulationAge || sData?.earlyRetirementAge || 65;
+        setRetirementAge(Number(age1));
+
+        let age2 = 65;
+        if (uData?.analysisType === 'couple') {
+          age2 = rData?.p2?.questionnaire?.simulationAge || sData?.earlyRetirementAge2 || 65;
+          setRetirementAge2(Number(age2));
+        }
+
+        // AUTO-SYNC markers/labels to ensure graph perfectly matches questionnaire
+        // Use a slight delay to ensure all other data (incomes/costs) reached state
+        setTimeout(() => {
+          console.log('[ScenarioResult] Performing initial state sync for ages:', { age1, age2 });
+          synchronizeSimulationState('p1', Number(age1), sData);
+          if (uData?.analysisType === 'couple') {
+            synchronizeSimulationState('p2', Number(age2), sData);
+          }
+        }, 500);
+
         setLoading(false);
       } catch (error) {
         console.error("Error loading data:", error);
@@ -426,15 +457,17 @@ const ScenarioResult = () => {
     loadAllData();
   }, [user, masterKey, navigate, location]);
 
-  // INITIALIZATION FIX: Set retirementAge state from scenarioData on load
+  // INITIALIZATION FIX: Set retirementAge state from source of truth on load
   useEffect(() => {
-    if (retirementAge === null && scenarioData?.retirementOption === 'option2') {
-      const explicitAge = parseInt(scenarioData.lppSimulationAge);
-      if (!isNaN(explicitAge) && explicitAge > 0) {
-        setRetirementAge(explicitAge);
-      }
+    if (retirementAge === null) {
+      const explicitAge = Number(retirementData?.p1?.questionnaire?.simulationAge || scenarioData?.earlyRetirementAge);
+      if (!isNaN(explicitAge) && explicitAge > 0) setRetirementAge(explicitAge);
     }
-  }, [scenarioData, retirementAge]);
+    if (retirementAge2 === null && (userData?.analysisType === 'couple' || scenarioData?.analysisType === 'couple')) {
+      const explicitAge2 = Number(retirementData?.p2?.questionnaire?.simulationAge || scenarioData?.earlyRetirementAge2);
+      if (!isNaN(explicitAge2) && explicitAge2 > 0) setRetirementAge2(explicitAge2);
+    }
+  }, [scenarioData, retirementData, retirementAge, retirementAge2, userData]);
 
   // --- CORE SIMULATION FUNCTION ---
   const runSimulation = React.useCallback((simRetirementDate, overrides = {}) => {
@@ -469,6 +502,23 @@ const ScenarioResult = () => {
       return n.includes('avs') || n.includes('ahv') || n.includes('1. säule') || n.includes('1er pilier') || n.includes('pension de vieillesse');
     };
 
+    // Helpers for consistent Person detection (Sync with DataReview.js)
+    const isPerson1 = (item) => {
+      const rawPerson = item.person || item.owner;
+      return rawPerson === 'p1' ||
+        rawPerson === 'Person 1' ||
+        rawPerson === 'Personne 1' ||
+        (userData?.firstName && rawPerson === userData.firstName);
+    };
+
+    const isPerson2 = (item) => {
+      const rawPerson = item.person || item.owner;
+      return rawPerson === 'p2' ||
+        rawPerson === 'Person 2' ||
+        rawPerson === 'Personne 2' ||
+        (userData?.firstName2 && rawPerson === userData.firstName2);
+    };
+
     // Safety check for birthDate
     if (!userData.birthDate) return null;
 
@@ -493,74 +543,61 @@ const ScenarioResult = () => {
       ((simRetirementDateObj.getUTCMonth() - birthDate.getUTCMonth()) / 12);
 
     // Death date logic
-    let deathYear;
-    if (userData.theoreticalDeathDate) {
-      deathYear = new Date(userData.theoreticalDeathDate).getUTCFullYear();
-    } else {
-      const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-      deathYear = birthDate.getUTCFullYear() + approximateLifeExpectancy;
-    }
-    const deathDate = userData.theoreticalDeathDate || `${deathYear}-12-31`;
+    const deathDate1 = userData.theoreticalDeathDate || (userData.birthDate ? `${new Date(userData.birthDate).getUTCFullYear() + (userData.gender === 'male' ? 80 : 85)}-12-31` : '2080-12-31');
+    const deathDate2 = userData.analysisType === 'couple' && userData.theoreticalDeathDate2 ? userData.theoreticalDeathDate2 : (userData.analysisType === 'couple' && userData.birthDate2 ? `${new Date(userData.birthDate2).getUTCFullYear() + (userData.gender2 === 'male' ? 80 : 85)}-12-31` : null);
 
-    // Determine LPP Parameters for this specific retirement date (Option 3 logic)
+    const maxDeathDate = (deathDate2 && new Date(deathDate2) > new Date(deathDate1)) ? deathDate2 : deathDate1;
+    const deathYear = new Date(maxDeathDate).getUTCFullYear();
+
+    const simRetirementDate2 = effectiveScenarioData?.wishedRetirementDate2 || location.state?.wishedRetirementDate2 || simRetirementDate;
+    const simRetirementDateObj2 = new Date(simRetirementDate2);
+    const birthDate2 = userData.birthDate2 ? new Date(userData.birthDate2) : null;
+    const retirementLegalDate2 = birthDate2 ? getLegalRetirementDate(userData.birthDate2, userData.gender2) : null;
+
+    const ageAtRetirement2 = birthDate2 ? (simRetirementDateObj2.getUTCFullYear() - birthDate2.getUTCFullYear()) +
+      ((simRetirementDateObj2.getUTCMonth() - birthDate2.getUTCMonth()) / 12) : null;
+
+    // Determine LPP Parameters for P1 (Option 3 logic)
     let simLppPension = 0;
     let simLppCapital = 0;
     let lppStartDate = simRetirementDateObj;
 
-    if (effectiveScenarioData?.retirementOption === 'option3' && effectiveScenarioData.preRetirementRows && effectiveScenarioData.preRetirementRows.length > 0) {
-      // Robustly sort rows by age
-      const sortedRows = [...effectiveScenarioData.preRetirementRows].sort((a, b) => parseInt(a.age) - parseInt(b.age));
-      const minRowAge = parseInt(sortedRows[0].age);
-      const maxRowAge = parseInt(sortedRows[sortedRows.length - 1].age);
+    // Determine LPP Parameters for P2 (Option 3 logic)
+    let simLppPension2 = 0;
+    let simLppCapital2 = 0;
+    let lppStartDate2 = simRetirementDateObj2;
 
-      // Determine earliest feasible plan age (User pref vs Data availability)
-      const userEarliest = parseInt(effectiveScenarioData.option3EarlyAge || '58');
-      const effectiveEarliestAge = Math.max(userEarliest, minRowAge);
+    const isOption3 = effectiveScenarioData?.retirementOption === 'option3';
 
-      const retirementAgeInt = Math.floor(ageAtRetirement);
-      let planData = null;
-
-      if (retirementAgeInt < effectiveEarliestAge) {
-        // Gap Case: Retire now, pension starts at effectiveEarliestAge
-        const yearsToWait = effectiveEarliestAge - retirementAgeInt;
-        const deferredDate = new Date(birthDate);
-        deferredDate.setFullYear(deferredDate.getFullYear() + effectiveEarliestAge);
-        lppStartDate = deferredDate;
-
-        planData = sortedRows.find(r => r.age == effectiveEarliestAge);
-      } else {
-        // Normal Case: Retire and take pension now (or at max available age)
-        // Find exact match or closest downward? No, strictly match or cap at max.
-        if (retirementAgeInt > maxRowAge) {
-          planData = sortedRows[sortedRows.length - 1]; // Use max
-        } else {
-          planData = sortedRows.find(r => r.age == retirementAgeInt);
-          // If gap in middle (e.g. 62 exists, 64 exists, 63 missing), what to do?
-          // Fallback to previous available?
-          if (!planData) {
-            // Find closest lower age?
-            planData = sortedRows.filter(r => parseInt(r.age) < retirementAgeInt).pop();
-          }
+    if (isOption3) {
+      // Logic for P1
+      if (effectiveScenarioData.preRetirementRows && effectiveScenarioData.preRetirementRows.length > 0) {
+        const sortedRows = [...effectiveScenarioData.preRetirementRows].sort((a, b) => parseInt(a.age) - parseInt(b.age));
+        const retirementAgeInt = Math.floor(ageAtRetirement);
+        let planData = sortedRows.find(r => parseInt(r.age) === retirementAgeInt) || sortedRows.filter(r => parseInt(r.age) < retirementAgeInt).pop();
+        if (planData) {
+          simLppPension = parseFloat(planData.pension || 0);
+          simLppCapital = parseFloat(planData.capital || 0);
         }
       }
-
-      if (planData) {
-        simLppPension = parseFloat(planData.pension || 0);
-        simLppCapital = parseFloat(planData.capital || 0);
-
-        // Check filter (Strict False check)
-        // Use TRIMMED ID to bypass potential stale data with spaces
-        const filterId = `income-pre_retirement_pension_${planData.age}`;
-        if (!ignorePensionFilters && activeFilters[filterId] === false) {
-          simLppPension = 0;
-          simLppCapital = 0;
+      // Logic for P2
+      if (effectiveScenarioData.preRetirementRows2 && effectiveScenarioData.preRetirementRows2.length > 0) {
+        const sortedRows2 = [...effectiveScenarioData.preRetirementRows2].sort((a, b) => parseInt(a.age) - parseInt(b.age));
+        const retirementAgeInt2 = Math.floor(ageAtRetirement2);
+        let planData2 = sortedRows2.find(r => parseInt(r.age) === retirementAgeInt2) || sortedRows2.filter(r => parseInt(r.age) < retirementAgeInt2).pop();
+        if (planData2) {
+          simLppPension2 = parseFloat(planData2.pension || 0);
+          simLppCapital2 = parseFloat(planData2.capital || 0);
         }
       }
     } else {
       // Standard Options (0, 1, 2)
-      // Use the fixed projected values from state
       simLppPension = parseFloat(effectiveScenarioData?.projectedLPPPension || effectiveScenarioData?.projectedLegalLPPPension || 0);
       simLppCapital = parseFloat(effectiveScenarioData?.projectedLPPCapital || effectiveScenarioData?.projectedLegalLPPCapital || 0);
+
+      // Fallback for P2 if couple
+      simLppPension2 = parseFloat(effectiveScenarioData?.projectedLPPPension2 || effectiveScenarioData?.projectedLegalLPPPension2 || 0);
+      simLppCapital2 = parseFloat(effectiveScenarioData?.projectedLPPCapital2 || effectiveScenarioData?.projectedLegalLPPCapital2 || 0);
     }
 
 
@@ -652,14 +689,19 @@ const ScenarioResult = () => {
         if (!activeFilters[`income-${row.id || row.name}`]) return;
         const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
 
+        const isP2 = row.owner === 'p2' || row.person === 'Person 2';
+        const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+        const overrideKey = `${row.name}_${pLabel}`;
+
         // MASTER SCREEN SYNC: Salary ends EXACTLY on retirement date to avoid 1-month overlap
-        const start = row.startDate || new Date().toISOString().split('T')[0];
-        const end = simRetirementDate;
+        const start = incomeDateOverrides[overrideKey]?.startDate || row.startDate || new Date().toISOString().split('T')[0];
+        const end = incomeDateOverrides[overrideKey]?.endDate || (isP2 ? simRetirementDate2 : simRetirementDate);
 
         const val = calculateYearlyAmount(amount, row.frequency, start, end, year);
         if (val > 0) {
           yearIncome += val;
-          incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
+          const key = `${row.name}@@${isP2 ? 'p2' : 'p1'}`;
+          incomeBreakdown[key] = (incomeBreakdown[key] || 0) + val;
         }
       });
 
@@ -670,39 +712,47 @@ const ScenarioResult = () => {
 
         const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
 
-        // MASTER SCREEN SYNC: AVS starts at legal date by default, unless retiring later.
-        // If user is retiring AFTER legal age, AVS starts at Legal Date (unless deferred).
-        // For simplicity and 100% table agreement, we use the row's date but ensure 
-        // it doesn't drift if it's the main projected one.
-        const start = row.startDate || retirementLegalDate;
-        const end = row.endDate || deathDate;
+        const isP2 = row.owner === 'p2' || row.person === 'Person 2';
+        const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+        const overrideKey = `${row.name}_${pLabel}`;
+
+        const start = incomeDateOverrides[overrideKey]?.startDate || row.startDate || (isP2 ? retirementLegalDate2 : retirementLegalDate);
+        const end = incomeDateOverrides[overrideKey]?.endDate || row.endDate || (isP2 ? deathDate2 : deathDate1);
 
         const val = calculateYearlyAmount(amount, row.frequency, start, end, year);
         if (val > 0) {
-          // Deduplicate breakdown keys
-          if (!incomeBreakdown[row.name]) {
+          const key = `${row.name}@@${isP2 ? 'p2' : 'p1'}`;
+          if (!incomeBreakdown[key]) {
             yearIncome += val;
-            incomeBreakdown[row.name] = val;
+            incomeBreakdown[key] = val;
           }
         }
       });
 
       // LPP PENSION (Dynamic Source of Truth)
-      // We prioritize simLppPension and lppStartDate for ANY row matching isLPP
       const lppRows = [...effectiveIncomes, ...(effectiveRetirementData?.rows || [])].filter(r => isLPP(r.name));
-      if (lppRows.length > 0 && simLppPension > 0) {
-        const firstActiveLpp = lppRows.find(r => activeFilters[`pillar-${r.id || r.name}`] !== false && activeFilters[`income-${r.id || r.name}`] !== false);
-        if (firstActiveLpp) {
-          // MASTER SCREEN SYNC: LPP Pension starts EXACTLY on retirement date
-          const start = simRetirementDate;
-          const end = firstActiveLpp.endDate || deathDate;
+      if (lppRows.length > 0) {
+        lppRows.forEach(row => {
+          const isP2 = row.owner === 'p2' || row.person === 'Person 2';
+          if (activeFilters[`pillar-${row.id || row.name}`] === false || activeFilters[`income-${row.id || row.name}`] === false) return;
 
-          const val = calculateYearlyAmount(simLppPension, 'Yearly', start, end, year);
+          const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+          const overrideKey = `${row.name}_${pLabel}`;
+
+          // If it's a dynamic row from simLppPension (Option 3), we use simLppPension. 
+          // Otherwise use row amount.
+          const amount = (row.isRetirement) ? (isP2 ? simLppPension2 : simLppPension) : (parseFloat(row.adjustedAmount || row.amount) || 0);
+          if (amount <= 0) return;
+
+          const start = incomeDateOverrides[overrideKey]?.startDate || row.startDate || (isP2 ? simRetirementDate2 : simRetirementDate);
+          const end = incomeDateOverrides[overrideKey]?.endDate || row.endDate || (isP2 ? deathDate2 : deathDate1);
+
+          const val = calculateYearlyAmount(amount, 'Yearly', start, end, year);
           if (val > 0) {
             yearIncome += val;
-            incomeBreakdown[firstActiveLpp.name] = val;
+            incomeBreakdown[`${row.name}@@${isP2 ? 'p2' : 'p1'}`] = val;
           }
-        }
+        });
       }
 
       // 1. INCOMES (Salary etc)
@@ -736,7 +786,9 @@ const ScenarioResult = () => {
         );
         if (val > 0) {
           yearIncome += val;
-          incomeBreakdown[row.name] = (incomeBreakdown[row.name] || 0) + val;
+          const person = isPerson2(row) ? 'p2' : (isPerson1(row) ? 'p1' : 'shared');
+          const key = `${row.name}@@${person}`;
+          incomeBreakdown[key] = (incomeBreakdown[key] || 0) + val;
         }
       });
 
@@ -746,28 +798,14 @@ const ScenarioResult = () => {
       // Fallback Logic Removed (Lines 669-681) to prevent "LPP Pension" duplicates.
       // Injection Logic (lines 604+) handles this correctly.
 
-      // Handle 3a Capital Payout (Special Rule)
-      // We find the 3a amount from retirementData (or benefitsData state passed?)
-      // Let's look in retirementData.rows
-      const p3a = effectiveRetirementData?.rows?.find(r => r.name.toLowerCase().includes('3a'));
-      if (p3a && activeFilters[`pillar-${p3a.id || p3a.name}`]) {
-        // Check if year matches payoutYear3a
-        if (year === payoutYear3a) {
-          const val = parseFloat(p3a.amount || 0);
-          if (val > 0) {
-            yearIncome += val;
-            incomeBreakdown[p3a.name] = (incomeBreakdown[p3a.name] || 0) + val;
-          }
-        }
+      // Handle LPP Capital Payouts (Dynamic)
+      if (simLppCapital > 0 && year === lppStartDate.getUTCFullYear()) {
+        yearIncome += simLppCapital;
+        incomeBreakdown['LPP Capital@@p1'] = (incomeBreakdown['LPP Capital@@p1'] || 0) + simLppCapital;
       }
-
-      // Handle LPP Capital Payout (if any)
-      if (simLppCapital > 0) {
-        const lppCapYear = lppStartDate.getUTCFullYear();
-        if (year === lppCapYear) {
-          yearIncome += simLppCapital;
-          incomeBreakdown['LPP Capital'] = (incomeBreakdown['LPP Capital'] || 0) + simLppCapital;
-        }
+      if (simLppCapital2 > 0 && year === lppStartDate2.getUTCFullYear()) {
+        yearIncome += simLppCapital2;
+        incomeBreakdown['LPP Capital@@p2'] = (incomeBreakdown['LPP Capital@@p2'] || 0) + simLppCapital2;
       }
 
       // 3. ASSETS
@@ -851,7 +889,8 @@ const ScenarioResult = () => {
             } else {
               // Show it on the INCOME side for visual confirmation
               yearIncome += amount;
-              incomeBreakdown[asset.name] = (incomeBreakdown[asset.name] || 0) + amount;
+              const person = isPerson2(asset) ? 'p2' : (isPerson1(asset) ? 'p1' : 'shared');
+              incomeBreakdown[`${asset.name}@@${person}`] = (incomeBreakdown[`${asset.name}@@${person}`] || 0) + amount;
             }
 
             if (isInvested) {
@@ -872,7 +911,8 @@ const ScenarioResult = () => {
         const val = calculateYearlyAmount(amount, row.frequency, row.startDate, row.endDate, year);
         if (val > 0) {
           yearCosts += val;
-          costBreakdown[row.name] = (costBreakdown[row.name] || 0) + val;
+          const person = isPerson2(row) ? 'p2' : (isPerson1(row) ? 'p1' : (row.owner === 'consolidated' ? 'consolidated' : 'shared'));
+          costBreakdown[`${row.name}@@${person}`] = (costBreakdown[`${row.name}@@${person}`] || 0) + val;
         }
       });
 
@@ -888,7 +928,8 @@ const ScenarioResult = () => {
         // If specific logic needed for periods, add here. Currently assuming simple date for debts in this refactor.
         if (year === debtYear) {
           yearCosts += amount;
-          costBreakdown[debt.name] = (costBreakdown[debt.name] || 0) + amount;
+          const person = isPerson2(debt) ? 'p2' : (isPerson1(debt) ? 'p1' : 'shared');
+          costBreakdown[`${debt.name}@@${person}`] = (costBreakdown[`${debt.name}@@${person}`] || 0) + amount;
         }
       });
 
@@ -1056,7 +1097,8 @@ const ScenarioResult = () => {
             activeFilters,
             scenarioData,
             incomes,
-            combinedCosts
+            combinedCosts,
+            userData
           );
 
           console.log("[MC SUCCESS]", {
@@ -1102,9 +1144,8 @@ const ScenarioResult = () => {
     // Disabled in favor of onValueCommit -> synchronizeSimulationState
     // If we want instant visual feedback, we can keep a lightweight recalc, but let's stick to the robust commited change.
   }, [retirementAge]);
-
-  // NEW SLIDER SYNC LOGIC
-  const synchronizeSimulationState = async (newAge, overrideScenarioData = null) => {
+  // NEW SYNC LOGIC (DUAL COMPATIBLE)
+  const synchronizeSimulationState = async (personId, newAge, overrideScenarioData = null) => {
     // START: Fix Stale State
     const effectiveScenarioData = overrideScenarioData || scenarioData;
     if (!effectiveScenarioData || !userData) return;
@@ -1112,9 +1153,10 @@ const ScenarioResult = () => {
 
     // 0. Ensure Types
     const numericAge = Number(newAge);
+    const isP2 = personId === 'p2';
 
     // 1. Calculate Date
-    const birthDate = new Date(userData.birthDate);
+    const birthDate = new Date(isP2 ? userData.birthDate2 : userData.birthDate);
     const retirementDate = new Date(birthDate);
     const years = Math.floor(numericAge);
     const months = Math.round((numericAge - years) * 12);
@@ -1131,37 +1173,35 @@ const ScenarioResult = () => {
 
     // 3. Check for Missing Data (Blocking)
     if (isPreRetirement) {
-      // Pension Path: Check lppByAge for this specific age floor
       const ageKey = Math.floor(numericAge).toString();
-      const lppByAge = effectiveScenarioData.benefitsData?.lppByAge || {};
-      const entry = lppByAge[ageKey];
-
-      // If missing or zero pension
+      const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
+      const entry = bData?.lppByAge?.[ageKey];
       if (!entry || (!entry.pension && !entry.capital)) {
         setMissingDataDialog({
           isOpen: true,
           type: 'pension',
-          age: Math.floor(numericAge)
+          age: Math.floor(numericAge),
+          personId: personId
         });
-        return; // STOP HERE
+        return;
       }
     } else {
-      // Capital Path: Check lppCurrentCapital
-      const currentCapital = effectiveScenarioData.benefitsData?.lppCurrentCapital;
-      // Check if missing or 0
+      const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
+      const currentCapital = bData?.lppCurrentCapital;
       if (!currentCapital || parseFloat(currentCapital) <= 0) {
         setMissingDataDialog({
           isOpen: true,
           type: 'capital',
-          age: numericAge
+          age: numericAge,
+          personId: personId
         });
-        return; // STOP HERE
+        return;
       }
     }
 
     // 4. Update Questionnaire State
     const updatedQuestionnaire = {
-      ...effectiveScenarioData.questionnaire,
+      ...(isP2 ? effectiveScenarioData.questionnaire2 : effectiveScenarioData.questionnaire),
       simulationAge: numericAge,
       isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
     };
@@ -1175,8 +1215,10 @@ const ScenarioResult = () => {
       const updatedIncomes = incomes.map(item => {
         const nameLower = (item.name || '').toLowerCase();
         const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
+        const itemIsP2 = item.person === 'Person 2' || item.owner === 'p2';
 
-        if (isSalary && !item.isRetirement) {
+        // Only update end date if the person matches
+        if (isSalary && !item.isRetirement && (isP2 === itemIsP2)) {
           return {
             ...item,
             endDate: newRetirementDateStr,
@@ -1185,23 +1227,17 @@ const ScenarioResult = () => {
         }
 
         // CRITICAL FIX: Update "Projected LPP Pension" Row
-        // Identifying marks: ID includes 'lpp' and 'pension', or Name includes 'Projected LPP'
         const isLppPension = (item.id && String(item.id).toLowerCase().includes('lpp') && String(item.id).toLowerCase().includes('pension')) ||
           (item.name && String(item.name).toLowerCase().includes('lpp') && String(item.name).toLowerCase().includes('pension'));
 
-        if (isLppPension) {
-          // Recalculate pension for this age if we have data
-          // We use the 'newPension' calculated below? 
-          // WAIT: We calculate newPension AFTER this map loop in the original code. 
-          // We need to move the pension lookup BEFORE this map loop or access it here.
-
-          // Accessing effectiveScenarioData here is safe.
+        if (isLppPension && (isP2 === itemIsP2)) {
           let dynamicPension = 0;
           let dynamicAge = Math.floor(numericAge);
+          const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
 
-          if (numericAge >= (effectiveScenarioData.questionnaire?.lppEarliestAge || 58)) {
+          if (numericAge >= (earliestPreRetirementAge)) {
             const ageKey = dynamicAge.toString();
-            const entry = effectiveScenarioData.benefitsData?.lppByAge?.[ageKey];
+            const entry = bData?.lppByAge?.[ageKey];
             dynamicPension = entry?.pension || 0;
           }
 
@@ -1212,7 +1248,6 @@ const ScenarioResult = () => {
               amount: dynamicPension,
               adjustedAmount: dynamicPension,
               startDate: newRetirementDateStr,
-              // Ensure it is treated as a retirement income
               isRetirement: true
             };
           }
@@ -1224,18 +1259,19 @@ const ScenarioResult = () => {
       // Determine correct projected LPP values based on path
       let newPension = '';
       let newCapital = '';
+      const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
 
       if (isPreRetirement) {
         const ageKey = Math.floor(numericAge).toString();
-        const entry = effectiveScenarioData.benefitsData?.lppByAge?.[ageKey];
+        const entry = bData?.lppByAge?.[ageKey];
         newPension = entry?.pension || '';
         newCapital = entry?.capital || '';
       } else {
-        newCapital = effectiveScenarioData.benefitsData?.lppCurrentCapital || '';
+        newCapital = bData?.lppCurrentCapital || '';
       }
 
       // Determine Retirement Option & Legal Age
-      const gender = userData.gender || 'male';
+      const gender = isP2 ? (userData.gender2 || 'male') : (userData.gender || 'male');
       const legalAge = gender === 'female' ? 64 : 65;
       let newOption = effectiveScenarioData.retirementOption || 'option1';
 
@@ -1249,13 +1285,12 @@ const ScenarioResult = () => {
 
       const updatedScenarioData = {
         ...effectiveScenarioData,
-        questionnaire: updatedQuestionnaire,
-        projectedLPPPension: newPension,
-        projectedLPPCapital: newCapital,
-        wishedRetirementDate: newRetirementDateStr,
-        retirementOption: newOption,
-        // CRITICAL FIX: Ensure Early Retirement Age is synced to numericAge if Option 2
-        earlyRetirementAge: newOption === 'option2' ? numericAge.toString() : (effectiveScenarioData.earlyRetirementAge || ''),
+        [isP2 ? 'questionnaire2' : 'questionnaire']: updatedQuestionnaire,
+        [isP2 ? 'projectedLPPPension2' : 'projectedLPPPension']: newPension,
+        [isP2 ? 'projectedLPPCapital2' : 'projectedLPPCapital']: newCapital,
+        [isP2 ? 'wishedRetirementDate2' : 'wishedRetirementDate']: newRetirementDateStr,
+        retirementOption: newOption, // Option reflects the overall scenario strategy
+        [isP2 ? 'earlyRetirementAge2' : 'earlyRetirementAge']: newOption === 'option2' ? numericAge.toString() : (effectiveScenarioData[isP2 ? 'earlyRetirementAge2' : 'earlyRetirementAge'] || ''),
         adjustedIncomes: updatedIncomes
       };
 
@@ -1269,14 +1304,21 @@ const ScenarioResult = () => {
       const rData = (await getRetirementData(user.email, masterKey)) || {};
 
       // Ensure V2 structure exists
-      if (!rData.questionnaire) rData.questionnaire = {};
-
-      // Update Core Plan
-      rData.questionnaire = {
-        ...rData.questionnaire,
-        simulationAge: newAge,
-        isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
-      };
+      if (!isP2) {
+        if (!rData.p1) rData.p1 = {};
+        rData.p1.questionnaire = {
+          ...(rData.p1.questionnaire || {}),
+          simulationAge: newAge,
+          isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
+        };
+      } else {
+        if (!rData.p2) rData.p2 = {};
+        rData.p2.questionnaire = {
+          ...(rData.p2.questionnaire || {}),
+          simulationAge: newAge,
+          isWithinPreRetirement: isPreRetirement ? 'yes' : 'no'
+        };
+      }
 
       // Also ensure Benefits Data (LPP) is synced if provided via ScenarioData (e.g. from handleMissingDataSubmit)
       // Note: handleMissingDataSubmit updates effectiveScenarioData.benefitsData first.
@@ -1294,10 +1336,10 @@ const ScenarioResult = () => {
       console.log('DEBUG: Dynamic Update - In-place refresh', { newAge });
 
       // Dynamic Update: Update local state to trigger re-render
-      // CRITICAL: We must update the 'incomes' state because the chart relies on it for salary end-dates.
       setIncomes(updatedIncomes);
       setScenarioData(updatedScenarioData);
-      setRetirementAge(newAge); // Ensure slider reflects it visually if driven by this state
+      if (isP2) setRetirementAge2(newAge);
+      else setRetirementAge(newAge);
 
       // Update other states if needed for consistency (though chart mainly depends on incomes/assets/costs)
       // setCosts(finalCosts??) - costs usually don't change endDate dynamically in this logic yet, but safe to keep existing.
@@ -1321,19 +1363,23 @@ const ScenarioResult = () => {
   const handleMissingDataSubmit = async () => {
     // CAPTURE AGE EARLY to prevent state staleness issues
     const dialogAge = missingDataDialog.age;
+    const personId = missingDataDialog.personId || 'p1';
+    const isP2 = personId === 'p2';
     const val = parseFloat(missingDataValue);
     if (isNaN(val) || val < 0) return;
 
-    const updatedBenefitsData = { ...scenarioData.benefitsData };
+    // 1. Update Scenario Data (for immediate simulation)
+    const bDataKey = isP2 ? 'benefitsData2' : 'benefitsData';
+    const updatedBenefitsData = { ...(scenarioData[bDataKey] || {}) };
 
     if (missingDataDialog.type === 'pension') {
-      const ageKey = missingDataDialog.age.toString();
+      const ageKey = dialogAge.toString();
+      if (!updatedBenefitsData.lppByAge) updatedBenefitsData.lppByAge = {};
       updatedBenefitsData.lppByAge = {
         ...updatedBenefitsData.lppByAge,
         [ageKey]: {
           ...updatedBenefitsData.lppByAge?.[ageKey],
           pension: val,
-          // Heuristic: if capital missing, estimate or leave blank? User asked for pension.
           capital: updatedBenefitsData.lppByAge?.[ageKey]?.capital || ''
         }
       };
@@ -1343,9 +1389,12 @@ const ScenarioResult = () => {
 
     const updatedScenarioData = {
       ...scenarioData,
-      benefitsData: updatedBenefitsData,
-      // CRITICAL FIX: Explicitly update top-level fields immediately to prevent stale data in DataReview
-      ...(missingDataDialog.type === 'pension' ? { projectedLPPPension: val } : { projectedLPPCapital: val })
+      [bDataKey]: updatedBenefitsData,
+      // Update top-level fields for display/legacy compat
+      ...(isP2
+        ? (missingDataDialog.type === 'pension' ? { projectedLPPPension2: val } : { projectedLPPCapital2: val })
+        : (missingDataDialog.type === 'pension' ? { projectedLPPPension: val } : { projectedLPPCapital: val })
+      )
     };
 
     try {
@@ -1353,60 +1402,49 @@ const ScenarioResult = () => {
       await saveScenarioData(user.email, masterKey, updatedScenarioData);
       setScenarioData(updatedScenarioData); // Update Local State immediately
 
-      // SYNC TO GLOBAL RETIREMENT DATA (Persist the new LPP value)
+      // 2. Sync to Global Retirement Data (V2 Schema Persistence)
       const rData = (await getRetirementData(user.email, masterKey)) || {};
-      if (!rData.benefitsData) rData.benefitsData = {};
+      const personKey = isP2 ? 'p2' : 'p1';
 
-      // Merge LPP By Age
+      // Ensure V2 structure
+      if (!rData[personKey]) rData[personKey] = { questionnaire: {}, benefitsData: {} };
+      if (!rData[personKey].benefitsData) rData[personKey].benefitsData = {};
+
+      const targetBData = rData[personKey].benefitsData;
+
       if (missingDataDialog.type === 'pension') {
-        const ageKey = missingDataDialog.age.toString();
-        rData.benefitsData.lppByAge = {
-          ...(rData.benefitsData.lppByAge || {}),
-          [ageKey]: updatedBenefitsData.lppByAge[ageKey]
-        };
+        const ageKey = dialogAge.toString();
+        if (!targetBData.lppByAge) targetBData.lppByAge = {};
+        targetBData.lppByAge[ageKey] = updatedBenefitsData.lppByAge[ageKey];
       } else {
-        rData.benefitsData.lppCurrentCapital = updatedBenefitsData.lppCurrentCapital;
+        targetBData.lppCurrentCapital = val;
       }
 
       await saveRetirementData(user.email, masterKey, rData);
 
-      // Cleanup moved to end to prevent state staleness
-
-      // Resume Sync (which will now Redirect)
-      // PASS THE UPDATED SCENARIO DATA explicitly to avoid stale state check
-      // CRITICAL FIX: Use the age from the dialog (which captured the slider value correctly) 
-      // instead of potentially stale retirementAge state
-      const resumeAge = missingDataDialog.age || retirementAge;
+      const resumeAge = dialogAge || (isP2 ? retirementAge2 : retirementAge);
 
       console.log('DEBUG: handleMissingDataSubmit - Resuming Simulation', {
-        dialogAge: missingDataDialog.age,
-        stateAge: retirementAge,
-        resumeAge: resumeAge,
-        projectedLPPPension: updatedScenarioData.projectedLPPPension
+        personId,
+        dialogAge,
+        resumeAge,
+        type: missingDataDialog.type,
+        val
       });
 
-      // AUTOMATION FIX LOOP PREVENTION:
-      if (location.state?.autoAutomateFullSequence) {
-        console.log('DEBUG: Already in Automation Sequence - Resuming locally to prevent loop.');
-        setMissingDataDialog({ isOpen: false, type: null, age: null });
-        setMissingDataValue('');
-        await synchronizeSimulationState(resumeAge, updatedScenarioData);
-        toast.success(language === 'fr' ? 'Données mises à jour.' : 'Data updated.');
-        return;
-      }
-
-      // AUTOMATION FIX: Redirect to Inputs -> Parameters -> DataReview -> Result
+      // 3. Automation Flow & Redirection
+      // We ALWAYS redirect to force a clean data refresh as requested by user
       toast.success(language === 'fr' ? 'Redirection pour recalcul...' : 'Redirecting for recalculation...');
 
-      setMissingDataDialog({ isOpen: false, type: null, age: null });
+      setMissingDataDialog({ isOpen: false, type: null, age: null, personId: 'p1' });
       setMissingDataValue('');
 
       setTimeout(() => {
         navigate('/retirement-inputs', {
           state: {
             autoAutomateFullSequence: true,
-            // Pass all critical data
-            wishedRetirementDate: updatedScenarioData.wishedRetirementDate,
+            personId: personId, // Pass which person triggered it
+            wishedRetirementDate: isP2 ? updatedScenarioData.wishedRetirementDate2 : updatedScenarioData.wishedRetirementDate,
             retirementOption: updatedScenarioData.retirementOption,
             earlyRetirementAge: resumeAge
           }
@@ -1537,7 +1575,8 @@ const ScenarioResult = () => {
       }
 
       // Build deterministic monthly series (reuse existing function)
-      detSeries = calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets, activeFilters, scenarioData);
+      const combinedCosts = [...costs, ...debts];
+      detSeries = calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets, activeFilters, scenarioData, incomes, combinedCosts, userData);
     }
 
     // [SIM START ALIGN] Verify matching origins across modes
@@ -1853,17 +1892,31 @@ const ScenarioResult = () => {
         ? yearlyData[yearlyData.length - 1].cumulativeBalance
         : projection?.finalBalance || 0;
 
+      // [FIX] Define missing balances for PDF summary
+      const final5Balance = monteCarloProjections?.p5 && monteCarloProjections.p5.length > 0
+        ? monteCarloProjections.p5[monteCarloProjections.p5.length - 1].cumulativeBalance
+        : finalBalance;
+
+      const finalBaselineBalance = finalBalance;
+
       const summaryData = {
         finalBalance,
-        retirementAge: scenarioData?.retirementAge || 65,
-        yearsInRetirement: yearlyData.length || 0,
+        retirementAge: `${retirementInfo.ageYears}y ${retirementInfo.ageMonths}m`,
+        yearsInRetirement: yearlyData.filter(d => d.year >= retirementInfo.date.getFullYear()).length,
         deathDate: userData?.theoreticalDeathDate,
         peakWealth: Math.max(...(yearlyData.map(p => p.cumulativeBalance) || [0])),
         totalPages: 14, // Will be updated
         isInvested: isInvested,
         final5Balance: final5Balance,
-        finalBaselineBalance: finalBaselineBalance
+        finalBaselineBalance: finalBaselineBalance,
+        isCouple: userData.analysisType === 'couple'
       };
+
+      if (userData.analysisType === 'couple') {
+        summaryData.retirementAge2 = `${retirementInfo.ageYears2}y ${retirementInfo.ageMonths2}m`;
+        summaryData.deathDate2 = userData?.theoreticalDeathDate2;
+        summaryData.yearsInRetirement2 = yearlyData.filter(d => d.year >= retirementInfo.date2.getFullYear()).length;
+      }
 
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
       currentPage++;
@@ -1911,12 +1964,12 @@ const ScenarioResult = () => {
 
       // ===== PAGE 5: INCOME & ASSETS =====
       pageNumbers.incomeAssets = currentPage;
-      generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages);
+      generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages, isCouple);
       currentPage++;
 
       // ===== PAGE 6: COSTS & DEBTS =====
       pageNumbers.costDebts = currentPage;
-      generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages);
+      generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages, isCouple);
       currentPage++;
 
       // ===== PAGE 7: SIMULATION CHOICE (merged into Personal Info, see page 4) =====
@@ -1924,7 +1977,7 @@ const ScenarioResult = () => {
 
       // ===== PAGE 8: RETIREMENT BENEFITS =====
       pageNumbers.benefits = currentPage;
-      generateRetirementBenefits(pdf, scenarioData, language, currentPage, summaryData.totalPages);
+      generateRetirementBenefits(pdf, scenarioData, enrichedUserData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
       // ===== PAGE 9: DATA REVIEW =====
@@ -1935,7 +1988,7 @@ const ScenarioResult = () => {
         costs: costs.filter(c => activeFilters[`cost-${c.id || c.name}`]),
         debts: debts.filter(d => activeFilters[`debt-${d.id || d.name}`])
       };
-      generateDataReview(pdf, allData, language, currentPage, summaryData.totalPages);
+      generateDataReview(pdf, allData, enrichedUserData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
       // ===== PAGE 10: LANDSCAPE GRAPH =====
@@ -2075,7 +2128,15 @@ const ScenarioResult = () => {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      return <DetailedTooltipContent data={data} language={language} isPdf={false} />;
+      return (
+        <DetailedTooltipContent
+          data={data}
+          language={language}
+          isPdf={false}
+          p1Name={userData?.firstName}
+          p2Name={userData?.firstName2}
+        />
+      );
     }
     return null;
   };
@@ -2352,49 +2413,69 @@ const ScenarioResult = () => {
 
   // Retirement Info Helpers
   const retirementInfo = useMemo(() => {
+    const isCouple = userData?.analysisType === 'couple';
     const option = scenarioData?.retirementOption || 'option1';
-    const defaultDateStr = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate;
 
-    let retireDate;
+    // Person 1
+    const defaultDateStr = location.state?.wishedRetirementDate || scenarioData?.wishedRetirementDate;
+    let retireDate1;
     if (option === 'option2' && retirementAge) {
       const birthDate = new Date(userData?.birthDate);
       const years = Math.floor(retirementAge);
       const months = Math.round((retirementAge - years) * 12);
-
-      // [Phase 9b] Use UTC to prevent local drift
-      retireDate = new Date(Date.UTC(
-        birthDate.getUTCFullYear() + years,
-        birthDate.getUTCMonth() + months + 1,
-        1, 0, 0, 0, 0
-      ));
+      retireDate1 = new Date(Date.UTC(birthDate.getUTCFullYear() + years, birthDate.getUTCMonth() + months + 1, 1, 0, 0, 0, 0));
     } else if (option === 'option3' && projection?.simRetirementDate) {
-      retireDate = new Date(projection.simRetirementDate);
+      retireDate1 = new Date(projection.simRetirementDate);
     } else {
-      retireDate = new Date(defaultDateStr);
+      retireDate1 = new Date(defaultDateStr);
     }
 
-    let ageYears = 0;
-    let ageMonths = 0;
-
-    // Use explicit retirementAge if available (Option 2 slider) to ensure precision and avoid round-trip drift
+    let ageYears1 = 0, ageMonths1 = 0;
     if (option === 'option2' && retirementAge) {
-      ageYears = Math.floor(retirementAge);
-      ageMonths = Math.round((retirementAge - ageYears) * 12);
-    }
-    else if (userData?.birthDate && retireDate) {
+      ageYears1 = Math.floor(retirementAge);
+      ageMonths1 = Math.round((retirementAge - ageYears1) * 12);
+    } else if (userData?.birthDate && retireDate1) {
       const birth = new Date(userData.birthDate);
-      const diffTime = Math.abs(retireDate - birth);
+      const diffTime = Math.abs(retireDate1 - birth);
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
-      ageYears = Math.floor(diffDays / 365.25);
-      ageMonths = Math.floor((diffDays % 365.25) / 30.44);
+      ageYears1 = Math.floor(diffDays / 365.25);
+      ageMonths1 = Math.floor((diffDays % 365.25) / 30.44);
+    }
+
+    // Person 2
+    let retireDate2 = null, ageYears2 = 0, ageMonths2 = 0;
+    if (isCouple) {
+      const defaultDateStr2 = location.state?.wishedRetirementDate2 || scenarioData?.wishedRetirementDate2;
+
+      if (option === 'option2' && retirementAge2) {
+        const birthDate2 = new Date(userData?.birthDate2);
+        const years = Math.floor(retirementAge2);
+        const months = Math.round((retirementAge2 - years) * 12);
+        retireDate2 = new Date(Date.UTC(birthDate2.getUTCFullYear() + years, birthDate2.getUTCMonth() + months + 1, 1, 0, 0, 0, 0));
+      } else {
+        retireDate2 = new Date(defaultDateStr2);
+      }
+
+      if (userData?.birthDate2 && retireDate2) {
+        const birth2 = new Date(userData.birthDate2);
+        const diffTime = Math.abs(retireDate2 - birth2);
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        ageYears2 = Math.floor(diffDays / 365.25);
+        ageMonths2 = Math.floor((diffDays % 365.25) / 30.44);
+      }
     }
 
     return {
-      date: retireDate,
-      dateStr: !isNaN(retireDate.getTime()) ? retireDate.toLocaleDateString('de-CH') : '',
-      ageYears,
-      ageMonths,
-      option
+      date: retireDate1,
+      dateStr: !isNaN(retireDate1.getTime()) ? retireDate1.toLocaleDateString('de-CH') : '',
+      ageYears: ageYears1,
+      ageMonths: ageMonths1,
+      date2: retireDate2,
+      dateStr2: (retireDate2 && !isNaN(retireDate2.getTime())) ? retireDate2.toLocaleDateString('de-CH') : '',
+      ageYears2,
+      ageMonths2,
+      option,
+      isCouple
     };
   }, [scenarioData, userData, retirementAge, projection.simRetirementDate, location.state]);
 
@@ -2466,7 +2547,8 @@ const ScenarioResult = () => {
       if (segmentHeight < 0.5) return;
 
       // Determine Color
-      const segmentFill = (colorMap && colorMap[name]) ? colorMap[name] : baseFill;
+      const displayName = name.split('@@')[0];
+      const segmentFill = (colorMap && colorMap[displayName]) ? colorMap[displayName] : baseFill;
 
       elements.push(
         <rect
@@ -2550,7 +2632,37 @@ const ScenarioResult = () => {
         rightContent={
           <div className="flex gap-2">
             <Button
-              onClick={() => navigate('/detailed-graph', { state: { yearlyData: chartData, summaryData: { finalBalance: finalBaselineBalance, peakWealth: Math.max(...chartData.map(d => d.cumulativeBalance || 0)), yearsInRetirement: chartData.filter(d => d.year >= retirementInfo.date.getFullYear()).length }, retirementDate: retirementInfo.date, focusYears: pdfFocusYears } })}
+              onClick={() => {
+                const isCouple = userData.analysisType === 'couple';
+                const summaryData = {
+                  finalBalance: finalBaselineBalance,
+                  peakWealth: Math.max(...chartData.map(d => d.cumulativeBalance || 0)),
+                  retirementAge: `${retirementInfo.ageYears}y ${retirementInfo.ageMonths}m`,
+                  yearsInRetirement: chartData.filter(d => d.year >= retirementInfo.date.getFullYear()).length,
+                  deathDate: userData.theoreticalDeathDate,
+                  firstName: userData.firstName,
+                  firstName2: userData.firstName2,
+                  isCouple,
+                  totalPages: 14 // Initial guess
+                };
+
+                if (isCouple) {
+                  summaryData.retirementAge2 = `${retirementInfo.ageYears2}y ${retirementInfo.ageMonths2}m`;
+                  summaryData.yearsInRetirement2 = chartData.filter(d => d.year >= retirementInfo.date2.getFullYear()).length;
+                  summaryData.deathDate2 = userData.theoreticalDeathDate2;
+                }
+                navigate('/detailed-graph', {
+                  state: {
+                    yearlyData: chartData,
+                    summaryData: summaryData,
+                    retirementDate: retirementInfo.date,
+                    retirementAge: retirementInfo.ageYears,
+                    retirementDate2: retirementInfo.date2,
+                    retirementAge2: retirementInfo.ageYears2,
+                    focusYears: pdfFocusYears
+                  }
+                });
+              }}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
@@ -2649,9 +2761,15 @@ const ScenarioResult = () => {
             {/* Box 4: Title */}
             <Card className="flex items-center justify-center p-3 h-[46px]">
               <span className="text-[17px] font-semibold text-white">
-                {language === 'fr'
-                  ? `Simulation à la date de retraite choisie le ${retirementInfo.dateStr} (${retirementInfo.ageYears} ans)`
-                  : `Simulation at chosen retirement date ${retirementInfo.dateStr} (${retirementInfo.ageYears} years old)`}
+                {retirementInfo.isCouple ? (
+                  language === 'fr'
+                    ? `Retraite: ${userData.firstName || 'P1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears} ans) & ${userData.firstName2 || 'P2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2} ans)`
+                    : `Retirement: ${userData.firstName || 'P1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears}y) & ${userData.firstName2 || 'P2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2}y)`
+                ) : (
+                  language === 'fr'
+                    ? `Simulation à la date de retraite choisie le ${retirementInfo.dateStr} (${retirementInfo.ageYears} ans)`
+                    : `Simulation at chosen retirement date ${retirementInfo.dateStr} (${retirementInfo.ageYears} years old)`
+                )}
               </span>
             </Card>
 
@@ -2694,96 +2812,72 @@ const ScenarioResult = () => {
             </div>
           </div>
 
-          {/* Box 5: Slider (Compact) */}
+          {/* Box 5: Dual Retirement Age Selectors */}
           <div className="col-span-4">
-            <Card className="h-full">
+            <Card className="h-full border-b-4 border-b-primary/10">
               <CardHeader className="py-3">
-                <CardTitle className="text-xs uppercase tracking-wider flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    {language === 'fr' ? 'Ajuster l\'âge de retraite' : 'Adjust Retirement Age'}
-                  </span>
-                  <span className="text-primary font-bold text-xl">
-                    {retirementInfo.ageYears} {language === 'fr' ? 'ans' : 'years'} {retirementInfo.ageMonths > 0 && `${retirementInfo.ageMonths} ${language === 'fr' ? 'mois' : (retirementInfo.ageMonths > 1 ? 'months' : 'month')}`}
-                  </span>
+                <CardTitle className="text-xs uppercase tracking-wider flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {language === 'fr' ? 'Âges de retraite' : 'Retirement Ages'}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-center pt-10 pb-8">
-                <div className="flex gap-4 items-center px-2">
-
-                  <div className="flex-1">
-                    {(() => {
-                      // Calculate real current age for slider lower bound
-                      const birthObj = new Date(userData?.birthDate || new Date());
-                      const nowObj = new Date();
-                      const diffMs = nowObj - birthObj;
-                      const realCurrentAge = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
-
-                      const minAge = Math.min(64, realCurrentAge + 1);
-                      const maxAge = 65;
-                      const range = maxAge - minAge;
-
-                      const calculatedCurrentAge = retirementInfo.ageYears + (retirementInfo.ageMonths / 12);
-                      const effectiveCurrentAge = retirementAge || calculatedCurrentAge;
-                      // FORCE CONSTRAINT: Value cannot be less than minAge
-                      const safeValue = Math.max(minAge, effectiveCurrentAge);
-
-                      console.log('Slider Debug:', {
-                        minAge,
-                        retirementAgeState: retirementAge,
-                        calculatedCurrentAge,
-                        safeValue
-                      });
-
-                      return (
-                        <div className="relative pt-2 pb-6 w-full">
-                          <Slider
-                            value={[safeValue]}
-                            onValueChange={(value) => {
-                              const newVal = Math.max(minAge, value[0]);
-                              setRetirementAge(newVal); // Visual update only
-                            }}
-                            onValueCommit={(value) => {
-                              const newVal = Math.max(minAge, value[0]);
-                              synchronizeSimulationState(newVal); // Heavy Update
-                            }}
-                            min={minAge}
-                            max={maxAge}
-                            step={1}
-                            className="w-full relative z-20"
-                            thumbClassName="bg-primary border-primary cursor-grab active:cursor-grabbing"
-                            disabled={scenarioData?.retirementOption !== 'option2' && scenarioData?.retirementOption !== 'option0'}
-                          />
-
-                          {/* Labels Container - Full width to match slider context exactly */}
-                          <div className="absolute top-2 left-0 w-full h-6 z-10 pointer-events-none">
-                            {Array.from({ length: range + 1 }, (_, i) => minAge + i).map(age => {
-                              const percent = ((age - minAge) / range) * 100;
-                              // Check if this age roughly matches current value (within 0.5 range)
-                              const currentValue = retirementAge || (retirementInfo.ageYears + retirementInfo.ageMonths / 12);
-                              const isSelected = Math.abs(currentValue - age) < 0.5;
-
-                              return (
-                                <div
-                                  key={age}
-                                  className="absolute top-0 flex flex-col items-center transform -translate-x-1/2 transition-all duration-300"
-                                  style={{ left: `${percent}%` }}
-                                >
-                                  {/* Tick mark - aligned with center of thumb */}
-                                  <div className={`w-0.5 mt-1.5 transition-all duration-300 ${isSelected ? 'bg-primary h-2.5' : 'bg-muted-foreground/30 h-1.5'}`} />
-
-                                  {/* Label number */}
-                                  <span className={`text-sm mt-1 select-none transition-colors duration-300 ${isSelected ? 'text-primary font-bold' : 'text-muted-foreground'}`}>
-                                    {age}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
+              <CardContent className="pb-6">
+                <div className="flex flex-col gap-4">
+                  {/* P1 Selector */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full border-2 border-blue-500/50 bg-blue-500/10 text-blue-600">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{language === 'fr' ? 'Âge actuel' : 'Current Age'}: {retirementInfo.ageYears}y</span>
+                      </div>
+                    </div>
+                    <Select
+                      value={String(Math.floor(retirementAge || 65))}
+                      onValueChange={(val) => synchronizeSimulationState('p1', Number(val))}
+                      disabled={isRecalculating}
+                    >
+                      <SelectTrigger className="w-24 h-9 font-bold bg-background border-blue-500/20 focus:ring-blue-500">
+                        <SelectValue placeholder="Age" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
+                          <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {/* P2 Selector (Only if couple) */}
+                  {(userData?.analysisType === 'couple' || userData?.analysisType === 'couple_standard') && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full border-2 border-purple-500/50 bg-purple-500/10 text-purple-600">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{language === 'fr' ? 'Âge actuel' : 'Current Age'}: {retirementInfo.ageYears2}y</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={String(Math.floor(retirementAge2 || 65))}
+                        onValueChange={(val) => synchronizeSimulationState('p2', Number(val))}
+                        disabled={isRecalculating}
+                      >
+                        <SelectTrigger className="w-24 h-9 font-bold bg-background border-purple-500/20 focus:ring-purple-500">
+                          <SelectValue placeholder="Age" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
+                            <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -2827,6 +2921,94 @@ const ScenarioResult = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
+
+                  {/* Retirement Date Markers & Death Date Marker */}
+                  {(() => {
+                    const d1 = retirementInfo.date;
+                    const d2 = retirementInfo.date2;
+                    const isCouple = userData?.analysisType === 'couple';
+
+                    // Determine positioning for retirement labels
+                    const p1IsEarlier = !isCouple || !d2 || d1 <= d2;
+
+                    // Calculate earliest death date
+                    const death1 = userData?.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
+                    const death2 = (isCouple && userData?.theoreticalDeathDate2) ? new Date(userData.theoreticalDeathDate2) : null;
+
+                    let firstDeathDate = null;
+                    let firstDeathPerson = null;
+
+                    if (death1 && !isNaN(death1.getTime())) {
+                      firstDeathDate = death1;
+                      firstDeathPerson = 'p1';
+                    }
+
+                    if (death2 && !isNaN(death2.getTime())) {
+                      if (!firstDeathDate || death2 < firstDeathDate) {
+                        firstDeathDate = death2;
+                        firstDeathPerson = 'p2';
+                      }
+                    }
+
+                    return (
+                      <>
+                        {d1 && (
+                          <ReferenceLine
+                            x={d1.getUTCFullYear()}
+                            stroke="#3b82f6"
+                            strokeDasharray="5 5"
+                            strokeWidth={2}
+                            label={{
+                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName || 'Max'} (${retirementInfo.ageYears}${language === 'fr' ? ' ans' : 'y'})`,
+                              position: p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
+                              fill: '#3b82f6',
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                              dy: 10,
+                              dx: p1IsEarlier ? -5 : 5,
+                              textAnchor: p1IsEarlier ? 'end' : 'start'
+                            }}
+                          />
+                        )}
+                        {isCouple && d2 && (
+                          <ReferenceLine
+                            x={d2.getUTCFullYear()}
+                            stroke="#a855f7"
+                            strokeDasharray="5 5"
+                            strokeWidth={2}
+                            label={{
+                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName2 || 'Mary'} (${retirementInfo.ageYears2}${language === 'fr' ? ' ans' : 'y'})`,
+                              position: !p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
+                              fill: '#a855f7',
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                              dy: 10,
+                              dx: !p1IsEarlier ? -5 : 5,
+                              textAnchor: !p1IsEarlier ? 'end' : 'start'
+                            }}
+                          />
+                        )}
+                        {/* Death Date Reference Line - ONLY for Couples */}
+                        {isCouple && firstDeathDate && (
+                          <ReferenceLine
+                            x={firstDeathDate.getUTCFullYear()}
+                            stroke={firstDeathPerson === 'p1' ? '#3b82f6' : '#a855f7'}
+                            strokeWidth={3}
+                            label={{
+                              value: `${language === 'fr' ? 'espérance de vie de' : 'life expectancy of'} ${firstDeathPerson === 'p1' ? (userData?.firstName || 'Max') : (userData?.firstName2 || 'Mary')}`,
+                              position: 'insideBottomRight',
+                              fill: firstDeathPerson === 'p1' ? '#3b82f6' : '#a855f7',
+                              fontSize: 13,
+                              fontWeight: '900',
+                              dy: -20,
+                              dx: 5,
+                              textAnchor: 'start'
+                            }}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
                   <XAxis
                     dataKey="year"
                     interval={0}
@@ -2914,19 +3096,6 @@ const ScenarioResult = () => {
                   <Bar dataKey="activatedOwnings" barSize={11} fill="#ec4899" name={language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'} stackId="bars" shape={<CustomBarShape />} />
                   <Bar dataKey="negCosts" barSize={11} fill="#ef4444" name={language === 'fr' ? 'Dépenses annuelles' : 'Annual Costs'} stackId="bars" shape={<CustomBarShape />} />
 
-                  <ReferenceLine
-                    x={retirementInfo.date.getFullYear()}
-                    stroke="#f59042"
-                    strokeDasharray="3 3"
-                    label={{
-                      position: 'insideTopRight',
-                      dy: 20,
-                      value: `${language === 'fr' ? 'Retraite' : 'Retirement'}: ${retirementInfo.dateStr}`,
-                      fill: '#f59042',
-                      fontSize: 12,
-                      fontWeight: 'bold'
-                    }}
-                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
@@ -3165,11 +3334,17 @@ const ScenarioResult = () => {
       <Dialog open={missingDataDialog.isOpen} onOpenChange={(open) => !open && setMissingDataDialog(prev => ({ ...prev, isOpen: false }))}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{language === 'fr' ? 'Données Manquantes' : 'Missing Data'}</DialogTitle>
+            <DialogTitle>
+              {language === 'fr' ? 'Données Manquantes' : 'Missing Data'} - {missingDataDialog.personId === 'p2' ? (language === 'fr' ? 'Mary' : 'Mary') : (language === 'fr' ? 'Max' : 'Max')}
+            </DialogTitle>
             <DialogDescription>
               {missingDataDialog.type === 'pension'
-                ? (language === 'fr' ? `Pour simuler une retraite à ${missingDataDialog.age} ans, nous avons besoin de votre rente LPP projetée.` : `To simulate retirement at ${missingDataDialog.age}, we need your Projected LPP Pension.`)
-                : (language === 'fr' ? `Pour une retraite anticipée, nous avons besoin de votre capital LPP actuel.` : `To simulate early retirement, we need your LPP Current Capital.`)
+                ? (language === 'fr'
+                  ? `Pour simuler une retraite à ${missingDataDialog.age} ans pour ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, nous avons besoin de la rente LPP projetée.`
+                  : `To simulate retirement at ${missingDataDialog.age} for ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, we need the Projected LPP Pension.`)
+                : (language === 'fr'
+                  ? `Pour une retraite anticipée de ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, nous avons besoin du capital LPP actuel.`
+                  : `To simulate early retirement for ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, we need the LPP Current Capital.`)
               }
             </DialogDescription>
           </DialogHeader>
@@ -3202,7 +3377,10 @@ const ScenarioResult = () => {
               ...year,
               negCosts: -(Math.abs(year.costs || 0))
             }))}
-            retirementDate={scenarioData?.wishedRetirementDate}
+            retirementDate={retirementInfo.date}
+            retirementAge={retirementInfo.ageYears}
+            retirementDate2={retirementInfo.date2}
+            retirementAge2={retirementInfo.ageYears2}
             language={language}
             isPdf={true}
             focusYears={pdfFocusYears}
@@ -3211,6 +3389,11 @@ const ScenarioResult = () => {
             showMC10={pdfGraphOptions.showMC10}
             showMC5={pdfGraphOptions.showMC5}
             showActivatedOwnings={pdfGraphOptions.showActivatedOwnings}
+            p1Name={userData?.firstName}
+            p2Name={userData?.firstName2}
+            deathDate={userData?.theoreticalDeathDate}
+            deathDate2={userData?.theoreticalDeathDate2}
+            isCouple={userData?.analysisType === 'couple'}
           />
         )}
       </div>

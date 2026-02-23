@@ -15,6 +15,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import { getIncomeData, getCostData, getUserData, getScenarioData, saveScenarioData, getRetirementData, getAssetsData } from '../utils/database';
 import { calculateYearlyAmount } from '../utils/calculations';
+import { migrateToV2 } from '../utils/retirementDataMigration';
 import { Calendar, Minus, Trash2, Split, Plus, TrendingUp, Lightbulb, Copy } from 'lucide-react';
 
 // Income name translation keys
@@ -23,6 +24,7 @@ const INCOME_KEYS = {
   'Net Salary': 'salary',
   'AVS': 'avs',
   'LPP': 'lpp',
+  'Projected LPP Pension': 'lpp',
   '3a': '3a'
 };
 
@@ -56,6 +58,18 @@ const getTranslatedFrequency = (frequency, t) => {
 
 
 
+// Helper to convert birthdate + age to YYYY-MM-DD
+const calculateWishedDate = (bDateStr, age) => {
+  if (!bDateStr || !age) return '';
+  const bDate = new Date(bDateStr);
+  const wishedDate = new Date(Date.UTC(
+    bDate.getUTCFullYear() + parseInt(age),
+    bDate.getUTCMonth() + 1,
+    1, 0, 0, 0, 0
+  ));
+  return wishedDate.toISOString().split('T')[0];
+};
+
 const DataReview = () => {
 
   const navigate = useNavigate();
@@ -67,6 +81,12 @@ const DataReview = () => {
   const [retirementLegalDate, setRetirementLegalDate] = useState('');
   const [deathDate, setDeathDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
+
+  const [wishedRetirementDate2, setWishedRetirementDate2] = useState('');
+  const [retirementLegalDate2, setRetirementLegalDate2] = useState('');
+  const [deathDate2, setDeathDate2] = useState('');
+  const [birthDate2, setBirthDate2] = useState('');
+
   const [incomes, setIncomes] = useState([]);
   const [costs, setCosts] = useState([]);
   const [retirementData, setRetirementData] = useState(null);
@@ -76,6 +96,8 @@ const DataReview = () => {
   const [currentAssets, setCurrentAssets] = useState([]);
   const [projectedOutflows, setProjectedOutflows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [isCouple, setIsCouple] = useState(false);
 
   // AUTOMATION FIX: Auto-run simulation if flag is present
   useEffect(() => {
@@ -109,11 +131,6 @@ const DataReview = () => {
   // Option 1 fields
   const [pensionCapital, setPensionCapital] = useState('');
   const [yearlyReturn, setYearlyReturn] = useState('0');
-
-  // Option 2 fields
-  const [earlyRetirementAge, setEarlyRetirementAge] = useState('62');
-  const [projectedLPPPension, setProjectedLPPPension] = useState('');
-  const [projectedLPPCapital, setProjectedLPPCapital] = useState('');
 
   // Track date overrides for standard income sources
   const [incomeDateOverrides, setIncomeDateOverrides] = useState({});
@@ -158,25 +175,43 @@ const DataReview = () => {
 
     const loadData = async () => {
       try {
-        const userData = await getUserData(user.email, masterKey);
+        const userDataFetched = await getUserData(user.email, masterKey);
+        setUserData(userDataFetched);
+        const userData = userDataFetched;
         const incomeData = await getIncomeData(user.email, masterKey) || [];
         const costData = await getCostData(user.email, masterKey) || [];
         let scenarioData = await getScenarioData(user.email, masterKey);
+        let assetsData = await getAssetsData(user.email, masterKey) || {};
 
-        // Fix Persistence/Race Condition: If we navigated here with updated data (e.g. from Slider/Prompt), use it!
         if (location.state?.scenarioData) {
-          console.log('Using scenarioData from navigation state to prevent stale read');
-          scenarioData = {
-            ...(scenarioData || {}),
-            ...location.state.scenarioData
-          };
-
-          // CRITICAL OVERRIDE: Use explicit age if provided
+          console.log('Using scenarioData from navigation state');
+          scenarioData = { ...(scenarioData || {}), ...location.state.scenarioData };
           if (location.state.overrideEarlyRetirementAge) {
             scenarioData.earlyRetirementAge = location.state.overrideEarlyRetirementAge.toString();
           }
         }
-        const rData = await getRetirementData(user.email, masterKey);
+
+        const rDataRaw = await getRetirementData(user.email, masterKey);
+        console.log('DEBUG: rDataRaw fetched:', rDataRaw);
+        // [V2 REFACTOR] Detect if it's old structure (v1) or new (v2 with p1/p2)
+        let rData = null;
+        if (rDataRaw) {
+          if (rDataRaw.p1 || rDataRaw.p2) {
+            console.log('DEBUG: Detected nested V2 structure');
+            rData = {
+              p1: migrateToV2(rDataRaw.p1, userData),
+              p2: userData.analysisType === 'couple' ? migrateToV2(rDataRaw.p2, { ...userData, birthDate: userData.birthDate2, gender: userData.gender2 }) : null
+            };
+          } else {
+            console.log('DEBUG: Detected legacy single-person structure');
+            // Legacy single-person structure
+            rData = {
+              p1: migrateToV2(rDataRaw, userData),
+              p2: null
+            };
+          }
+        }
+        console.log('DEBUG: final migrated rData:', rData);
         setRetirementData(rData);
 
         if (!userData) {
@@ -184,534 +219,307 @@ const DataReview = () => {
           return;
         }
 
-        // Calculate dates
-        // [Phase 9b] UTC Birth/Retirement alignment
-        const birthDate = new Date(userData.birthDate);
-        setBirthDate(userData.birthDate);
-        const retirementDate = new Date(Date.UTC(
-          birthDate.getUTCFullYear() + 65,
-          birthDate.getUTCMonth() + 1,
-          1, 0, 0, 0, 0
-        ));
-        const retirementDateStr = retirementDate.toISOString().split('T')[0];
+        setIsCouple(userData.analysisType === 'couple');
 
-        // Use the theoretical death date from API
-        let deathDateStr;
+        const birthDate1 = new Date(userData.birthDate);
+        setBirthDate(userData.birthDate);
+        const retirementDate1 = new Date(Date.UTC(birthDate1.getUTCFullYear() + 65, birthDate1.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+        const retirementDateStr1 = retirementDate1.toISOString().split('T')[0];
+        setRetirementLegalDate(retirementDateStr1);
+
+        let deathDateStr1;
         if (userData.theoreticalDeathDate) {
-          deathDateStr = userData.theoreticalDeathDate;
+          deathDateStr1 = userData.theoreticalDeathDate;
         } else {
-          // Fallback to approximation if not available
           const approximateLifeExpectancy = userData.gender === 'male' ? 80 : 85;
-          const deathDate = new Date(birthDate);
-          // [Phase 9b] UTC accessors
-          deathDate.setUTCFullYear(deathDate.getUTCFullYear() + approximateLifeExpectancy);
-          deathDateStr = deathDate.toISOString().split('T')[0];
+          const dDate = new Date(birthDate1);
+          dDate.setUTCFullYear(dDate.getUTCFullYear() + approximateLifeExpectancy);
+          deathDateStr1 = dDate.toISOString().split('T')[0];
+        }
+        setDeathDate(deathDateStr1);
+
+        let retirementDateStr2 = '';
+        let deathDateStr2 = '';
+        if (userData.analysisType === 'couple' && userData.birthDate2) {
+          const birthDate2Parsed = new Date(userData.birthDate2);
+          setBirthDate2(userData.birthDate2);
+          const retirementDate2 = new Date(Date.UTC(birthDate2Parsed.getUTCFullYear() + 65, birthDate2Parsed.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+          retirementDateStr2 = retirementDate2.toISOString().split('T')[0];
+          setRetirementLegalDate2(retirementDateStr2);
+
+          if (userData.theoreticalDeathDate2) {
+            deathDateStr2 = userData.theoreticalDeathDate2;
+          } else {
+            const approximateLifeExpectancy = userData.gender2 === 'male' ? 80 : 85;
+            const dDate = new Date(birthDate2Parsed);
+            dDate.setUTCFullYear(dDate.getUTCFullYear() + approximateLifeExpectancy);
+            deathDateStr2 = dDate.toISOString().split('T')[0];
+          }
+          setDeathDate2(deathDateStr2);
         }
 
-        setRetirementLegalDate(retirementDateStr);
-        setWishedRetirementDate(scenarioData?.wishedRetirementDate || retirementDateStr);
-        setRetirementOption(scenarioData?.retirementOption || 'option1');
-        setDeathDate(deathDateStr);
+        // Synchronize retirement dates with questionnaire simulationAge
+        let syncWishedDate1 = scenarioData?.wishedRetirementDate || retirementDateStr1;
+        let syncWishedDate2 = scenarioData?.wishedRetirementDate2 || retirementDateStr2;
 
-        // Initialize Option-specific fields from ScenarioData (Fix persistence issue)
+        if (!scenarioData?.wishedRetirementDate && rData?.p1?.questionnaire?.simulationAge) {
+          syncWishedDate1 = calculateWishedDate(userData.birthDate, rData.p1.questionnaire.simulationAge);
+        }
+        if (!scenarioData?.wishedRetirementDate2 && rData?.p2?.questionnaire?.simulationAge) {
+          syncWishedDate2 = calculateWishedDate(userData.birthDate2, rData.p2.questionnaire.simulationAge);
+        }
+
+        setWishedRetirementDate(syncWishedDate1);
+        setWishedRetirementDate2(syncWishedDate2);
+        setRetirementOption(scenarioData?.retirementOption || 'option1');
+
         if (scenarioData) {
-          setEarlyRetirementAge(scenarioData.earlyRetirementAge || '62');
-          setProjectedLPPPension(scenarioData.projectedLPPPension || '');
-          setProjectedLPPCapital(scenarioData.projectedLPPCapital || '');
+          console.log('DEBUG: scenarioData loaded:', scenarioData);
           setPensionCapital(scenarioData.pensionCapital || '');
           setYearlyReturn(scenarioData.yearlyReturn || '0');
+          if (scenarioData.incomeDateOverrides) setIncomeDateOverrides(scenarioData.incomeDateOverrides);
         }
 
-        // Load assets data from assetsData store
+        // Consolidate Assets Loading
+        const sourceAssets = (scenarioData?.currentAssets?.length > 0) ? scenarioData.currentAssets : (assetsData?.currentAssets || []);
+        let finalAssets = sourceAssets.filter(a => a.amount && a.amount !== '' && a.amount !== '0');
 
-        const assetsData = await getAssetsData(user.email, masterKey);
-        if (assetsData) {
-          // Calculate liquid and non-liquid assets from currentAssets (New Structure)
-          const sourceAssets = assetsData.currentAssets || [];
+        const liquidTotal = finalAssets.filter(a => a.category === 'Liquid').reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+        const illiquidTotal = finalAssets.filter(a => a.category === 'Illiquid').reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+        setLiquidAssets(liquidTotal.toString());
+        setNonLiquidAssets(illiquidTotal.toString());
+        setFutureInflows(assetsData.futureInflows || []);
+        const loadedProjectedOutflows = (scenarioData?.projectedOutflows || scenarioData?.desiredOutflows || assetsData?.projectedOutflows || assetsData?.desiredOutflows || []).filter(o => o.amount && o.amount !== '0');
+        setProjectedOutflows(loadedProjectedOutflows);
 
-          const liquidTotal = sourceAssets
-            .filter(row => row.category === 'Liquid')
-            .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
-
-          const illiquidTotal = sourceAssets
-            .filter(row => row.category === 'Illiquid')
-            .reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
-
-          setLiquidAssets(liquidTotal.toString());
-          setNonLiquidAssets(illiquidTotal.toString());
-
-          setFutureInflows(assetsData.futureInflows || []);
-
-          // Load current assets and projected outflows for display
-          // Prioritize scenarioData overrides if they exist
-          let loadedCurrentAssets = (scenarioData && scenarioData.currentAssets && scenarioData.currentAssets.length > 0)
-            ? scenarioData.currentAssets
-            : (assetsData.currentAssets || []);
-
-          // Filter out assets with no amount (empty/undefined/null or '0')
-          loadedCurrentAssets = loadedCurrentAssets.filter(asset =>
-            asset.amount && asset.amount !== '' && asset.amount !== '0'
-          );
-
-
-          const option = scenarioData.retirementOption || 'option1';
-
-          // Option 0: Inject Legal LPP Capital as an asset (One-time) if selected
-          if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
-            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'projected_legal_lpp_capital');
-
-            const legalAsset = {
-              id: 'projected_legal_lpp_capital',
-              name: 'Projected LPP Capital at 65y',
-              amount: scenarioData.projectedLegalLPPCapital,
-              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.projectedLegalLPPCapital,
-              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
-              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
-              isOption0: true
-            };
-
-            if (existingIndex >= 0) {
-              const newAssets = [...loadedCurrentAssets];
-              newAssets.splice(existingIndex, 1);
-              loadedCurrentAssets = [legalAsset, ...newAssets];
-            } else {
-              loadedCurrentAssets = [legalAsset, ...loadedCurrentAssets];
-            }
-          }
-
-          // Option 2: Inject Projected Early LPP Capital as an asset if selected
-          if (option === 'option2' && scenarioData.projectedLPPCapital) {
-            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'projected_lpp_capital');
-
-            // Recalculate date for asset as well
-            let earlyRetirementDateStr = retirementDateStr;
-            if (scenarioData.earlyRetirementAge && userData.birthDate) {
-              const bDate = new Date(userData.birthDate);
-              // [Phase 9b] Strict UTC Construction
-              const earlyRetDate = new Date(Date.UTC(
-                bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
-                bDate.getUTCMonth() + 1,
-                1, 0, 0, 0, 0
-              ));
-              earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
-            }
-
-            const option2Asset = {
-              id: 'projected_lpp_capital',
-              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge} y`,
-              amount: scenarioData.projectedLPPCapital,
-              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.projectedLPPCapital,
-              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
-              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
-              availabilityType: 'Date',
-              availabilityDate: earlyRetirementDateStr, // Use Calculated Early Date
-              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
-              isOption2: true
-            };
-
-            if (existingIndex >= 0) {
-              const newAssets = [...loadedCurrentAssets];
-              newAssets.splice(existingIndex, 1);
-              loadedCurrentAssets = [option2Asset, ...newAssets];
-            } else {
-              loadedCurrentAssets = [option2Asset, ...loadedCurrentAssets];
-            }
-          }
-
-          // Move 3a and Supplementary Pension capital from scenarioData.benefitsData to Assets
-          if (scenarioData && scenarioData.benefitsData) {
-            const oneTimeItems = [];
-
-            // 1. Check for 3a from benefitsData
-            if (scenarioData.benefitsData.threeA) {
-              if (Array.isArray(scenarioData.benefitsData.threeA)) {
-                scenarioData.benefitsData.threeA.forEach((item, index) => {
-                  if (item.amount) {
-                    oneTimeItems.push({
-                      id: `3a_account_${index}`,
-                      name: `3a (${index + 1})`,
-                      amount: item.amount,
-                      startDate: item.startDate || wishedRetirementDate,
-                      frequency: 'One-time'
-                    });
-                  }
-                });
-              } else if (scenarioData.benefitsData.threeA.amount) {
-                // Fallback for legacy single object
-                oneTimeItems.push({
-                  id: '3a',
-                  name: '3a',
-                  amount: scenarioData.benefitsData.threeA.amount,
-                  startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
-                  frequency: 'One-time'
-                });
-              }
-            }
-
-            // 2. Check for Supplementary Pension capital from benefitsData
-            if (scenarioData.benefitsData.lppSup && scenarioData.benefitsData.lppSup.amount) {
-              oneTimeItems.push({
-                id: 'lppSup',
-                name: 'Supplementary Pension capital',
-                amount: scenarioData.benefitsData.lppSup.amount,
-                startDate: scenarioData.benefitsData.lppSup.startDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
-            }
-
-            // 3. Check for Libre Passage from benefitsData
-            if (scenarioData.benefitsData.librePassages && Array.isArray(scenarioData.benefitsData.librePassages)) {
-              scenarioData.benefitsData.librePassages.forEach((item, index) => {
-                if (item.amount) {
-                  oneTimeItems.push({
-                    id: `librePassage_${index}`,
-                    name: item.name || `Libre-Passage (${index + 1})`,
-                    amount: item.amount,
-                    startDate: item.startDate || wishedRetirementDate,
-                    frequency: 'One-time'
-                  });
-                }
-              });
-            }
-
-            // 4. Check for LPP Current Capital from benefitsData
-            if (scenarioData.benefitsData.lppCurrentCapital) {
-              oneTimeItems.push({
-                id: 'lppCurrentCapital',
-                name: 'LPP pension plan current capital',
-                amount: scenarioData.benefitsData.lppCurrentCapital,
-                startDate: scenarioData.benefitsData.lppCurrentCapitalDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
-            }
-
-            // Process and inject them
-            oneTimeItems.forEach(item => {
-              const existingIndex = loadedCurrentAssets.findIndex(a => a.id === item.id);
-
-              const assetItem = {
-                id: item.id,
-                name: item.name,
-                amount: item.amount,
-                // If it exists, preserve user's adjusted amount, otherwise default to original
-                adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : item.amount,
-                // CRITICAL FIX: 3a and Supplementary Pension should be Liquid by default as they are cash payouts at retirement
-                category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Liquid',
-                preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
-                availabilityType: 'Date',
-                availabilityDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr, // Default to start date (usually retirement date)
-                availabilityDate: item.startDate || scenarioData.wishedRetirementDate || retirementDateStr, // Default to start date (usually retirement date)
-                strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
-                isRetirement: true // Mark as coming from retirement inputs
-              };
-
-              if (existingIndex >= 0) {
-                // Remove existing and add to top 
-                const newAssets = [...loadedCurrentAssets];
-                newAssets.splice(existingIndex, 1);
-                loadedCurrentAssets = [assetItem, ...newAssets];
-              } else {
-                // Add to top
-                loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
-              }
-            });
-          }
-
-          // Option 1: Inject LPP Pension Capital as an asset if selected (Moved to end to ensure it is first in list via unshift)
-          if (option === 'option1' && scenarioData.pensionCapital) {
-            // Check if already exists
-            const existingIndex = loadedCurrentAssets.findIndex(a => a.id === 'lpp_pension_capital');
-
-            const lppAsset = {
-              id: 'lpp_pension_capital',
-              name: language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status',
-              amount: scenarioData.pensionCapital,
-              // If it exists, preserve user's adjusted amount, otherwise default to original
-              adjustedAmount: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].adjustedAmount : scenarioData.pensionCapital,
-              category: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].category : 'Illiquid',
-              preserve: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].preserve : 'No',
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: existingIndex >= 0 ? loadedCurrentAssets[existingIndex].strategy : 'Cash',
-              isOption1: true
-            };
-
-            if (existingIndex >= 0) {
-              // Update existing item (keep position or move to top? user said "added at the top")
-              // Let's remove it and unshift it to ensure top position
-              const newAssets = [...loadedCurrentAssets];
-              newAssets.splice(existingIndex, 1);
-              loadedCurrentAssets = [lppAsset, ...newAssets];
-            } else {
-              // Add to top
-              loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
-            }
-          }
-
-          let loadedProjectedOutflows = (scenarioData && (scenarioData.projectedOutflows || scenarioData.desiredOutflows) && (scenarioData.projectedOutflows || scenarioData.desiredOutflows).length > 0)
-            ? (scenarioData.projectedOutflows || scenarioData.desiredOutflows)
-            : (assetsData.projectedOutflows || assetsData.desiredOutflows || []);
-
-          // Filter out outflows with no amount (empty/undefined/null or '0')
-          loadedProjectedOutflows = loadedProjectedOutflows.filter(outflow =>
-            outflow.amount && outflow.amount !== '' && outflow.amount !== '0'
-          );
-
-          setCurrentAssets(loadedCurrentAssets);
-          setProjectedOutflows(loadedProjectedOutflows);
-        }
-
-        // Process retirement income from scenarioData.benefitsData
         const processedRetirementIncome = [];
-        if (scenarioData) {
-          // Add AVS from benefitsData if it exists
-          if (scenarioData.benefitsData && scenarioData.benefitsData.avs && scenarioData.benefitsData.avs.amount) {
-            processedRetirementIncome.push({
-              id: 'avs',
-              name: 'AVS',
-              amount: scenarioData.benefitsData.avs.amount,
-              adjustedAmount: scenarioData.benefitsData.avs.amount,
-              frequency: 'Yearly',
-              startDate: scenarioData.benefitsData.avs.startDate || retirementDateStr,
-              endDate: deathDateStr,
-              isRetirement: true
-            });
-          }
-
-          // Handle LPP based on selected option
+        const processRetirementForPerson = (pData, pBirthDate, pLegalDate, pDeathDate, personId, personLabel) => {
+          if (!pData) return;
+          const { questionnaire, benefitsData } = pData;
+          const simWishedDate = (personId === 'p1') ? syncWishedDate1 : syncWishedDate2;
+          const simAge = questionnaire.simulationAge;
           const option = scenarioData.retirementOption || 'option1';
-          // Read data from scenarioData, no need to set state here
 
-          if (option === 'option1') {
-            // Option 1: Pension capital investment
+          // 1. AVS
+          console.log(`DEBUG [${personId}]: Checking AVS data:`, benefitsData.avs);
+          // Always push AVS row if it's couple or if amount > 0, to ensure it shows up in Data Review
+          if ((benefitsData.avs && benefitsData.avs.amount) || userData.analysisType === 'couple' || personId === 'p1') {
+            let avsAmount = benefitsData.avs?.amount || '0';
 
-            if (scenarioData.pensionCapital) {
-              // Now handled as an asset in loadedCurrentAssets
-            }
-          } else if (option === 'option0') {
-            // Option 0: Legal Retirement (65y)
-            // Read data from scenarioData, no need to set state here
-
-            if (scenarioData.projectedLegalLPPPension !== undefined && scenarioData.projectedLegalLPPPension !== null && scenarioData.projectedLegalLPPPension !== '') {
-              processedRetirementIncome.push({
-                id: 'projected_legal_lpp_pension',
-                name: 'Projected LPP Pension at 65y',
-                amount: scenarioData.projectedLegalLPPPension,
-                adjustedAmount: scenarioData.projectedLegalLPPPension,
-                frequency: 'Yearly',
-                startDate: retirementDateStr,
-                endDate: deathDateStr,
-                isRetirement: true
-              });
-            }
-            // Capital handled in Assets above
-          } else if (option === 'option2') {
-            // Option 2: Early retirement with projected values
-
-            // Calculate correct start date based on early retirement age
-            let earlyRetirementDateStr = retirementDateStr;
-            if (scenarioData.earlyRetirementAge && userData.birthDate) {
-              const bDate = new Date(userData.birthDate);
-              // [Phase 9b] Strict UTC Construction
-              const earlyRetDate = new Date(Date.UTC(
-                bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
-                bDate.getUTCMonth() + 1,
-                1, 0, 0, 0, 0
-              ));
-              earlyRetirementDateStr = earlyRetDate.toISOString().split('T')[0];
-            }
-
-            // Get pension value from preRetirementRows for the selected age
-            let pensionValue = scenarioData.projectedLPPPension;
-
-            // Only use preRetirementRows lookup if explicit projection is missing
-            if ((pensionValue === undefined || pensionValue === null || pensionValue === '') && scenarioData.preRetirementRows && scenarioData.earlyRetirementAge) {
-              const ageRow = scenarioData.preRetirementRows.find(row => row.age === parseInt(scenarioData.earlyRetirementAge));
-              if (ageRow && ageRow.pension) {
-                pensionValue = ageRow.pension;
-              }
-            }
-
-            // Check if pension value exists
-            if (pensionValue !== undefined && pensionValue !== null && pensionValue !== '') {
-              processedRetirementIncome.push({
-                id: 'projected_lpp_pension',
-                name: `Projected LPP Pension at ${scenarioData.earlyRetirementAge}y`,
-                amount: pensionValue,
-                adjustedAmount: pensionValue,
-                frequency: 'Yearly',
-                startDate: earlyRetirementDateStr,
-                endDate: deathDateStr,
-                isRetirement: true
-              });
-            }
-            // Capital has been moved to Assets section
-
-          } else if (option === 'option3') {
-            // Option 3: Flexible pre-retirement
-            const preRetirementRows = scenarioData.preRetirementRows || [];
-            console.log('Processing Option 3 preRetirementRows:', preRetirementRows);
-
-            preRetirementRows.forEach(row => {
-              // Create pension row if pension value exists
-              if (row.pension && row.pension !== '' && row.pension !== '0') {
-                processedRetirementIncome.push({
-                  id: `pre_retirement_pension_${row.age} `,
-                  name: `Pre - retirement LPP Pension at ${row.age} y`,
-                  amount: row.pension,
-                  adjustedAmount: row.pension,
-                  frequency: row.frequency || 'Monthly',
-                  startDate: retirementDateStr,
-                  endDate: deathDateStr,
-                  isRetirement: true
-                });
-              }
-
-              // Create capital row if capital value exists
-              if (row.capital && row.capital !== '' && row.capital !== '0') {
-                processedRetirementIncome.push({
-                  id: `pre_retirement_capital_${row.age} `,
-                  name: `Pre - retirement LPP Capital at ${row.age} y`,
-                  amount: row.capital,
-                  adjustedAmount: row.capital,
-                  frequency: 'One-time',
-                  startDate: retirementDateStr,
-                  endDate: retirementDateStr,
-                  isRetirement: true
-                });
-              }
+            console.log(`DEBUG [${personId}]: Pushing AVS row with amount: "${avsAmount}"`);
+            processedRetirementIncome.push({
+              id: `avs_${personId}`, name: `AVS`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+              amount: avsAmount, adjustedAmount: avsAmount,
+              frequency: 'Yearly', startDate: benefitsData.avs?.startDate || pLegalDate,
+              endDate: pDeathDate, isRetirement: true
             });
-            console.log('Processed retirement income for Option 3:', processedRetirementIncome);
           }
+
+          // 2. LPP Pension
+          let targetAge = parseInt(simAge) || 65;
+          // [FIX] Option 2 uses the simulation age from the questionnaire, which is already independent for P1 and P2
+          console.log(`DEBUG [${personId}]: Checking LPP Pension flow. Option: ${option}, targetAge: ${targetAge}`);
+          let lppPensionAmount = null;
+          let lppCapitalAmount = null;
+
+          const lppData = benefitsData.lppByAge?.[targetAge] || benefitsData.lppByAge?.[targetAge.toString()];
+          console.log(`DEBUG [${personId}]: lppData for targetAge ${targetAge}:`, lppData);
+          if (lppData) {
+            lppPensionAmount = lppData.pension;
+            lppCapitalAmount = lppData.capital;
+          }
+
+
+          console.log(`DEBUG [${personId}]: Final determined LPP Pension: ${lppPensionAmount}`);
+          if (lppPensionAmount && lppPensionAmount !== '0') {
+            const startDate = (targetAge === 65) ? pLegalDate : calculateWishedDate(pBirthDate, targetAge);
+            processedRetirementIncome.push({
+              id: `lpp_pension_${personId}`,
+              name: language === 'fr' ? `Rente LPP à ${targetAge} ans` : `LPP pension at ${targetAge}y`,
+              person: personId === 'p2' ? 'Person 2' : 'Person 1',
+              amount: lppPensionAmount, adjustedAmount: lppPensionAmount,
+              frequency: 'Yearly', startDate, endDate: pDeathDate, isRetirement: true
+            });
+          }
+
+          // 3. Retirement Assets
+          const upsertRetirementAsset = (asset) => {
+            const existingIdx = finalAssets.findIndex(a => a.id === asset.id);
+            if (existingIdx >= 0) {
+              const existingAdjusted = finalAssets[existingIdx].adjustedAmount;
+              finalAssets[existingIdx] = { ...asset, adjustedAmount: existingAdjusted || asset.amount };
+            } else {
+              finalAssets.unshift(asset);
+            }
+          };
+
+          if (lppCapitalAmount && lppCapitalAmount !== '0') {
+            upsertRetirementAsset({
+              id: `lpp_capital_${personId}`, name: `Projected LPP Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+              amount: lppCapitalAmount, category: 'Liquid', availabilityType: 'Date',
+              availabilityDate: calculateWishedDate(pBirthDate, targetAge), strategy: 'Cash', isRetirement: true
+            });
+          }
+
+          if (benefitsData.threeA) {
+            benefitsData.threeA.forEach((item, idx) => {
+              if (item.amount) upsertRetirementAsset({
+                id: `threeA_${personId}_${idx}`, name: `3a (${idx + 1})`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+                amount: item.amount, category: 'Liquid', availabilityType: 'Date',
+                availabilityDate: item.startDate || simWishedDate, strategy: 'Cash', isRetirement: true
+              });
+            });
+          }
+
+          if (benefitsData.librePassages) {
+            benefitsData.librePassages.forEach((item, idx) => {
+              if (item.amount) upsertRetirementAsset({
+                id: `libre_${personId}_${idx}`, name: item.name || `Libre-Passage (${idx + 1})`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+                amount: item.amount, category: 'Liquid', availabilityType: 'Date',
+                availabilityDate: item.startDate || simWishedDate, strategy: 'Cash', isRetirement: true
+              });
+            });
+          }
+
+          if (benefitsData.lppCurrentCapital) {
+            upsertRetirementAsset({
+              id: `lpp_current_${personId}`, name: `LPP Current Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+              amount: benefitsData.lppCurrentCapital, category: 'Liquid', availabilityType: 'Date',
+              availabilityDate: benefitsData.lppCurrentCapitalDate || simWishedDate, strategy: 'Cash', isRetirement: true
+            });
+          }
+        };
+
+        if (rData) {
+          console.log('DEBUG: rData found', rData);
+          processRetirementForPerson(rData.p1, userData.birthDate, retirementDateStr1, deathDateStr1, 'p1', userData.analysisType === 'couple' ? (userData.firstName || 'Person 1') : '');
+          if (userData.analysisType === 'couple' && rData.p2) {
+            console.log('DEBUG: Processing p2 rData');
+            processRetirementForPerson(rData.p2, userData.birthDate2, retirementDateStr2, deathDateStr2, 'p2', userData.firstName2 || 'Person 2');
+          }
+        } else {
+          console.warn('DEBUG: rData is NULL or UNDEFINED');
         }
 
-        // Calculate Option 2 Date for Salary override
-        let opt2EarlyDateStr = null;
-        const opt = scenarioData.retirementOption || 'option1';
-        if (opt === 'option2' && scenarioData.earlyRetirementAge && userData.birthDate) {
-          const bDate = new Date(userData.birthDate);
-          // [Phase 9b] Strict UTC Construction
-          const earlyRetDate = new Date(Date.UTC(
-            bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
-            bDate.getUTCMonth() + 1,
-            1, 0, 0, 0, 0
-          ));
-          opt2EarlyDateStr = earlyRetDate.toISOString().split('T')[0];
-        }
-
-        // STEP 1: Always load ORIGINAL income data from incomeData
-        // CRITICAL: Filter out any "ghost" retirement items that might have been saved as regular income
+        // Final Merge for Incomes
+        const injectedIds = processedRetirementIncome.map(i => i.id);
         const originalRegularIncomes = incomeData.filter(i =>
-          i.amount &&
-          !i.location && // Regular incomes typically don't have location/isRetirement flags in this app version, checking ID/Name safely
-          !String(i.id || '').toLowerCase().includes('pension') &&
-          !String(i.id || '').toLowerCase().includes('lpp') &&
-          !String(i.name || '').toLowerCase().includes('pension')
+          i.amount && i.amount !== '0' &&
+          !i.location &&
+          // Only filter out retirement items that we successfully re-injected
+          !(i.isRetirement && injectedIds.includes(i.id))
         ).map(i => {
           let endDate = i.endDate;
-          if (opt2EarlyDateStr && (i.name === 'Net Salary' || i.name === 'Salary')) {
-            endDate = opt2EarlyDateStr;
+          if (i.name === 'Net Salary' || i.name === 'Salary') {
+            const isP2 = (i.person === 'Person 2' || i.owner === 'p2' || (userData?.firstName2 && i.person === userData.firstName2));
+            endDate = isP2 ? syncWishedDate2 : syncWishedDate1;
           }
-          return {
-            ...i,
-            endDate,
-            adjustedAmount: i.amount  // Default adjusted = original
-          };
+          return { ...i, endDate, adjustedAmount: i.amount };
         });
 
-        // STEP 2: Merge with ORIGINAL retirement income from scenarioData
+        console.log('DEBUG: processedRetirementIncome length:', processedRetirementIncome.length);
+        console.log('DEBUG: processedRetirementIncome content:', processedRetirementIncome);
+
         const allOriginalIncomes = [...originalRegularIncomes, ...processedRetirementIncome];
+        let finalIncomes = allOriginalIncomes;
 
-        // STEP 3: Apply adjusted versions if they exist
-        let finalIncomes;
-        if (scenarioData.adjustedIncomes && scenarioData.adjustedIncomes.length > 0) {
-          // Merge logic for Incomes: Source of truth is originalRegularIncomes
-          const mergedIncomes = originalRegularIncomes.map(freshInc => {
+        // [SORT] Apply custom sorting for Data Review table (Type first, then Person)
+        finalIncomes.sort((a, b) => {
+          const getTypePriority = (name) => {
+            if (name.includes('Salary') || name.includes('Salaire')) return 1;
+            if (name.includes('LPP')) return 2;
+            if (name.includes('AVS')) return 3;
+            return 4;
+          };
+          const aPriority = getTypePriority(a.name);
+          const bPriority = getTypePriority(b.name);
+          if (aPriority !== bPriority) return aPriority - bPriority;
+
+          // If same type, order by person (P1 then P2)
+          const aIsP2 = isPerson2(a);
+          const bIsP2 = isPerson2(b);
+          if (aIsP2 && !bIsP2) return 1;
+          if (!aIsP2 && bIsP2) return -1;
+          return 0;
+        });
+
+        if (scenarioData.adjustedIncomes?.length > 0) {
+          finalIncomes = finalIncomes.map(freshInc => {
             const savedInc = scenarioData.adjustedIncomes.find(si => si.id === freshInc.id);
-            return {
-              ...freshInc,
-              amount: freshInc.amount,
-              adjustedAmount: savedInc ? savedInc.adjustedAmount : freshInc.amount,
-              // Keep startDate/endDate overrides if they were adjusted in Scenario?
-              // For now, let's assume Scenario adjustments to date take precedence if we want that,
-              // OR we want fresh dates from input.
-              // Given the sync issue, let's prefer fresh data for structural fields, and only keep 'adjustedAmount' and maybe specific scenario overrides.
-              // However, the override logic for Salary (Opt2) happens later/earlier.
-              // Let's stick to safe merge: fresh amount is key.
-            };
-          });
-
-          finalIncomes = [...mergedIncomes, ...processedRetirementIncome];
-        } else {
-          // No adjustments yet, use original data
-          finalIncomes = allOriginalIncomes;
-        }
-
-        // FORCE OVERRIDE: If Option 2 is selected, ensure dates are aligned
-        if (opt2EarlyDateStr) {
-          // 1. Update the global Wished Retirement Date specific for this session
-          setWishedRetirementDate(opt2EarlyDateStr);
-
-          // 2. Force override the Salary End Date using the Overrides mechanism 
-          // (which takes precedence over render defaults)
-          setIncomeDateOverrides(prev => ({
-            ...prev,
-            'Salary': { ...prev['Salary'], endDate: opt2EarlyDateStr },
-            'Net Salary': { ...prev['Net Salary'], endDate: opt2EarlyDateStr }
-          }));
-
-          // 3. Also update the specific items in finalIncomes as a fallback
-          finalIncomes = finalIncomes.map(item => {
-            if (item.name === 'Net Salary' || item.name === 'Salary') {
-              return { ...item, endDate: opt2EarlyDateStr };
-            }
-            return item;
+            return savedInc ? { ...freshInc, adjustedAmount: savedInc.adjustedAmount } : freshInc;
           });
         }
 
-        // SAFETY CHECK: If for any reason Salary/Net Salary is missing from finalIncomes (e.g. corrupted adjustments/ghost filtering gone wrong),
-        // but it existed in original data, RESTORE IT!
-        const hasSalary = finalIncomes.some(i => i.name === 'Salary' || i.name === 'Net Salary');
-        if (!hasSalary) {
-          const originalSalary = originalRegularIncomes.find(i => i.name === 'Salary' || i.name === 'Net Salary');
-          if (originalSalary) {
-            console.log('Restoring missing Salary from original data');
-            // Ensure it is not marked as retirement
-            finalIncomes.push({ ...originalSalary, isRetirement: false });
-          }
-        }
-
-        console.log('Final incomes:', finalIncomes.length, '(original:', allOriginalIncomes.length, ')');
         setIncomes(finalIncomes);
+        setCurrentAssets(finalAssets);
 
-        // STEP 4: Load costs - same pattern
-        const originalCosts = costData.filter(c => c.amount).map(c => ({
-          ...c,
-          adjustedAmount: c.amount
-        }));
+        const originalCosts = costData.filter(c => c.amount && c.amount !== '0').map(c => ({ ...c, adjustedAmount: c.amount }));
+        let finalCosts = originalCosts;
 
-        if (scenarioData.adjustedCosts && scenarioData.adjustedCosts.length > 0) {
-          // Merge logic: Source of truth is originalCosts (fresh data).
-          // We only want to keep the 'adjustedAmount' from the saved scenario data.
-          const mergedCosts = originalCosts.map(freshCost => {
-            const savedCost = scenarioData.adjustedCosts.find(sc => sc.id === freshCost.id);
-            return {
-              ...freshCost,
-              // If we have a saved version, keep its adjusted Amount (unless user wants to reset? usually we keep adjustments)
-              // But we MUST use the fresh 'amount' (Original Value)
-              amount: freshCost.amount,
-              adjustedAmount: savedCost ? savedCost.adjustedAmount : freshCost.amount,
-              // Also keep other override flags if they exist in savedCost? 
-              // Usually we only care about adjustedAmount for simulation.
-            };
+        // 1. Merge with any saved adjustments from the scenario
+        if (scenarioData.adjustedCosts?.length > 0) {
+          finalCosts = finalCosts.map(freshC => {
+            const savedC = scenarioData.adjustedCosts.find(sc => sc.id === freshC.id);
+            return savedC ? { ...freshC, adjustedAmount: savedC.adjustedAmount, startDate: savedC.startDate, endDate: savedC.endDate } : freshC;
           });
-          setCosts(mergedCosts);
-        } else {
-          setCosts(originalCosts);
         }
+
+        // 2. [CONSOLIDATED LOGIC] Handle auto-splitting and date enforcement for 'consolidated' rows
+        if (userData.analysisType === 'couple') {
+          const firstDeath = deathDateStr1 < deathDateStr2 ? deathDateStr1 : deathDateStr2;
+          const secondDeath = deathDateStr1 > deathDateStr2 ? deathDateStr1 : deathDateStr2;
+          const survivor = deathDateStr1 < deathDateStr2 ? 'p2' : 'p1';
+          const nextDayDate = new Date(firstDeath);
+          nextDayDate.setDate(nextDayDate.getDate() + 1);
+          const nextDay = nextDayDate.toISOString().split('T')[0];
+
+          const expandedCosts = [];
+          finalCosts.forEach(cost => {
+            if (cost.owner === 'consolidated' && !cost.groupId) {
+              const groupId = cost.id;
+              // Part 1: Start -> First Death (Full Amount)
+              expandedCosts.push({
+                ...cost,
+                groupId,
+                endDate: firstDeath
+              });
+              // Part 2: First Death + 1 -> Second Death (Half Amount)
+              expandedCosts.push({
+                ...cost,
+                id: cost.id + '_split',
+                parentId: cost.id,
+                groupId,
+                owner: survivor,
+                amount: (parseFloat(cost.amount) / 2).toString(),
+                adjustedAmount: (parseFloat(cost.adjustedAmount || cost.amount) / 2).toString(),
+                startDate: nextDay,
+                endDate: secondDeath
+              });
+            } else if (cost.groupId) {
+              // Row already split but let's enforce dates if they drifted (e.g. from adjustedCosts)
+              const isChild = cost.id.toString().includes('_split') || cost.parentId;
+              if (isChild) {
+                expandedCosts.push({
+                  ...cost,
+                  startDate: nextDay,
+                  endDate: secondDeath
+                });
+              } else if (cost.owner === 'consolidated') {
+                expandedCosts.push({
+                  ...cost,
+                  endDate: firstDeath
+                });
+              } else {
+                expandedCosts.push(cost);
+              }
+            } else {
+              expandedCosts.push(cost);
+            }
+          });
+          finalCosts = expandedCosts;
+        }
+
+        setCosts(finalCosts);
 
       } catch (error) {
         toast.error('Failed to load data');
@@ -723,6 +531,8 @@ const DataReview = () => {
 
     loadData();
   }, [user, masterKey, navigate]);
+
+
 
   // Auto-save scenario data when values change
   useEffect(() => {
@@ -743,7 +553,8 @@ const DataReview = () => {
           adjustedIncomes: incomes,
           adjustedCosts: costs,
           currentAssets: currentAssets,
-          projectedOutflows: projectedOutflows
+          projectedOutflows: projectedOutflows,
+          incomeDateOverrides
         });
       } catch (error) {
         console.error('Failed to auto-save scenario data:', error);
@@ -753,7 +564,7 @@ const DataReview = () => {
     // Debounce the save
     const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
-  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, projectedOutflows, user, masterKey, loading]);
+  }, [liquidAssets, nonLiquidAssets, futureInflows, wishedRetirementDate, incomes, costs, currentAssets, projectedOutflows, incomeDateOverrides, user, masterKey, loading]);
 
   // Recalculate totals when currentAssets changes
   useEffect(() => {
@@ -812,33 +623,60 @@ const DataReview = () => {
   };
 
   // Update date overrides for standard income sources (Salary, AVS, LPP, 3a)
-  const updateIncomeDateOverride = (incomeName, field, value) => {
+  const updateIncomeDateOverride = (incomeName, personLabel, field, value) => {
+    const key = personLabel ? `${incomeName}_${personLabel}` : incomeName;
     setIncomeDateOverrides(prev => ({
       ...prev,
-      [incomeName]: {
-        ...prev[incomeName],
+      [key]: {
+        ...prev[key],
         [field]: value
       }
     }));
   };
 
+  // Helpers for consistent Person detection
+  const isPerson1 = (income) => {
+    const rawPerson = income.person || income.owner;
+    return rawPerson === 'p1' ||
+      rawPerson === 'Person 1' ||
+      rawPerson === 'Personne 1' ||
+      (userData?.firstName && rawPerson === userData.firstName);
+  };
+
+  const isPerson2 = (income) => {
+    const rawPerson = income.person || income.owner;
+    return rawPerson === 'p2' ||
+      rawPerson === 'Person 2' ||
+      rawPerson === 'Personne 2' ||
+      (userData?.firstName2 && rawPerson === userData.firstName2);
+  };
+
   // Get effective date for income (override or calculated)
   const getEffectiveIncomeDate = (income, field) => {
-    const override = incomeDateOverrides[income.name]?.[field];
+    const isP2 = isPerson2(income);
+
+    const personLabel = getPersonDisplay(income);
+    const key = personLabel ? `${income.name}_${personLabel}` : income.name;
+    const override = incomeDateOverrides[key]?.[field];
     if (override) return override;
 
     // Fix Timezone Drift: Use local time
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    if (income.name === 'Salary') {
-      return field === 'startDate' ? today : wishedRetirementDate;
-    } else if (income.name === 'LPP') {
-      return field === 'startDate' ? wishedRetirementDate : deathDate;
+    // Person-specific fallbacks
+    const effWishedRetDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate;
+    const effLegalRetDate = isP2 ? retirementLegalDate2 : retirementLegalDate;
+    const effDeathDate = isP2 ? deathDate2 : deathDate;
+
+    if (income.name === 'Salary' || income.name === 'Net Salary') {
+      return field === 'startDate' ? today : effWishedRetDate;
+    } else if (income.name.includes('LPP')) {
+      return field === 'startDate' ? effWishedRetDate : effDeathDate;
     } else if (income.name === 'AVS') {
-      return field === 'startDate' ? retirementLegalDate : deathDate;
+      return field === 'startDate' ? effLegalRetDate : effDeathDate;
     } else if (income.name === '3a') {
-      return field === 'startDate' ? wishedRetirementDate : null;
+      return field === 'startDate' ? (income.startDate || effWishedRetDate) : null;
     }
     return income[field];
   };
@@ -868,158 +706,104 @@ const DataReview = () => {
       // Reload income data from database
       const incomeData = await getIncomeData(user.email, masterKey) || [];
       const scenarioData = await getScenarioData(user.email, masterKey);
-      const retirementData = await getRetirementData(user.email, masterKey);
+      const rDataRaw = await getRetirementData(user.email, masterKey);
+      // [V2 REFACTOR] Detect if it's old structure (v1) or new (v2 with p1/p2)
+      let retirementData = null;
+      if (rDataRaw) {
+        if (rDataRaw.p1 || rDataRaw.p2) {
+          retirementData = {
+            p1: migrateToV2(rDataRaw.p1, userData),
+            p2: userData.analysisType === 'couple' ? migrateToV2(rDataRaw.p2, { ...userData, birthDate: userData.birthDate2, gender: userData.gender2 }) : null
+          };
+        } else {
+          // Legacy single-person structure
+          retirementData = {
+            p1: migrateToV2(rDataRaw, userData),
+            p2: null
+          };
+        }
+      }
 
       // Process regular incomes
-      const processedIncomes = incomeData.map(inc => {
+      const processedIncomes = incomeData.filter(inc =>
+        inc.amount && inc.amount !== '0' &&
+        !String(inc.name || '').toLowerCase().includes('pension') &&
+        !String(inc.name || '').toLowerCase().includes('lpp') &&
+        !String(inc.name || '').toLowerCase().includes('avs') &&
+        !inc.location
+      ).map(inc => {
         const { groupId, parentId, ...cleanIncome } = inc;
+        let endDate = inc.endDate;
+        if (inc.name === 'Net Salary' || inc.name === 'Salary') {
+          const isP2 = (inc.person === 'Person 2' || inc.owner === 'p2' || (userData?.firstName2 && inc.person === userData.firstName2));
+          endDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate;
+        }
         return {
           ...cleanIncome,
+          endDate,
           adjustedAmount: inc.amount
         };
       });
 
-      // Reprocess retirement income from scenarioData.benefitsData
-      const processedRetirementIncome = [];
-      if (scenarioData) {
-        // Add AVS from benefitsData
-        if (scenarioData.benefitsData && scenarioData.benefitsData.avs && scenarioData.benefitsData.avs.amount) {
-          processedRetirementIncome.push({
-            id: 'avs',
-            name: 'AVS',
-            amount: scenarioData.benefitsData.avs.amount,
-            adjustedAmount: scenarioData.benefitsData.avs.amount,
-            frequency: scenarioData.benefitsData.avs.frequency || 'Monthly',
-            startDate: scenarioData.benefitsData.avs.startDate || retirementLegalDate,
-            endDate: deathDate,
-            isRetirement: true
+      // Reprocess retirement income using unified logic
+      const resetRetirementIncome = [];
+      const processRetirementReset = (pData, pBirthDate, pLegalDate, pDeathDate, personId, personLabel) => {
+        if (!pData) return;
+        const { questionnaire, benefitsData } = pData;
+        const simAge = questionnaire.simulationAge;
+        const option = scenarioData.retirementOption || 'option1';
+
+        // 1. AVS
+        let avsAmount = benefitsData.avs?.amount || '0';
+        if (avsAmount !== '0' || userData.analysisType === 'couple' || personId === 'p1') {
+          resetRetirementIncome.push({
+            id: `avs_${personId}`, name: `AVS`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+            amount: avsAmount, adjustedAmount: avsAmount,
+            frequency: 'Yearly', startDate: benefitsData.avs?.startDate || pLegalDate,
+            endDate: pDeathDate, isRetirement: true
           });
         }
 
-        const option = scenarioData.retirementOption || 'option1';
-        if (option === 'option1' && scenarioData.pensionCapital) {
-          processedRetirementIncome.push({
-            id: 'pension_capital_investment',
-            name: 'Pension Capital Investment',
-            amount: scenarioData.pensionCapital,
-            adjustedAmount: scenarioData.pensionCapital,
-            pensionCapital: scenarioData.pensionCapital,
-            yearlyReturn: scenarioData.yearlyReturn || '0',
-            frequency: 'Investment',
-            startDate: retirementLegalDate,
-            endDate: deathDate,
-            isRetirement: true,
-            isOption1: true
+        // LPP Simulation Age is taken directly from the person's questionnaire
+        let targetAge = parseInt(simAge) || 65;
+        let lppPensionAmount = null;
+
+        const lppData = benefitsData.lppByAge?.[targetAge] || benefitsData.lppByAge?.[targetAge.toString()];
+        if (lppData) lppPensionAmount = lppData.pension;
+
+
+        if (lppPensionAmount && lppPensionAmount !== '0') {
+          const startDate = (targetAge === 65) ? pLegalDate : calculateWishedDate(pBirthDate, targetAge);
+          resetRetirementIncome.push({
+            id: `lpp_pension_${personId}`,
+            name: language === 'fr' ? `Rente LPP à ${targetAge} ans` : `LPP pension at ${targetAge}y`,
+            person: personId === 'p2' ? 'Person 2' : 'Person 1',
+            amount: lppPensionAmount, adjustedAmount: lppPensionAmount,
+            frequency: 'Yearly', startDate, endDate: pDeathDate, isRetirement: true
           });
-        } else if (option === 'option0') {
-          // Option 0: Legal Retirement (65y)
-          if (scenarioData.projectedLegalLPPPension) {
-            processedRetirementIncome.push({
-              id: 'projected_legal_lpp_pension',
-              name: 'Projected LPP Pension at 65y',
-              amount: scenarioData.projectedLegalLPPPension,
-              adjustedAmount: scenarioData.projectedLegalLPPPension,
-              frequency: 'Yearly', // Forced Yearly as per input label
-              startDate: retirementLegalDate,
-              endDate: deathDate,
-              isRetirement: true
-            });
-          }
-        } else if (option === 'option2') {
-          // Option 2: Early retirement logic matched to LoadData
+        }
+      };
 
-          let earlyRetirementDateStr = retirementLegalDate;
-          if (scenarioData.earlyRetirementAge && birthDate) {
-            const bDate = new Date(birthDate);
-            // [Phase 9b] Strict UTC Construction
-            const earlyRetDate = new Date(Date.UTC(
-              bDate.getUTCFullYear() + parseInt(scenarioData.earlyRetirementAge),
-              bDate.getUTCMonth() + 1,
-              1, 0, 0, 0, 0
-            ));
-
-            const y = earlyRetDate.getUTCFullYear();
-            const m = String(earlyRetDate.getUTCMonth() + 1).padStart(2, '0');
-            const d = String(earlyRetDate.getUTCDate()).padStart(2, '0');
-            earlyRetirementDateStr = `${y}-${m}-${d}`;
-          }
-
-          let lppAmount = scenarioData.projectedLPPPension;
-          let earlyAge = scenarioData.earlyRetirementAge;
-
-          // 1. Try to find pension in preRetirementRows (Primary source in LoadData)
-          if (scenarioData.preRetirementRows && earlyAge) {
-            const ageRow = scenarioData.preRetirementRows.find(row => row.age === parseInt(earlyAge));
-            if (ageRow && ageRow.pension) {
-              lppAmount = ageRow.pension;
-            }
-          }
-
-          // 2. Fallback to RetirementData if still missing
-          if ((!lppAmount || lppAmount === '0') && retirementData && retirementData.rows) {
-            console.log('Reset: ScenarioData missing option2 values, checking retirementData...');
-            if (earlyAge) {
-              const match = retirementData.rows.find(row => row.name.includes(` ${earlyAge} `) || row.name.includes(earlyAge.toString()));
-              if (match) lppAmount = match.yearlyPension || match.pension;
-            } else {
-              const match = retirementData.rows.find(row => row.name.startsWith('Retirement at') && parseFloat(row.yearlyPension) > 0);
-              if (match) {
-                const ageMatch = match.name.match(/at (\d+)/);
-                if (ageMatch) earlyAge = ageMatch[1];
-                lppAmount = match.yearlyPension;
-              }
-            }
-          }
-
-          if (lppAmount) {
-            processedRetirementIncome.push({
-              id: 'projected_lpp_pension',
-              name: `Projected LPP Pension at ${earlyAge || 'Chosen'}y`,
-              amount: lppAmount,
-              adjustedAmount: lppAmount,
-              frequency: 'Yearly',
-              startDate: earlyRetirementDateStr,
-              endDate: deathDate,
-              isRetirement: true
-            });
-          }
-        } else if (option === 'option3') {
-          // Option 3: Process preRetirementData
-          if (scenarioData.preRetirementData) {
-            Object.keys(scenarioData.preRetirementData).forEach(age => {
-              const ageData = scenarioData.preRetirementData[age];
-              if (ageData.pension) {
-                processedRetirementIncome.push({
-                  id: `pre_retirement_pension_${age} `,
-                  name: `Projected LPP Pension at ${age} y`,
-                  amount: ageData.pension,
-                  adjustedAmount: ageData.pension,
-                  frequency: ageData.frequency || 'Monthly',
-                  startDate: retirementLegalDate,
-                  endDate: deathDate,
-                  isRetirement: true
-                });
-              }
-            });
-          }
+      if (retirementData) {
+        processRetirementReset(retirementData.p1, birthDate, retirementLegalDate, deathDate, 'p1', userData.analysisType === 'couple' ? (userData.firstName || 'Person 1') : '');
+        if (userData.analysisType === 'couple' && retirementData.p2) {
+          processRetirementReset(retirementData.p2, birthDate2, retirementLegalDate2, deathDate2, 'p2', userData.firstName2 || 'Person 2');
         }
       }
 
-      const allIncomes = [...processedIncomes, ...processedRetirementIncome];
-      setIncomes(allIncomes);
+      setIncomes([...processedIncomes, ...resetRetirementIncome]);
 
-      // IMPORTANT: Spread scenarioData to preserve ALL fields (retirementOption, benefitsData, etc.)
-      await saveScenarioData(user.email, masterKey, {
-        ...scenarioData,  // Preserve all existing fields
-        liquidAssets,
-        nonLiquidAssets,
-        futureInflows,
-        wishedRetirementDate,
-        adjustedIncomes: [],  // Clear adjusted versions to reset to originals
-        adjustedCosts: costs
+      // Clear overrides for standard incomes that were reset
+      const newOverrides = { ...incomeDateOverrides };
+      const resettableNames = ['Salary', 'AVS', 'LPP', '3a', 'Projected LPP Pension'];
+      Object.keys(newOverrides).forEach(key => {
+        if (resettableNames.some(name => key.startsWith(name))) {
+          delete newOverrides[key];
+        }
       });
+      setIncomeDateOverrides(newOverrides);
 
-      toast.success(language === 'fr' ? 'Revenus réinitialisés aux valeurs par défaut' : 'Income reset to default values');
+      toast.success(t('scenario.resetSuccess'));
     } catch (error) {
       console.error('Error resetting incomes:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
@@ -1062,190 +846,110 @@ const DataReview = () => {
 
   const resetAssetsToDefaults = async () => {
     try {
+      console.log('Resetting assets to defaults...');
       const assetsData = await getAssetsData(user.email, masterKey);
       const scenarioData = await getScenarioData(user.email, masterKey);
-
-      let loadedCurrentAssets = [];
-      if (assetsData) {
-        loadedCurrentAssets = assetsData.currentAssets || [];
-
-        // Use the same logic as loadData to inject retirement assets, but reset their values
-        if (scenarioData) {
-          const retirementDateStr = scenarioData.wishedRetirementDate || retirementLegalDate;
-          const option = scenarioData.retirementOption || 'option1';
-
-
-
-          // Option 0: Inject Legal LPP Capital
-          if (option === 'option0' && scenarioData.projectedLegalLPPCapital) {
-            const legalAsset = {
-              id: 'projected_legal_lpp_capital',
-              name: 'Projected LPP Capital at 65y',
-              amount: scenarioData.projectedLegalLPPCapital,
-              adjustedAmount: scenarioData.projectedLegalLPPCapital, // Reset adjusted to original
-              category: 'Illiquid', // Default
-              preserve: 'No', // Default
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: 'Cash', // Default
-              isOption0: true
-            };
-            loadedCurrentAssets = [legalAsset, ...loadedCurrentAssets];
-          }
-
-          // Move 3a and Supplementary Pension capital from scenarioData.benefitsData to Assets
-          if (scenarioData.benefitsData) {
-            const oneTimeItems = [];
-
-            // 1. Check for 3a (Handle Array or Single Object)
-            if (scenarioData.benefitsData.threeA) {
-              if (Array.isArray(scenarioData.benefitsData.threeA)) {
-                scenarioData.benefitsData.threeA.forEach((item, index) => {
-                  if (item.amount) {
-                    oneTimeItems.push({
-                      id: `3a_account_${index}`,
-                      name: `3a (${index + 1})`,
-                      amount: item.amount,
-                      startDate: item.startDate || wishedRetirementDate,
-                      frequency: 'One-time'
-                    });
-                  }
-                });
-              } else if (scenarioData.benefitsData.threeA.amount) {
-                oneTimeItems.push({
-                  id: '3a',
-                  name: '3a',
-                  amount: scenarioData.benefitsData.threeA.amount,
-                  startDate: scenarioData.benefitsData.threeA.startDate || wishedRetirementDate,
-                  frequency: 'One-time'
-                });
-              }
-            }
-
-            // 2. Check for Supplementary Pension capital
-            if (scenarioData.benefitsData.lppSup && scenarioData.benefitsData.lppSup.amount) {
-              oneTimeItems.push({
-                id: 'lppSup',
-                name: 'Supplementary Pension capital',
-                amount: scenarioData.benefitsData.lppSup.amount,
-                startDate: scenarioData.benefitsData.lppSup.startDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
-            }
-
-            // 3. Check for Libre Passage from benefitsData
-            if (scenarioData.benefitsData.librePassages && Array.isArray(scenarioData.benefitsData.librePassages)) {
-              scenarioData.benefitsData.librePassages.forEach((item, index) => {
-                if (item.amount) {
-                  oneTimeItems.push({
-                    id: `librePassage_${index}`,
-                    name: item.name || `Libre-Passage (${index + 1})`,
-                    amount: item.amount,
-                    startDate: item.startDate || wishedRetirementDate,
-                    frequency: 'One-time'
-                  });
-                }
-              });
-            }
-
-            // 4. Check for LPP Current Capital from benefitsData
-            if (scenarioData.benefitsData.lppCurrentCapital) {
-              oneTimeItems.push({
-                id: 'lppCurrentCapital',
-                name: 'LPP pension plan current capital',
-                amount: scenarioData.benefitsData.lppCurrentCapital,
-                startDate: scenarioData.benefitsData.lppCurrentCapitalDate || wishedRetirementDate,
-                frequency: 'One-time'
-              });
-            }
-
-            // Process and inject them
-            oneTimeItems.forEach(item => {
-              const assetItem = {
-                id: item.id,
-                name: item.name,
-                amount: item.amount,
-                adjustedAmount: item.amount, // Reset adjusted to original
-                category: 'Liquid', // 3a/Supplementary default to Liquid
-                preserve: 'No', // Default
-                availabilityType: 'Date',
-                availabilityDate: item.startDate || wishedRetirementDate,
-                strategy: 'Cash', // Default
-                isRetirement: true
-              };
-              loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
-            });
-          }
-
-          // Option 2: Inject Projected LPP Capital (New Logic)
-          if (option === 'option2' && scenarioData.projectedLPPCapital) {
-            const lppAsset = {
-              id: 'projected_lpp_capital_option2',
-              name: `Projected LPP Capital at ${scenarioData.earlyRetirementAge}y`,
-              amount: scenarioData.projectedLPPCapital,
-              adjustedAmount: scenarioData.projectedLPPCapital, // Reset adjusted to original
-              category: 'Illiquid', // Default
-              preserve: 'No', // Default
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: 'Cash', // Default
-              isOption2: true
-            };
-            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
-          }
-
-          // Option 3: Inject Pre-retirement Capital Rows
-          if (option === 'option3' && scenarioData.preRetirementRows) {
-            scenarioData.preRetirementRows.forEach(row => {
-              if (row.capital && row.capital !== '' && row.capital !== '0') {
-                const assetItem = {
-                  id: `pre_retirement_capital_${row.age} `,
-                  name: `Pre - retirement LPP Capital at ${row.age} y`,
-                  amount: row.capital,
-                  adjustedAmount: row.capital, // Reset adjusted to original
-                  category: 'Illiquid', // Default
-                  preserve: 'No', // Default
-                  availabilityType: 'Date',
-                  availabilityDate: retirementDateStr, // Or specific date if available? Usually retirement date.
-                  strategy: 'Cash', // Default
-                  isOption3: true
-                };
-                loadedCurrentAssets = [assetItem, ...loadedCurrentAssets];
-              }
-            });
-          }
-
-          // Option 1: Inject LPP Pension Capital (New Logic - Unshift to top)
-          if (option === 'option1' && scenarioData.pensionCapital) {
-            const lppAsset = {
-              id: 'lpp_pension_capital',
-              name: language === 'fr' ? 'Statut actuel du capital de prévoyance' : 'Current pension plan capital status',
-              amount: scenarioData.pensionCapital,
-              adjustedAmount: scenarioData.pensionCapital, // Reset adjusted to original
-              category: 'Illiquid', // Default
-              preserve: 'No', // Default
-              availabilityType: 'Date',
-              availabilityDate: retirementDateStr,
-              strategy: 'Cash', // Default
-              isOption1: true
-            };
-            loadedCurrentAssets = [lppAsset, ...loadedCurrentAssets];
-          }
+      const rDataRaw = await getRetirementData(user.email, masterKey);
+      // [V2 REFACTOR] Detect if it's old structure (v1) or new (v2 with p1/p2)
+      let retirementData = null;
+      if (rDataRaw) {
+        if (rDataRaw.p1 || rDataRaw.p2) {
+          retirementData = {
+            p1: migrateToV2(rDataRaw.p1, userData),
+            p2: (userData?.analysisType === 'couple') ? migrateToV2(rDataRaw.p2, { ...userData, birthDate: userData.birthDate2, gender: userData.gender2 }) : null
+          };
+        } else {
+          // Legacy single-person structure
+          retirementData = {
+            p1: migrateToV2(rDataRaw, userData),
+            p2: null
+          };
         }
       }
 
-      setCurrentAssets(loadedCurrentAssets.filter(asset => parseFloat(asset.amount) > 0));
+      let loadedCurrentAssets = (assetsData?.currentAssets || []).map(a => ({ ...a, adjustedAmount: a.amount }));
+
+      if (retirementData && scenarioData) {
+        const processRetirementAssetsReset = (pData, pBirthDate, pLegalDate, personId, personLabel) => {
+          if (!pData) return;
+          const { questionnaire, benefitsData } = pData;
+          const simWishedDate = (personId === 'p1') ? wishedRetirementDate : wishedRetirementDate2;
+          const simAge = questionnaire.simulationAge;
+          const option = scenarioData.retirementOption || 'option1';
+
+          // 1. LPP Capital Mapping
+          let targetAge = parseInt(simAge) || 65;
+
+          const lppData = benefitsData.lppByAge?.[targetAge] || benefitsData.lppByAge?.[targetAge.toString()];
+
+          const upsertResetAsset = (asset) => {
+            const idx = loadedCurrentAssets.findIndex(a => a.id === asset.id);
+            if (idx >= 0) loadedCurrentAssets[idx] = asset;
+            else loadedCurrentAssets.unshift(asset);
+          };
+
+          if (lppData && lppData.capital && lppData.capital !== '0') {
+            upsertResetAsset({
+              id: `lpp_capital_${personId}`, name: `Projected LPP Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+              amount: lppData.capital, adjustedAmount: lppData.capital,
+              category: 'Liquid', availabilityType: 'Date',
+              availabilityDate: calculateWishedDate(pBirthDate, targetAge),
+              strategy: 'Cash', isRetirement: true
+            });
+          }
+
+          if (benefitsData.threeA) {
+            benefitsData.threeA.forEach((item, idx) => {
+              if (item.amount) upsertResetAsset({
+                id: `threeA_${personId}_${idx}`, name: `3a (${idx + 1})`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+                amount: item.amount, adjustedAmount: item.amount,
+                category: 'Liquid', availabilityType: 'Date',
+                availabilityDate: item.startDate || simWishedDate,
+                strategy: 'Cash', isRetirement: true
+              });
+            });
+          }
+
+          if (benefitsData.librePassages) {
+            benefitsData.librePassages.forEach((item, idx) => {
+              if (item.amount) upsertResetAsset({
+                id: `libre_${personId}_${idx}`, name: item.name || `Libre-Passage (${idx + 1})`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
+                amount: item.amount, adjustedAmount: item.amount,
+                category: 'Liquid', availabilityType: 'Date',
+                availabilityDate: item.startDate || simWishedDate,
+                strategy: 'Cash', isRetirement: true
+              });
+            });
+          }
+
+          if (benefitsData.lppCurrentCapital) {
+            upsertResetAsset({
+              id: `lpp_current_${personId}`, name: `LPP Current Capital`, person: personLabel,
+              amount: benefitsData.lppCurrentCapital, adjustedAmount: benefitsData.lppCurrentCapital,
+              category: 'Liquid', availabilityType: 'Date',
+              availabilityDate: benefitsData.lppCurrentCapitalDate || simWishedDate,
+              strategy: 'Cash', isRetirement: true
+            });
+          }
+        };
+
+        processRetirementAssetsReset(retirementData.p1, birthDate, retirementLegalDate, 'p1', userData.analysisType === 'couple' ? (userData.firstName || 'Person 1') : '');
+        if (userData.analysisType === 'couple' && retirementData.p2) {
+          processRetirementAssetsReset(retirementData.p2, birthDate2, retirementLegalDate2, 'p2', userData.firstName2 || 'Person 2');
+        }
+      }
+
+      const filteredAssets = loadedCurrentAssets.filter(asset => parseFloat(asset.amount) > 0);
+      setCurrentAssets(filteredAssets);
 
       // Autosave the reset state
       await saveScenarioData(user.email, masterKey, {
         ...scenarioData,
-        currentAssets: loadedCurrentAssets.filter(asset => parseFloat(asset.amount) > 0),
-        liquidAssets,
-        nonLiquidAssets,
+        currentAssets: filteredAssets,
         investedBook: [] // CLEAR GHOSTS: Reset investment customizations when assets are reset
       });
 
-      toast.success(language === 'fr' ? 'Actifs réinitialisés aux valeurs par défaut' : 'Assets reset to default values');
+      toast.success(t('scenario.resetSuccess'));
     } catch (error) {
       console.error('Error resetting assets:', error);
       toast.error(language === 'fr' ? 'Erreur lors de la réinitialisation' : 'Error resetting data');
@@ -1385,6 +1089,22 @@ const DataReview = () => {
       return income;
     });
     setIncomes(updatedIncomes);
+  };
+
+  // Person display helper
+  const getPersonDisplay = (item) => {
+    if (!item) return '';
+    const p = item.person || item.owner;
+    if (p === 'p1' || p === 'Person 1' || p === 'Personne 1' || (userData?.firstName && p === userData.firstName)) {
+      return userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+    }
+    if (p === 'p2' || p === 'Person 2' || p === 'Personne 2' || (userData?.firstName2 && p === userData.firstName2)) {
+      return userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+    }
+    if (p === 'consolidated' || p === 'Consolidated' || p === 'Consolidé') {
+      return language === 'fr' ? 'Consolidé' : 'Consolidated';
+    }
+    return language === 'fr' ? 'Commun' : 'Shared';
   };
 
   const deleteCost = (id) => {
@@ -1558,22 +1278,6 @@ const DataReview = () => {
           simulationRetirementDate = retirementLegalDate;
           calculatedEarliestDate = null; // Signal that no early retirement is possible
         }
-      } else if (retirementOption === 'option2') {
-        // Option 2: Calculate date based on specific early retirement age
-        if (earlyRetirementAge && birthDate) {
-          const bDate = new Date(birthDate);
-          const earlyRetDate = new Date(bDate);
-          earlyRetDate.setFullYear(earlyRetDate.getFullYear() + parseInt(earlyRetirementAge));
-
-          // Fix Timezone Drift: explicitly format as YYYY-MM-DD using local time
-          // toISOString() converts to UTC, which can shift 'Oct 1 00:00' back to 'Sep 30 23:00'
-          const year = earlyRetDate.getFullYear();
-          const month = String(earlyRetDate.getMonth() + 1).padStart(2, '0');
-          const day = String(earlyRetDate.getDate()).padStart(2, '0');
-          simulationRetirementDate = `${year}-${month}-${day}`;
-
-          console.log('Calculated Early Ret Date (Local):', simulationRetirementDate);
-        }
       }
 
       const wishedRetirementYear = new Date(simulationRetirementDate).getFullYear();
@@ -1597,18 +1301,26 @@ const DataReview = () => {
           let startDate, endDate;
 
           // Use date overrides if available, otherwise use calculated defaults
+          const pLabel = getPersonDisplay(income);
+          const rawPerson = income.person || income.owner;
+          const isP2 = isPerson2(income);
+          const effWishedRetDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate;
+          const effLegalRetDate = isP2 ? retirementLegalDate2 : retirementLegalDate;
+          const effDeathDate = isP2 ? deathDate2 : deathDate;
+          const overrideKey = pLabel ? `${income.name}_${pLabel}` : income.name;
+
           if (income.name === 'Salary') {
-            startDate = incomeDateOverrides['Salary']?.startDate || today;
-            endDate = incomeDateOverrides['Salary']?.endDate || simulationRetirementDate;
+            startDate = incomeDateOverrides[overrideKey]?.startDate || today;
+            endDate = incomeDateOverrides[overrideKey]?.endDate || effWishedRetDate;
           } else if (income.name === 'LPP') {
-            startDate = incomeDateOverrides['LPP']?.startDate || simulationRetirementDate;
-            endDate = incomeDateOverrides['LPP']?.endDate || deathDate;
+            startDate = incomeDateOverrides[overrideKey]?.startDate || effWishedRetDate;
+            endDate = incomeDateOverrides[overrideKey]?.endDate || effDeathDate;
           } else if (income.name === 'AVS') {
-            startDate = incomeDateOverrides['AVS']?.startDate || retirementLegalDate;
-            endDate = incomeDateOverrides['AVS']?.endDate || deathDate;
+            startDate = incomeDateOverrides[overrideKey]?.startDate || effLegalRetDate;
+            endDate = incomeDateOverrides[overrideKey]?.endDate || effDeathDate;
           } else if (income.name === '3a') {
-            // 3a is one-time at retirement - use override date or simulation retirement
-            const threADate = incomeDateOverrides['3a']?.startDate || simulationRetirementDate;
+            // 3a is one-time at retirement - use override date or person-specific simulation retirement
+            const threADate = incomeDateOverrides[overrideKey]?.startDate || effWishedRetDate;
             const threAYear = new Date(threADate).getFullYear();
             if (year === threAYear) {
               yearData.income += amount;
@@ -1744,7 +1456,6 @@ const DataReview = () => {
 
         // Option specific data
         ...(retirementOption === 'option1' ? { pensionCapital, yearlyReturn } : {}),
-        ...(retirementOption === 'option2' ? { earlyRetirementAge, projectedLPPPension, projectedLPPCapital } : {})
       });
 
       // Navigate to result with full simulation data
@@ -1793,15 +1504,12 @@ const DataReview = () => {
         const amount = parseFloat(income.adjustedAmount) || 0;
         let startDate, endDate;
 
-        if (income.name === 'Salary') {
+        if (income.name === 'Salary' || income.name === 'Net Salary') {
           startDate = today;
-          endDate = testRetirementDate;
-        } else if (income.name === 'LPP') {
-          startDate = testRetirementDate;
-          endDate = deathDate;
-        } else if (income.name === 'AVS') {
-          startDate = retirementLegalDate;
-          endDate = deathDate;
+          endDate = (income.person === 'Person 2') ? wishedRetirementDate2 : testRetirementDate;
+        } else if (income.name === 'LPP' || income.name === 'AVS') {
+          startDate = (income.person === 'Person 2') ? wishedRetirementDate2 : testRetirementDate;
+          endDate = (income.person === 'Person 2') ? deathDate2 : deathDate;
         } else if (income.name === '3a') {
           const threAYear = new Date(testRetirementDate).getFullYear();
           if (year === threAYear) {
@@ -1990,6 +1698,7 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
+                      {isCouple && <th className="text-left p-3 font-semibold w-[10%]">{language === 'fr' ? 'Personne' : 'Person'}</th>}
                       <th className="text-left p-3 font-semibold w-[18%]">{t('scenario.name')}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.originalValue')}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.adjustedValue')}</th>
@@ -2018,36 +1727,26 @@ const DataReview = () => {
                       const today = new Date().toISOString().split('T')[0];
                       const isStandardIncome = ['Salary', 'LPP', 'AVS', '3a'].includes(income.name);
 
-                      // Calculate default dates for standard income types
-                      let defaultStartDate = '';
-                      let defaultEndDate = '';
-
-                      if (income.name === 'Salary') {
-                        defaultStartDate = today;
-                        defaultEndDate = wishedRetirementDate;
-                      } else if (income.name === 'LPP') {
-                        defaultStartDate = wishedRetirementDate;
-                        defaultEndDate = deathDate;
-                      } else if (income.name === 'AVS') {
-                        defaultStartDate = retirementLegalDate;
-                        defaultEndDate = deathDate;
-                      } else if (income.name === '3a') {
-                        defaultStartDate = wishedRetirementDate;
-                        defaultEndDate = '';
-                      }
-
-                      // Get current values (override or default)
-                      const currentStartDate = isStandardIncome
-                        ? (incomeDateOverrides[income.name]?.startDate || defaultStartDate)
-                        : income.startDate;
-                      const currentEndDate = isStandardIncome
-                        ? (incomeDateOverrides[income.name]?.endDate || defaultEndDate)
-                        : income.endDate;
+                      // Get effective dates (override or default)
+                      const currentStartDate = getEffectiveIncomeDate(income, 'startDate');
+                      const currentEndDate = getEffectiveIncomeDate(income, 'endDate');
 
                       const isLPPPension = income.name.includes('LPP Pension');
+                      const personLabel = getPersonDisplay(income);
+                      const isP2 = isPerson2(income);
+                      const effWishedRetDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate;
+                      const effLegalRetDate = isP2 ? retirementLegalDate2 : retirementLegalDate;
+                      const effDeathDate = isP2 ? deathDate2 : deathDate;
 
                       return (
                         <tr key={income.id} className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles}`}>
+                          {isCouple && (
+                            <td className="p-3">
+                              <span className={`text-xs px-2 py-1 rounded-full ${isPerson2(income) ? 'bg-purple-500/20 text-purple-400' : isPerson1(income) ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {getPersonDisplay(income)}
+                              </span>
+                            </td>
+                          )}
                           <td className={`p-3 font-medium ${isLPPPension ? 'text-blue-600 font-bold' : 'text-white'}`}>
                             <div className="flex items-center gap-2">
                               {isChildIncome && <span className="text-blue-400 text-xs">↳</span>}
@@ -2082,7 +1781,7 @@ const DataReview = () => {
                             {income.name === 'AVS' ? (
                               <Input
                                 type="text"
-                                value={retirementLegalDate.split('-').reverse().join('.')}
+                                value={effLegalRetDate.split('-').reverse().join('.')}
                                 readOnly
                                 className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
                               />
@@ -2090,10 +1789,10 @@ const DataReview = () => {
                               <DateInputWithShortcuts
                                 data-testid={`income - start - date - ${index} `}
                                 value={currentStartDate || ''}
-                                onChange={(e) => updateIncomeDateOverride(income.name, 'startDate', e.target.value)}
+                                onChange={(e) => updateIncomeDateOverride(income.name, personLabel, 'startDate', e.target.value)}
                                 className="w-fit"
-                                retirementDate={wishedRetirementDate}
-                                legalDate={retirementLegalDate}
+                                retirementDate={effWishedRetDate}
+                                legalDate={effLegalRetDate}
                                 mode="start"
                               />
                             ) : (
@@ -2101,8 +1800,8 @@ const DataReview = () => {
                                 value={income.startDate || ''}
                                 onChange={(e) => updateIncomeDateWithSync(income.id, 'startDate', e.target.value)}
                                 className="w-fit"
-                                retirementDate={wishedRetirementDate}
-                                legalDate={retirementLegalDate}
+                                retirementDate={effWishedRetDate}
+                                legalDate={effLegalRetDate}
                                 mode="start"
                               />
                             )}
@@ -2111,7 +1810,7 @@ const DataReview = () => {
                             {income.name === 'AVS' ? (
                               <Input
                                 type="text"
-                                value={deathDate.split('-').reverse().join('.')}
+                                value={effDeathDate.split('-').reverse().join('.')}
                                 readOnly
                                 className="w-[120px] bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default p-0"
                               />
@@ -2121,11 +1820,11 @@ const DataReview = () => {
                               <DateInputWithShortcuts
                                 data-testid={`income - end - date - ${index} `}
                                 value={currentEndDate || ''}
-                                onChange={(e) => updateIncomeDateOverride(income.name, 'endDate', e.target.value)}
+                                onChange={(e) => updateIncomeDateOverride(income.name, personLabel, 'endDate', e.target.value)}
                                 className="w-fit"
-                                retirementDate={wishedRetirementDate}
-                                legalDate={retirementLegalDate}
-                                deathDate={deathDate}
+                                retirementDate={effWishedRetDate}
+                                legalDate={effLegalRetDate}
+                                deathDate={effDeathDate}
                                 mode="end"
                               />
                             ) : (
@@ -2134,9 +1833,9 @@ const DataReview = () => {
                                   value={income.endDate || ""}
                                   onChange={(e) => updateIncomeDateWithSync(income.id, "endDate", e.target.value)}
                                   className="w-fit"
-                                  retirementDate={wishedRetirementDate}
-                                  legalDate={retirementLegalDate}
-                                  deathDate={deathDate}
+                                  retirementDate={effWishedRetDate}
+                                  legalDate={effLegalRetDate}
+                                  deathDate={effDeathDate}
                                   mode="end"
                                 />
                             )}
@@ -2203,6 +1902,7 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
+                      {isCouple && <th className="text-left p-3 font-semibold w-[10%]">{language === 'fr' ? 'Personne' : 'Person'}</th>}
                       <th className="text-left p-3 font-semibold w-[18%]">{language === 'fr' ? 'Nom' : 'Name'}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{language === 'fr' ? 'Valeur originale' : 'Original Value'}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{language === 'fr' ? 'Valeur ajustée' : 'Adjusted Value'}</th>
@@ -2225,6 +1925,13 @@ const DataReview = () => {
 
                       return (
                         <tr key={asset.id} className="border-b hover:bg-muted/30">
+                          {isCouple && (
+                            <td className="p-3">
+                              <span className={`text-xs px-2 py-1 rounded-full ${isPerson2(asset) ? 'bg-purple-500/20 text-purple-400' : isPerson1(asset) ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {getPersonDisplay(asset)}
+                              </span>
+                            </td>
+                          )}
                           <td className="p-3">
                             <Input
                               type="text"
@@ -2392,6 +2099,7 @@ const DataReview = () => {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
+                      {isCouple && <th className="text-left p-3 font-semibold w-[10%]">{language === 'fr' ? 'Personne' : 'Person'}</th>}
                       <th className="text-left p-3 font-semibold w-[18%]">{t('scenario.name')}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.originalValue')}</th>
                       <th className="text-right p-3 font-semibold w-[11%]">{t('scenario.adjustedValue')}</th>
@@ -2421,6 +2129,13 @@ const DataReview = () => {
                           key={cost.id}
                           className={`border-b hover:bg-muted/30 ${groupStyles} ${childStyles} `}
                         >
+                          {isCouple && (
+                            <td className="p-3">
+                              <span className={`text-xs px-2 py-1 rounded-full ${isPerson2(cost) ? 'bg-purple-500/20 text-purple-400' : (cost.owner === 'consolidated' || cost.person === 'Consolidated') ? 'bg-amber-500/20 text-amber-400' : (!cost.person || cost.person === 'Shared' || cost.person === 'Commun' || cost.owner === 'Shared') ? 'bg-gray-500/20 text-gray-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                {getPersonDisplay(cost)}
+                              </span>
+                            </td>
+                          )}
                           <td className="p-3 font-medium text-white">
                             <div className="flex items-center gap-2">
                               {isChildCost && <span className="text-blue-400 text-xs">↳</span>}

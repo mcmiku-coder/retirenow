@@ -296,7 +296,7 @@ export async function runInvestedBookSimulation(params) {
 /**
  * RULE 2: Compute DeterministicTotal(t) as a MONTHLY series.
  */
-export function calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets = [], activeFilters = {}, scenarioData = {}, incomes = [], costs = []) {
+export function calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets = [], activeFilters = {}, scenarioData = {}, incomes = [], costs = [], userData = {}) {
     const series = new Float64Array(horizonMonths + 1);
 
     // [ALIGNMENT FIX] Use Bottom-Up Accumulation (Monthly Flows) instead of Top-Down Interpolation (Yearly Snapshot).
@@ -345,13 +345,68 @@ export function calculateMonthlyDeterministicSeries(projection, simStartDate, ho
         let InvestContributionFlow = 0;
 
         // A. Income Flows
+        // Unpack scenario data for overrides
+        const incomeDateOverrides = scenarioData?.incomeDateOverrides || {};
+        const language = scenarioData?.language || 'fr';
+
+        // Person-specific dates
+        const birthDate1 = userData?.birthDate ? new Date(userData.birthDate) : null;
+        const deathDate1 = userData?.theoreticalDeathDate || (birthDate1 ? `${birthDate1.getUTCFullYear() + (userData.gender === 'male' ? 80 : 85)}-12-31` : '2080-12-31');
+
+        const birthDate2 = userData?.birthDate2 ? new Date(userData.birthDate2) : null;
+        const deathDate2 = (userData?.analysisType === 'couple' && userData?.theoreticalDeathDate2) ? userData.theoreticalDeathDate2 : (userData?.analysisType === 'couple' && birthDate2 ? `${birthDate2.getUTCFullYear() + (userData.gender2 === 'male' ? 80 : 85)}-12-31` : null);
+
+        const wishedRetirementDate1 = scenarioData?.wishedRetirementDate;
+        const wishedRetirementDate2 = scenarioData?.wishedRetirementDate2;
+
+        const isSalary = (name = '') => {
+            const n = name.toLowerCase();
+            return n.includes('salary') || n.includes('salaire') || n.includes('lohn') || n.includes('revenu');
+        };
+        const isAVS = (name = '') => {
+            const n = name.toLowerCase();
+            return n.includes('avs') || n.includes('ahv') || n.includes('1. säule') || n.includes('1er pilier') || n.includes('pension de vieillesse');
+        };
+        const isLPP = (name = '') => {
+            const n = name.toLowerCase();
+            if (n.includes('capital')) return false;
+            return n.includes('lpp') || n.includes('bvg') || n.includes('pension') || n.includes('rente');
+        };
+
         incomes.forEach(inc => {
             if (activeFilters[`income-${inc.id || inc.name}`] === false) return;
+
+            let start = inc.startDate;
+            let end = inc.endDate;
+
+            // Handle standard incomes with person-specific overrides and fallbacks
+            if (isSalary(inc.name) || isAVS(inc.name) || isLPP(inc.name)) {
+                const isP2 = inc.owner === 'p2' || inc.person === 'Person 2';
+                const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+                const overrideKey = `${inc.name}_${pLabel}`;
+
+                const effWishedRetDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate1;
+                const effDeathDate = isP2 ? deathDate2 : deathDate1;
+
+                if (isSalary(inc.name)) {
+                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate || new Date().toISOString().split('T')[0];
+                    end = incomeDateOverrides[overrideKey]?.endDate || effWishedRetDate;
+                } else if (isAVS(inc.name)) {
+                    // Fallback to legal date if not available might be complex here, 
+                    // but usually inc already has a fallback from DataReview
+                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate;
+                    end = incomeDateOverrides[overrideKey]?.endDate || inc.endDate || effDeathDate;
+                } else if (isLPP(inc.name)) {
+                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate || effWishedRetDate;
+                    end = incomeDateOverrides[overrideKey]?.endDate || inc.endDate || effDeathDate;
+                }
+            }
+
             const amt = calculateMonthlyAmount(
                 parseFloat(inc.amount || 0),
                 inc.frequency || 'Monthly',
-                inc.startDate,
-                inc.endDate,
+                start,
+                end,
                 date,
                 simStartRef_Stable
             );
