@@ -210,7 +210,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                                         label={{
                                             position: p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
                                             dy: 20,
-                                            dx: p1IsEarlier ? -5 : 5,
+                                            dx: p1IsEarlier ? -15 : 15,
                                             value: `${language === 'fr' ? 'Retraite' : 'Retirement'} Max${retirementAge ? ` (${retirementAge}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
                                             fill: '#3b82f6',
                                             fontSize: 18,
@@ -228,7 +228,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                                         label={{
                                             position: !p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
                                             dy: 20,
-                                            dx: !p1IsEarlier ? -5 : 5,
+                                            dx: !p1IsEarlier ? -15 : 15,
                                             value: `${language === 'fr' ? 'Retraite' : 'Retirement'} Mary${retirementAge2 ? ` (${retirementAge2}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
                                             fill: '#a855f7',
                                             fontSize: 18,
@@ -274,7 +274,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                                 label={{
                                     position: 'insideBottomRight',
                                     dy: -40,
-                                    dx: 10,
+                                    dx: 15,
                                     value: `${language === 'fr' ? 'espérance de vie de' : 'life expectancy of'} ${personName}`,
                                     fill: strokeColor,
                                     fontSize: isPdf ? 16 : 22,

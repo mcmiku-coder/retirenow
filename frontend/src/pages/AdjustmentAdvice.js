@@ -36,6 +36,7 @@ const AdjustmentAdvice = () => {
     const [birthDate, setBirthDate] = useState('');
     const [deathDate, setDeathDate] = useState('');
     const [costs, setCosts] = useState([]);
+    const [isCouple, setIsCouple] = useState(false);
 
     // Get translated cost name
     const getCostName = (englishName) => {
@@ -76,6 +77,7 @@ const AdjustmentAdvice = () => {
                 const scenarioData = await getScenarioData(user.email, masterKey);
 
                 if (userData) {
+                    setIsCouple(userData.analysisType === 'couple');
                     setBirthDate(userData.birthDate);
 
                     // Calculate death date (same logic as DataReview)
@@ -232,7 +234,8 @@ const AdjustmentAdvice = () => {
                     category: row.originalName === 'Taxes' ? 'Taxes' : 'Other',
                     startDate: new Date().toISOString().split('T')[0],
                     endDate: deathDate,
-                    isManual: true
+                    isManual: true,
+                    owner: isCouple ? 'consolidated' : 'p1'
                 };
 
                 // Add to the list

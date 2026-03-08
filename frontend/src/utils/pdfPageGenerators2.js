@@ -31,9 +31,12 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     yPos += 5;
 
+    const p1Name = (userData.firstName || 'Person 1').toUpperCase();
+    const p2Name = (userData.firstName2 || 'Person 2').toUpperCase();
+
     // Personal details table
     const head = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
         : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
 
     const personalData = [
@@ -50,6 +53,58 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         personalData[3].push(userData.gender2 === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female'));
     }
 
+    const headerHooks = !isCouple ? {} : {
+        didParseCell: function(data) {
+            if (data.section === 'head' && data.column.index > 0) {
+                data.cell.styles.halign = 'center';
+                // Make text match background so it disappears, we draw badge on top
+                data.cell.styles.textColor = data.cell.styles.fillColor || [255, 255, 255];
+            }
+        },
+        didDrawCell: function(data) {
+            if (data.section === 'head' && data.column.index > 0 && data.cell.raw) {
+                const pdf = data.doc;
+                const textStr = String(data.cell.raw).toUpperCase();
+                
+                let isP1 = false, isP2 = false;
+                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
+
+                if (!isP1 && !isP2) return;
+
+                let bgColor = [219, 234, 254]; // blue-100
+                let textColor = [30, 64, 175]; // blue-800
+                if (isP2) {
+                    bgColor = [243, 232, 255]; // purple-100
+                    textColor = [107, 33, 168]; // purple-800
+                }
+
+                // Re-paint cell background slightly inset to clear text remnants
+                const resolvedBg = data.cell.styles.fillColor || [255, 255, 255];
+                pdf.setFillColor(resolvedBg[0], resolvedBg[1], resolvedBg[2]);
+                pdf.rect(data.cell.x + 0.1, data.cell.y + 0.1, data.cell.width - 0.2, data.cell.height - 0.2, 'F');
+
+                pdf.setFont('helvetica', 'bold');
+                const fontSize = (data.cell.styles.fontSize || 10) - 1.5;
+                pdf.setFontSize(fontSize);
+                const textWidth = pdf.getTextWidth(textStr);
+                
+                const badgePaddingX = 2; 
+                const badgePaddingY = 0.8; 
+                const rectWidth = textWidth + badgePaddingX * 2; 
+                const rectHeight = fontSize * 0.4 + badgePaddingY * 2; 
+                const badgeX = data.cell.x + (data.cell.width - rectWidth) / 2;
+                const badgeY = data.cell.y + (data.cell.height - rectHeight) / 2;
+
+                pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+                pdf.roundedRect(badgeX, badgeY, rectWidth, rectHeight, 1, 1, 'F');
+
+                pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                pdf.text(textStr, badgeX + badgePaddingX, badgeY + badgePaddingY + fontSize * 0.35);
+            }
+        }
+    };
+
     autoTable(pdf, {
         startY: yPos,
         head: head,
@@ -57,7 +112,8 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         theme: 'grid',
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
-        margin: { left: 15, right: 15 }
+        margin: { left: 15, right: 15 },
+        ...headerHooks
     });
 
     yPos = pdf.lastAutoTable.finalY + 15;
@@ -69,7 +125,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
     yPos += 8;
 
     const retirementHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
         : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
 
     const retirementData = [
@@ -93,7 +149,8 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         theme: 'grid',
         headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
-        margin: { left: 15, right: 15 }
+        margin: { left: 15, right: 15 },
+        ...headerHooks
     });
 
     yPos = pdf.lastAutoTable.finalY + 15;
@@ -126,7 +183,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     // Retirement details table
     const detailsHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
         : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
 
     const detailsData = [
@@ -156,19 +213,212 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         styles: { fontSize: 10, cellPadding: 3 },
         headStyles: { fontStyle: 'bold' },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 70 }
+            0: { fontStyle: 'bold', cellWidth: 70 },
+            1: { halign: 'center' },
+            2: { halign: 'center' }
         },
-        margin: { left: 20 }
+        margin: { left: 20 },
+        ...headerHooks
     });
 
     addPageNumber(pdf, pageNum, totalPages, language);
 };
 
 
+export const getOwnerBadgeHooks = (isCouple, userData) => {
+    if (!isCouple) return {};
+    return {
+        didParseCell: function(data) {
+            if (data.section === 'body' && data.table.columns && data.column.index === data.table.columns.length - 1) {
+                data.cell.styles.halign = 'center';
+                data.cell.styles.textColor = data.cell.styles.fillColor || [255, 255, 255];
+            }
+        },
+        didDrawCell: function(data) {
+            if (data.section === 'body' && data.table.columns && data.column.index === data.table.columns.length - 1 && data.cell.raw) {
+                const pdf = data.doc;
+                const textStr = String(data.cell.raw).toUpperCase();
+                
+                let isP1 = false, isP2 = false, isShared = false, isConsolidated = false;
+                const p1Name = (userData?.firstName || 'Max').toUpperCase();
+                const p2Name = (userData?.firstName2 || 'Mary').toUpperCase();
+
+                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
+                else if (textStr === 'CONSOLIDATED' || textStr === 'CONSOLIDÉ') isConsolidated = true;
+                else if (textStr === 'SHARED' || textStr === 'PARTAGÉ') isShared = true;
+
+                if (!isP1 && !isP2 && !isShared && !isConsolidated) return;
+
+                let bgColor = [243, 244, 246]; // gray-100
+                let textColor = [75, 85, 99]; // gray-600
+
+                if (isP1) {
+                    bgColor = [219, 234, 254]; // blue-100
+                    textColor = [30, 64, 175]; // blue-800
+                } else if (isP2) {
+                    bgColor = [243, 232, 255]; // purple-100
+                    textColor = [107, 33, 168]; // purple-800
+                } else if (isConsolidated) {
+                    bgColor = [254, 243, 199]; // amber-100
+                    textColor = [146, 64, 14]; // amber-800
+                }
+
+                const resolvedBg = data.cell.styles.fillColor || [255, 255, 255];
+                if (Array.isArray(resolvedBg)) {
+                    pdf.setFillColor(resolvedBg[0], resolvedBg[1], resolvedBg[2]);
+                } else if (resolvedBg === false || resolvedBg === 'transparent') {
+                    pdf.setFillColor(255, 255, 255);
+                } else {
+                    pdf.setFillColor(resolvedBg);
+                }
+                pdf.rect(data.cell.x + 0.1, data.cell.y + 0.1, data.cell.width - 0.2, data.cell.height - 0.2, 'F');
+
+                pdf.setFont('helvetica', 'normal');
+                const fontSize = (data.cell.styles.fontSize || 6) - 1.5; // reduced by ~20%
+                pdf.setFontSize(fontSize);
+                const textWidth = pdf.getTextWidth(textStr);
+                
+                const badgePaddingX = 2; // reduced padding
+                const badgePaddingY = 0.8; // reduced padding
+                const rectWidth = textWidth + badgePaddingX * 2; 
+                const rectHeight = fontSize * 0.4 + badgePaddingY * 2; 
+                
+                const xPos = data.cell.x + (data.cell.width - rectWidth) / 2;
+                const yPos = data.cell.y + (data.cell.height - rectHeight) / 2;
+
+                pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+                pdf.roundedRect(xPos, yPos, rectWidth, rectHeight, 1.5, 1.5, 'F');
+
+                pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                pdf.setFont('helvetica', 'bold');
+                const textX = xPos + badgePaddingX;
+                const textY = yPos + rectHeight - badgePaddingY - (fontSize * 0.05);
+                pdf.text(textStr, textX, textY);
+            } else if (data.section === 'body' && data.table.columns && data.column.index === 0 && data.cell.raw) {
+                // Handle [SPLIT] badge and [CHILD] indent in the first column (Name)
+                const textStr = String(data.cell.raw);
+                if (textStr.includes(' [SPLIT]') || textStr.startsWith('[CHILD] ')) {
+                    const pdf = data.doc;
+                    const isSplit = textStr.includes(' [SPLIT]');
+                    const isChild = textStr.startsWith('[CHILD] ');
+
+                    let cleanText = textStr;
+                    if (isSplit) cleanText = cleanText.replace(' [SPLIT]', '');
+                    if (isChild) cleanText = cleanText.replace('[CHILD] ', '');
+                    
+                    // Repaint the cell background to clear the text
+                    const resolvedBg = data.cell.styles.fillColor || [255, 255, 255];
+                    if (Array.isArray(resolvedBg)) {
+                        pdf.setFillColor(resolvedBg[0], resolvedBg[1], resolvedBg[2]);
+                    } else if (resolvedBg === false || resolvedBg === 'transparent') {
+                        pdf.setFillColor(255, 255, 255);
+                    } else {
+                        pdf.setFillColor(resolvedBg);
+                    }
+                    pdf.rect(data.cell.x + 0.1, data.cell.y + 0.1, data.cell.width - 0.2, data.cell.height - 0.2, 'F');
+
+                    pdf.setFont('helvetica', data.cell.styles.fontStyle || 'normal');
+                    const fontSize = data.cell.styles.fontSize || 8;
+                    pdf.setFontSize(fontSize);
+                    
+                    const resolvedTextColor = data.cell.styles.textColor || [0, 0, 0];
+                    if (Array.isArray(resolvedTextColor)) {
+                        pdf.setTextColor(resolvedTextColor[0], resolvedTextColor[1], resolvedTextColor[2]);
+                    } else {
+                        pdf.setTextColor(resolvedTextColor);
+                    }
+                    
+                    const textY = data.cell.y + data.cell.height / 2 + fontSize * 0.35; // approximate baseline
+                    let textX = data.cell.x + data.cell.padding('left');
+                    
+                    if (isChild) {
+                        const indent = 4;
+                        textX += indent;
+                        
+                        pdf.setTextColor(96, 165, 250); // blue-400
+                        pdf.text('->', textX, textY);
+                        const arrowWidth = pdf.getTextWidth('-> ');
+                        
+                        textX += arrowWidth;
+                        
+                        // restore text color
+                        if (Array.isArray(resolvedTextColor)) {
+                            pdf.setTextColor(resolvedTextColor[0], resolvedTextColor[1], resolvedTextColor[2]);
+                        } else {
+                            pdf.setTextColor(resolvedTextColor);
+                        }
+                    }
+
+                    // Draw the clean text
+                    pdf.text(cleanText, textX, textY);
+
+                    // Draw the [SPLIT] badge
+                    if (isSplit) {
+                        const textWidth = pdf.getTextWidth(cleanText);
+                        const badgeText = 'SPLIT';
+                        
+                        pdf.setFont('helvetica', 'bold');
+                        const badgeFontSize = fontSize - 2; // reduced by ~20%
+                        pdf.setFontSize(badgeFontSize);
+                        const badgeTextWidth = pdf.getTextWidth(badgeText);
+                        
+                        const badgePaddingX = 1.5; // reduced padding
+                        const badgePaddingY = 0.6; // reduced padding
+                        const rectWidth = badgeTextWidth + badgePaddingX * 2;
+                        const rectHeight = badgeFontSize * 0.4 + badgePaddingY * 2;
+                        
+                        const badgeXPos = textX + textWidth + 3; // 3px margin from text
+                        const badgeYPos = data.cell.y + (data.cell.height - rectHeight) / 2;
+
+                        // bg-blue-500/20 equivalent approx
+                        pdf.setFillColor(219, 234, 254);
+                        pdf.roundedRect(badgeXPos, badgeYPos, rectWidth, rectHeight, 1, 1, 'F');
+
+                        // text-blue-400 equivalent approx
+                        pdf.setTextColor(96, 165, 250); 
+                        pdf.text(badgeText, badgeXPos + badgePaddingX, badgeYPos + rectHeight - badgePaddingY - (badgeFontSize * 0.05));
+                    }
+                }
+            }
+        }
+    };
+};
+
+const getDisplayName = (item) => {
+    let name = item.name || 'N/A';
+    const isChild = item.parentId !== undefined && item.parentId !== null;
+    const isParent = item.groupId !== undefined && item.groupId !== null && !isChild;
+    
+    if (isChild) {
+        name = `[CHILD] ${name}`; // Ensure the marker is used instead of unicode
+    } else if (isParent) {
+        name = `${name} [SPLIT]`; // Add split marker for the hook to catch
+    }
+    return name;
+};
+
+const getOwnerText = (item, userData, language) => {
+    const ownerCode = item.owner || item.person;
+    if (!ownerCode) return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+    
+    const code = String(ownerCode).toLowerCase();
+    if (code === 'p1' || code.includes('person 1') || code.includes('personne 1') || (userData?.firstName && code === userData.firstName.toLowerCase())) {
+        return userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+    }
+    if (code === 'p2' || code.includes('person 2') || code.includes('personne 2') || (userData?.firstName2 && code === userData.firstName2.toLowerCase())) {
+        return userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+    }
+    if (code === 'consolidated' || code === 'consolidé') {
+         return language === 'fr' ? 'CONSOLIDÉ' : 'CONSOLIDATED';
+    }
+    return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+};
+
 /**
  * Page 5: Income and Assets
  */
-export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageNum, totalPages, isCouple) => {
+export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageNum, totalPages, isCouple, userData) => {
     pdf.addPage();
 
     let yPos = addPageHeader(
@@ -189,13 +439,13 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
     if (incomeData && incomeData.length > 0) {
         const incomeBody = incomeData.map(income => {
             const row = [
-                income.name || 'N/A',
+                getDisplayName(income),
                 formatCurrency(income.amount),
                 income.frequency || 'N/A',
                 formatDate(income.startDate),
                 formatDate(income.endDate)
             ];
-            if (isCouple) row.push(income.owner ? income.owner.toUpperCase() : (language === 'fr' ? 'PARTAGÉ' : 'SHARED'));
+            if (isCouple) row.push(getOwnerText(income, userData, language).toUpperCase());
             return row;
         });
 
@@ -218,7 +468,8 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             columnStyles: {
                 1: { halign: 'right' }
             },
-            margin: { left: 15, right: 15 }
+            margin: { left: 15, right: 15 },
+            ...getOwnerBadgeHooks(isCouple, userData)
         });
 
         yPos = pdf.lastAutoTable.finalY + 15;
@@ -241,14 +492,22 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
 
     if (assetData && assetData.length > 0) {
         const assetBody = assetData.map(asset => {
+            let displayStrategy = asset.strategy || 'N/A';
+            let displayAvailability = asset.availabilityType || 'N/A';
+
+            if (asset.category === 'Preserve') {
+                displayStrategy = '';
+                displayAvailability = '';
+            }
+
             const row = [
-                asset.name || 'N/A',
+                getDisplayName(asset),
                 formatCurrency(asset.amount),
                 asset.category || 'N/A',
-                asset.strategy || 'N/A',
-                asset.availabilityType || 'N/A'
+                displayStrategy,
+                displayAvailability
             ];
-            if (isCouple) row.push(asset.owner ? asset.owner.toUpperCase() : (language === 'fr' ? 'PARTAGÉ' : 'SHARED'));
+            if (isCouple) row.push(getOwnerText(asset, userData, language).toUpperCase());
             return row;
         });
 
@@ -271,7 +530,8 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             columnStyles: {
                 1: { halign: 'right' }
             },
-            margin: { left: 15, right: 15 }
+            margin: { left: 15, right: 15 },
+            ...getOwnerBadgeHooks(isCouple, userData)
         });
     } else {
         pdf.setFontSize(9);
@@ -286,7 +546,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
 /**
  * Page 6: Costs and Debts
  */
-export const generateCostDebts = (pdf, costData, debtData, language, pageNum, totalPages, isCouple) => {
+export const generateCostDebts = (pdf, costData, debtData, language, pageNum, totalPages, isCouple, userData) => {
     pdf.addPage();
 
     let yPos = addPageHeader(
@@ -307,13 +567,13 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
     if (costData && costData.length > 0) {
         const costBody = costData.map(cost => {
             const row = [
-                cost.name || 'N/A',
+                getDisplayName(cost),
                 formatCurrency(cost.amount),
                 cost.frequency || 'N/A',
                 formatDate(cost.startDate),
                 formatDate(cost.endDate)
             ];
-            if (isCouple) row.push(cost.owner ? cost.owner.toUpperCase() : (language === 'fr' ? 'PARTAGÉ' : 'SHARED'));
+            if (isCouple) row.push(getOwnerText(cost, userData, language).toUpperCase());
             return row;
         });
 
@@ -336,7 +596,8 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             columnStyles: {
                 1: { halign: 'right' }
             },
-            margin: { left: 15, right: 15 }
+            margin: { left: 15, right: 15 },
+            ...getOwnerBadgeHooks(isCouple, userData)
         });
 
         yPos = pdf.lastAutoTable.finalY + 15;
@@ -360,13 +621,13 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
     if (debtData && debtData.length > 0) {
         const debtBody = debtData.map(debt => {
             const row = [
-                debt.name || 'N/A',
+                getDisplayName(debt),
                 formatCurrency(debt.amount),
                 debt.frequency || 'N/A',
                 formatDate(debt.startDate),
                 formatDate(debt.endDate)
             ];
-            if (isCouple) row.push(debt.owner ? debt.owner.toUpperCase() : (language === 'fr' ? 'PARTAGÉ' : 'SHARED'));
+            if (isCouple) row.push(getOwnerText(debt, userData, language).toUpperCase());
             return row;
         });
 
@@ -389,7 +650,8 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             columnStyles: {
                 1: { halign: 'right' }
             },
-            margin: { left: 15, right: 15 }
+            margin: { left: 15, right: 15 },
+            ...getOwnerBadgeHooks(isCouple, userData)
         });
     } else {
         pdf.setFontSize(9);

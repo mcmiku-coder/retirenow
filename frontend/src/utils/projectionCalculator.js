@@ -299,181 +299,42 @@ export async function runInvestedBookSimulation(params) {
 export function calculateMonthlyDeterministicSeries(projection, simStartDate, horizonMonths, assets = [], activeFilters = {}, scenarioData = {}, incomes = [], costs = [], userData = {}) {
     const series = new Float64Array(horizonMonths + 1);
 
-    // [ALIGNMENT FIX] Use Bottom-Up Accumulation (Monthly Flows) instead of Top-Down Interpolation (Yearly Snapshot).
-    // This ensures perfect alignment with the Monthly Table logic (which sums flows month by month).
-    // Interpolation failed because it smoothed out mid-year flow stops (e.g., salary ending in Oct).
+    // [ALIGNMENT FIX] Use true interpolation from the main projection loop to guarantee
+    // that the monthly series perfectly preserves inflation, taxes, LPP payouts, and everything else
+    // computed in DataReview.js.
 
-    const startDate = toUtcMonthStart(simStartDate);
-    const investedAssetIds = getInvestedBookAssets(assets, scenarioData).map(a => a.id);
+    if (!projection?.yearlyBreakdown || projection.yearlyBreakdown.length === 0) {
+        return series;
+    }
 
-    // 1. Calculate Initial State (D0) - Same as Logic 2 above but strict
-    // Start with 0 and add initial non-invested assets
-    let runningNonInvestedWealth = 0;
-    let runningInvestedPrincipal = 0;
+    const simStartMonthUTC = toUtcMonthStart(simStartDate);
+    const startYear = simStartMonthUTC.getUTCFullYear();
+    
+    // We assume the true simulation start balance is the balance at the end of the first year MINUS the annual savings that occurred during that year.
+    // This gives us the T=0 value.
+    const firstRowYearNum = parseInt(projection.yearlyBreakdown[0].year);
+    const initialSavings = projection.yearlyBreakdown[0].cumulativeBalance - projection.yearlyBreakdown[0].annualBalance;
 
-    // Initialize with assets available at start
-    assets.forEach(asset => {
-        const id = asset.id || asset.name;
-        if (activeFilters[`asset-${id}`] === false) return; // Skip if filtered out
-
-        const isLiquid = asset.category === 'Liquid';
-        const isInvested = investedAssetIds.includes(id) || asset.strategy === 'Invested'; // Check both ID and Strategy
-        const amount = parseFloat(asset.adjustedAmount || asset.amount || 0);
-
-        // Check availability
-        const availDate = asset.availabilityDate ? toUtcMonthStart(asset.availabilityDate) : null;
-
-        if (availDate && availDate <= startDate) {
-            if (isInvested) {
-                runningInvestedPrincipal += amount;
-            } else if (isLiquid) {
-                runningNonInvestedWealth += amount;
-            }
-        }
+    const yearBalances = {};
+    yearBalances[firstRowYearNum - 1] = initialSavings;
+    projection.yearlyBreakdown.forEach(row => {
+        yearBalances[parseInt(row.year)] = row.cumulativeBalance;
     });
 
-    // 2. Loop through months and simulate flows
-    const simStartRef_Stable = new Date(startDate);
-
     for (let m = 0; m <= horizonMonths; m++) {
-        const date = new Date(startDate);
-        date.setUTCMonth(date.getUTCMonth() + m);
-
-        let IncomeFlow = 0;
-        let CostFlow = 0;
-        let NonInvestedAssetFlow = 0;
-        let InvestContributionFlow = 0;
-
-        // A. Income Flows
-        // Unpack scenario data for overrides
-        const incomeDateOverrides = scenarioData?.incomeDateOverrides || {};
-        const language = scenarioData?.language || 'fr';
-
-        // Person-specific dates
-        const birthDate1 = userData?.birthDate ? new Date(userData.birthDate) : null;
-        const deathDate1 = userData?.theoreticalDeathDate || (birthDate1 ? `${birthDate1.getUTCFullYear() + (userData.gender === 'male' ? 80 : 85)}-12-31` : '2080-12-31');
-
-        const birthDate2 = userData?.birthDate2 ? new Date(userData.birthDate2) : null;
-        const deathDate2 = (userData?.analysisType === 'couple' && userData?.theoreticalDeathDate2) ? userData.theoreticalDeathDate2 : (userData?.analysisType === 'couple' && birthDate2 ? `${birthDate2.getUTCFullYear() + (userData.gender2 === 'male' ? 80 : 85)}-12-31` : null);
-
-        const wishedRetirementDate1 = scenarioData?.wishedRetirementDate;
-        const wishedRetirementDate2 = scenarioData?.wishedRetirementDate2;
-
-        const isSalary = (name = '') => {
-            const n = name.toLowerCase();
-            return n.includes('salary') || n.includes('salaire') || n.includes('lohn') || n.includes('revenu');
-        };
-        const isAVS = (name = '') => {
-            const n = name.toLowerCase();
-            return n.includes('avs') || n.includes('ahv') || n.includes('1. säule') || n.includes('1er pilier') || n.includes('pension de vieillesse');
-        };
-        const isLPP = (name = '') => {
-            const n = name.toLowerCase();
-            if (n.includes('capital')) return false;
-            return n.includes('lpp') || n.includes('bvg') || n.includes('pension') || n.includes('rente');
-        };
-
-        incomes.forEach(inc => {
-            if (activeFilters[`income-${inc.id || inc.name}`] === false) return;
-
-            let start = inc.startDate;
-            let end = inc.endDate;
-
-            // Handle standard incomes with person-specific overrides and fallbacks
-            if (isSalary(inc.name) || isAVS(inc.name) || isLPP(inc.name)) {
-                const isP2 = inc.owner === 'p2' || inc.person === 'Person 2';
-                const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
-                const overrideKey = `${inc.name}_${pLabel}`;
-
-                const effWishedRetDate = isP2 ? wishedRetirementDate2 : wishedRetirementDate1;
-                const effDeathDate = isP2 ? deathDate2 : deathDate1;
-
-                if (isSalary(inc.name)) {
-                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate || new Date().toISOString().split('T')[0];
-                    end = incomeDateOverrides[overrideKey]?.endDate || effWishedRetDate;
-                } else if (isAVS(inc.name)) {
-                    // Fallback to legal date if not available might be complex here, 
-                    // but usually inc already has a fallback from DataReview
-                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate;
-                    end = incomeDateOverrides[overrideKey]?.endDate || inc.endDate || effDeathDate;
-                } else if (isLPP(inc.name)) {
-                    start = incomeDateOverrides[overrideKey]?.startDate || inc.startDate || effWishedRetDate;
-                    end = incomeDateOverrides[overrideKey]?.endDate || inc.endDate || effDeathDate;
-                }
-            }
-
-            const amt = calculateMonthlyAmount(
-                parseFloat(inc.amount || 0),
-                inc.frequency || 'Monthly',
-                start,
-                end,
-                date,
-                simStartRef_Stable
-            );
-            IncomeFlow += amt;
-        });
-
-        // B. Cost Flows
-        costs.forEach(c => {
-            // Note: costs array might contain debts if merged before passing, or we need separate debt logic.
-            // Assumption: Caller merges costs & debts or passes them in 'costs'. We'll clarify in caller.
-            const prefix = (c.isDebt || c.category === 'Optimized Debt') ? 'debt-' : 'cost-';
-            // Fallback if prefix logic is fuzzy: check scenarioData.debts?
-            // Simplest is to assume standard filter key format from caller.
-            // But wait, activeFilters might use 'debt-' or 'cost-'.
-            // Let's check ID to guess prefix or rely on caller passing correct merged list.
-            // If caller passes raw lists, we need separate args.
-            // For now, assume 'costs' contains all outflows.
-            // Check filter with both prefixes to be safe?
-            let isFiltered = activeFilters[`cost-${c.id || c.name}`] === false;
-            if (!isFiltered && (c.isDebt || c.category === 'Optimized Debt')) {
-                isFiltered = activeFilters[`debt-${c.id || c.name}`] === false;
-            }
-            if (isFiltered) return;
-
-            const amt = calculateMonthlyAmount(
-                parseFloat(c.amount || 0),
-                c.frequency || 'Monthly',
-                c.startDate,
-                c.endDate,
-                date,
-                simStartRef_Stable
-            );
-            CostFlow += amt;
-        });
-
-        // C. Asset Flows (Periodic & One-Time)
-        assets.forEach(a => {
-            const id = a.id || a.name;
-            if (activeFilters[`asset-${id}`] === false) return;
-
-            const amount = parseFloat(a.adjustedAmount || a.amount || 0);
-            const isInvested = investedAssetIds.includes(id) || a.strategy === 'Invested';
-
-            if (a.availabilityType === 'Period') {
-                const flow = calculateMonthlyAmount(amount, 'Monthly', a.startDate, a.endDate, date, simStartRef_Stable);
-                if (isInvested) InvestContributionFlow += flow;
-                else NonInvestedAssetFlow += flow;
-            } else if (a.availabilityDate) {
-                // One-time assets
-                const availDate = new Date(a.availabilityDate);
-                // Strict month match
-                if (availDate > simStartRef_Stable &&
-                    availDate.getUTCFullYear() === date.getUTCFullYear() &&
-                    availDate.getUTCMonth() === date.getUTCMonth()) {
-                    if (isInvested) InvestContributionFlow += amount;
-                    else NonInvestedAssetFlow += amount;
-                }
-            }
-        });
-
-        // Update Running Balances
-        runningNonInvestedWealth += (IncomeFlow - CostFlow + NonInvestedAssetFlow);
-        runningInvestedPrincipal += InvestContributionFlow;
-
-        // D(t) = Total Wealth (NonInvested + InvestedPrincipal)
-        // This represents the Deterministic (0% growth) projection of total wealth.
-        series[m] = runningNonInvestedWealth + runningInvestedPrincipal;
+        const currentDate = new Date(simStartMonthUTC);
+        currentDate.setUTCMonth(currentDate.getUTCMonth() + m);
+        
+        const year = currentDate.getUTCFullYear();
+        const month = currentDate.getUTCMonth(); // 0 to 11
+        
+        const prevYearBal = yearBalances[year - 1] !== undefined ? yearBalances[year - 1] : yearBalances[firstRowYearNum - 1];
+        const thisYearBal = yearBalances[year] !== undefined ? yearBalances[year] : prevYearBal;
+        
+        // Linear interpolation across the 12 months.
+        // At month 11 (December), progress is 12/12 = 1.0 (End of year value exactly)
+        const progress = (month + 1) / 12;
+        series[m] = prevYearBal + (thisYearBal - prevYearBal) * progress;
     }
 
     return series;

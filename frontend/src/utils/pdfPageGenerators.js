@@ -216,14 +216,14 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         const verdictUrl = window.location.origin + verdictPath;
         const verdictImg = await loadImage(verdictUrl);
 
-        // Make the poster prominent - these are beautiful retro designs!
-        const posterWidth = 80;
-        const posterHeight = 120;
+        // Make the poster span 70% of the page width and keep aspect ratio
+        const posterWidth = pageWidth * 0.7; 
+        const posterHeight = posterWidth * (verdictImg.height / verdictImg.width); 
         const posterX = (pageWidth - posterWidth) / 2;
         const posterY = yPos;
 
-        // Add as PNG
-        pdf.addImage(verdictImg, 'PNG', posterX, posterY, posterWidth, posterHeight);
+        // Add as JPEG
+        pdf.addImage(verdictImg, 'JPEG', posterX, posterY, posterWidth, posterHeight);
         yPos += posterHeight + 15;
     } catch (error) {
         console.error('Error loading verdict image:', error);
@@ -238,8 +238,11 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
     yPos += 5;
 
     const isCouple = data.isCouple;
+    const p1Name = (data.firstName || 'Person 1').toUpperCase();
+    const p2Name = (data.firstName2 || 'Person 2').toUpperCase();
+
     const metricsHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
         : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
 
     const metricsData = [
@@ -263,6 +266,58 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         metricsData[2].push(formatDate(data.deathDate2));
     }
 
+    const headerHooks = !isCouple ? {} : {
+        didParseCell: function(data) {
+            if (data.section === 'head' && data.column.index > 0) {
+                data.cell.styles.halign = 'center';
+                // Make text match background so it disappears, we draw badge on top
+                data.cell.styles.textColor = data.cell.styles.fillColor || [255, 255, 255];
+            }
+        },
+        didDrawCell: function(data) {
+            if (data.section === 'head' && data.column.index > 0 && data.cell.raw) {
+                const pdf = data.doc;
+                const textStr = String(data.cell.raw).toUpperCase();
+                
+                let isP1 = false, isP2 = false;
+                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
+
+                if (!isP1 && !isP2) return;
+
+                let bgColor = [219, 234, 254]; // blue-100
+                let textColor = [30, 64, 175]; // blue-800
+                if (isP2) {
+                    bgColor = [243, 232, 255]; // purple-100
+                    textColor = [107, 33, 168]; // purple-800
+                }
+
+                // Re-paint cell background slightly inset to clear text remnants
+                const resolvedBg = data.cell.styles.fillColor || [255, 255, 255];
+                pdf.setFillColor(resolvedBg[0], resolvedBg[1], resolvedBg[2]);
+                pdf.rect(data.cell.x + 0.1, data.cell.y + 0.1, data.cell.width - 0.2, data.cell.height - 0.2, 'F');
+
+                pdf.setFont('helvetica', 'bold');
+                const fontSize = (data.cell.styles.fontSize || 10) - 1.5;
+                pdf.setFontSize(fontSize);
+                const textWidth = pdf.getTextWidth(textStr);
+                
+                const badgePaddingX = 2; 
+                const badgePaddingY = 0.8; 
+                const rectWidth = textWidth + badgePaddingX * 2; 
+                const rectHeight = fontSize * 0.4 + badgePaddingY * 2; 
+                const badgeX = data.cell.x + (data.cell.width - rectWidth) / 2;
+                const badgeY = data.cell.y + (data.cell.height - rectHeight) / 2;
+
+                pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+                pdf.roundedRect(badgeX, badgeY, rectWidth, rectHeight, 1, 1, 'F');
+
+                pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                pdf.text(textStr, badgeX + badgePaddingX, badgeY + badgePaddingY + fontSize * 0.35);
+            }
+        }
+    };
+
     // Add Balance as a separate section below the person-specific metrics
     autoTable(pdf, {
         startY: yPos,
@@ -272,9 +327,12 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         styles: { fontSize: 10, cellPadding: 3 },
         headStyles: { fontStyle: 'bold' },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 70 }
+            0: { fontStyle: 'bold', cellWidth: 70 },
+            1: { halign: 'center' },
+            2: { halign: 'center' }
         },
-        margin: { left: 20 }
+        margin: { left: 20 },
+        ...headerHooks
     });
 
     yPos = pdf.lastAutoTable.finalY + 10;

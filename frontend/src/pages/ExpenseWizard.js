@@ -154,7 +154,7 @@ const ExpenseWizard = () => {
                     updatedRows[existingIndex] = {
                         ...updatedRows[existingIndex],
                         amount: String(amt),
-                        owner: (rowName === 'Taxes' && isCouple) ? 'shared' : (updatedRows[existingIndex].owner || (isCouple ? 'shared' : 'p1'))
+                        owner: updatedRows[existingIndex].owner || (isCouple ? 'consolidated' : 'p1')
                     };
                 } else {
                     // Add new row if missing
@@ -167,7 +167,7 @@ const ExpenseWizard = () => {
                         endDate: maxDeathDate,
                         locked: true,
                         categoryLocked: true,
-                        owner: isCouple ? 'shared' : 'p1'
+                        owner: isCouple ? 'consolidated' : 'p1'
                     });
                 }
             });

@@ -1348,8 +1348,17 @@ const DataReview = () => {
         });
 
         // Add Retirement Data (AVS, LPP, 3a from RetirementInputs)
-        if (retirementData && retirementData.rows) {
-          retirementData.rows.forEach(row => {
+        // Fallback to V2 structure if rows are missing
+        const retirementRows = (retirementData && retirementData.rows && retirementData.rows.length > 0)
+          ? retirementData.rows
+          : [];
+
+        // If we have V2 but no rows, we can still extract some basics for the quick simulation
+        // Note: incomes state already has AVS/LPP Pensions processed in loadData.
+        // We only need to check for things that might NOT be in incomes or rows.
+
+        if (retirementRows.length > 0) {
+          retirementRows.forEach(row => {
             const amount = parseFloat(row.amount) || 0;
             if (amount > 0) {
               const frequency = row.frequency;
@@ -1359,7 +1368,7 @@ const DataReview = () => {
 
               // Special case: If 3a is One-time, it happens once.
               // If AVS is monthly, it continues until death.
-              let endDate = deathDate;
+              let endDate = (row.person === 'Person 2' || row.owner === 'p2') ? deathDate2 : deathDate;
               if (frequency === 'One-time') {
                 endDate = startDate; // Handled by calculateYearlyAmount or manual check
               }
@@ -1526,11 +1535,16 @@ const DataReview = () => {
       });
 
       // Add Retirement Data for Balance Calculation
-      if (retirementData && retirementData.rows) {
-        retirementData.rows.forEach(row => {
+      const retirementRows = (retirementData && retirementData.rows && retirementData.rows.length > 0)
+        ? retirementData.rows
+        : [];
+
+      if (retirementRows.length > 0) {
+        retirementRows.forEach(row => {
           const amount = parseFloat(row.amount) || 0;
           if (amount > 0) {
-            let endDate = deathDate;
+            const isP2 = (row.person === 'Person 2' || row.owner === 'p2');
+            let endDate = isP2 ? deathDate2 : deathDate;
             if (row.frequency === 'One-time') {
               endDate = row.startDate;
             }
@@ -1967,25 +1981,32 @@ const DataReview = () => {
                               <SelectContent>
                                 <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
                                 <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
+                                <SelectItem value="Preserve">{language === 'fr' ? 'Préserver' : 'Preserve'}</SelectItem>
                               </SelectContent>
                             </Select>
                           </td>
                           <td className="p-3">
-                            <Select
-                              value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
-                              onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
-                            >
-                              <SelectTrigger className="max-w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {asset.category === 'Preserve' ? (
+                              <div className="text-center text-muted-foreground">-</div>
+                            ) : (
+                              <Select
+                                value={asset.availabilityType || (asset.availabilityTimeframe ? 'Period' : 'Date')}
+                                onValueChange={(value) => updateAsset(asset.id, 'availabilityType', value)}
+                              >
+                                <SelectTrigger className="max-w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                  <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </td>
                           <td className="p-3">
-                            {(asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
+                            {asset.category === 'Preserve' ? (
+                              <div className="text-center text-muted-foreground">-</div>
+                            ) : (asset.availabilityType === 'Period' || (!asset.availabilityType && asset.availabilityTimeframe)) ? (
                               <Select
                                 value={asset.availabilityTimeframe || 'Select'}
                                 onValueChange={(value) => updateAsset(asset.id, 'availabilityTimeframe', value === 'Select' ? '' : value)}

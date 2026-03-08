@@ -80,12 +80,12 @@ const generatePDF = async () => {
 
         // ===== PAGE 5: INCOME & ASSETS =====
         pageNumbers.incomeAssets = currentPage;
-        generateIncomeAssets(pdf, income, assets, language, currentPage, summaryData.totalPages);
+        generateIncomeAssets(pdf, income, assets, language, currentPage, summaryData.totalPages, userData?.analysisType === 'couple', userData);
         currentPage++;
 
         // ===== PAGE 6: COSTS & DEBTS =====
         pageNumbers.costDebts = currentPage;
-        generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages);
+        generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages, userData?.analysisType === 'couple', userData);
         currentPage++;
 
         // ===== PAGE 7: SIMULATION CHOICE =====

@@ -301,7 +301,8 @@ const ScenarioResult = () => {
         const uniqueAssetsMap = new Map();
 
         finalAssets.forEach(asset => {
-          const key = asset.name; // Use Name as key because ID might be generated/unstable for splits
+          const ownerCode = asset.owner || asset.person || 'shared';
+          const key = `${asset.name}_${ownerCode}`; // Use Name + Owner as key to prevent merging Max and Mary's assets
           const existing = uniqueAssetsMap.get(key);
 
           if (!existing) {
@@ -347,7 +348,20 @@ const ScenarioResult = () => {
 
         // Robust check for Retirement Parameters: covers both Option 0/2 (preRetirementRows, legal) 
         // and Benefits (AVS, 3a, LPP Sup) in scenarioData, with fallback to legacy rData.
-        const hasRetirementInScenario = sData && (
+        const hasRetirementInV2 = rData && (
+          (rData.p1?.benefitsData && (
+            (rData.p1.benefitsData.avs && (parseFloat(rData.p1.benefitsData.avs.amount) || 0) > 0) ||
+            (Array.isArray(rData.p1.benefitsData.threeA) && rData.p1.benefitsData.threeA.some(a => (parseFloat(a.amount) || 0) > 0)) ||
+            (rData.p1.benefitsData.lppByAge && Object.keys(rData.p1.benefitsData.lppByAge).length > 0)
+          )) ||
+          (rData.p2?.benefitsData && (
+            (rData.p2.benefitsData.avs && (parseFloat(rData.p2.benefitsData.avs.amount) || 0) > 0) ||
+            (Array.isArray(rData.p2.benefitsData.threeA) && rData.p2.benefitsData.threeA.some(a => (parseFloat(a.amount) || 0) > 0)) ||
+            (rData.p2.benefitsData.lppByAge && Object.keys(rData.p2.benefitsData.lppByAge).length > 0)
+          ))
+        );
+
+        const hasRetirementInScenario = (sData && (
           (sData.preRetirementRows && sData.preRetirementRows.some(row => (parseFloat(row.pension) || 0) > 0 || (parseFloat(row.capital) || 0) > 0)) ||
           (parseFloat(sData.projectedLegalLPPPension) || 0) > 0 ||
           (parseFloat(sData.projectedLegalLPPCapital) || 0) > 0 ||
@@ -356,7 +370,7 @@ const ScenarioResult = () => {
             (Array.isArray(sData.benefitsData.threeA) && sData.benefitsData.threeA.some(a => (parseFloat(a.amount) || 0) > 0)) ||
             (sData.benefitsData.lppSup && (parseFloat(sData.benefitsData.lppSup.amount) || 0) > 0)
           ))
-        );
+        )) || hasRetirementInV2;
 
         if (!hasRetirementInScenario && (!rData || !rData.rows || rData.rows.length === 0)) {
           missing.push(language === 'fr' ? 'Paramètres de retraite' : 'Retirement Parameters');
@@ -364,6 +378,14 @@ const ScenarioResult = () => {
         setMissingPages(missing);
 
         setUserData(uData);
+        // Ensure all arrays have unique IDs to prevent activeFilter collisions
+        const ensureIds = (arr, prefix) => arr.map((item, idx) => ({ ...item, id: item.id || `${prefix}_${idx}_${item.name}` }));
+        
+        finalIncomes = ensureIds(finalIncomes, 'inc');
+        finalCosts = ensureIds(finalCosts, 'cost');
+        finalAssets = ensureIds(finalAssets, 'asset');
+        finalDebts = ensureIds(finalDebts, 'debt');
+
         setIncomes(finalIncomes);
         setCosts(finalCosts);
         setAssets(finalAssets);
@@ -592,12 +614,18 @@ const ScenarioResult = () => {
       }
     } else {
       // Standard Options (0, 1, 2)
-      simLppPension = parseFloat(effectiveScenarioData?.projectedLPPPension || effectiveScenarioData?.projectedLegalLPPPension || 0);
-      simLppCapital = parseFloat(effectiveScenarioData?.projectedLPPCapital || effectiveScenarioData?.projectedLegalLPPCapital || 0);
+      const targetAge1 = Math.floor(ageAtRetirement);
+      const v2Lpp1 = effectiveRetirementData?.p1?.benefitsData?.lppByAge?.[targetAge1] || effectiveRetirementData?.p1?.benefitsData?.lppByAge?.[targetAge1.toString()];
+
+      simLppPension = parseFloat(effectiveScenarioData?.projectedLPPPension || effectiveScenarioData?.projectedLegalLPPPension || v2Lpp1?.pension || 0);
+      simLppCapital = parseFloat(effectiveScenarioData?.projectedLPPCapital || effectiveScenarioData?.projectedLegalLPPCapital || v2Lpp1?.capital || 0);
 
       // Fallback for P2 if couple
-      simLppPension2 = parseFloat(effectiveScenarioData?.projectedLPPPension2 || effectiveScenarioData?.projectedLegalLPPPension2 || 0);
-      simLppCapital2 = parseFloat(effectiveScenarioData?.projectedLPPCapital2 || effectiveScenarioData?.projectedLegalLPPCapital2 || 0);
+      const targetAge2 = ageAtRetirement2 ? Math.floor(ageAtRetirement2) : 65;
+      const v2Lpp2 = effectiveRetirementData?.p2?.benefitsData?.lppByAge?.[targetAge2] || effectiveRetirementData?.p2?.benefitsData?.lppByAge?.[targetAge2.toString()];
+
+      simLppPension2 = parseFloat(effectiveScenarioData?.projectedLPPPension2 || effectiveScenarioData?.projectedLegalLPPPension2 || v2Lpp2?.pension || 0);
+      simLppCapital2 = parseFloat(effectiveScenarioData?.projectedLPPCapital2 || effectiveScenarioData?.projectedLegalLPPCapital2 || v2Lpp2?.capital || 0);
     }
 
 
@@ -710,16 +738,25 @@ const ScenarioResult = () => {
         const filterId = row.id && !isNaN(row.id) ? `pillar-${row.id}` : `pillar-${row.name}`;
         if (activeFilters[filterId] === false || activeFilters[`income-${row.id || row.name}`] === false) return;
 
-        const amount = parseFloat(row.adjustedAmount || row.amount) || 0;
+        const isP2 = row.owner === 'p2' || row.person === 'Person 2' || (row.id && row.id.toString().includes('_p2'));
+        let amount = parseFloat(row.adjustedAmount || row.amount) || 0;
 
-        const isP2 = row.owner === 'p2' || row.person === 'Person 2';
+        // V2 Fallback for AVS
+        if (amount <= 0) {
+          if (isP2 && effectiveRetirementData?.p2?.benefitsData?.avs?.amount) {
+            amount = parseFloat(effectiveRetirementData.p2.benefitsData.avs.amount) || 0;
+          } else if (!isP2 && effectiveRetirementData?.p1?.benefitsData?.avs?.amount) {
+            amount = parseFloat(effectiveRetirementData.p1.benefitsData.avs.amount) || 0;
+          }
+        }
+
         const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
         const overrideKey = `${row.name}_${pLabel}`;
 
         const start = incomeDateOverrides[overrideKey]?.startDate || row.startDate || (isP2 ? retirementLegalDate2 : retirementLegalDate);
         const end = incomeDateOverrides[overrideKey]?.endDate || row.endDate || (isP2 ? deathDate2 : deathDate1);
 
-        const val = calculateYearlyAmount(amount, row.frequency, start, end, year);
+        const val = calculateYearlyAmount(amount, row.frequency || 'Yearly', start, end, year);
         if (val > 0) {
           const key = `${row.name}@@${isP2 ? 'p2' : 'p1'}`;
           if (!incomeBreakdown[key]) {
@@ -824,6 +861,10 @@ const ScenarioResult = () => {
 
         const amount = Math.abs(parseFloat(asset.adjustedAmount || asset.amount) || 0);
         const isInvested = investedAssetIds.includes(id);
+
+        if (asset.category === 'Preserve') {
+          return; // Preserve assets never generate liquid cash flow
+        }
 
         // Period Type
         if (asset.availabilityType === 'Period' || (!asset.availabilityDate && asset.availabilityTimeframe)) {
@@ -1598,7 +1639,7 @@ const ScenarioResult = () => {
 
       const isLiquid = asset.category === 'Liquid' || !asset.category; // Default to liquid
       const isInvested = investedAssetIds.includes(id) || asset.strategy === 'Invested';
-      const isIlliquid = asset.category === 'Illiquid' || asset.category === 'Real Estate' || asset.category === 'Immobilier';
+      const isIlliquid = asset.category === 'Illiquid' || asset.category === 'Real Estate' || asset.category === 'Immobilier' || asset.category === 'Preserve';
 
       const amount = parseFloat(asset.adjustedAmount || asset.amount || 0);
       const availDate = asset.availabilityDate ? toUtcMonthStart(asset.availabilityDate) : null;
@@ -1656,7 +1697,7 @@ const ScenarioResult = () => {
         if (!activeFilters[`asset-${a.id || a.name}`]) return;
         const amount = parseFloat(a.adjustedAmount || a.amount || 0);
         const isInvested = investedAssetIds.includes(a.id || a.name) || a.strategy === 'Invested';
-        const isIlliquid = a.category === 'Illiquid' || a.category === 'Real Estate' || a.category === 'Immobilier';
+        const isIlliquid = a.category === 'Illiquid' || a.category === 'Real Estate' || a.category === 'Immobilier' || a.category === 'Preserve';
 
         if (a.availabilityType === 'Period') {
           const flow = calculateMonthlyAmount(amount, 'Monthly', a.startDate, a.endDate, date, simStartRef_Stable);
@@ -1909,7 +1950,9 @@ const ScenarioResult = () => {
         isInvested: isInvested,
         final5Balance: final5Balance,
         finalBaselineBalance: finalBaselineBalance,
-        isCouple: userData.analysisType === 'couple'
+        isCouple: userData.analysisType === 'couple',
+        firstName: userData.firstName,
+        firstName2: userData.firstName2
       };
 
       if (userData.analysisType === 'couple') {
@@ -1947,16 +1990,47 @@ const ScenarioResult = () => {
         }
       }
 
+      // Person 2
+      let currentAge2 = null;
+      let legalRetireDate2 = null;
+      let calcLifeExpectancy2 = null;
+      let legalRetirementAge2 = null;
+
+      if (userData.analysisType === 'couple' && userData.birthDate2) {
+        const birthDateObj2 = new Date(userData.birthDate2);
+        currentAge2 = new Date().getFullYear() - birthDateObj2.getFullYear();
+        legalRetireDate2 = getLegalRetirementDate(userData.birthDate2, userData.gender2);
+        legalRetirementAge2 = userData.gender2 === 'female' ? '64' : '65';
+
+        calcLifeExpectancy2 = userData.gender2 === 'female' ? '85' : '81';
+        if (userData.theoreticalDeathDate2) {
+          const dParts2 = userData.theoreticalDeathDate2.includes('.') ? userData.theoreticalDeathDate2.split('.') : null;
+          const deathDateObj2 = dParts2
+            ? new Date(dParts2[2], dParts2[1] - 1, dParts2[0])
+            : new Date(userData.theoreticalDeathDate2);
+
+          if (!isNaN(deathDateObj2.getTime())) {
+            calcLifeExpectancy2 = (deathDateObj2.getFullYear() - birthDateObj2.getFullYear()).toString();
+          }
+        }
+      }
+
       const enrichedUserData = {
         ...userData,
-        currentAge: currentAge
+        currentAge: currentAge,
+        ...(userData.analysisType === 'couple' && { currentAge2: currentAge2 })
       };
 
       const enrichedScenarioData = {
         ...scenarioData,
         legalRetirementDate: legalRetireDate,
         legalRetirementAge: userData.gender === 'female' ? '64' : '65', // Standard Swiss Legal Ages
-        lifeExpectancy: calcLifeExpectancy
+        lifeExpectancy: calcLifeExpectancy,
+        ...(userData.analysisType === 'couple' && {
+          legalRetirementDate2: legalRetireDate2,
+          legalRetirementAge2: legalRetirementAge2,
+          lifeExpectancy2: calcLifeExpectancy2
+        })
       };
 
       generatePersonalInfo(pdf, enrichedUserData, enrichedScenarioData, language, currentPage, summaryData.totalPages);
@@ -1964,12 +2038,12 @@ const ScenarioResult = () => {
 
       // ===== PAGE 5: INCOME & ASSETS =====
       pageNumbers.incomeAssets = currentPage;
-      generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages, isCouple);
+      generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages, isCouple, enrichedUserData);
       currentPage++;
 
       // ===== PAGE 6: COSTS & DEBTS =====
       pageNumbers.costDebts = currentPage;
-      generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages, isCouple);
+      generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages, isCouple, enrichedUserData);
       currentPage++;
 
       // ===== PAGE 7: SIMULATION CHOICE (merged into Personal Info, see page 4) =====
@@ -1977,7 +2051,7 @@ const ScenarioResult = () => {
 
       // ===== PAGE 8: RETIREMENT BENEFITS =====
       pageNumbers.benefits = currentPage;
-      generateRetirementBenefits(pdf, scenarioData, enrichedUserData, language, currentPage, summaryData.totalPages);
+      generateRetirementBenefits(pdf, scenarioData, enrichedUserData, retirementData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
       // ===== PAGE 9: DATA REVIEW =====
@@ -2157,8 +2231,8 @@ const ScenarioResult = () => {
   const chartData = useMemo(() => {
     if (!projection?.yearlyBreakdown) return [];
 
-    // If no MC projections, just return raw baseline data
-    if (!monteCarloProjections?.details) {
+    // If no MC projections OR not invested, just return raw baseline data
+    if (!isInvested || !monteCarloProjections?.details) {
       return projection.yearlyBreakdown;
     }
 
@@ -2216,15 +2290,17 @@ const ScenarioResult = () => {
       // Clamp to safe bounds (prevent negative and overflow)
       const safeIdx = Math.min(Math.max(0, computedYearEndIdx), lastMonthlyIdx);
 
-      // GOLDEN DEFINITIONS EVALUATED AT safeIdx using pre-computed detSeries
+      // GOLDEN DEFINITIONS EVALUATED AT safeIdx using yearly projection data
       const mcDetails = monteCarloProjections.details;
-      const detSeries = mcDetails.detSeries;
+      
+      const D_t = parseFloat(row.cumulativeBalance || 0);
+      const P_t = mcDetails.principalPath ? (mcDetails.principalPath[safeIdx] || 0) : 0;
+      const baseVal = D_t - P_t; // Cash-only wealth
 
-      const baseVal = calculateRecomposedBaselineAtIndex(mcDetails, detSeries, safeIdx);
-      const rawMc50Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p50');
-      const rawMc25Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p25');
-      const rawMc10Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p10');
-      const rawMc5Val = calculateRecomposedTotalAtIndex(mcDetails, detSeries, safeIdx, 'p5');
+      const rawMc50Val = baseVal + (mcDetails.percentiles?.p50?.[safeIdx] || 0);
+      const rawMc25Val = baseVal + (mcDetails.percentiles?.p25?.[safeIdx] || 0);
+      const rawMc10Val = baseVal + (mcDetails.percentiles?.p10?.[safeIdx] || 0);
+      const rawMc5Val = baseVal + (mcDetails.percentiles?.p5?.[safeIdx] || 0);
 
       // [Phase 11] Force Numeric fallback (No more domain trimming)
       const mc50Val = Number.isFinite(rawMc50Val) ? rawMc50Val : baseVal;
@@ -2235,17 +2311,16 @@ const ScenarioResult = () => {
       // [FINAL IDENTITY CHECK] + [YEAR-END CLAMP LOG]
       if (index === projection.yearlyBreakdown.length - 1) {
         const lastYear = rowYear;
-        const P_end = mcDetails.principalPath ? mcDetails.principalPath[safeIdx] : 0;
-        const expected_B_end = parseFloat(row.cumulativeBalance || 0) - P_end;
+        const P_end = P_t;
+        const expected_B_end = D_t - P_end;
 
         console.log("[YEAR-END CLAMP]", {
-          detLen,
           lastMonthlyIdx,
           computedYearEndIdx,
           safeIdx,
           baselineNonInv: Math.round(baseVal),
           investedP0: Math.round(P_end),
-          baselineTotal: Math.round(baseVal + P_end)
+          baselineTotal: Math.round(D_t)
         });
 
         console.log("[FINAL IDENTITY CHECK]", {
@@ -2315,11 +2390,8 @@ const ScenarioResult = () => {
       return {
         ...row,
         // OVERWRITE cumulativeBalance for the dashed line
-        // In invested mode: Total Baseline (NonInvWealth + InvestedP0)
-        // In non-invested mode: Cash-Only Baseline (NonInvWealth)
-        cumulativeBalance: isInvested
-          ? baseVal + (mcDetails.principalPath?.[safeIdx] || 0)
-          : baseVal,
+        // In invested mode: Total Baseline (NonInvWealth + InvestedP0) which is simply D_t!
+        cumulativeBalance: D_t,
         incomeColors: getColors(row.incomeBreakdown || {}, prevRow?.incomeBreakdown || {}, 'income', '#22c55e'),
         activatedOwingsColors: getColors(row.activatedOwingsBreakdown || {}, prevRow?.activatedOwingsBreakdown || {}, 'activatedOwnings', '#ec4899'),
         costColors: getColors(row.costBreakdown || {}, prevRow?.costBreakdown || {}, 'negCosts', '#ef4444'),
@@ -2743,21 +2815,21 @@ const ScenarioResult = () => {
         <div className="grid grid-cols-12 gap-6 mb-6">
 
           {/* Box 1: Verdict Image */}
-          <div className="col-span-1">
+          <div className="col-span-2">
             <Card className="overflow-hidden border-2 shadow-sm h-full flex flex-col min-h-[180px]">
               <div className={`h-2 w-full ${canQuitVerdict ? 'bg-green-500' : 'bg-primary'}`} />
               <CardContent className="flex-1 p-0 flex items-center justify-center bg-muted/5">
                 <img
-                  src={canQuitVerdict ? '/yes_quit.png' : '/no_quit.png'}
+                  src={canQuitVerdict ? '/verdict-success.jpg' : '/verdict-failure.jpg'}
                   alt="Verdict"
-                  className="w-full h-full object-contain p-2 max-h-[170px]"
+                  className="w-full h-full object-contain p-2 max-h-[240px]"
                 />
               </CardContent>
             </Card>
           </div>
 
           {/* Box 4 (Title) and Boxes 2 & 3 (Balances) */}
-          <div className="col-span-7 flex flex-col gap-4">
+          <div className="col-span-6 flex flex-col gap-4">
             {/* Box 4: Title */}
             <Card className="flex items-center justify-center p-3 h-[46px]">
               <span className="text-[17px] font-semibold text-white">
@@ -2831,7 +2903,6 @@ const ScenarioResult = () => {
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{language === 'fr' ? 'Âge actuel' : 'Current Age'}: {retirementInfo.ageYears}y</span>
                       </div>
                     </div>
                     <Select
@@ -2859,7 +2930,6 @@ const ScenarioResult = () => {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-semibold">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{language === 'fr' ? 'Âge actuel' : 'Current Age'}: {retirementInfo.ageYears2}y</span>
                         </div>
                       </div>
                       <Select
@@ -2965,7 +3035,7 @@ const ScenarioResult = () => {
                               fontSize: 12,
                               fontWeight: 'bold',
                               dy: 10,
-                              dx: p1IsEarlier ? -5 : 5,
+                              dx: p1IsEarlier ? -15 : 15,
                               textAnchor: p1IsEarlier ? 'end' : 'start'
                             }}
                           />
@@ -2983,7 +3053,7 @@ const ScenarioResult = () => {
                               fontSize: 12,
                               fontWeight: 'bold',
                               dy: 10,
-                              dx: !p1IsEarlier ? -5 : 5,
+                              dx: !p1IsEarlier ? -15 : 15,
                               textAnchor: !p1IsEarlier ? 'end' : 'start'
                             }}
                           />
@@ -3001,7 +3071,7 @@ const ScenarioResult = () => {
                               fontSize: 13,
                               fontWeight: '900',
                               dy: -20,
-                              dx: 5,
+                              dx: 15,
                               textAnchor: 'start'
                             }}
                           />

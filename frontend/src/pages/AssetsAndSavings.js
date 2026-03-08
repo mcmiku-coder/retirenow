@@ -448,25 +448,32 @@ const AssetsOverview = () => {
                                                             <SelectContent>
                                                                 <SelectItem value="Liquid">{language === 'fr' ? 'Liquide' : 'Liquid'}</SelectItem>
                                                                 <SelectItem value="Illiquid">{language === 'fr' ? 'Illiquide' : 'Illiquid'}</SelectItem>
+                                                                <SelectItem value="Preserve">{language === 'fr' ? 'Préserver' : 'Preserve'}</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </td>
                                                     <td className="p-2">
-                                                        <Select
-                                                            value={row.availabilityType || (row.availabilityTimeframe ? 'Period' : 'Date')}
-                                                            onValueChange={(value) => updateAsset(row.id, 'availabilityType', value)}
-                                                        >
-                                                            <SelectTrigger className="min-w-[120px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
-                                                                <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
+                                                        {row.category === 'Preserve' ? (
+                                                            <div className="text-center text-muted-foreground">-</div>
+                                                        ) : (
+                                                            <Select
+                                                                value={row.availabilityType || (row.availabilityTimeframe ? 'Period' : 'Date')}
+                                                                onValueChange={(value) => updateAsset(row.id, 'availabilityType', value)}
+                                                            >
+                                                                <SelectTrigger className="min-w-[120px]">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Date">{language === 'fr' ? 'Date' : 'Date'}</SelectItem>
+                                                                    <SelectItem value="Period">{language === 'fr' ? 'Période' : 'Period'}</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
                                                     </td>
                                                     <td className="p-2">
-                                                        {(row.availabilityType === 'Period' || (!row.availabilityType && row.availabilityTimeframe)) ? (
+                                                        {row.category === 'Preserve' ? (
+                                                            <div className="text-center text-muted-foreground">-</div>
+                                                        ) : (row.availabilityType === 'Period' || (!row.availabilityType && row.availabilityTimeframe)) ? (
                                                             <Select
                                                                 value={row.availabilityTimeframe}
                                                                 onValueChange={(value) => updateAsset(row.id, 'availabilityTimeframe', value)}

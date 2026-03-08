@@ -107,9 +107,9 @@ export const formatDate = (date) => {
 export const getVerdictImage = (canQuit) => {
     // Return paths to the retro-style verdict posters
     if (canQuit) {
-        return '/verdict-success.png'; // "YES YOU CAN! QUIT!"
+        return '/verdict-success.jpg'; // "YES YOU CAN! QUIT!"
     } else {
-        return '/verdict-failure.png'; // "NO YOU CANNOT QUIT YET!"
+        return '/verdict-failure.jpg'; // "NO YOU CANNOT QUIT YET!"
     }
 };
 
