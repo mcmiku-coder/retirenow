@@ -1233,7 +1233,14 @@ const DataReview = () => {
     try {
       const currentYear = new Date().getFullYear();
       const retirementLegalYear = new Date(retirementLegalDate).getFullYear();
-      const deathYear = new Date(deathDate).getFullYear();
+      let deathYear = new Date(deathDate).getFullYear();
+      
+      if (isCouple && deathDate2) {
+        const deathYear2 = new Date(deathDate2).getFullYear();
+        if (deathYear2 > deathYear) {
+          deathYear = deathYear2;
+        }
+      }
 
       // Fix Timezone Drift: Use local time, not UTC (toISOString)
       const now = new Date();
@@ -1498,7 +1505,13 @@ const DataReview = () => {
   // Helper function to calculate final balance for a given retirement date
   const calculateBalanceForRetirementDate = (testRetirementDate) => {
     const currentYear = new Date().getFullYear();
-    const deathYear = new Date(deathDate).getFullYear();
+    let deathYear = new Date(deathDate).getFullYear();
+    if (isCouple && deathDate2) {
+      const deathYear2 = new Date(deathDate2).getFullYear();
+      if (deathYear2 > deathYear) {
+        deathYear = deathYear2;
+      }
+    }
     const today = new Date().toISOString().split('T')[0];
 
     let initialSavings = parseFloat(liquidAssets || 0) + parseFloat(nonLiquidAssets || 0);

@@ -89,9 +89,16 @@ export async function runInvestedBookSimulation(params) {
     // [Phase 9b] Strict UTC Construction to prevent timezone-based month drift
     const simulationStartDate = toUtcMonthStart(new Date(Date.UTC(startYear, 0, 1, 0, 0, 0, 0)));
 
-    const deathDate = userData.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
-    const deathYear = deathDate ? deathDate.getUTCFullYear() : startYear + 35;
-    const deathMonth = deathDate ? deathDate.getUTCMonth() : 0;
+    const deathDate1 = userData.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
+    const deathDate2 = (userData.analysisType === 'couple' && userData.theoreticalDeathDate2) ? new Date(userData.theoreticalDeathDate2) : null;
+
+    let maxDeathDate = deathDate1;
+    if (deathDate2 && (!maxDeathDate || deathDate2 > maxDeathDate)) {
+        maxDeathDate = deathDate2;
+    }
+
+    const deathYear = maxDeathDate ? maxDeathDate.getUTCFullYear() : startYear + 35;
+    const deathMonth = maxDeathDate ? maxDeathDate.getUTCMonth() : 0;
 
     // Exact month distance from Start (Jan 1st of startYear) to Death Date
     const horizonMonths = Math.max(1, (deathYear - startYear) * 12 + deathMonth);

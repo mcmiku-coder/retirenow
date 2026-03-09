@@ -28,6 +28,7 @@ const SimulationDataTable = () => {
     // Get data from navigation state
     const monthlyData = location.state?.monthlyData || [];
     const metadata = location.state?.metadata || {};
+    const hasMC = metadata.hasMC || false;
 
     // Filter data based on search text
     const filteredData = useMemo(() => {
@@ -102,13 +103,17 @@ const SimulationDataTable = () => {
             source: language === 'fr' ? "Calendrier système." : "System calendar."
         },
         Total: {
-            key: `Total_${S}_EOM`,
-            label: language === 'fr' ? `Total ${S}` : `Total ${S}`,
+            key: hasMC ? `Total_${S}_EOM` : 'Total_P5_EOM', // Fallback key holds baseline when !hasMC
+            label: hasMC ? (language === 'fr' ? `Total ${S}` : `Total ${S}`) : (language === 'fr' ? 'Ligne de base' : 'Baseline'),
             width: 140,
             format: 'currency',
             emphasis: true,
-            tooltip: language === 'fr' ? `Richesse totale (Cash + Investi + Immo) dans le scénario ${S}.` : `Total wealth (Cash + Invested + Real Estate) in the ${S} scenario.`,
-            source: language === 'fr' ? `Agrégation multi-actifs (Moteur Monte Carlo ${S} + Saisie).` : `Multi-asset aggregation (Monte Carlo ${S} + User inputs).`
+            tooltip: hasMC 
+                ? (language === 'fr' ? `Richesse totale (Cash + Investi + Immo) dans le scénario ${S}.` : `Total wealth (Cash + Invested + Real Estate) in the ${S} scenario.`)
+                : (language === 'fr' ? `Richesse totale déterministe.` : `Total deterministic wealth.`),
+            source: hasMC 
+                ? (language === 'fr' ? `Agrégation multi-actifs (Moteur Monte Carlo ${S} + Saisie).` : `Multi-asset aggregation (Monte Carlo ${S} + User inputs).`)
+                : (language === 'fr' ? 'Évolution de base (sans marché).' : 'Baseline evolution (no market).')
         },
         WealthDelta: {
             key: 'WealthDelta',
@@ -190,11 +195,13 @@ const SimulationDataTable = () => {
             { key: 'MonthIndex', label: 'Index', width: 60, tooltip: 'Index du mois', source: 'Système' },
             colDef.Total,
             colDef.LiquidNonInv,
-            colDef.InvestedMarket,
-            colDef.Realized,
+            ...(hasMC ? [
+                colDef.InvestedMarket,
+                colDef.Realized
+            ] : []),
             colDef.Illiquid,
             colDef.NetFlow,
-            colDef.Yield,
+            ...(hasMC ? [colDef.Yield] : []),
             { key: 'InvestContributionFlow', label: 'Flux Inv.', width: 110, format: 'currency', tooltip: 'Nouveau versement investi', source: 'Saisie' },
             { key: 'LiquidNonInvestedFlow', label: 'Flux Cash', width: 110, format: 'currency', tooltip: 'Apport de cash hors revenus', source: 'Saisie' },
             { key: 'IncomeFlow', label: 'Revenus', width: 120, format: 'currency', tooltip: 'Total des revenus', source: 'Calcul' },
@@ -287,27 +294,31 @@ const SimulationDataTable = () => {
                                 <TabsTrigger value="essential" className="rounded-md px-6 py-2 transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                                     {language === 'fr' ? 'Essentielle' : 'Essential'}
                                 </TabsTrigger>
-                                <TabsTrigger value="investor" className="rounded-md px-6 py-2 transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                                    {language === 'fr' ? 'Investisseur' : 'Investor'}
-                                </TabsTrigger>
+                                {hasMC && (
+                                    <TabsTrigger value="investor" className="rounded-md px-6 py-2 transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                                        {language === 'fr' ? 'Investisseur' : 'Investor'}
+                                    </TabsTrigger>
+                                )}
                                 <TabsTrigger value="debug" className="rounded-md px-6 py-2 transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                                     {language === 'fr' ? 'Toutes les données' : 'All Data'}
                                 </TabsTrigger>
                             </TabsList>
 
-                            <div className="flex items-center gap-3">
-                                <Activity size={16} className="text-blue-400" />
-                                <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-                                    <SelectTrigger className="w-56 bg-gray-800 border-gray-700 text-gray-100 text-xs h-9 rounded-full">
-                                        <SelectValue placeholder="Choisir un scénario" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 border-gray-700 text-gray-100">
-                                        <SelectItem value="p5">Scénario P5 (Pessimiste)</SelectItem>
-                                        <SelectItem value="p10">Scénario P10 (Prudent)</SelectItem>
-                                        <SelectItem value="p25">Scénario P25 (Modéré)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {hasMC && (
+                                <div className="flex items-center gap-3">
+                                    <Activity size={16} className="text-blue-400" />
+                                    <Select value={selectedScenario} onValueChange={setSelectedScenario}>
+                                        <SelectTrigger className="w-56 bg-gray-800 border-gray-700 text-gray-100 text-xs h-9 rounded-full">
+                                            <SelectValue placeholder="Choisir un scénario" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-800 border-gray-700 text-gray-100">
+                                            <SelectItem value="p5">Scénario P5 (Pessimiste)</SelectItem>
+                                            <SelectItem value="p10">Scénario P10 (Prudent)</SelectItem>
+                                            <SelectItem value="p25">Scénario P25 (Modéré)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
 
                         <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900 shadow-inner">

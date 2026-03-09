@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name }) => {
+const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name, showActivatedOwnings = true }) => {
     if (!data) return null;
 
     // Adjust styles for PDF mode vs Web mode
@@ -74,7 +74,9 @@ const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name 
                 <div className="flex gap-8">
                     <div className="flex items-center gap-2 font-bold text-gray-100">
                         <span className={labelClass}>{language === 'fr' ? 'Base line' : 'Base line'}</span>
-                        <span className="text-yellow-500">{Math.round(data.cumulativeBalance).toLocaleString()} CHF</span>
+                        <span className="text-yellow-500">
+                            {Math.round(showActivatedOwnings ? data.cumulativeBalance : data.cumulativeBalance - (data.activatedOwnings || 0)).toLocaleString()} CHF
+                        </span>
                     </div>
                     {data.mc5 !== undefined && (
                         <div className="flex flex-col border-l border-gray-600 pl-4">
@@ -95,17 +97,50 @@ const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name 
             <div className="flex gap-6 mb-2 mt-3">
                 <div className="flex-1">
                     <p className={`font-semibold text-green-600 mb-1 ${borderClass} pb-1`}>{language === 'fr' ? 'Revenus (CHF)' : 'Income (CHF)'}</p>
-                    {Object.entries(data.incomeBreakdown || {}).map(([name, val]) => renderItemWithBadge(name, val))}
-                    {data.activatedOwnings > 0 && (
-                        <div className="flex justify-between gap-4 text-pink-500 font-medium">
-                            <span>{language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'}</span>
-                            <span>{Math.round(data.activatedOwnings).toLocaleString()}</span>
-                        </div>
-                    )}
-                    <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold`}>
-                        <span>Total</span>
-                        <span>{Math.round(data.income + (data.activatedOwnings || 0)).toLocaleString()}</span>
-                    </div>
+                    
+                    {(() => {
+                        const allEntries = Object.entries(data.incomeBreakdown || {});
+                        const regularIncomes = allEntries.filter(([name]) => !name.includes('(Activated)'));
+                        const activatedIncomes = allEntries.filter(([name]) => name.includes('(Activated)'));
+                        
+                        return (
+                            <>
+                                {/* Regular Incomes */}
+                                {regularIncomes.map(([name, val]) => renderItemWithBadge(name, val))}
+                                
+                                {data.activatedOwnings > 0 && showActivatedOwnings ? (
+                                    <>
+                                        <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold`}>
+                                            <span>Total</span>
+                                            <span>{Math.round(data.income).toLocaleString()}</span>
+                                        </div>
+                                        
+                                        <div className="h-4"></div>
+                                        
+                                        {/* Activated Ownings Breakdown */}
+                                        {activatedIncomes.map(([name, val]) => renderItemWithBadge(name, val))}
+                                        
+                                        <div className={`flex justify-between gap-4 text-pink-500 font-bold ${topBorderClass} mt-1 pt-1`}>
+                                            <span>{language === 'fr' ? 'Avoirs activés' : 'Activated Ownings'}</span>
+                                            <span>{Math.round(data.activatedOwnings).toLocaleString()}</span>
+                                        </div>
+                                        
+                                        <div className="h-4"></div>
+                                        
+                                        <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold text-[13px]`}>
+                                            <span>{language === 'fr' ? 'Grand Total' : 'Grand Total'}</span>
+                                            <span>{Math.round(data.income + data.activatedOwnings).toLocaleString()}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className={`${topBorderClass} mt-1 pt-1 flex justify-between font-bold`}>
+                                        <span>Total</span>
+                                        <span>{Math.round(data.income).toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
 
                 <div className="flex-1">

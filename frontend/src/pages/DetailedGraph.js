@@ -17,6 +17,7 @@ const DetailedGraph = () => {
     const [retirementAge, setRetirementAge] = useState(null);
     const [retirementDate2, setRetirementDate2] = useState(null);
     const [retirementAge2, setRetirementAge2] = useState(null);
+    const [isInvested, setIsInvested] = useState(true);
 
     // Focus Years State
     const [focusYears, setFocusYears] = useState([
@@ -32,7 +33,7 @@ const DetailedGraph = () => {
         showMC10: false,
         showMC25: false,
         showMC50: false,
-        showActivatedOwnings: false
+        showActivatedOwnings: location.state?.activateAllOwnings || false
     });
 
     const toggleGraphOption = (key) => {
@@ -55,6 +56,7 @@ const DetailedGraph = () => {
             if (location.state?.retirementAge) setRetirementAge(location.state.retirementAge);
             if (location.state?.retirementDate2) setRetirementDate2(location.state.retirementDate2);
             if (location.state?.retirementAge2) setRetirementAge2(location.state.retirementAge2);
+            if (location.state?.isInvested !== undefined) setIsInvested(location.state.isInvested);
 
             // Get focusYears from state or localStorage (Persist settings across sessions)
             let loadedYears = null;
@@ -194,11 +196,13 @@ const DetailedGraph = () => {
 
                 {/* Graph Options Controls */}
                 <div className="flex-1">
-                    <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-                        {language === 'fr' ? 'Projection' : 'Projection'}
-                    </h3>
-                    <div className="space-y-3">
-                        {/* MC 5% */}
+                    {isInvested && (
+                        <>
+                            <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                                {language === 'fr' ? 'Projection' : 'Projection'}
+                            </h3>
+                            <div className="space-y-3">
+                                {/* MC 5% */}
                         <div className="flex items-start space-x-2">
                             <Checkbox
                                 id="opt-mc5"
@@ -249,9 +253,13 @@ const DetailedGraph = () => {
                                 {language === 'fr' ? 'MC 50% (Médian)' : 'MC 50% (Median)'}
                             </Label>
                         </div>
+                            </div>
+                        </>
+                    )}
 
-                        {/* Activated Ownings */}
-                        <div className="flex items-start space-x-2 pt-2 border-t border-border/50">
+                    {/* Activated Ownings Toggle - Shown independently of investments */}
+                    <div className={`mt-6 space-y-3 ${!isInvested ? 'pt-0 border-t-0' : 'pt-6 border-t border-border/50'}`}>
+                        <div className="flex items-start space-x-2">
                             <Checkbox
                                 id="opt-ownings"
                                 checked={graphOptions.showActivatedOwnings}
@@ -318,6 +326,7 @@ const DetailedGraph = () => {
                                         isPdf={false}
                                         p1Name={summaryData.firstName}
                                         p2Name={summaryData.firstName2}
+                                        showActivatedOwnings={graphOptions.showActivatedOwnings}
                                     />
                                 </div>
                             );

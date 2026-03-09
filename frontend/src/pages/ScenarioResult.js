@@ -863,7 +863,19 @@ const ScenarioResult = () => {
         const isInvested = investedAssetIds.includes(id);
 
         if (asset.category === 'Preserve') {
-          return; // Preserve assets never generate liquid cash flow
+          // Preserve assets normally don't generate cash flow. 
+          // However, if the user explicitly activates "all ownings", we process them!
+          const noAvailDate = !asset.availabilityDate || String(asset.availabilityDate).trim() === '' || String(asset.availabilityDate).trim() === '-';
+          const noAvailTimeframe = !asset.availabilityTimeframe || String(asset.availabilityTimeframe).trim() === '' || String(asset.availabilityTimeframe).trim() === '-';
+          const isActivatedOwning = (noAvailDate && noAvailTimeframe && simActivateOwnings);
+          
+          if (asset.name?.includes('Valeur')) {
+             console.log('[DEBUG PRESERVE] evaluating Preserve asset:', { name: asset.name, availDate: asset.availabilityDate, availTF: asset.availabilityTimeframe, simActivateOwnings, isActivatedOwning, year });
+          }
+
+          if (!isActivatedOwning) {
+            return; 
+          }
         }
 
         // Period Type
@@ -899,9 +911,13 @@ const ScenarioResult = () => {
         else {
           // ACTIVATE ALL OWNINGS LOGIC
           let effectiveDateStr = asset.availabilityDate;
+          if (String(effectiveDateStr).trim() === '' || String(effectiveDateStr).trim() === '-') effectiveDateStr = null;
           let isActivatedOwning = false;
 
-          if (!effectiveDateStr && !asset.availabilityTimeframe && simActivateOwnings) {
+          const noAvailDateLocal = !effectiveDateStr;
+          const noAvailTimeframeLocal = !asset.availabilityTimeframe || String(asset.availabilityTimeframe).trim() === '' || String(asset.availabilityTimeframe).trim() === '-';
+
+          if (noAvailDateLocal && noAvailTimeframeLocal && simActivateOwnings) {
             effectiveDateStr = simOwningsDate;
             isActivatedOwning = true;
           }
@@ -1607,10 +1623,17 @@ const ScenarioResult = () => {
       const lastYear = parseInt(projection.yearlyBreakdown[projection.yearlyBreakdown.length - 1]?.year || startYear);
 
       // Horizon is from start of first year to the theoretical death date if available
-      const deathDate = userData?.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
-      if (deathDate) {
+      const deathDate1 = userData?.theoreticalDeathDate ? new Date(userData.theoreticalDeathDate) : null;
+      const deathDate2 = (userData?.analysisType === 'couple' && userData?.theoreticalDeathDate2) ? new Date(userData.theoreticalDeathDate2) : null;
+      
+      let maxDeathDate = deathDate1;
+      if (deathDate2 && (!maxDeathDate || deathDate2 > maxDeathDate)) {
+        maxDeathDate = deathDate2;
+      }
+
+      if (maxDeathDate) {
         const firstYearNum = parseInt(startYear);
-        horizonMonths = Math.max(1, (deathDate.getUTCFullYear() - firstYearNum) * 12 + deathDate.getUTCMonth());
+        horizonMonths = Math.max(1, (maxDeathDate.getUTCFullYear() - firstYearNum) * 12 + maxDeathDate.getUTCMonth());
       } else {
         horizonMonths = (lastYear - startYear) * 12 + 11;
       }
@@ -1778,7 +1801,11 @@ const ScenarioResult = () => {
       const EngineTotal_P95 = getComponentVal('percentiles', 'p95');
 
       // Total Wealth = Non-Invested + Illiquid + Engine Total
-      const activeBase = runningLiquidNonInvested + runningIlliquidWealth;
+      // Fix: Anchor Cash/Illiquid (activeBase) to the official yearly-interpolated curve (detSeries) so inflation/taxes aren't lost
+      const activeBase = (detSeries && detSeries[m] !== undefined) 
+          ? (detSeries[m] - runningInvestedPrincipal) 
+          : (runningLiquidNonInvested + runningIlliquidWealth);
+
       const finalTotalP5 = activeBase + (EngineTotal_P5 || Math.round(runningInvestedPrincipal));
       const finalTotalP10 = activeBase + (EngineTotal_P10 || Math.round(runningInvestedPrincipal));
       const finalTotalP25 = activeBase + (EngineTotal_P25 || Math.round(runningInvestedPrincipal));
@@ -1898,7 +1925,8 @@ const ScenarioResult = () => {
       const metadata = {
         simulationStartDate: monteCarloProjections?.details?.simulationStartDate || (projection?.yearlyBreakdown?.[0]?.year ? `${projection.yearlyBreakdown[0].year}-01-01` : null),
         horizonMonths: monteCarloProjections?.details?.horizonMonths || (monthlyData?.length ? monthlyData.length - 1 : 0),
-        retirementDate: scenarioData?.wishedRetirementDate
+        retirementDate: scenarioData?.wishedRetirementDate,
+        hasMC
       };
 
       navigate('/simulation-data', { state: { monthlyData, metadata } });
@@ -2729,9 +2757,10 @@ const ScenarioResult = () => {
                     summaryData: summaryData,
                     retirementDate: retirementInfo.date,
                     retirementAge: retirementInfo.ageYears,
-                    retirementDate2: retirementInfo.date2,
                     retirementAge2: retirementInfo.ageYears2,
-                    focusYears: pdfFocusYears
+                    focusYears: pdfFocusYears,
+                    isInvested: !!isInvested,
+                    activateAllOwnings: activateAllOwnings
                   }
                 });
               }}

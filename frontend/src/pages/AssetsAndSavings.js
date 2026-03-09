@@ -110,7 +110,7 @@ const AssetsOverview = () => {
                             ...o,
                             owner: o.owner || (userData?.analysisType === 'couple' ? 'shared' : 'p1')
                         }))
-                        : getDefaultOutflows(p1Death, p2Death);
+                        : getDefaultOutflows(p1DeathDate, p2DeathDate);
 
                     setProjectedOutflows(outflowsWithOwner);
 
@@ -123,7 +123,7 @@ const AssetsOverview = () => {
                 } else {
                     // Initialize with default rows
                     setCurrentAssets(getDefaultAssets(today));
-                    setProjectedOutflows(getDefaultOutflows(p1Death, p2Death));
+                    setProjectedOutflows(getDefaultOutflows(p1DeathDate, p2DeathDate));
                 }
             } catch (error) {
                 console.error('Error loading assets data:', error);
@@ -175,8 +175,8 @@ const AssetsOverview = () => {
         }
     ];
 
-    const getDefaultOutflows = (p1Death, p2Death) => {
-        const sharedDeathDate = (p1Death > p2Death) ? p1Death : p2Death;
+    const getDefaultOutflows = (p1DeathDateParam, p2DeathDateParam) => {
+        const sharedDeathDate = (p1DeathDateParam > p2DeathDateParam) ? p1DeathDateParam : p2DeathDateParam;
         return [
             {
                 id: 1,

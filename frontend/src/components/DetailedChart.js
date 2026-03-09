@@ -128,6 +128,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     isPdf={isPdf}
                     p1Name={p1Name}
                     p2Name={p2Name}
+                    showActivatedOwnings={showActivatedOwnings}
                 />
             );
         }
@@ -148,6 +149,17 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
 
     const gradientOffset = getGradientOffset();
 
+    // Adjust data for rendering: subtract activatedOwnings from cumulativeBalance if checkbox is off
+    const renderData = React.useMemo(() => {
+        if (!chartData) return [];
+        return chartData.map(d => ({
+            ...d,
+            displayCumulativeBalance: showActivatedOwnings 
+                ? d.cumulativeBalance 
+                : d.cumulativeBalance - (d.activatedOwnings || 0)
+        }));
+    }, [chartData, showActivatedOwnings]);
+
     return (
         <div className="flex-1 rounded-lg p-4 border" style={{
             height: isPdf ? '100%' : '880px',
@@ -156,7 +168,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
         }}>
             <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
-                    data={chartData}
+                    data={renderData}
                     margin={{ top: 20, right: 120, left: 60, bottom: 60 }}
                     stackOffset="sign"
                 >
@@ -320,20 +332,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         />
                     ))}
 
-                    {/* 1. Activated Ownings Bar (Optional) */}
-                    {showActivatedOwnings && (
-                        <Bar
-                            dataKey="activatedOwnings"
-                            fill="#ec4899"
-                            name="Activated Ownings"
-                            stackId="stack"
-                            barSize={isPdf ? 20 : 30}
-                            shape={<CustomBarShape />}
-                            isAnimationActive={false}
-                        />
-                    )}
-
-                    {/* 2. Income & Costs Bars (Always Visible) */}
+                    {/* 1. Income & Costs Bars (Always Visible) */}
                     <Bar
                         dataKey="income"
                         fill="#22c55e"
@@ -354,6 +353,19 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         isAnimationActive={false}
                     />
 
+                    {/* 2. Activated Ownings Bar (Optional) */}
+                    {showActivatedOwnings && (
+                        <Bar
+                            dataKey="activatedOwnings"
+                            fill="#ec4899"
+                            name="Activated Ownings"
+                            stackId="stack"
+                            barSize={isPdf ? 20 : 30}
+                            shape={<CustomBarShape />}
+                            isAnimationActive={false}
+                        />
+                    )}
+
                     {/* 3. Monte Carlo Lines (Optional) */}
 
                     {/* MC 50% (Median - Purple for PDF, Blue for Web) */}
@@ -368,6 +380,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             isAnimationActive={false}
                             label={(props) => {
                                 const { x, y, value, index } = props;
+                                if (value === undefined || value === null || isNaN(value)) return null;
                                 if (chartData && index === chartData.length - 1) {
                                     return (
                                         <text x={x} y={y} dx={10} dy={4} fill={isPdf ? "#8e44ad" : "#3b82f6"} fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
@@ -392,6 +405,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             isAnimationActive={false}
                             label={(props) => {
                                 const { x, y, value, index } = props;
+                                if (value === undefined || value === null || isNaN(value)) return null;
                                 if (chartData && index === chartData.length - 1) {
                                     return (
                                         <text x={x} y={y} dx={10} dy={4} fill="#f59e0b" fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
@@ -416,6 +430,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             isAnimationActive={false}
                             label={(props) => {
                                 const { x, y, value, index } = props;
+                                if (value === undefined || value === null || isNaN(value)) return null;
                                 if (chartData && index === chartData.length - 1) {
                                     return (
                                         <text x={x} y={y} dx={10} dy={4} fill="#dc2626" fontSize={18} fontWeight="bold" textAnchor="start" style={{ pointerEvents: 'none' }}>
@@ -440,6 +455,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             isAnimationActive={false}
                             label={(props) => {
                                 const { x, y, value, index } = props;
+                                if (value === undefined || value === null || isNaN(value)) return null;
                                 if (chartData && index === chartData.length - 1) {
                                     const fillColor = isPdf ? "#3b82f6" : (value >= 0 ? "#22c55e" : "#ef4444");
                                     return (
@@ -466,18 +482,19 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     {/* 4. Baseline (Cumulative Balance - Yellow/Gold) - Always Visible */}
                     <Line
                         type="monotone"
-                        dataKey="cumulativeBalance"
-                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? "#374151" : "#eab308"}
-                        strokeDasharray={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? "5 5" : "0"}
+                        dataKey="displayCumulativeBalance"
+                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "#eab308"}
+                        strokeDasharray={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "5 5" : "0"}
                         strokeWidth={3}
-                        name={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && chartData?.[0]?.mc5 !== undefined) ? (language === 'fr' ? "Ligne de base" : "Base Line") : "Cumulative Balance"}
+                        name={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? (language === 'fr' ? "Ligne de base" : "Base Line") : "Cumulative Balance"}
                         dot={false}
                         isAnimationActive={false}
                         label={(props) => {
                             const { x, y, value, index } = props;
+                            if (value === undefined || value === null || isNaN(value)) return null;
                             // Only show label if MC5 is NOT shown to avoid clutter, or ensure distinct position?
                             // User request implies both can be active. Let's keep it.
-                            if (chartData && index === chartData.length - 1) {
+                            if (renderData && index === renderData.length - 1) {
                                 return (
                                     <text
                                         x={x}
@@ -501,10 +518,11 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     {/* Area fill - NO name prop to avoid duplicate legend */}
                     <Area
                         type="monotone"
-                        dataKey="cumulativeBalance"
+                        dataKey="displayCumulativeBalance"
                         fill="#eab308"
                         fillOpacity={0.05}
                         stroke="none"
+                        name=""
                         legendType="none"
                         tooltipType="none"
                     />
