@@ -1849,7 +1849,6 @@ const ScenarioResult = () => {
 
       // Debug columns
       const year = lastDayOfMonth.getUTCFullYear();
-      const isYearEnd = (lastDayOfMonth.getUTCMonth() === 11);
 
       monthlyData.push({
         Date_EOM: dateStr,
