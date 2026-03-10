@@ -2776,15 +2776,17 @@ const ScenarioResult = () => {
               <LineChartIcon className="h-4 w-4" />
               {language === 'fr' ? 'Graphique détaillé' : 'Detailed graph'}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNavigateToInvestFlow}
-              className="flex items-center gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              {language === 'fr' ? 'Graph Flux invest' : 'Invest Flow graph'}
-            </Button>
+            {isInvested && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNavigateToInvestFlow}
+                className="flex items-center gap-2"
+              >
+                <Activity className="h-4 w-4" />
+                {language === 'fr' ? 'Graph Flux invest' : 'Invest Flow graph'}
+              </Button>
+            )}
             <Button
               onClick={generatePDF}
               variant="outline"
@@ -2795,28 +2797,30 @@ const ScenarioResult = () => {
               <FileText className="h-4 w-4" />
               {language === 'fr' ? 'Générer rapport' : 'Generate report'}
             </Button>
-            <Button
-              onClick={() => {
-                // Ensure typed arrays are converted for serialization (fixes NaN issues in Details page)
-                const deepArrayFrom = (obj) => {
-                  if (!obj || typeof obj !== 'object') return obj;
-                  if (obj instanceof Float64Array || obj instanceof Float32Array) return Array.from(obj);
-                  if (Array.isArray(obj)) return obj.map(deepArrayFrom);
-                  const res = {};
-                  for (let k in obj) res[k] = deepArrayFrom(obj[k]);
-                  return res;
-                };
-                const serializableProjections = deepArrayFrom(monteCarloProjections);
-                navigate('/monte-carlo-details', { state: { mcProjections: serializableProjections } });
-              }}
-              variant="outline"
-              size="sm"
-              disabled={!isInvested || !monteCarloProjections}
-              className="flex items-center gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              {language === 'fr' ? 'Détails MC' : 'MC Details'}
-            </Button>
+            {isInvested && (
+              <Button
+                onClick={() => {
+                  // Ensure typed arrays are converted for serialization (fixes NaN issues in Details page)
+                  const deepArrayFrom = (obj) => {
+                    if (!obj || typeof obj !== 'object') return obj;
+                    if (obj instanceof Float64Array || obj instanceof Float32Array) return Array.from(obj);
+                    if (Array.isArray(obj)) return obj.map(deepArrayFrom);
+                    const res = {};
+                    for (let k in obj) res[k] = deepArrayFrom(obj[k]);
+                    return res;
+                  };
+                  const serializableProjections = deepArrayFrom(monteCarloProjections);
+                  navigate('/monte-carlo-details', { state: { mcProjections: serializableProjections } });
+                }}
+                variant="outline"
+                size="sm"
+                disabled={!monteCarloProjections}
+                className="flex items-center gap-2"
+              >
+                <Activity className="h-4 w-4" />
+                {language === 'fr' ? 'Détails MC' : 'MC Details'}
+              </Button>
+            )}
             <Button
               onClick={handleShowData}
               variant="outline"
