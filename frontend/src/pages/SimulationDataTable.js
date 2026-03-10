@@ -206,6 +206,7 @@ const SimulationDataTable = () => {
             { key: 'LiquidNonInvestedFlow', label: 'Flux Cash', width: 110, format: 'currency', tooltip: 'Apport de cash hors revenus', source: 'Saisie' },
             { key: 'IncomeFlow', label: 'Revenus', width: 120, format: 'currency', tooltip: 'Total des revenus', source: 'Calcul' },
             { key: 'CostFlow', label: 'Dépenses', width: 120, format: 'currency', tooltip: 'Total des dépenses', source: 'Calcul' },
+            { key: 'BackendAdjustmentFlow', label: 'Ajust. Annuel', width: 120, format: 'currency', tooltip: 'Correction de fin d\'année pour matcher le modèle déterministe (Impôts, Inflation, etc.)', source: 'Calcul Backend' },
             { key: 'Year', label: 'Année', width: 70, tooltip: 'Année civile', source: 'Système' }
         ]
     };

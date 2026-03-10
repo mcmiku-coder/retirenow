@@ -1771,11 +1771,22 @@ const ScenarioResult = () => {
       });
       const injection = monthInjections[0] || null; // For tooltip metadata (primary event)
 
+      const isYearEnd = (date.getUTCMonth() === 11);
+      let BackendAdjustmentFlow = 0;
+
       // Always update running balances for every month (including m=0)
       runningLiquidNonInvested += (IncomeFlow - CostFlow + LiquidNonInvestedFlow);
       runningInvestedPrincipal += InvestContributionFlow;
       runningInvestedBasis += externalInvestmentInflow;
       runningIlliquidWealth += IlliquidFlow;
+
+      // Force alignment to deterministic series at year-end to capture taxes/inflation accurately
+      if (isYearEnd && detSeries && detSeries[m] !== undefined) {
+        const expectedTotal = detSeries[m];
+        const actualTotal = runningLiquidNonInvested + runningIlliquidWealth + runningInvestedPrincipal;
+        BackendAdjustmentFlow = expectedTotal - actualTotal;
+        runningLiquidNonInvested += BackendAdjustmentFlow; // Absorb discrepancy into Cash
+      }
 
       const engineIdx = Math.min(m + 1, horizonMonths);
       const getComponentVal = (componentKey, pKey) => (hasMC && mcDetails[componentKey]?.[pKey]) ? (mcDetails[componentKey][pKey][engineIdx] || 0) : null;
@@ -1806,10 +1817,9 @@ const ScenarioResult = () => {
       const EngineTotal_P95 = getComponentVal('percentiles', 'p95');
 
       // Total Wealth = Non-Invested + Illiquid + Engine Total
-      // Fix: Anchor Cash/Illiquid (activeBase) to the official yearly-interpolated curve (detSeries) so inflation/taxes aren't lost
-      const activeBase = (detSeries && detSeries[m] !== undefined) 
-          ? (detSeries[m] - runningInvestedPrincipal) 
-          : (runningLiquidNonInvested + runningIlliquidWealth);
+      // Use genuine running balances to ensure 1+1=2 monthly accounting logic.
+      // Taxes/Inflation are corrected at year-end via BackendAdjustmentFlow.
+      const activeBase = (runningLiquidNonInvested + runningIlliquidWealth);
 
       const finalTotalP5 = activeBase + (EngineTotal_P5 || Math.round(runningInvestedPrincipal));
       const finalTotalP10 = activeBase + (EngineTotal_P10 || Math.round(runningInvestedPrincipal));
@@ -1850,6 +1860,7 @@ const ScenarioResult = () => {
         InvestContributionFlow: Math.round(InvestContributionFlow),
         LiquidNonInvestedFlow: Math.round(LiquidNonInvestedFlow),
         IlliquidFlow: Math.round(IlliquidFlow),
+        BackendAdjustmentFlow: Math.round(BackendAdjustmentFlow),
         WealthDelta: Math.round(wealthDelta),
         InvestedYield_P5: Math.round(cumulativeGainP5),
         InvestedYield_P10: Math.round(cumulativeGainP10),
@@ -1931,7 +1942,7 @@ const ScenarioResult = () => {
         simulationStartDate: monteCarloProjections?.details?.simulationStartDate || (projection?.yearlyBreakdown?.[0]?.year ? `${projection.yearlyBreakdown[0].year}-01-01` : null),
         horizonMonths: monteCarloProjections?.details?.horizonMonths || (monthlyData?.length ? monthlyData.length - 1 : 0),
         retirementDate: scenarioData?.wishedRetirementDate,
-        hasMC
+        hasMC: !!monteCarloProjections?.details
       };
 
       navigate('/simulation-data', { state: { monthlyData, metadata } });
