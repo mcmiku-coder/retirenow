@@ -17,7 +17,8 @@ import {
     saveAssetsData,
     saveRealEstateData,
     saveInstrumentData,    // NEW
-    saveSimulationConfig   // NEW
+    saveSimulationConfig,   // NEW
+    clearUserData         // Ensure we can wipe before restoring
 } from './database';
 
 import { encryptDataWithMasterKey, decryptDataWithMasterKey } from './encryption-v2';
@@ -127,8 +128,11 @@ export const importBackup = async (file, email, masterKey) => {
 
                 const { data } = decryptedPayload;
 
-                // 2. Restore data to IndexedDB
-                // We overwrite existing data
+                // 2. Clear existing data to prevent "ghost" records from older backup versions
+                await clearUserData(email);
+
+                // 3. Restore data to IndexedDB
+                // We overwrite existing data cleanly
                 await Promise.all([
                     data.userData ? saveUserData(email, masterKey, data.userData) : Promise.resolve(),
                     data.incomeData ? saveIncomeData(email, masterKey, data.incomeData) : Promise.resolve(),
