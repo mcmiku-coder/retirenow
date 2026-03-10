@@ -37,7 +37,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
     // Personal details table
     const head = isCouple
         ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
+        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
 
     const personalData = [
         [language === 'fr' ? 'Prénom' : 'First Name', userData.firstName || 'N/A'],
@@ -53,7 +53,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         personalData[3].push(userData.gender2 === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female'));
     }
 
-    const headerHooks = !isCouple ? {} : {
+    const headerHooks = {
         didParseCell: function(data) {
             if (data.section === 'head' && data.column.index > 0) {
                 data.cell.styles.halign = 'center';
@@ -113,6 +113,11 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
+        columnStyles: {
+            0: { cellWidth: isCouple ? 60 : 90 },
+            1: { halign: 'center' },
+            2: { halign: 'center' }
+        },
         ...headerHooks
     });
 
@@ -126,7 +131,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     const retirementHead = isCouple
         ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
+        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
 
     const retirementData = [
         [language === 'fr' ? 'Âge Légal de Retraite' : 'Legal Retirement Age', scenarioData.legalRetirementAge || '65'],
@@ -150,6 +155,11 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
+        columnStyles: {
+            0: { cellWidth: isCouple ? 60 : 90 },
+            1: { halign: 'center' },
+            2: { halign: 'center' }
+        },
         ...headerHooks
     });
 
@@ -184,7 +194,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
     // Retirement details table
     const detailsHead = isCouple
         ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
+        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
 
     const detailsData = [
         [language === 'fr' ? 'Date de Retraite Choisie' : 'Chosen Retirement Date', formatDate(scenarioData?.wishedRetirementDate)]
@@ -207,18 +217,16 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     autoTable(pdf, {
         startY: yPos,
-        head: detailsHead,
         body: detailsData,
         theme: 'plain',
+        showHead: 'never',
         styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fontStyle: 'bold' },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 70 },
+            0: { fontStyle: 'bold', cellWidth: isCouple ? 60 : 90 },
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        margin: { left: 20 },
-        ...headerHooks
+        margin: { left: 15 }
     });
 
     addPageNumber(pdf, pageNum, totalPages, language);
@@ -240,8 +248,8 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                 const textStr = String(data.cell.raw).toUpperCase();
                 
                 let isP1 = false, isP2 = false, isShared = false, isConsolidated = false;
-                const p1Name = (userData?.firstName || 'Max').toUpperCase();
-                const p2Name = (userData?.firstName2 || 'Mary').toUpperCase();
+                const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')).toUpperCase();
+                const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')).toUpperCase();
 
                 if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
                 else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
@@ -329,7 +337,7 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                         pdf.setTextColor(resolvedTextColor);
                     }
                     
-                    const textY = data.cell.y + data.cell.height / 2 + fontSize * 0.35; // approximate baseline
+                    const textY = data.cell.y + data.cell.height / 2 + fontSize * 0.12; // approximate baseline
                     let textX = data.cell.x + data.cell.padding('left');
                     
                     if (isChild) {
@@ -452,11 +460,11 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
         const incomeHead = [[
             language === 'fr' ? 'Nom' : 'Name',
             language === 'fr' ? 'Montant' : 'Amount',
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) incomeHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) incomeHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -466,7 +474,9 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             headStyles: { fillColor: [46, 204, 113], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
-                1: { halign: 'right' }
+                1: { halign: 'right' },
+                2: { halign: 'center' },
+                5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -514,11 +524,11 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
         const assetHead = [[
             language === 'fr' ? 'Nom' : 'Name',
             language === 'fr' ? 'Montant' : 'Amount',
-            language === 'fr' ? 'Catégorie' : 'Category',
-            language === 'fr' ? 'Stratégie' : 'Strategy',
-            language === 'fr' ? 'Disponibilité' : 'Availability'
+            { content: language === 'fr' ? 'Catégorie' : 'Category', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Stratégie' : 'Strategy', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Disponibilité' : 'Availability', styles: { halign: 'center' } }
         ]];
-        if (isCouple) assetHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) assetHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -528,7 +538,11 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
-                1: { halign: 'right' }
+                1: { halign: 'right' },
+                2: { halign: 'center' },
+                3: { halign: 'center' },
+                4: { halign: 'center' },
+                5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -580,11 +594,11 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
         const costHead = [[
             language === 'fr' ? 'Nom' : 'Name',
             language === 'fr' ? 'Montant' : 'Amount',
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) costHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) costHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -594,7 +608,9 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             headStyles: { fillColor: [231, 76, 60], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
-                1: { halign: 'right' }
+                1: { halign: 'right' },
+                2: { halign: 'center' },
+                5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -634,11 +650,11 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
         const debtHead = [[
             language === 'fr' ? 'Nom' : 'Name',
             language === 'fr' ? 'Montant' : 'Amount',
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) debtHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) debtHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -648,7 +664,9 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             headStyles: { fillColor: [192, 57, 43], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
-                1: { halign: 'right' }
+                1: { halign: 'right' },
+                2: { halign: 'center' },
+                5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)

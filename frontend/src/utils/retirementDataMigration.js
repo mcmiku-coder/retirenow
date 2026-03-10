@@ -220,7 +220,7 @@ export function createEmptyV2Schema(userData) {
         questionnaire: {
             hasLPP: false,
             lppEarliestAge: null,
-            simulationAge: Math.max(currentAge, 58),
+            simulationAge: '',
             isWithinPreRetirement: 'unknown',
             benefitType: 'unknown',
             hasAVS: true,

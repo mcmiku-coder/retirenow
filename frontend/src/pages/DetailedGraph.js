@@ -293,10 +293,10 @@ const DetailedGraph = () => {
                         retirementAge2={retirementAge2}
                         language={language}
                         focusYears={focusYears}
-                        showMC5={graphOptions.showMC5}
-                        showMC10={graphOptions.showMC10}
-                        showMC25={graphOptions.showMC25}
-                        showMC50={graphOptions.showMC50}
+                        showMC5={isInvested && graphOptions.showMC5}
+                        showMC10={isInvested && graphOptions.showMC10}
+                        showMC25={isInvested && graphOptions.showMC25}
+                        showMC50={isInvested && graphOptions.showMC50}
                         showActivatedOwnings={graphOptions.showActivatedOwnings}
                         p1Name={summaryData.firstName}
                         p2Name={summaryData.firstName2}

@@ -53,8 +53,8 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                 const textStr = String(data.cell.raw).toUpperCase();
                 
                 let isP1 = false, isP2 = false, isShared = false, isConsolidated = false;
-                const p1Name = (userData?.firstName || 'Max').toUpperCase();
-                const p2Name = (userData?.firstName2 || 'Mary').toUpperCase();
+                const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')).toUpperCase();
+                const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')).toUpperCase();
 
                 if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
                 else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
@@ -145,7 +145,7 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                         pdf.setTextColor(resolvedTextColor);
                     }
                     
-                    const textY = data.cell.y + data.cell.height / 2 + fontSize * 0.35; // approximate baseline
+                    const textY = data.cell.y + data.cell.height / 2 + fontSize * 0.12; // approximate baseline
                     let textX = data.cell.x + data.cell.padding('left');
                     
                     if (isChild) {
@@ -659,11 +659,11 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             language === 'fr' ? 'Nom' : 'Name',
             { content: language === 'fr' ? 'Original' : 'Original', styles: { halign: 'right' } },
             { content: language === 'fr' ? 'Ajusté' : 'Adjusted', styles: { halign: 'right' } },
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) incomeHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) incomeHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -674,7 +674,9 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             styles: { fontSize: 6 },
             columnStyles: {
                 1: { halign: 'right' },
-                2: { halign: 'right' }
+                2: { halign: 'right' },
+                3: { halign: 'center' },
+                6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -760,13 +762,13 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             language === 'fr' ? 'Nom' : 'Name',
             { content: language === 'fr' ? 'Original' : 'Original', styles: { halign: 'right' } },
             { content: language === 'fr' ? 'Ajusté' : 'Adjusted', styles: { halign: 'right' } },
-            language === 'fr' ? 'Catégorie' : 'Category',
-            language === 'fr' ? 'Type de dispo.' : 'Availability Type',
-            language === 'fr' ? 'Valeur de dispo.' : 'Availability Value',
-            language === 'fr' ? 'Investir ?' : 'Invest?',
-            language === 'fr' ? 'Tag Cluster' : 'Cluster Tag'
+            { content: language === 'fr' ? 'Catégorie' : 'Category', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Type de dispo.' : 'Availability Type', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Valeur de dispo.' : 'Availability Value', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Investir ?' : 'Invest?', styles: { halign: 'center' } },
+            { content: language === 'fr' ? 'Tag Cluster' : 'Cluster Tag', styles: { halign: 'center' } }
         ]];
-        if (isCouple) assetHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) assetHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -777,7 +779,13 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             styles: { fontSize: 5.5 }, // Reduced size for many columns
             columnStyles: {
                 1: { halign: 'right' },
-                2: { halign: 'right' }
+                2: { halign: 'right' },
+                3: { halign: 'center' },
+                4: { halign: 'center' },
+                5: { halign: 'center' },
+                6: { halign: 'center' },
+                7: { halign: 'center' },
+                8: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -819,11 +827,11 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             language === 'fr' ? 'Nom' : 'Name',
             { content: language === 'fr' ? 'Original' : 'Original', styles: { halign: 'right' } },
             { content: language === 'fr' ? 'Ajusté' : 'Adjusted', styles: { halign: 'right' } },
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) costHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) costHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -834,7 +842,9 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             styles: { fontSize: 6 },
             columnStyles: {
                 1: { halign: 'right' },
-                2: { halign: 'right' }
+                2: { halign: 'right' },
+                3: { halign: 'center' },
+                6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)
@@ -876,11 +886,11 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             language === 'fr' ? 'Nom' : 'Name',
             { content: language === 'fr' ? 'Original' : 'Original', styles: { halign: 'right' } },
             { content: language === 'fr' ? 'Ajusté' : 'Adjusted', styles: { halign: 'right' } },
-            language === 'fr' ? 'Fréquence' : 'Frequency',
+            { content: language === 'fr' ? 'Fréquence' : 'Frequency', styles: { halign: 'center' } },
             language === 'fr' ? 'Début' : 'Start',
             language === 'fr' ? 'Fin' : 'End'
         ]];
-        if (isCouple) debtHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
+        if (isCouple) debtHead[0].push({ content: language === 'fr' ? 'Propriétaire' : 'Owner', styles: { halign: 'center' } });
 
         autoTable(pdf, {
             startY: yPos,
@@ -891,7 +901,9 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             styles: { fontSize: 6 },
             columnStyles: {
                 1: { halign: 'right' },
-                2: { halign: 'right' }
+                2: { halign: 'right' },
+                3: { halign: 'center' },
+                6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
             ...getOwnerBadgeHooks(isCouple, userData)

@@ -26,14 +26,14 @@ const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name,
             badge = (
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                     }`}>
-                    {p1Name || 'Max'}
+                    {p1Name || (language === 'fr' ? 'Personne 1' : 'Person 1')}
                 </span>
             );
         } else if (personType === 'p2') {
             badge = (
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                     }`}>
-                    {p2Name || 'Mary'}
+                    {p2Name || (language === 'fr' ? 'Personne 2' : 'Person 2')}
                 </span>
             );
         } else if (personType === 'shared') {

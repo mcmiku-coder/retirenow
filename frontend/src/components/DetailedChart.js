@@ -5,7 +5,7 @@ import DetailedTooltipContent from './DetailedTooltipContent';
 const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, focusYears = [],
     showMC50 = false, showMC25 = false, showMC10 = false, showMC5 = false, showActivatedOwnings = false,
     retirementAge = null, retirementDate2 = null, retirementAge2 = null,
-    p1Name = 'Max', p2Name = 'Mary',
+    p1Name = 'Person 1', p2Name = 'Person 2',
     deathDate = null, deathDate2 = null,
     isCouple = false
 }) => {
@@ -160,6 +160,20 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
         }));
     }, [chartData, showActivatedOwnings]);
 
+    // Calculate gradient offset for Cumulative Balance (Baseline)
+    const getBaselineOffset = () => {
+        if (!renderData || renderData.length === 0) return 0.5;
+        const dataMax = Math.max(...renderData.map(i => i.displayCumulativeBalance || 0));
+        const dataMin = Math.min(...renderData.map(i => i.displayCumulativeBalance || 0));
+
+        if (dataMax <= 0) return 0;
+        if (dataMin >= 0) return 1;
+
+        return dataMax / (dataMax - dataMin);
+    };
+
+    const baselineOffset = getBaselineOffset();
+
     return (
         <div className="flex-1 rounded-lg p-4 border" style={{
             height: isPdf ? '100%' : '880px',
@@ -173,6 +187,14 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     stackOffset="sign"
                 >
                     <defs>
+                        <linearGradient id="splitColorBaseline" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset={baselineOffset} stopColor="#10b981" stopOpacity={1} />
+                            <stop offset={baselineOffset} stopColor="#ef4444" stopOpacity={1} />
+                        </linearGradient>
+                        <linearGradient id="splitColorArea" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset={baselineOffset} stopColor="#10b981" stopOpacity={0.4} />
+                            <stop offset={baselineOffset} stopColor="#ef4444" stopOpacity={0.4} />
+                        </linearGradient>
                         <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
                             <stop offset={gradientOffset} stopColor="#22c55e" stopOpacity={1} />
                             <stop offset={gradientOffset} stopColor="#ef4444" stopOpacity={1} />
@@ -241,7 +263,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                                             position: !p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
                                             dy: 20,
                                             dx: !p1IsEarlier ? -15 : 15,
-                                            value: `${language === 'fr' ? 'Retraite' : 'Retirement'} Mary${retirementAge2 ? ` (${retirementAge2}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
+                                            value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${p2Name}${retirementAge2 ? ` (${retirementAge2}${language === 'fr' ? ' ans' : 'y'})` : ''}`,
                                             fill: '#a855f7',
                                             fontSize: 18,
                                             fontWeight: 'bold',
@@ -479,29 +501,29 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         />
                     )}
 
-                    {/* 4. Baseline (Cumulative Balance - Yellow/Gold) - Always Visible */}
+                    {/* 4. Baseline (Cumulative Balance - Dynamic Green/Red Gradient for Web) - Always Visible */}
                     <Line
                         type="monotone"
                         dataKey="displayCumulativeBalance"
-                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "#eab308"}
+                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "url(#splitColorBaseline)"}
                         strokeDasharray={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "5 5" : "0"}
-                        strokeWidth={3}
+                        strokeWidth={4}
                         name={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? (language === 'fr' ? "Ligne de base" : "Base Line") : "Cumulative Balance"}
                         dot={false}
                         isAnimationActive={false}
                         label={(props) => {
                             const { x, y, value, index } = props;
                             if (value === undefined || value === null || isNaN(value)) return null;
-                            // Only show label if MC5 is NOT shown to avoid clutter, or ensure distinct position?
-                            // User request implies both can be active. Let's keep it.
                             if (renderData && index === renderData.length - 1) {
+                                const showGreyMC = isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined;
+                                const fillColor = showGreyMC ? "#374151" : (value >= 0 ? "#10b981" : "#ef4444");
                                 return (
                                     <text
                                         x={x}
                                         y={y}
                                         dx={10}
                                         dy={4}
-                                        fill="#eab308"
+                                        fill={fillColor}
                                         fontSize={18}
                                         fontWeight="bold"
                                         textAnchor="start"
@@ -515,16 +537,17 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         }}
                     />
 
-                    {/* Area fill - NO name prop to avoid duplicate legend */}
+                    {/* Area fill - dynamic green/red gradient */}
                     <Area
                         type="monotone"
                         dataKey="displayCumulativeBalance"
-                        fill="#eab308"
-                        fillOpacity={0.05}
+                        fill={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "url(#splitColorArea)"}
+                        fillOpacity={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? 0.05 : 1}
                         stroke="none"
                         name=""
                         legendType="none"
                         tooltipType="none"
+                        isAnimationActive={false}
                     />
                 </ComposedChart>
             </ResponsiveContainer>

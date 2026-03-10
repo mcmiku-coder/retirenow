@@ -130,14 +130,15 @@ const RetirementBenefitsQuestionnaire = () => {
 
                 let initialQ1, initialB1, initialQ2, initialB2;
 
-                if (savedData && savedData.p1 && savedData.p2) {
-                    // Modern dual-person schema
-                    initialQ1 = savedData.p1.questionnaire || getInitialQuestionnaire();
-                    initialB1 = savedData.p1.benefitsData || getInitialBenefits();
-                    initialQ2 = savedData.p2.questionnaire || getInitialQuestionnaire();
-                    initialB2 = savedData.p2.benefitsData || getInitialBenefits();
+                if (savedData && savedData.version === 2) {
+                    // Modern v2 schema handles both single and couple via p1/p2
+                    // Note: If data was somehow saved by migrateToV2 directly at root, we also handle that fallback
+                    initialQ1 = savedData.p1?.questionnaire || savedData.questionnaire || getInitialQuestionnaire();
+                    initialB1 = savedData.p1?.benefitsData || savedData.benefitsData || getInitialBenefits();
+                    initialQ2 = savedData.p2?.questionnaire || getInitialQuestionnaire();
+                    initialB2 = savedData.p2?.benefitsData || getInitialBenefits();
                 } else if (savedData) {
-                    // Legacy or partial schema - migrate
+                    // Legacy v1 schema - migrate
                     const v2Data = migrateToV2(savedData, userDataResult);
                     initialQ1 = v2Data.questionnaire || getInitialQuestionnaire();
                     initialB1 = v2Data.benefitsData || getInitialBenefits();

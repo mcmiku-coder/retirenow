@@ -302,7 +302,7 @@ const ScenarioResult = () => {
 
         finalAssets.forEach(asset => {
           const ownerCode = asset.owner || asset.person || 'shared';
-          const key = `${asset.name}_${ownerCode}`; // Use Name + Owner as key to prevent merging Max and Mary's assets
+          const key = `${asset.name}_${ownerCode}`; // Use Name + Owner as key to prevent merging Person 1 and Person 2's assets
           const existing = uniqueAssetsMap.get(key);
 
           if (!existing) {
@@ -1225,14 +1225,17 @@ const ScenarioResult = () => {
 
     // 2. Check LPP Logic
     // Fix: strict numeric comparison
-    const earliestPreRetirementAge = parseInt(effectiveScenarioData.questionnaire?.lppEarliestAge || 58);
+    const targetQuestionnaire = isP2 ? effectiveScenarioData.questionnaire2 : effectiveScenarioData.questionnaire;
+    const earliestPreRetirementAge = parseInt(targetQuestionnaire?.lppEarliestAge || 58);
     const isPreRetirement = numericAge >= earliestPreRetirementAge;
 
     // 3. Check for Missing Data (Blocking)
     if (isPreRetirement) {
       const ageKey = Math.floor(numericAge).toString();
       const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
-      const entry = bData?.lppByAge?.[ageKey];
+      const rDataBData = isP2 ? retirementData?.p2?.benefitsData : retirementData?.p1?.benefitsData;
+      const entry = bData?.lppByAge?.[ageKey] || rDataBData?.lppByAge?.[ageKey];
+      
       if (!entry || (!entry.pension && !entry.capital)) {
         setMissingDataDialog({
           isOpen: true,
@@ -1244,7 +1247,9 @@ const ScenarioResult = () => {
       }
     } else {
       const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
-      const currentCapital = bData?.lppCurrentCapital;
+      const rDataBData = isP2 ? retirementData?.p2?.benefitsData : retirementData?.p1?.benefitsData;
+      const currentCapital = bData?.lppCurrentCapital || rDataBData?.lppCurrentCapital;
+      
       if (!currentCapital || parseFloat(currentCapital) <= 0) {
         setMissingDataDialog({
           isOpen: true,
@@ -3058,7 +3063,7 @@ const ScenarioResult = () => {
                             strokeDasharray="5 5"
                             strokeWidth={2}
                             label={{
-                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName || 'Max'} (${retirementInfo.ageYears}${language === 'fr' ? ' ans' : 'y'})`,
+                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')} (${retirementInfo.ageYears}${language === 'fr' ? ' ans' : 'y'})`,
                               position: p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
                               fill: '#3b82f6',
                               fontSize: 12,
@@ -3076,7 +3081,7 @@ const ScenarioResult = () => {
                             strokeDasharray="5 5"
                             strokeWidth={2}
                             label={{
-                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName2 || 'Mary'} (${retirementInfo.ageYears2}${language === 'fr' ? ' ans' : 'y'})`,
+                              value: `${language === 'fr' ? 'Retraite' : 'Retirement'} ${userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')} (${retirementInfo.ageYears2}${language === 'fr' ? ' ans' : 'y'})`,
                               position: !p1IsEarlier ? 'insideTopLeft' : 'insideTopRight',
                               fill: '#a855f7',
                               fontSize: 12,
@@ -3094,7 +3099,7 @@ const ScenarioResult = () => {
                             stroke={firstDeathPerson === 'p1' ? '#3b82f6' : '#a855f7'}
                             strokeWidth={3}
                             label={{
-                              value: `${language === 'fr' ? 'espérance de vie de' : 'life expectancy of'} ${firstDeathPerson === 'p1' ? (userData?.firstName || 'Max') : (userData?.firstName2 || 'Mary')}`,
+                              value: `${language === 'fr' ? 'espérance de vie de' : 'life expectancy of'} ${firstDeathPerson === 'p1' ? (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')) : (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2'))}`,
                               position: 'insideBottomRight',
                               fill: firstDeathPerson === 'p1' ? '#3b82f6' : '#a855f7',
                               fontSize: 13,
@@ -3434,16 +3439,16 @@ const ScenarioResult = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {language === 'fr' ? 'Données Manquantes' : 'Missing Data'} - {missingDataDialog.personId === 'p2' ? (language === 'fr' ? 'Mary' : 'Mary') : (language === 'fr' ? 'Max' : 'Max')}
+              {language === 'fr' ? 'Données Manquantes' : 'Missing Data'} - {missingDataDialog.personId === 'p2' ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'))}
             </DialogTitle>
             <DialogDescription>
               {missingDataDialog.type === 'pension'
                 ? (language === 'fr'
-                  ? `Pour simuler une retraite à ${missingDataDialog.age} ans pour ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, nous avons besoin de la rente LPP projetée.`
-                  : `To simulate retirement at ${missingDataDialog.age} for ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, we need the Projected LPP Pension.`)
+                  ? `Pour simuler une retraite à ${missingDataDialog.age} ans pour ${missingDataDialog.personId === 'p2' ? (userData?.firstName2 || 'Personne 2') : (userData?.firstName || 'Personne 1')}, nous avons besoin de la rente LPP projetée.`
+                  : `To simulate retirement at ${missingDataDialog.age} for ${missingDataDialog.personId === 'p2' ? (userData?.firstName2 || 'Person 2') : (userData?.firstName || 'Person 1')}, we need the Projected LPP Pension.`)
                 : (language === 'fr'
-                  ? `Pour une retraite anticipée de ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, nous avons besoin du capital LPP actuel.`
-                  : `To simulate early retirement for ${missingDataDialog.personId === 'p2' ? 'Mary' : 'Max'}, we need the LPP Current Capital.`)
+                  ? `Pour une retraite anticipée de ${missingDataDialog.personId === 'p2' ? (userData?.firstName2 || 'Personne 2') : (userData?.firstName || 'Personne 1')}, nous avons besoin du capital LPP actuel.`
+                  : `To simulate early retirement for ${missingDataDialog.personId === 'p2' ? (userData?.firstName2 || 'Person 2') : (userData?.firstName || 'Person 1')}, we need the LPP Current Capital.`)
               }
             </DialogDescription>
           </DialogHeader>
@@ -3483,10 +3488,10 @@ const ScenarioResult = () => {
             language={language}
             isPdf={true}
             focusYears={pdfFocusYears}
-            showMC50={pdfGraphOptions.showMC50}
-            showMC25={pdfGraphOptions.showMC25}
-            showMC10={pdfGraphOptions.showMC10}
-            showMC5={pdfGraphOptions.showMC5}
+            showMC50={isInvested && pdfGraphOptions.showMC50}
+            showMC25={isInvested && pdfGraphOptions.showMC25}
+            showMC10={isInvested && pdfGraphOptions.showMC10}
+            showMC5={isInvested && pdfGraphOptions.showMC5}
             showActivatedOwnings={pdfGraphOptions.showActivatedOwnings}
             p1Name={userData?.firstName}
             p2Name={userData?.firstName2}

@@ -243,7 +243,7 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
 
     const metricsHead = isCouple
         ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
+        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
 
     const metricsData = [
         [
@@ -266,7 +266,7 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         metricsData[2].push(formatDate(data.deathDate2));
     }
 
-    const headerHooks = !isCouple ? {} : {
+    const headerHooks = {
         didParseCell: function(data) {
             if (data.section === 'head' && data.column.index > 0) {
                 data.cell.styles.halign = 'center';
@@ -323,15 +323,15 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         startY: yPos,
         head: metricsHead,
         body: metricsData,
-        theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fontStyle: 'bold' },
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 10 },
+        margin: { left: 15, right: 15 },
         columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 70 },
+            0: { cellWidth: isCouple ? 60 : 90 },
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        margin: { left: 20 },
         ...headerHooks
     });
 
