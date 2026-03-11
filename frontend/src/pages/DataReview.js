@@ -446,7 +446,10 @@ const DataReview = () => {
         if (scenarioData.adjustedIncomes?.length > 0) {
           finalIncomes = finalIncomes.map(freshInc => {
             const savedInc = scenarioData.adjustedIncomes.find(si => si.id === freshInc.id);
-            return savedInc ? { ...freshInc, adjustedAmount: savedInc.adjustedAmount } : freshInc;
+            if (savedInc && parseFloat(savedInc.amount || 0) === parseFloat(freshInc.amount || 0)) {
+              return { ...freshInc, adjustedAmount: savedInc.adjustedAmount };
+            }
+            return freshInc;
           });
         }
 
@@ -460,7 +463,10 @@ const DataReview = () => {
         if (scenarioData.adjustedCosts?.length > 0) {
           finalCosts = finalCosts.map(freshC => {
             const savedC = scenarioData.adjustedCosts.find(sc => sc.id === freshC.id);
-            return savedC ? { ...freshC, adjustedAmount: savedC.adjustedAmount, startDate: savedC.startDate, endDate: savedC.endDate } : freshC;
+            if (savedC && parseFloat(savedC.amount || 0) === parseFloat(freshC.amount || 0)) {
+              return { ...freshC, adjustedAmount: savedC.adjustedAmount, startDate: savedC.startDate, endDate: savedC.endDate };
+            }
+            return freshC;
           });
         }
 
