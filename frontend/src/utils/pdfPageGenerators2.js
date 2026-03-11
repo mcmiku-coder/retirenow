@@ -152,7 +152,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         head: retirementHead,
         body: retirementData,
         theme: 'grid',
-        headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
         columnStyles: {
@@ -535,7 +535,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             head: assetHead,
             body: assetBody,
             theme: 'striped',
-            headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
                 1: { halign: 'right' },

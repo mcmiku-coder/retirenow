@@ -595,7 +595,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
             head: amtHead,
             body: amtBody,
             theme: 'striped',
-            headStyles: { fillColor: [52, 152, 219], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, fontStyle: 'bold' },
             styles: { fontSize: 8, cellPadding: 3 },
             columnStyles: {
                 3: { halign: 'right' },
@@ -775,7 +775,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             head: assetHead,
             body: assetBody,
             theme: 'striped',
-            headStyles: { fillColor: [52, 152, 219], textColor: 255, fontSize: 7, fontStyle: 'bold' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 7, fontStyle: 'bold' },
             styles: { fontSize: 5.5 }, // Reduced size for many columns
             columnStyles: {
                 1: { halign: 'right' },

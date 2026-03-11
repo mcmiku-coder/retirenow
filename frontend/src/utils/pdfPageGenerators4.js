@@ -118,7 +118,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.text(formatCurrency(summaryData.finalBalance), startX + boxWidth / 2, yPos + 15, { align: 'center' });
 
         // Box 2: Peak Wealth
-        pdf.setFillColor(52, 152, 219);
+        pdf.setFillColor(41, 128, 185);
         pdf.rect(startX + boxWidth + boxSpacing, yPos, boxWidth, boxHeight, 'F');
         pdf.text(language === 'fr' ? 'Richesse Max' : 'Peak Wealth', startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 8, { align: 'center' });
         pdf.setFontSize(10);
