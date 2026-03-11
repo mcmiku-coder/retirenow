@@ -1805,7 +1805,7 @@ const DataReview = () => {
                               }}
                               className="max-w-[150px] ml-auto text-right"
                               style={{
-                                backgroundColor: parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
+                                backgroundColor: parseFloat(income.adjustedAmount) > parseFloat(income.amount) ? 'rgba(34, 197, 94, 0.25)' : parseFloat(income.adjustedAmount) < parseFloat(income.amount) ? 'rgba(239, 68, 68, 0.25)' : 'transparent'
                               }}
                             />
                           </td>
