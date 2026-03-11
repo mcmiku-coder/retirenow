@@ -70,12 +70,12 @@ const RetirementOverview = () => {
   };
 
   // Avatar — same convention as PersonalInfo
-  const getAvatarSrc = (gender, birthDate) => {
+  const getAvatarSrc = (gender, birthDate, forceColor = 'Blue') => {
     if (!gender || !birthDate) return null;
     const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
     const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
     const gCode = gender === 'female' ? 'F' : 'M';
-    return `/avatar_${gCode}_${bracket}_Blue.png`;
+    return `/avatar_${gCode}_${bracket}_${forceColor}.png`;
   };
 
   if (loading) {
@@ -230,7 +230,8 @@ const RetirementOverview = () => {
               {/* Avatar panel — right */}
               <div className="w-[100px] shrink-0 bg-muted/30 flex items-center justify-center border-l border-border">
                 {(() => {
-                  const src = getAvatarSrc(userData.gender2, userData.birthDate2);
+                  const color2 = (userData.analysisType === 'couple' && userData.gender === userData.gender2) ? 'Red' : 'Blue';
+                  const src = getAvatarSrc(userData.gender2, userData.birthDate2, color2);
                   return src ? (
                     <div className="w-[100px] h-[100px] overflow-hidden">
                       <img src={src} alt="avatar" className="w-[calc(100%+20px)] h-[calc(100%+20px)] -ml-[10px] -mt-[10px] object-cover" />
