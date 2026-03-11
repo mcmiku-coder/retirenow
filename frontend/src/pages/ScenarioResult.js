@@ -2883,8 +2883,8 @@ const ScenarioResult = () => {
               <span className="text-[17px] font-semibold text-white">
                 {retirementInfo.isCouple ? (
                   language === 'fr'
-                    ? `Retraite: ${userData.firstName || 'P1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears} ans) & ${userData.firstName2 || 'P2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2} ans)`
-                    : `Retirement: ${userData.firstName || 'P1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears}y) & ${userData.firstName2 || 'P2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2}y)`
+                    ? `Retraite: ${userData.firstName || 'Personne 1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears} ans) & ${userData.firstName2 || 'Personne 2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2} ans)`
+                    : `Retirement: ${userData.firstName || 'Person 1'} (${retirementInfo.dateStr}, ${retirementInfo.ageYears}y) & ${userData.firstName2 || 'Person 2'} (${retirementInfo.dateStr2}, ${retirementInfo.ageYears2}y)`
                 ) : (
                   language === 'fr'
                     ? `Simulation à la date de retraite choisie le ${retirementInfo.dateStr} (${retirementInfo.ageYears} ans)`
