@@ -75,7 +75,7 @@ const RetirementOverview = () => {
     const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
     const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
     const gCode = gender === 'female' ? 'F' : 'M';
-    return `/avatar_${gCode}_${bracket}_blue.png`;
+    return `/avatar_${gCode}_${bracket}_Blue.png`;
   };
 
   if (loading) {

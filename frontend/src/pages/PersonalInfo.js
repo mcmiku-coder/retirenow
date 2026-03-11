@@ -279,7 +279,7 @@ const PersonalInfo = () => {
                     const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
                     const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
                     const gCode = gender === 'female' ? 'F' : 'M';
-                    const color = 'blue';
+                    const color = 'Blue';
                     return (
                       <div className="w-[100px] h-[100px] overflow-hidden">
                         <img
@@ -367,7 +367,7 @@ const PersonalInfo = () => {
                       const age = new Date().getFullYear() - new Date(birthDate2).getFullYear();
                       const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
                       const gCode = gender2 === 'female' ? 'F' : 'M';
-                      const color = 'blue';
+                      const color = 'Blue';
                       return (
                         <div className="w-[100px] h-[100px] overflow-hidden">
                           <img
