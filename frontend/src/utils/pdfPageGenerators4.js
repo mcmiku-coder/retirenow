@@ -1189,9 +1189,55 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
             pdf.setFontSize(7.5); // Slightly smaller to fit more text
             pdf.setTextColor(71, 85, 105); // Slate 600
 
-            // Truncate name if too long (Increased limit)
-            const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
+            // Parse name and badge
+            const parts = name.split('@@');
+            const label = parts[0];
+            const category = parts[1] || 'none';
+
+            // Truncate name if too long
+            const displayName = label.length > 35 ? label.substring(0, 35) + '...' : label;
             pdf.text(displayName, cardX + 5, leftY);
+
+            // Draw Badge if applicable
+            if (isCouple && category !== 'none') {
+                const labelWidth = pdf.getTextWidth(displayName);
+                const badgeX = cardX + 5 + labelWidth + 2;
+                
+                let badgeColor = [156, 163, 175]; // Gray-400
+                let badgeText = category.toUpperCase();
+                let textColor = [255, 255, 255];
+
+                if (category === 'p1') {
+                    badgeColor = [219, 234, 254]; // blue-100
+                    textColor = [30, 64, 175]; // blue-800
+                    badgeText = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+                } else if (category === 'p2') {
+                    badgeColor = [243, 232, 255]; // purple-100
+                    textColor = [107, 33, 168]; // purple-800
+                    badgeText = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+                } else if (category === 'consolidated' || category === 'con') {
+                    badgeColor = [254, 243, 199]; // amber-100
+                    textColor = [146, 64, 14]; // amber-800
+                    badgeText = language === 'fr' ? 'Consolidé' : 'Consolidated';
+                } else if (category === 'shared' || category === 'sho') {
+                    badgeColor = [243, 244, 246]; // gray-100
+                    textColor = [75, 85, 99]; // gray-600
+                    badgeText = language === 'fr' ? 'Partagé' : 'Shared';
+                }
+
+                pdf.setFontSize(5);
+                const badgeLabelWidth = pdf.getTextWidth(badgeText);
+                const badgePaddingX = 1.5;
+                const badgePaddingY = 0.5;
+                const rectWidth = badgeLabelWidth + badgePaddingX * 2;
+                const rectHeight = 4; // Fixed small height
+
+                pdf.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+                pdf.roundedRect(badgeX, leftY - 3, rectWidth, rectHeight, 0.5, 0.5, 'F');
+                
+                pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                pdf.text(badgeText, badgeX + badgePaddingX, leftY - 3 + 2.8);
+            }
 
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
@@ -1214,8 +1260,54 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
                 pdf.setFontSize(7.5);
                 pdf.setTextColor(236, 72, 153); // Pink
 
-                const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
+                // Parse name and badge
+                const parts = name.split('@@');
+                const label = parts[0];
+                const category = parts[1] || 'none';
+
+                const displayName = label.length > 35 ? label.substring(0, 35) + '...' : label;
                 pdf.text(displayName, cardX + 5, leftY);
+
+                // Draw Badge if applicable
+                if (isCouple && category !== 'none') {
+                    const labelWidth = pdf.getTextWidth(displayName);
+                    const badgeX = cardX + 5 + labelWidth + 2;
+                    
+                    let badgeColor = [156, 163, 175]; // Gray-400
+                    let badgeText = category.toUpperCase();
+                    let textColor = [255, 255, 255];
+
+                    if (category === 'p1') {
+                        badgeColor = [219, 234, 254]; // blue-100
+                        textColor = [30, 64, 175]; // blue-800
+                        badgeText = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+                    } else if (category === 'p2') {
+                        badgeColor = [243, 232, 255]; // purple-100
+                        textColor = [107, 33, 168]; // purple-800
+                        badgeText = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+                    } else if (category === 'consolidated' || category === 'con') {
+                        badgeColor = [254, 243, 199]; // amber-100
+                        textColor = [146, 64, 14]; // amber-800
+                        badgeText = language === 'fr' ? 'Consolidé' : 'Consolidated';
+                    } else if (category === 'shared' || category === 'sho') {
+                        badgeColor = [243, 244, 246]; // gray-100
+                        textColor = [75, 85, 99]; // gray-600
+                        badgeText = language === 'fr' ? 'Partagé' : 'Shared';
+                    }
+
+                    pdf.setFontSize(5);
+                    const badgeLabelWidth = pdf.getTextWidth(badgeText);
+                    const badgePaddingX = 1.5;
+                    const badgePaddingY = 0.5;
+                    const rectWidth = badgeLabelWidth + badgePaddingX * 2;
+                    const rectHeight = 4; // Fixed small height
+
+                    pdf.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+                    pdf.roundedRect(badgeX, leftY - 3, rectWidth, rectHeight, 0.5, 0.5, 'F');
+                    
+                    pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                    pdf.text(badgeText, badgeX + badgePaddingX, leftY - 3 + 2.8);
+                }
 
                 pdf.setFont('helvetica', 'bold');
                 pdf.setTextColor(0, 0, 0);
@@ -1248,8 +1340,54 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
             pdf.setFontSize(7.5);
             pdf.setTextColor(71, 85, 105);
 
-            const displayName = name.length > 35 ? name.substring(0, 35) + '...' : name;
+            // Parse name and badge
+            const parts = name.split('@@');
+            const label = parts[0];
+            const category = parts[1] || 'none';
+
+            const displayName = label.length > 35 ? label.substring(0, 35) + '...' : label;
             pdf.text(displayName, rightColX, rightY);
+
+            // Draw Badge if applicable
+            if (isCouple && category !== 'none') {
+                const labelWidth = pdf.getTextWidth(displayName);
+                const badgeX = rightColX + labelWidth + 2;
+                
+                let badgeColor = [156, 163, 175]; // Gray-400
+                let badgeText = category.toUpperCase();
+                let textColor = [255, 255, 255];
+
+                if (category === 'p1') {
+                    badgeColor = [219, 234, 254]; // blue-100
+                    textColor = [30, 64, 175]; // blue-800
+                    badgeText = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+                } else if (category === 'p2') {
+                    badgeColor = [243, 232, 255]; // purple-100
+                    textColor = [107, 33, 168]; // purple-800
+                    badgeText = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+                } else if (category === 'consolidated' || category === 'con') {
+                    badgeColor = [254, 243, 199]; // amber-100
+                    textColor = [146, 64, 14]; // amber-800
+                    badgeText = language === 'fr' ? 'Consolidé' : 'Consolidated';
+                } else if (category === 'shared' || category === 'sho') {
+                    badgeColor = [243, 244, 246]; // gray-100
+                    textColor = [75, 85, 99]; // gray-600
+                    badgeText = language === 'fr' ? 'Partagé' : 'Shared';
+                }
+
+                pdf.setFontSize(5);
+                const badgeLabelWidth = pdf.getTextWidth(badgeText);
+                const badgePaddingX = 1.5;
+                const badgePaddingY = 0.5;
+                const rectWidth = badgeLabelWidth + badgePaddingX * 2;
+                const rectHeight = 4; // Fixed small height
+
+                pdf.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+                pdf.roundedRect(badgeX, rightY - 3, rectWidth, rectHeight, 0.5, 0.5, 'F');
+                
+                pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+                pdf.text(badgeText, badgeX + badgePaddingX, rightY - 3 + 2.8);
+            }
 
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
