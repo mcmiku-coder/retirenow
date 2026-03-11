@@ -129,8 +129,16 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.rect(startX + (boxWidth + boxSpacing) * 2, yPos, boxWidth, boxHeight, 'F');
         pdf.setFontSize(8);
         pdf.text(language === 'fr' ? 'Années de Retraite' : 'Years in Retirement', startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
-        pdf.setFontSize(10);
-        pdf.text(String(summaryData.yearsInRetirement || 0), startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+        
+        if (summaryData.isCouple && summaryData.yearsInRetirement2) {
+            pdf.setFontSize(8);
+            const p1Str = summaryData.firstName || 'P1';
+            const p2Str = summaryData.firstName2 || 'P2';
+            pdf.text(`${p1Str}: ${summaryData.yearsInRetirement || 0}  |  ${p2Str}: ${summaryData.yearsInRetirement2 || 0}`, startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+        } else {
+            pdf.setFontSize(10);
+            pdf.text(String(summaryData.yearsInRetirement || 0), startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+        }
     }
 
     yPos += boxHeight + 10;
