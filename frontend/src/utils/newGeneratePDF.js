@@ -3,8 +3,10 @@
  * This file contains the refactored generatePDF function that uses modular page generators
  * 
  * To integrate: Replace the existing generatePDF function in ScenarioResult.js (lines 1392-2174)
- * with the function below, and add the necessary imports at the top of the file.
+ * with the function below, and add the necessary import { toast } from './toast';
  */
+
+import { toast } from './toast';
 
 // Add these imports at the top of ScenarioResult.js:
 /*
@@ -47,7 +49,7 @@ const generatePDF = async () => {
         let currentPage = 1;
 
         // ===== PAGE 1: COVER PAGE =====
-        await generateCoverPage(pdf, language);
+        await generateCoverPage(pdf, language, userData);
         currentPage++;
 
         // ===== PAGE 2: TABLE OF CONTENTS (placeholder, will update at end) =====

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { Plus, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import instrumentService from '../utils/instrumentService';
 import { validateInstrumentData } from '../data/defaultInstruments';

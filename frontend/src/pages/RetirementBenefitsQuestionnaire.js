@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { saveRetirementData, getRetirementData, getUserData, getScenarioData, saveScenarioData } from '../utils/database';
 import { getLegalRetirementDate } from '../utils/calculations';
 import PageHeader from '../components/PageHeader';
@@ -181,6 +181,14 @@ const RetirementBenefitsQuestionnaire = () => {
                             hasLPP: true
                         };
                     }
+                }
+
+                // Ensure AVS start dates are populated from legal dates if missing
+                if (initialB1 && initialB1.avs && !initialB1.avs.startDate) {
+                    initialB1.avs.startDate = p1Legal.toISOString().split('T')[0];
+                }
+                if (initialB2 && initialB2.avs && !initialB2.avs.startDate && p2Legal) {
+                    initialB2.avs.startDate = p2Legal.toISOString().split('T')[0];
                 }
 
                 setQ1(initialQ1);
@@ -455,6 +463,19 @@ const RetirementBenefitsQuestionnaire = () => {
         try {
             // Build v2 data for P1
             const cleanBenefitsData1 = { ...b1 };
+            
+            // LPP Purge Logic for P1
+            if (q1.hasLPP && q1.isWithinPreRetirement === 'yes') {
+                const newLppByAge = {};
+                Object.keys(cleanBenefitsData1.lppByAge || {}).forEach(age => {
+                    const data = cleanBenefitsData1.lppByAge[age];
+                    newLppByAge[age] = { ...data };
+                    if (q1.benefitType === 'pension') newLppByAge[age].capital = '';
+                    if (q1.benefitType === 'capital') newLppByAge[age].pension = '';
+                });
+                cleanBenefitsData1.lppByAge = newLppByAge;
+            }
+
             if (q1.isWithinPreRetirement === 'yes') {
                 cleanBenefitsData1.lppCurrentCapital = '';
                 cleanBenefitsData1.lppCurrentCapitalDate = '';
@@ -472,7 +493,14 @@ const RetirementBenefitsQuestionnaire = () => {
             };
             const validationP1 = validateV2Schema(v2DataP1);
             if (!validationP1.valid) {
-                toast.error(`Validation failed for Person 1: ${validationP1.errors.join(', ')}`);
+                const p1Name = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+                const errMsg = language === 'fr' 
+                    ? `Informations manquantes pour ${p1Name}. Veuillez svp compléter les chmaps obligatoires pour ${p1Name} avant de passer à la prochaine étape.`
+                    : `Missing information for ${p1Name}. Please fill in mandatory fields for ${p1Name} before moving to next step.`;
+                toast.error(errMsg, {
+                    title: language === 'fr' ? 'Données manquantes' : 'Missing Data',
+                    onConfirm: () => setActiveTab('p1')
+                });
                 setSaving(false);
                 return;
             }
@@ -482,6 +510,19 @@ const RetirementBenefitsQuestionnaire = () => {
             let cleanBenefitsData2 = null;
             if (userData?.analysisType === 'couple') {
                 cleanBenefitsData2 = { ...b2 };
+
+                // LPP Purge Logic for P2
+                if (q2.hasLPP && q2.isWithinPreRetirement === 'yes') {
+                    const newLppByAge = {};
+                    Object.keys(cleanBenefitsData2.lppByAge || {}).forEach(age => {
+                        const data = cleanBenefitsData2.lppByAge[age];
+                        newLppByAge[age] = { ...data };
+                        if (q2.benefitType === 'pension') newLppByAge[age].capital = '';
+                        if (q2.benefitType === 'capital') newLppByAge[age].pension = '';
+                    });
+                    cleanBenefitsData2.lppByAge = newLppByAge;
+                }
+
                 if (q2.isWithinPreRetirement === 'yes') {
                     cleanBenefitsData2.lppCurrentCapital = '';
                     cleanBenefitsData2.lppCurrentCapitalDate = '';
@@ -499,10 +540,25 @@ const RetirementBenefitsQuestionnaire = () => {
                 };
                 const validationP2 = validateV2Schema(v2DataP2);
                 if (!validationP2.valid) {
-                    toast.error(`Validation failed for Person 2: ${validationP2.errors.join(', ')}`);
+                    const p2Name = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+                    const errMsg = language === 'fr' 
+                        ? `Informations manquantes pour ${p2Name}. Veuillez svp compléter les chmaps obligatoires pour ${p2Name} avant de passer à la prochaine étape.`
+                        : `Missing information for ${p2Name}. Please fill in mandatory fields for ${p2Name} before moving to next step.`;
+                    toast.error(errMsg, {
+                        title: language === 'fr' ? 'Données manquantes' : 'Missing Data',
+                        onConfirm: () => setActiveTab('p2')
+                    });
                     setSaving(false);
                     return;
                 }
+            }
+            
+            // Ensure AVS dates are set before saving (extra safety)
+            if (cleanBenefitsData1?.avs && !cleanBenefitsData1.avs.startDate) {
+                cleanBenefitsData1.avs.startDate = p1LegalRetirementDate;
+            }
+            if (cleanBenefitsData2?.avs && !cleanBenefitsData2.avs.startDate) {
+                cleanBenefitsData2.avs.startDate = p2LegalRetirementDate;
             }
 
             const dataToSave = {

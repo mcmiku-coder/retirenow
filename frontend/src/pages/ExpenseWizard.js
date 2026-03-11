@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { ChevronLeft, Info } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { getCostData, saveCostData, getIncomeData, getUserData } from '../utils/database';

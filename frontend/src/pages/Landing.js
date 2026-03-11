@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import axios from 'axios';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { validatePassword } from '../utils/encryption';
 import { Lock, Mail, Globe, Eye, EyeOff, Play, X } from 'lucide-react';
 

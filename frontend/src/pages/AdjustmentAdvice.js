@@ -8,7 +8,7 @@ import { Slider } from '../components/ui/slider';
 import { Checkbox } from '../components/ui/checkbox';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { ChevronLeft } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { getCostData, getUserData, saveScenarioData, getScenarioData } from '../utils/database';

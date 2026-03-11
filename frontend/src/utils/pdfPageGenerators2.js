@@ -24,33 +24,31 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Informations personnelles et choix de la simulation' : 'Personal Information & Simulation Choice',
+        language === 'fr' ? 'Informations personnelles et choix de la simulation' : 'Personal information & simulation choice',
         null,
         20
     );
 
     yPos += 5;
 
-    const p1Name = (userData.firstName || 'Person 1').toUpperCase();
-    const p2Name = (userData.firstName2 || 'Person 2').toUpperCase();
+    const p1Name = (userData.firstName || 'Person 1');
+    const p2Name = (userData.firstName2 || 'Person 2');
 
     // Personal details table
     const head = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
+        ? [['', p1Name, p2Name]]
+        : [['', p1Name]];
 
     const personalData = [
-        [language === 'fr' ? 'Prénom' : 'First Name', userData.firstName || 'N/A'],
-        [language === 'fr' ? 'Date de Naissance' : 'Birth Date', formatDate(userData.birthDate)],
-        [language === 'fr' ? 'Âge Actuel' : 'Current Age', userData.currentAge || 'N/A'],
+        [language === 'fr' ? 'Date de naissance' : 'Birth date', formatDate(userData.birthDate)],
+        [language === 'fr' ? 'Âge actuel' : 'Current age', userData.currentAge || 'N/A'],
         [language === 'fr' ? 'Sexe' : 'Gender', userData.gender === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female')]
     ];
 
     if (isCouple) {
-        personalData[0].push(userData.firstName2 || 'N/A');
-        personalData[1].push(formatDate(userData.birthDate2));
-        personalData[2].push(userData.currentAge2 || 'N/A');
-        personalData[3].push(userData.gender2 === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female'));
+        personalData[0].push(formatDate(userData.birthDate2));
+        personalData[1].push(userData.currentAge2 || 'N/A');
+        personalData[2].push(userData.gender2 === 'male' ? (language === 'fr' ? 'Homme' : 'Male') : (language === 'fr' ? 'Femme' : 'Female'));
     }
 
     const headerHooks = {
@@ -64,11 +62,11 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         didDrawCell: function(data) {
             if (data.section === 'head' && data.column.index > 0 && data.cell.raw) {
                 const pdf = data.doc;
-                const textStr = String(data.cell.raw).toUpperCase();
+                const textStr = String(data.cell.raw);
                 
                 let isP1 = false, isP2 = false;
-                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
-                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
+                if (textStr === p1Name || textStr === 'Person 1' || textStr === 'Personne 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'Person 2' || textStr === 'Personne 2') isP2 = true;
 
                 if (!isP1 && !isP2) return;
 
@@ -109,7 +107,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         startY: yPos,
         head: head,
         body: personalData,
-        theme: 'grid',
+        theme: 'plain',
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
@@ -118,7 +116,21 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        ...headerHooks
+        ...headerHooks,
+        didDrawCell: function(data) {
+            // Apply badge logic if needed
+            headerHooks.didDrawCell(data);
+            
+            // Draw fine horizontal separation line at the bottom of the cell
+            if (data.section === 'body' || data.section === 'head') {
+                const pdf = data.doc;
+                pdf.saveGraphicsState();
+                pdf.setLineWidth(0.1);
+                pdf.setDrawColor(180, 180, 180);
+                pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                pdf.restoreGraphicsState();
+            }
+        }
     });
 
     yPos = pdf.lastAutoTable.finalY + 15;
@@ -126,18 +138,18 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
     // Retirement and life expectancy
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Retraite et Espérance de Vie' : 'Retirement and Life Expectancy', 15, yPos);
+    pdf.text(language === 'fr' ? 'Retraite et espérance de vie' : 'Retirement and life expectancy', 15, yPos);
     yPos += 8;
 
     const retirementHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
+        ? [['', p1Name, p2Name]]
+        : [['', p1Name]];
 
     const retirementData = [
-        [language === 'fr' ? 'Âge Légal de Retraite' : 'Legal Retirement Age', scenarioData.legalRetirementAge || '65'],
-        [language === 'fr' ? 'Date Légale de Retraite' : 'Legal Retirement Date', formatDate(scenarioData.legalRetirementDate)],
-        [language === 'fr' ? 'Espérance de Vie' : 'Life Expectancy', `${scenarioData.lifeExpectancy || 'N/A'} ${language === 'fr' ? 'ans' : 'years'}`],
-        [language === 'fr' ? 'Date de Décès Théorique' : 'Theoretical Death Date', formatDate(userData.theoreticalDeathDate)]
+        [language === 'fr' ? 'Âge légal de retraite' : 'Legal retirement age', scenarioData.legalRetirementAge || '65'],
+        [language === 'fr' ? 'Date légale de retraite' : 'Legal retirement date', formatDate(scenarioData.legalRetirementDate)],
+        [language === 'fr' ? 'Espérance de vie' : 'Life expectancy', `${scenarioData.lifeExpectancy || 'N/A'} ${language === 'fr' ? 'ans' : 'years'}`],
+        [language === 'fr' ? 'Date de décès théorique' : 'Theoretical death date', formatDate(userData.theoreticalDeathDate)]
     ];
 
     if (isCouple) {
@@ -151,7 +163,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         startY: yPos,
         head: retirementHead,
         body: retirementData,
-        theme: 'grid',
+        theme: 'plain',
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
@@ -160,7 +172,16 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        ...headerHooks
+        ...headerHooks,
+        didDrawCell: function(data) {
+            headerHooks.didDrawCell(data);
+            const pdf = data.doc;
+            pdf.saveGraphicsState();
+            pdf.setLineWidth(0.1);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            pdf.restoreGraphicsState();
+        }
     });
 
     yPos = pdf.lastAutoTable.finalY + 15;
@@ -169,7 +190,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Choix de Simulation' : 'Simulation Choice', 15, yPos);
+    pdf.text(language === 'fr' ? 'Choix de simulation' : 'Simulation choice', 15, yPos);
     yPos += 8;
 
     // Retirement option text
@@ -177,13 +198,13 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     let optionText = '';
     if (option === 'option0') {
-        optionText = language === 'fr' ? `Retraite à l'âge légal` : `Legal Retirement Age`;
+        optionText = language === 'fr' ? `Retraite à l'âge légal` : `Legal retirement age`;
     } else if (option === 'option1') {
-        optionText = language === 'fr' ? `Retraite anticipée avec pension LPP` : `Early Retirement with LPP Pension`;
+        optionText = language === 'fr' ? `Retraite anticipée avec pension LPP` : `Early retirement with LPP pension`;
     } else if (option === 'option2') {
-        optionText = language === 'fr' ? `Retraite anticipée avec capital LPP` : `Early Retirement with LPP Capital`;
+        optionText = language === 'fr' ? `Retraite anticipée avec capital LPP` : `Early retirement with LPP capital`;
     } else if (option === 'option3') {
-        optionText = language === 'fr' ? `Optimisation de la date de retraite` : `Retirement Date Optimization`;
+        optionText = language === 'fr' ? `Optimisation de la date de retraite` : `Retirement date optimization`;
     }
 
     pdf.setFontSize(10);
@@ -193,24 +214,24 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
 
     // Retirement details table
     const detailsHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
+        ? [['', p1Name, p2Name]]
+        : [['', p1Name]];
 
     const detailsData = [
-        [language === 'fr' ? 'Date de Retraite Choisie' : 'Chosen Retirement Date', formatDate(scenarioData?.wishedRetirementDate)]
+        [language === 'fr' ? 'Date de retraite choisie' : 'Chosen retirement date', formatDate(scenarioData?.wishedRetirementDate)]
     ];
     if (isCouple) {
         detailsData[0].push(formatDate(scenarioData?.wishedRetirementDate2));
     }
 
     if (scenarioData?.pensionCapital) {
-        const row = [language === 'fr' ? 'Capital de Pension Actuel' : 'Current Pension Capital', formatCurrency(scenarioData.pensionCapital)];
+        const row = [language === 'fr' ? 'Capital de pension actuel' : 'Current pension capital', formatCurrency(scenarioData.pensionCapital)];
         if (isCouple) row.push(formatCurrency(scenarioData.pensionCapital2));
         detailsData.push(row);
     }
 
     if (scenarioData?.projectedLPPPension && option === 'option1') {
-        const row = [language === 'fr' ? 'Pension LPP Projetée (Annuelle)' : 'Projected LPP Pension (Annual)', formatCurrency(scenarioData.projectedLPPPension)];
+        const row = [language === 'fr' ? 'Pension LPP projetée (annuelle)' : 'Projected LPP pension (annual)', formatCurrency(scenarioData.projectedLPPPension)];
         if (isCouple) row.push(formatCurrency(scenarioData.projectedLPPPension2));
         detailsData.push(row);
     }
@@ -226,35 +247,48 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        margin: { left: 15 }
+        margin: { left: 15 },
+        didDrawCell: function(data) {
+            const pdf = data.doc;
+            pdf.saveGraphicsState();
+            pdf.setLineWidth(0.1);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            pdf.restoreGraphicsState();
+        }
     });
 
     addPageNumber(pdf, pageNum, totalPages, language);
 };
 
 
-export const getOwnerBadgeHooks = (isCouple, userData) => {
+export const getOwnerBadgeHooks = (isCouple, userData, language) => {
     if (!isCouple) return {};
     return {
         didParseCell: function(data) {
             if (data.section === 'body' && data.table.columns && data.column.index === data.table.columns.length - 1) {
+                // Ensure owner column aligns center
                 data.cell.styles.halign = 'center';
+                // Make original text match background so it disappears, letting us draw badge on top
                 data.cell.styles.textColor = data.cell.styles.fillColor || [255, 255, 255];
             }
         },
         didDrawCell: function(data) {
             if (data.section === 'body' && data.table.columns && data.column.index === data.table.columns.length - 1 && data.cell.raw) {
                 const pdf = data.doc;
-                const textStr = String(data.cell.raw).toUpperCase();
+                const textStr = String(data.cell.raw);
                 
                 let isP1 = false, isP2 = false, isShared = false, isConsolidated = false;
-                const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')).toUpperCase();
-                const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')).toUpperCase();
+                const p1Fallback = language === 'fr' ? 'Personne 1' : 'Person 1';
+                const p2Fallback = language === 'fr' ? 'Personne 2' : 'Person 2';
 
-                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
-                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
-                else if (textStr === 'CONSOLIDATED' || textStr === 'CONSOLIDÉ') isConsolidated = true;
-                else if (textStr === 'SHARED' || textStr === 'PARTAGÉ') isShared = true;
+                const p1Name = userData.firstName || p1Fallback;
+                const p2Name = userData.firstName2 || p2Fallback;
+
+                if (textStr === p1Name || textStr === 'Person 1' || textStr === 'Personne 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'Person 2' || textStr === 'Personne 2') isP2 = true;
+                else if (textStr === 'Consolidated' || textStr === 'Consolidé') isConsolidated = true;
+                else if (textStr === 'Shared' || textStr === 'Partagé') isShared = true;
 
                 if (!isP1 && !isP2 && !isShared && !isConsolidated) return;
 
@@ -303,7 +337,19 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                 const textX = xPos + badgePaddingX;
                 const textY = yPos + rectHeight - badgePaddingY - (fontSize * 0.05);
                 pdf.text(textStr, textX, textY);
-            } else if (data.section === 'body' && data.table.columns && data.column.index === 0 && data.cell.raw) {
+            }
+            
+            // Draw fine horizontal separation line at the bottom of the cell
+            if (data.section === 'body' || data.section === 'head') {
+                const pdf = data.doc;
+                pdf.saveGraphicsState();
+                pdf.setLineWidth(0.1);
+                pdf.setDrawColor(180, 180, 180);
+                pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                pdf.restoreGraphicsState();
+            }
+
+            if (data.section === 'body' && data.table.columns && data.column.index === 0 && data.cell.raw) {
                 // Handle [SPLIT] badge and [CHILD] indent in the first column (Name)
                 const textStr = String(data.cell.raw);
                 if (textStr.includes(' [SPLIT]') || textStr.startsWith('[CHILD] ')) {
@@ -408,7 +454,7 @@ const getDisplayName = (item) => {
 
 const getOwnerText = (item, userData, language) => {
     const ownerCode = item.owner || item.person;
-    if (!ownerCode) return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+    if (!ownerCode) return language === 'fr' ? 'Partagé' : 'Shared';
     
     const code = String(ownerCode).toLowerCase();
     if (code === 'p1' || code.includes('person 1') || code.includes('personne 1') || (userData?.firstName && code === userData.firstName.toLowerCase())) {
@@ -418,9 +464,9 @@ const getOwnerText = (item, userData, language) => {
         return userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
     }
     if (code === 'consolidated' || code === 'consolidé') {
-         return language === 'fr' ? 'CONSOLIDÉ' : 'CONSOLIDATED';
+         return language === 'fr' ? 'Consolidé' : 'Consolidated';
     }
-    return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+    return language === 'fr' ? 'Partagé' : 'Shared';
 };
 
 /**
@@ -431,7 +477,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Revenus et Actifs' : 'Income & Assets',
+        language === 'fr' ? 'Revenus et actifs' : 'Income & assets',
         null,
         20
     );
@@ -441,7 +487,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
     // Income section
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Sources de Revenus' : 'Income Sources', 15, yPos);
+    pdf.text(language === 'fr' ? 'Sources de revenus' : 'Income sources', 15, yPos);
     yPos += 8;
 
     if (incomeData && incomeData.length > 0) {
@@ -453,7 +499,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
                 formatDate(income.startDate),
                 formatDate(income.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(income, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(income, userData, language));
             return row;
         });
 
@@ -470,7 +516,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             startY: yPos,
             head: incomeHead,
             body: incomeBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [46, 204, 113], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
@@ -479,7 +525,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
                 5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
 
         yPos = pdf.lastAutoTable.finalY + 15;
@@ -517,7 +563,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
                 displayStrategy,
                 displayAvailability
             ];
-            if (isCouple) row.push(getOwnerText(asset, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(asset, userData, language));
             return row;
         });
 
@@ -534,7 +580,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
             startY: yPos,
             head: assetHead,
             body: assetBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
@@ -545,7 +591,7 @@ export const generateIncomeAssets = (pdf, incomeData, assetData, language, pageN
                 5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
     } else {
         pdf.setFontSize(9);
@@ -565,7 +611,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Dépenses et Dettes' : 'Costs & Debts',
+        language === 'fr' ? 'Dépenses et dettes' : 'Costs & debts',
         null,
         20
     );
@@ -575,7 +621,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
     // Costs section
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Dépenses Périodiques' : 'Periodic Costs', 15, yPos);
+    pdf.text(language === 'fr' ? 'Dépenses périodiques' : 'Periodic costs', 15, yPos);
     yPos += 8;
 
     if (costData && costData.length > 0) {
@@ -587,7 +633,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
                 formatDate(cost.startDate),
                 formatDate(cost.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(cost, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(cost, userData, language));
             return row;
         });
 
@@ -604,7 +650,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             startY: yPos,
             head: costHead,
             body: costBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [231, 76, 60], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
@@ -613,7 +659,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
                 5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
 
         yPos = pdf.lastAutoTable.finalY + 15;
@@ -643,7 +689,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
                 formatDate(debt.startDate),
                 formatDate(debt.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(debt, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(debt, userData, language));
             return row;
         });
 
@@ -660,7 +706,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
             startY: yPos,
             head: debtHead,
             body: debtBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [192, 57, 43], textColor: 255, fontStyle: 'bold' },
             styles: { fontSize: 8 },
             columnStyles: {
@@ -669,7 +715,7 @@ export const generateCostDebts = (pdf, costData, debtData, language, pageNum, to
                 5: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
     } else {
         pdf.setFontSize(9);

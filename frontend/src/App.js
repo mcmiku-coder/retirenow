@@ -225,6 +225,8 @@ const ThemeScope = ({ children }) => {
   );
 };
 
+import GlobalErrorModal from './components/GlobalErrorModal';
+
 function App() {
   return (
     <LanguageProvider>
@@ -234,6 +236,7 @@ function App() {
             <ThemeScope>
               <AppRoutes />
               <Toaster position="top-center" />
+              <GlobalErrorModal />
             </ThemeScope>
           </BrowserRouter>
         </ThemeProvider>

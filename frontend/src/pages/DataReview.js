@@ -331,7 +331,7 @@ const DataReview = () => {
 
 
           console.log(`DEBUG [${personId}]: Final determined LPP Pension: ${lppPensionAmount}`);
-          if (lppPensionAmount && lppPensionAmount !== '0') {
+          if (lppPensionAmount && lppPensionAmount !== '0' && questionnaire.benefitType !== 'capital') {
             const startDate = (targetAge === 65) ? pLegalDate : calculateWishedDate(pBirthDate, targetAge);
             processedRetirementIncome.push({
               id: `lpp_pension_${personId}`,
@@ -346,14 +346,23 @@ const DataReview = () => {
           const upsertRetirementAsset = (asset) => {
             const existingIdx = finalAssets.findIndex(a => a.id === asset.id);
             if (existingIdx >= 0) {
-              const existingAdjusted = finalAssets[existingIdx].adjustedAmount;
-              finalAssets[existingIdx] = { ...asset, adjustedAmount: existingAdjusted || asset.amount };
+              const existing = finalAssets[existingIdx];
+              // PRESERVE user metadata: strategy, category, availability bits
+              finalAssets[existingIdx] = {
+                ...asset,
+                strategy: existing.strategy || asset.strategy,
+                category: existing.category || asset.category,
+                availabilityDate: existing.availabilityDate || asset.availabilityDate,
+                availabilityType: existing.availabilityType || asset.availabilityType,
+                availabilityTimeframe: existing.availabilityTimeframe || asset.availabilityTimeframe,
+                adjustedAmount: existing.adjustedAmount || asset.amount
+              };
             } else {
               finalAssets.unshift(asset);
             }
           };
 
-          if (lppCapitalAmount && lppCapitalAmount !== '0') {
+          if (lppCapitalAmount && lppCapitalAmount !== '0' && questionnaire.benefitType !== 'pension') {
             upsertRetirementAsset({
               id: `lpp_capital_${personId}`, name: `Projected LPP Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
               amount: lppCapitalAmount, category: 'Liquid', availabilityType: 'Date',
@@ -778,7 +787,7 @@ const DataReview = () => {
         if (lppData) lppPensionAmount = lppData.pension;
 
 
-        if (lppPensionAmount && lppPensionAmount !== '0') {
+        if (lppPensionAmount && lppPensionAmount !== '0' && questionnaire.benefitType !== 'capital') {
           const startDate = (targetAge === 65) ? pLegalDate : calculateWishedDate(pBirthDate, targetAge);
           resetRetirementIncome.push({
             id: `lpp_pension_${personId}`,
@@ -894,7 +903,7 @@ const DataReview = () => {
             else loadedCurrentAssets.unshift(asset);
           };
 
-          if (lppData && lppData.capital && lppData.capital !== '0') {
+          if (lppData && lppData.capital && lppData.capital !== '0' && questionnaire.benefitType !== 'pension') {
             upsertResetAsset({
               id: `lpp_capital_${personId}`, name: `Projected LPP Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
               amount: lppData.capital, adjustedAmount: lppData.capital,
@@ -1473,6 +1482,8 @@ const DataReview = () => {
         futureInflows, // Ensure future inflows are saved if they are part of state
         adjustedIncomes: incomes,
         adjustedCosts: costs,
+        currentAssets: currentAssets, // Save assets to prevent race condition
+        projectedOutflows: projectedOutflows, // Save outflows to prevent race condition
         incomeDateOverrides,
         // Note: activeFilters are preserved via existingData
 

@@ -45,7 +45,7 @@ const svgToPng = (svgDataUri, width, height) => {
 /**
  * Page 1: Cover Page with Logo
  */
-export const generateCoverPage = async (pdf, language) => {
+export const generateCoverPage = async (pdf, language, data) => {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
@@ -68,12 +68,32 @@ export const generateCoverPage = async (pdf, language) => {
         // Add as JPEG
         pdf.addImage(logoImg, 'JPEG', logoX, logoY, logoWidth, logoHeight);
 
-        // Title
-        pdf.setFontSize(24);
+        // Title logic (Sentence case and Dynamic Names)
+        let title = '';
+        const isCouple = data?.analysisType === 'couple' || data?.isCouple;
+        
+        if (language === 'fr') {
+            const p1 = data?.firstName || 'Personne 1';
+            if (isCouple) {
+                const p2 = data?.firstName2 || 'Personne 2';
+                title = `Rapport de simulation de retraite pour le couple ${p1} et ${p2}`;
+            } else {
+                title = `Rapport de simulation de retraite pour ${p1}`;
+            }
+        } else {
+            const p1 = data?.firstName || 'Person 1';
+            if (isCouple) {
+                const p2 = data?.firstName2 || 'Person 2';
+                title = `Retirement simulation report for ${p1} and ${p2}`;
+            } else {
+                title = `Retirement simulation report for ${p1}`;
+            }
+        }
+
+        pdf.setFontSize(20); 
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(0, 0, 0);
-        const title = language === 'fr' ? 'Rapport de Simulation de Retraite' : 'Retirement Simulation Report';
-        pdf.text(title, pageWidth / 2, 170, { align: 'center' });
+        pdf.text(title, pageWidth / 2, 170, { align: 'center', maxWidth: pageWidth - 40 });
 
         // Generated date
         pdf.setFontSize(12);
@@ -100,7 +120,7 @@ export const generateCoverPage = async (pdf, language) => {
 
         pdf.setFontSize(18);
         pdf.setFont('helvetica', 'normal');
-        const title = language === 'fr' ? 'Rapport de Simulation de Retraite' : 'Retirement Simulation Report';
+        const title = language === 'fr' ? 'Rapport de simulation de retraite' : 'Retirement simulation report';
         pdf.text(title, pageWidth / 2, 120, { align: 'center' });
     }
 };
@@ -114,7 +134,7 @@ export const generateTableOfContents = (pdf, pageNumbers, language) => {
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Table des Matières' : 'Table of Contents',
+        language === 'fr' ? 'Table des matières' : 'Table of contents',
         null,
         20
     );
@@ -124,17 +144,18 @@ export const generateTableOfContents = (pdf, pageNumbers, language) => {
 
     // Define TOC entries
     const tocEntries = [
-        { key: 'summary', labelEn: 'Simulation Summary', labelFr: 'Résumé de la Simulation' },
-        { key: 'personal', labelEn: 'Personal Info & Simulation Choice', labelFr: 'Informations personnelles et choix de la simulation' },
-        { key: 'incomeAssets', labelEn: 'Income & Assets', labelFr: 'Revenus et Actifs' },
-        { key: 'costDebts', labelEn: 'Costs & Debts', labelFr: 'Dépenses et Dettes' },
-        { key: 'benefits', labelEn: 'Retirement Benefits', labelFr: 'Prestations de Retraite' },
-        { key: 'dataReview', labelEn: 'Data Review', labelFr: 'Révision des Données' },
-        { key: 'graph', labelEn: 'Results Graph (Landscape)', labelFr: 'Graphique des Résultats (Paysage)' },
-        { key: 'breakdown', labelEn: 'Year-by-Year Breakdown (Landscape)', labelFr: 'Détail Année par Année (Paysage)' },
-        { key: 'lodging', labelEn: 'Lodging Cost Details', labelFr: 'Détails des Frais de Logement' },
-        { key: 'investments', labelEn: 'Investment Information', labelFr: 'Informations sur les Investissements', conditional: true },
-        { key: 'warnings', labelEn: 'Legal Warnings', labelFr: 'Avertissements Légaux' }
+        { key: 'summary', labelEn: 'Simulation summary', labelFr: 'Résumé de la simulation' },
+        { key: 'personal', labelEn: 'Personal info & simulation choice', labelFr: 'Informations personnelles et choix de la simulation' },
+        { key: 'incomeAssets', labelEn: 'Income & assets', labelFr: 'Revenus et actifs' },
+        { key: 'costDebts', labelEn: 'Costs & debts', labelFr: 'Dépenses et dettes' },
+        { key: 'benefits', labelEn: 'Retirement benefits', labelFr: 'Prestations de retraite' },
+        { key: 'dataReview', labelEn: 'Data review', labelFr: 'Révision des données' },
+        { key: 'graph', labelEn: 'Results graph', labelFr: 'Graphique des résultats' },
+        { key: 'breakdown', labelEn: 'Year-by-year breakdown', labelFr: 'Détail année par année' },
+        { key: 'lodging', labelEn: 'Lodging cost details', labelFr: 'Détails des frais de logement' },
+        { key: 'investments', labelEn: 'Investment information', labelFr: 'Informations sur les investissements', conditional: true },
+        { key: 'mcDetails', labelEn: 'Monte-Carlo engine details', labelFr: 'Détails du moteur Monte-Carlo', conditional: true },
+        { key: 'warnings', labelEn: 'Legal warnings', labelFr: 'Avertissements légaux' }
     ];
 
     pdf.setFontSize(11);
@@ -155,21 +176,9 @@ export const generateTableOfContents = (pdf, pageNumbers, language) => {
         // Draw label
         pdf.text(label, 20, yPos);
 
-        // Calculate positions
-        const labelWidth = pdf.getTextWidth(label);
         const pageNumText = String(pageNum);
         const pageNumWidth = pdf.getTextWidth(pageNumText);
         const pageNumX = pageWidth - 20 - pageNumWidth;
-
-        // Draw dots in gray
-        const dotsStartX = 20 + labelWidth + 5;
-        const dotsEndX = pageNumX - 5;
-        const dotsWidth = dotsEndX - dotsStartX;
-        const dotCount = Math.max(0, Math.floor(dotsWidth / 3));
-        const dots = '.'.repeat(dotCount);
-
-        pdf.setTextColor(150, 150, 150);
-        pdf.text(dots, dotsStartX, yPos);
 
         // Draw page number in black
         pdf.setTextColor(0, 0, 0);
@@ -189,7 +198,7 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Résumé de la Simulation' : 'Simulation Summary',
+        language === 'fr' ? 'Résumé de la simulation' : 'Simulation summary',
         null,
         20
     );
@@ -199,16 +208,8 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
     const pageWidth = pdf.internal.pageSize.getWidth();
 
     // Verdict
-    const canQuit = data.finalBalance >= 0;
-    const verdictText = canQuit
-        ? (language === 'fr' ? 'OUI, VOUS POUVEZ PRENDRE VOTRE RETRAITE' : 'YES, YOU CAN QUIT')
-        : (language === 'fr' ? 'NON, PAS ENCORE PRÊT POUR LA RETRAITE' : 'NO, NOT READY TO QUIT YET');
-
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(canQuit ? 34 : 239, canQuit ? 197 : 68, canQuit ? 94 : 68);
-    pdf.text(verdictText, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 15;
+    // Verdict: If invested, use Monte Carlo 5% balance. If not, use Baseline balance.
+    const canQuit = data.isInvested ? (data.final5Balance >= 0) : (data.finalBaselineBalance >= 0);
 
     // Add verdict image/poster
     try {
@@ -230,40 +231,113 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         // Fallback: just show text verdict without image
         yPos += 5;
     }
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 0, 0);
-    const metricsTitle = language === 'fr' ? 'Métriques Clés' : 'Key Metrics';
-    pdf.text(metricsTitle, 20, yPos);
+
+    // --- Financial Balance Section (Reordered: MC first bold, Baseline second normal) ---
+    const financialData = [];
+
+    if (data.isInvested && data.final5Balance !== null) {
+        financialData.push([
+            { 
+                content: language === 'fr' ? 'Solde projeté au décès (Monte Carlo 5%)' : 'Projected balance at death (Monte Carlo 5%)',
+                styles: { fontStyle: 'bold' } 
+            },
+            { 
+                content: formatCurrency(data.final5Balance),
+                styles: { fontStyle: 'bold', halign: 'right' } 
+            }
+        ]);
+    }
+
+    financialData.push([
+        { 
+            content: language === 'fr' ? 'Solde projeté au décès (baseline)' : 'Projected balance at death (baseline)',
+            styles: { fontStyle: 'normal' } 
+        },
+        { 
+            content: formatCurrency(data.finalBaselineBalance !== undefined ? data.finalBaselineBalance : data.finalBalance),
+            styles: { fontStyle: 'normal', halign: 'right' } 
+        }
+    ]);
+
+    const tableWidth = 140; // Fixed width for centering
+    const leftMargin = (pageWidth - tableWidth) / 2;
+
+    autoTable(pdf, {
+        startY: yPos,
+        body: financialData,
+        theme: 'plain',
+        tableWidth: tableWidth,
+        styles: { fontSize: 12, cellPadding: 3 },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 40 } // Give enough space for right align
+        },
+        margin: { left: leftMargin },
+        didParseCell: function(cellData) {
+            // Apply conditional coloring based on the baseline or MC values
+            let val = 0;
+            const hasMC = data.isInvested && data.final5Balance !== null;
+            
+            if (hasMC) {
+                if (cellData.row.index === 0) {
+                    val = data.final5Balance;
+                } else {
+                    val = data.finalBaselineBalance !== undefined ? data.finalBaselineBalance : data.finalBalance;
+                }
+            } else {
+                val = data.finalBaselineBalance !== undefined ? data.finalBaselineBalance : data.finalBalance;
+            }
+
+            if (val >= 0) {
+                cellData.cell.styles.textColor = [34, 197, 94]; // Green (34, 197, 94)
+            } else {
+                cellData.cell.styles.textColor = [239, 68, 68]; // Red (239, 68, 68)
+            }
+        }
+    });
+
+    yPos = pdf.lastAutoTable.finalY + 8;
+
+    // Reference to detailed view
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    const refText = language === 'fr'
+        ? 'Pour plus de détails, consultez le graphique détaillé à la page 10'
+        : 'For detailed breakdown, see the results graph on page 10';
+    
+    const refTextWidth = pdf.getTextWidth(refText);
+    const refTextX = (pageWidth - refTextWidth) / 2;
     yPos += 5;
 
+    // --- Key Metrics Section (Restored & Refined) ---
+    // NO TITLE RENDERED HERE
+
     const isCouple = data.isCouple;
-    const p1Name = (data.firstName || 'Person 1').toUpperCase();
-    const p2Name = (data.firstName2 || 'Person 2').toUpperCase();
+    const p1Fallback = language === 'fr' ? 'Personne 1' : 'Person 1';
+    const p2Fallback = language === 'fr' ? 'Personne 2' : 'Person 2';
+    const p1Name = data.firstName || p1Fallback;
+    const p2Name = data.firstName2 || p2Fallback;
 
     const metricsHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', p1Name, p2Name]]
-        : [[language === 'fr' ? 'Champ' : 'Field', p1Name]];
+        ? [['', p1Name, p2Name]]
+        : [['', p1Name]];
 
     const metricsData = [
         [
-            language === 'fr' ? 'Âge de Retraite' : 'Retirement Age',
+            language === 'fr' ? 'Âge de retraite' : 'Retirement age',
             data.retirementAge || 'N/A'
         ],
         [
-            language === 'fr' ? 'Années de Retraite' : 'Years in Retirement',
+            language === 'fr' ? 'Années de retraite' : 'Years in retirement',
             data.yearsInRetirement || 'N/A'
-        ],
-        [
-            language === 'fr' ? 'Date de Décès Théorique' : 'Theoretical Death Date',
-            formatDate(data.deathDate)
         ]
+        // [REMOVED] Theoretical Death Date row as per user request
     ];
 
     if (isCouple) {
         metricsData[0].push(data.retirementAge2 || 'N/A');
         metricsData[1].push(data.yearsInRetirement2 || 'N/A');
-        metricsData[2].push(formatDate(data.deathDate2));
     }
 
     const headerHooks = {
@@ -277,11 +351,11 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         didDrawCell: function(data) {
             if (data.section === 'head' && data.column.index > 0 && data.cell.raw) {
                 const pdf = data.doc;
-                const textStr = String(data.cell.raw).toUpperCase();
+                const textStr = String(data.cell.raw);
                 
                 let isP1 = false, isP2 = false;
-                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
-                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
+                if (textStr === p1Name || textStr === 'Person 1' || textStr === 'Personne 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'Person 2' || textStr === 'Personne 2') isP2 = true;
 
                 if (!isP1 && !isP2) return;
 
@@ -318,12 +392,11 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
         }
     };
 
-    // Add Balance as a separate section below the person-specific metrics
     autoTable(pdf, {
         startY: yPos,
         head: metricsHead,
         body: metricsData,
-        theme: 'grid',
+        theme: 'plain',
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 10 },
         margin: { left: 15, right: 15 },
@@ -332,51 +405,19 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
             1: { halign: 'center' },
             2: { halign: 'center' }
         },
-        ...headerHooks
-    });
-
-    yPos = pdf.lastAutoTable.finalY + 10;
-
-    // Financial Balance Section
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Solde Financier' : 'Financial Balance', 20, yPos);
-    yPos += 5;
-
-    const financialData = [
-        [
-            language === 'fr' ? 'Solde Projeté au Décès (Baseline)' : 'Projected Balance at Death (Baseline)',
-            formatCurrency(data.finalBaselineBalance !== undefined ? data.finalBaselineBalance : data.finalBalance)
-        ]
-    ];
-
-    if (data.isInvested && data.final5Balance !== null) {
-        financialData.push([
-            language === 'fr' ? 'Solde Projeté au Décès (Monte Carlo 5%)' : 'Projected Balance at Death (Monte Carlo 5%)',
-            formatCurrency(data.final5Balance)
-        ]);
-    }
-
-    autoTable(pdf, {
-        startY: yPos,
-        body: financialData,
-        theme: 'plain',
-        styles: { fontSize: 10, cellPadding: 3 },
-        columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 100 }
-        },
-        margin: { left: 20 }
+        ...headerHooks,
+        didDrawCell: function(data) {
+            if (headerHooks.didDrawCell) headerHooks.didDrawCell(data);
+            const pdf = data.doc;
+            pdf.saveGraphicsState();
+            pdf.setLineWidth(0.1);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            pdf.restoreGraphicsState();
+        }
     });
 
     yPos = pdf.lastAutoTable.finalY + 15;
-
-    // Reference to detailed view
-    pdf.setFontSize(9);
-    pdf.setTextColor(100, 100, 100);
-    const refText = language === 'fr'
-        ? 'Pour plus de détails, consultez le graphique détaillé à la page 10'
-        : 'For detailed breakdown, see the results graph on page 10';
-    pdf.text(refText, 20, yPos);
 
     addPageNumber(pdf, pageNum, data.totalPages || 14, language);
 };

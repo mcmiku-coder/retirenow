@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { getUserData, saveUserData } from '../utils/database';
 import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';

@@ -34,7 +34,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    const title = language === 'fr' ? 'Graphique des Résultats de Simulation' : 'Simulation Results Graph';
+    const title = language === 'fr' ? 'Graphique des résultats de simulation' : 'Simulation results graph';
     pdf.text(title, pageWidth / 2, yPos, { align: 'center' });
     yPos += 10;
 
@@ -63,7 +63,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setTextColor(59, 130, 246); // text-blue-500 (matching border)
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'SIMULATION MONTE-CARLO SUR INVESTISSEMENTS' : 'MONTE-CARLO SIMULATION ON INVESTMENTS', boxStartX + boxWidth / 2, yPos + 6, { align: 'center' });
+        pdf.text(language === 'fr' ? 'Simulation Monte-Carlo sur investissements' : 'Monte-Carlo simulation on investments', boxStartX + boxWidth / 2, yPos + 6, { align: 'center' });
 
         // Value
         const val5 = Math.round(summaryData.final5Balance || 0);
@@ -76,7 +76,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setTextColor(107, 114, 128); // text-gray-500
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(language === 'fr' ? 'Solde final projeté (5%)' : 'Projected Final Balance (5%)', boxStartX + boxWidth / 2, yPos + 17, { align: 'center' });
+        pdf.text(language === 'fr' ? 'Solde final projeté (5%)' : 'Projected final balance (5%)', boxStartX + boxWidth / 2, yPos + 17, { align: 'center' });
 
 
         // Box 2: Baseline (Cash Only)
@@ -88,7 +88,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setTextColor(107, 114, 128); // text-gray-500
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'SIMULATION AVEC CASH SEULEMENT' : 'SIMULATION WITH ONLY CASH (NO INVESTMENT)', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 6, { align: 'center' });
+        pdf.text(language === 'fr' ? 'Simulation sans investissements' : 'Simulation without investments', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 6, { align: 'center' });
 
         // Value
         const valBase = Math.round(summaryData.finalBaselineBalance || 0);
@@ -100,7 +100,7 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setTextColor(107, 114, 128); // text-gray-500
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(language === 'fr' ? 'Solde final projeté' : 'Projected Final Balance', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 17, { align: 'center' });
+        pdf.text(language === 'fr' ? 'Solde final projeté' : 'Projected final balance', boxStartX + boxWidth + spacing + boxWidth / 2, yPos + 17, { align: 'center' });
 
     } else {
         // STANDARD LAYOUT
@@ -111,16 +111,17 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setFillColor(summaryData.finalBalance >= 0 ? 34 : 239, summaryData.finalBalance >= 0 ? 197 : 68, summaryData.finalBalance >= 0 ? 94 : 68);
         pdf.rect(startX, yPos, boxWidth, boxHeight, 'F');
         pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Solde Final' : 'Final Balance', startX + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.text(language === 'fr' ? 'Solde final' : 'Final balance', startX + boxWidth / 2, yPos + 8, { align: 'center' });
         pdf.setFontSize(10);
         pdf.text(formatCurrency(summaryData.finalBalance), startX + boxWidth / 2, yPos + 15, { align: 'center' });
 
         // Box 2: Peak Wealth
         pdf.setFillColor(41, 128, 185);
         pdf.rect(startX + boxWidth + boxSpacing, yPos, boxWidth, boxHeight, 'F');
-        pdf.text(language === 'fr' ? 'Richesse Max' : 'Peak Wealth', startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.text(language === 'fr' ? 'Richesse max' : 'Peak wealth', startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 8, { align: 'center' });
         pdf.setFontSize(10);
         pdf.text(formatCurrency(summaryData.peakWealth || 0), startX + boxWidth + boxSpacing + boxWidth / 2, yPos + 15, { align: 'center' });
 
@@ -128,15 +129,16 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
         pdf.setFillColor(142, 68, 173);
         pdf.rect(startX + (boxWidth + boxSpacing) * 2, yPos, boxWidth, boxHeight, 'F');
         pdf.setFontSize(8);
-        pdf.text(language === 'fr' ? 'Années de Retraite' : 'Years in Retirement', startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
+        pdf.text(language === 'fr' ? 'Années de retraite' : 'Years in retirement', startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
         
+        pdf.setFontSize(10);
         if (summaryData.isCouple && summaryData.yearsInRetirement2) {
-            pdf.setFontSize(8);
-            const p1Str = summaryData.firstName || 'P1';
-            const p2Str = summaryData.firstName2 || 'P2';
-            pdf.text(`${p1Str}: ${summaryData.yearsInRetirement || 0}  |  ${p2Str}: ${summaryData.yearsInRetirement2 || 0}`, startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+            const p1Name = summaryData.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+            const p2Name = summaryData.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+            
+            pdf.text(`${p1Name}: ${summaryData.yearsInRetirement} ${language === 'fr' ? 'ans' : 'years'}`, startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
+            pdf.text(`${p2Name}: ${summaryData.yearsInRetirement2} ${language === 'fr' ? 'ans' : 'years'}`, startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 22, { align: 'center' });
         } else {
-            pdf.setFontSize(10);
             pdf.text(String(summaryData.yearsInRetirement || 0), startX + (boxWidth + boxSpacing) * 2 + boxWidth / 2, yPos + 15, { align: 'center' });
         }
     }
@@ -178,12 +180,12 @@ export const generateLandscapeGraph = async (pdf, graphElement, summaryData, lan
  * Page 11: Year-by-Year Breakdown (Landscape)
  * Detailed table showing all yearly calculations
  */
-export const generateYearByYearBreakdown = (pdf, yearlyData, language, pageNum, totalPages) => {
+export const generateYearByYearBreakdown = (pdf, yearlyData, language, pageNum, totalPages, isCouple, userData) => {
     pdf.addPage('a4', 'landscape');
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Détail Année par Année' : 'Year-by-Year Breakdown',
+        language === 'fr' ? 'Détail année par année' : 'Year-by-year breakdown',
         null,
         15
     );
@@ -213,66 +215,56 @@ export const generateYearByYearBreakdown = (pdf, yearlyData, language, pageNum, 
         }
     });
 
-    // Build header row with abbreviated names
-    const headers = [
-        language === 'fr' ? 'An' : 'Yr',
-        language === 'fr' ? 'Âge' : 'Age'
-    ];
+    // Build header configs with categories (@@p1, @@p2, etc.)
+    const incomeCols = Array.from(allIncomeColumns);
+    const assetCols = Array.from(allAssetColumns);
+    const costCols = Array.from(allCostColumns);
+    
+    const rawKeys = ['An', ...incomeCols, ...assetCols, ...costCols, 'Ann.Bal', 'Cum.Bal'];
+    
+    const headerConfigs = rawKeys.map(key => {
+        const parts = key.split('@@');
+        const name = parts[0];
+        const category = parts[1] || 'none';
+        
+        let label = name;
+        if (key === 'Ann.Bal') label = language === 'fr' ? 'Solde Ann.' : 'Ann. Bal';
+        if (key === 'Cum.Bal') label = language === 'fr' ? 'Solde Cum.' : 'Cum. Bal';
+        if (key === 'An') label = language === 'fr' ? 'Année' : 'Yr';
 
-    // Add income columns (abbreviated)
-    const incomeColumns = Array.from(allIncomeColumns);
-    incomeColumns.forEach(col => {
-        // Abbreviate long names
-        const abbrev = col.length > 12 ? col.substring(0, 10) + '.' : col;
-        headers.push(abbrev);
+        // Custom abbreviations for common long terms
+        label = label.replace('Salary', 'Sal.');
+        label = label.replace('Investment', 'Inv.');
+        label = label.replace('Balance', 'Bal.');
+
+        return { key, label, category };
     });
 
-    // Add asset columns (abbreviated)
-    const assetColumns = Array.from(allAssetColumns);
-    assetColumns.forEach(col => {
-        const abbrev = col.length > 12 ? col.substring(0, 10) + '.' : col;
-        headers.push(abbrev);
-    });
-
-    // Add cost columns (abbreviated)
-    const costColumns = Array.from(allCostColumns);
-    costColumns.forEach(col => {
-        const abbrev = col.length > 12 ? col.substring(0, 10) + '.' : col;
-        headers.push(abbrev);
-    });
-
-    // Add summary columns
-    headers.push(
-        language === 'fr' ? 'Ann.Bal' : 'Ann.Bal',
-        language === 'fr' ? 'Cum.Bal' : 'Cum.Bal'
-    );
+    const headers = headerConfigs.map(c => c.label);
 
     // Build data rows
     const tableData = yearlyData.map(year => {
-        const row = [
-            String(year.year || ''),
-            String(year.age || '')
-        ];
+        const row = [String(year.year || '')];
 
-        // Add income values (no CHF prefix to save space)
-        incomeColumns.forEach(col => {
+        // Add income values
+        incomeCols.forEach(col => {
             const val = year.incomeBreakdown?.[col] || 0;
             row.push(val === 0 ? '' : formatNumber(val));
         });
 
-        // Add asset values (no CHF prefix to save space)
-        assetColumns.forEach(col => {
+        // Add asset values
+        assetCols.forEach(col => {
             const val = year.activatedOwingsBreakdown?.[col] || 0;
             row.push(val === 0 ? '' : formatNumber(val));
         });
 
-        // Add cost values (negative, no CHF prefix to save space)
-        costColumns.forEach(col => {
+        // Add cost values
+        costCols.forEach(col => {
             const val = year.costBreakdown?.[col] || 0;
             row.push(val === 0 ? '' : formatNumber(-val));
         });
 
-        // Add summary values (no CHF prefix to save space)
+        // Add summary values
         row.push(
             formatNumber(year.annualBalance || 0),
             formatNumber(year.cumulativeBalance || 0)
@@ -286,45 +278,107 @@ export const generateYearByYearBreakdown = (pdf, yearlyData, language, pageNum, 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const availableWidth = pageWidth - 20; // Minimal margins
 
-    // Year and Age get fixed small widths
-    const yearColWidth = 15;
-    const ageColWidth = 12;
-    const remainingWidth = availableWidth - yearColWidth - ageColWidth;
-    const dataColWidth = Math.max(12, remainingWidth / (totalColumns - 2));
+    // Year gets same width as others now that it's vertical
+    const dataColWidth = availableWidth / totalColumns;
 
     const columnStyles = {};
     headers.forEach((_, index) => {
-        // Center-align all columns for better readability in compact layout
-        if (index === 0) {
-            columnStyles[index] = { halign: 'center', cellWidth: yearColWidth };
-        } else if (index === 1) {
-            columnStyles[index] = { halign: 'center', cellWidth: ageColWidth };
-        } else {
-            columnStyles[index] = { halign: 'center', cellWidth: dataColWidth };
-        }
+        columnStyles[index] = { halign: 'center', cellWidth: dataColWidth };
     });
 
     autoTable(pdf, {
         startY: yPos,
         head: [headers],
         body: tableData,
-        theme: 'striped',
+        theme: 'grid', // Grid for vertical lines
         headStyles: {
             fillColor: [41, 128, 185],
             textColor: 255,
-            fontSize: 5,
+            fontSize: 5.5,
             fontStyle: 'bold',
             cellPadding: 0.5,
-            minCellHeight: 8,
-            halign: 'center'  // Center-align header text
+            minCellHeight: 35, // Increased further for separate-line layout
+            halign: 'center',
+            valign: 'middle'
         },
         styles: {
             fontSize: 4.5,
             cellPadding: 0.3,
             minCellHeight: 4,
-            overflow: 'linebreak'
+            overflow: 'linebreak',
+            lineWidth: 0.1, // Very fine lines
+            lineColor: [200, 200, 200] // Light gray lines
         },
         columnStyles,
+        willDrawCell: function (data) {
+            // Empty the header text for all columns so it's drawn vertically manually
+            if (data.section === 'head') {
+                data.cell.text = ['']; 
+            }
+        },
+        didDrawCell: function (data) {
+            // Draw rotated text for all headers
+            if (data.section === 'head') {
+                const doc = data.doc;
+                const cell = data.cell;
+                const config = headerConfigs[data.column.index];
+                const text = config.label;
+                const category = config.category;
+
+                doc.saveGraphicsState();
+                
+                // We split the cell width into two vertical lanes
+                // Lane 1: Title (left side of cell when rotated)
+                // Lane 2: Badge (right side of cell when rotated)
+                const lane1CenterX = cell.x + (cell.width * 0.35); // For Title
+                const lane2CenterX = cell.x + (cell.width * 0.75); // For Badge
+
+                // 1. Draw Main Title (in Lane 1, Bottom-aligned)
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(5); 
+                doc.setFont('helvetica', 'bold');
+                doc.text(text, lane1CenterX, cell.y + cell.height - 2, { angle: 90 });
+
+                // 2. Draw Badge (Category) in Lane 2, Bottom-aligned
+                if (isCouple && category !== 'none' && category !== 'An') {
+                    let badgeColor = [156, 163, 175]; // Gray-400
+                    let badgeLabel = category.toUpperCase();
+                    
+                    if (category === 'p1') {
+                        badgeColor = [59, 130, 246]; // Blue-500
+                        badgeLabel = (userData?.firstName || 'Personne 1');
+                    } else if (category === 'p2') {
+                        badgeColor = [168, 85, 247]; // Purple-500
+                        badgeLabel = (userData?.firstName2 || 'Personne 2');
+                    } else if (category === 'consolidated' || category === 'con') {
+                        badgeColor = [245, 158, 11]; // Amber-500
+                        badgeLabel = language === 'fr' ? 'Consolidé' : 'Consolidated';
+                    } else if (category === 'shared' || category === 'sho') {
+                        badgeColor = [107, 114, 128]; // Gray-500
+                        badgeLabel = language === 'fr' ? 'Partagé' : 'Shared';
+                    }
+
+                    doc.setFontSize(3); // Small but readable font for full text
+                    const labelWidth = doc.getTextWidth(badgeLabel);
+                    const rectHeight = labelWidth + 2; 
+                    const rectWidth = (cell.width * 0.3); // Very thin strip
+
+                    // Position badge just above the bottom padding
+                    const badgeBottomY = cell.y + cell.height - 2;
+                    const badgeTopY = badgeBottomY - rectHeight;
+
+                    // Draw badge background
+                    doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+                    doc.roundedRect(cell.x + (cell.width * 0.6), badgeTopY, rectWidth, rectHeight, 0.2, 0.2, 'F');
+
+                    // Draw badge text (vertical)
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(badgeLabel, lane2CenterX, badgeBottomY - 1, { angle: 90 });
+                }
+                
+                doc.restoreGraphicsState();
+            }
+        },
         didParseCell: function (data) {
             // Color code the balance columns (last 2 columns)
             if (data.section === 'body' && data.column.index >= totalColumns - 2) {
@@ -379,7 +433,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
 
             let yPos = addPageHeader(
                 pdf,
-                language === 'fr' ? `Annexe : Frais de Logement - Propriété ${index + 1}` : `Annex: Lodging Costs - Property ${index + 1}`,
+                language === 'fr' ? `Annexe : frais de logement - propriété ${index + 1}` : `Annex: lodging costs - property ${index + 1}`,
                 null,
                 20
             );
@@ -389,7 +443,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
             // Property value
             pdf.setFontSize(11);
             pdf.setFont('helvetica', 'bold');
-            pdf.text(language === 'fr' ? 'Valeur du Bien' : 'Property Value', 15, yPos);
+            pdf.text(language === 'fr' ? 'Valeur du bien' : 'Property value', 15, yPos);
             yPos += 8;
 
             const assetRows = property.assetRows || [];
@@ -456,7 +510,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
             pdf.setFontSize(11);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
-            pdf.text(language === 'fr' ? 'Frais d\'Entretien' : 'Maintenance Costs', 15, yPos);
+            pdf.text(language === 'fr' ? 'Frais d\'entretien' : 'Maintenance costs', 15, yPos);
             yPos += 8;
 
             const maintenanceRows = property.maintenanceRows || [];
@@ -469,12 +523,20 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
                 autoTable(pdf, {
                     startY: yPos,
                     body: maintenanceData,
-                    theme: 'striped',
+                    theme: 'plain',
                     styles: { fontSize: 9 },
                     columnStyles: {
                         1: { halign: 'right' }
                     },
-                    margin: { left: 20 }
+                    margin: { left: 20 },
+                    didDrawCell: function(data) {
+                        const pdf = data.doc;
+                        pdf.saveGraphicsState();
+                        pdf.setLineWidth(0.1);
+                        pdf.setDrawColor(180, 180, 180);
+                        pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                        pdf.restoreGraphicsState();
+                    }
                 });
 
                 yPos = pdf.lastAutoTable.finalY + 10;
@@ -494,10 +556,10 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
             yPos += 8;
 
             const totalsData = [
-                [language === 'fr' ? 'Valeur Totale du Bien' : 'Total Property Value', formatCurrency(totalAsset)],
-                [language === 'fr' ? 'Total Hypothèques' : 'Total Mortgages', formatCurrency(totalMortgage)],
-                [language === 'fr' ? 'Valeur Nette' : 'Net Value', formatCurrency(netValue)],
-                [language === 'fr' ? 'Frais d\'Entretien Mensuels' : 'Monthly Maintenance Costs', formatCurrency(totalMaintenance)]
+                [language === 'fr' ? 'Valeur totale du bien' : 'Total property value', formatCurrency(totalAsset)],
+                [language === 'fr' ? 'Total hypothèques' : 'Total mortgages', formatCurrency(totalMortgage)],
+                [language === 'fr' ? 'Valeur nette' : 'Net value', formatCurrency(netValue)],
+                [language === 'fr' ? 'Frais d\'entretien mensuels' : 'Monthly maintenance costs', formatCurrency(totalMaintenance)]
             ];
 
             autoTable(pdf, {
@@ -520,7 +582,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
 
         let yPos = addPageHeader(
             pdf,
-            language === 'fr' ? 'Annexe : Frais de Logement - Locataire' : 'Annex: Lodging Costs - Tenant',
+            language === 'fr' ? 'Annexe : frais de logement - locataire' : 'Annex: lodging costs - tenant',
             null,
             20
         );
@@ -542,7 +604,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
         // Tenant expenses
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Frais du Locataire' : 'Tenant Expenses', 15, yPos);
+        pdf.text(language === 'fr' ? 'Frais du locataire' : 'Tenant expenses', 15, yPos);
         yPos += 8;
 
         if (tenantExpenses.length > 0) {
@@ -554,12 +616,20 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
             autoTable(pdf, {
                 startY: yPos,
                 body: expenseData,
-                theme: 'striped',
+                theme: 'plain',
                 styles: { fontSize: 9 },
                 columnStyles: {
                     1: { halign: 'right' }
                 },
-                margin: { left: 20 }
+                margin: { left: 20 },
+                didDrawCell: function(data) {
+                    const pdf = data.doc;
+                    pdf.saveGraphicsState();
+                    pdf.setLineWidth(0.1);
+                    pdf.setDrawColor(180, 180, 180);
+                    pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                    pdf.restoreGraphicsState();
+                }
             });
 
             yPos = pdf.lastAutoTable.finalY + 10;
@@ -571,7 +641,7 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
 
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${language === 'fr' ? 'Total Mensuel' : 'Total Monthly'}: ${formatCurrency(totalMonthly)}`, 20, yPos);
+        pdf.text(`${language === 'fr' ? 'Total mensuel' : 'Total monthly'}: ${formatCurrency(totalMonthly)}`, 20, yPos);
 
         addPageNumber(pdf, pageNum, totalPages, language);
     }
@@ -581,292 +651,300 @@ export const generateLodgingAnnex = (pdf, realEstateData, language, pageNum, tot
  * Page 13: Investment Information (Conditional)
  * Only included if user has defined investments in Capital Management
  */
-export const generateInvestmentInfo = (pdf, instrumentData, language, pageNum, totalPages, monteCarloData, baselineProjection) => {
-    // USE MONTE CARLO DATA IF AVAILABLE (It contains the specific product selections)
-    // Structure: monteCarloData.details.portfolioAssets (because ScenarioResult wraps it)
-    const simulationDetails = monteCarloData?.details;
-    const assetsToDisplay = simulationDetails?.portfolioAssets || [];
+export const generateInvestmentInfo = async (pdf, investedAssets, language, pageNum, totalPages, monteCarloData, baselineProjection, extraData = {}) => {
+    const { 
+        mcChartElement, 
+        histChartElement, 
+        histData, 
+        metricsArr, 
+        investmentProductsList,
+        startingAmount,
+        injections,
+        exits
+    } = extraData;
 
-    if (assetsToDisplay.length === 0 && instrumentData.length === 0) {
-        return; // Skip if nothing to show
-    }
+    if (!investedAssets || investedAssets.length === 0) return;
 
-    pdf.addPage();
-
+    pdf.addPage('a4', 'portrait');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Informations sur les Investissements' : 'Investment Information',
+        language === 'fr' ? 'Informations sur les investissements' : 'Investment information',
         language === 'fr' ? 'Détails de la gestion du capital' : 'Capital management details',
-        20
+        pageNum
     );
 
     yPos += 10;
 
-    // 1. INVESTMENT DETAILS TABLE
-    pdf.setFontSize(12);
+    // 1. INVESTISSEMENTS INDIVIDUELS
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(41, 128, 185);
-    pdf.text(language === 'fr' ? '1. Détail des Instruments' : '1. Instrument Details', 15, yPos);
-    yPos += 8;
+    pdf.text(language === 'fr' ? '1. Investissements individuels' : '1. Individual Investments', 15, yPos);
+    yPos += 6;
 
-    const detailsHeaders = [
-        language === 'fr' ? 'Actif' : 'Asset',
-        language === 'fr' ? 'Produit Sélectionné' : 'Selected Product',
-        language === 'fr' ? 'Montant' : 'Amount',
-        language === 'fr' ? 'Début' : 'Start Date',
-        language === 'fr' ? 'Stratégie' : 'Strategy'
-    ];
-
-    // If using MC data, we need to map back to original asset name if possible, or use product name
-    const detailsData = [];
-
-    if (assetsToDisplay.length > 0) {
-        assetsToDisplay.forEach(item => {
-            // item structure: { assetId, product: {...}, amount, availabilityDate, weight }
-            // Find original asset name from instrumentData if possible
-            const originalAsset = instrumentData.find(i => i.id === item.assetId);
-
-            detailsData.push([
-                originalAsset ? originalAsset.name : (language === 'fr' ? 'Investissement' : 'Investment'),
-                item.product.name, // The SPECIFIC product name (e.g., UBS ETF...)
-                formatCurrency(item.amount || 0),
-                item.availabilityDate ? formatDate(item.availabilityDate) : 'N/A',
-                'Invested'
-            ]);
-        });
-    } else {
-        // Fallback if no MC data (display generic info)
-        instrumentData.forEach(inst => {
-            detailsData.push([
-                inst.name,
-                language === 'fr' ? 'Non spécifié' : 'Not specified',
-                formatCurrency(inst.adjustedAmount || inst.amount || 0),
-                inst.startDate ? formatDate(inst.startDate) : 'N/A',
-                inst.strategy || 'N/A'
-            ]);
-        });
-    }
-
-    autoTable(pdf, {
-        startY: yPos,
-        head: [detailsHeaders],
-        body: detailsData,
-        theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
-        styles: { fontSize: 8 },
-        columnStyles: { 2: { halign: 'right' } },
-        margin: { left: 15, right: 15 }
-    });
-
-    yPos = pdf.lastAutoTable.finalY + 15;
-
-    // 2. STATISTICAL INFORMATION (Specific to selected products)
-    yPos = checkPageBreak(pdf, yPos, 60);
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(41, 128, 185);
-    pdf.text(language === 'fr' ? '2. Statistiques Historiques (25 ans)' : '2. Historical Statistics (25 Years)', 15, yPos);
-    yPos += 8;
-
-    const statsHeaders = [
+    const tableHeaders = [
+        language === 'fr' ? 'Nom du Cluster' : 'Cluster Name',
+        { content: language === 'fr' ? 'Montant' : 'Amount', styles: { halign: 'right' } },
+        language === 'fr' ? 'Date dispo.' : 'Avail. Date',
+        language === 'fr' ? 'Date fin' : 'End Date',
         language === 'fr' ? 'Produit' : 'Product',
-        language === 'fr' ? 'Rendement Moy.' : 'Avg Return',
-        language === 'fr' ? 'Volatilité' : 'Volatility',
-        language === 'fr' ? 'Max Perte 3 ans' : 'Max 3Y Loss',
-        language === 'fr' ? 'Max Gain 3 ans' : 'Max 3Y Gain'
+        language === 'fr' ? 'Groupé avec' : 'Grouped with',
+        language === 'fr' ? 'Nom Invest/Groupe' : 'Invest/Group name'
     ];
 
-    const statsData = [];
-    if (assetsToDisplay.length > 0) {
-        assetsToDisplay.map(item => {
-            const p = item.product;
-            // Check if metrics exist
-            if (!p || !p.metrics) return statsData.push([item.product?.name || 'N/A', '-', '-', '-', '-']);
-
-            statsData.push([
-                p.name, // Specific product name
-                `${p.metrics.avgReturn}%`,
-                `${p.metrics.avgVolatility}%`,
-                { content: `${p.metrics.max3YLoss}%`, styles: { textColor: [220, 38, 38] } }, // Red
-                { content: `${p.metrics.max3YGain}%`, styles: { textColor: [22, 163, 74] } }  // Green
-            ]);
-        });
-    } else {
-        statsData.push([language === 'fr' ? 'Aucun produit sélectionné' : 'No product selected', '-', '-', '-', '-']);
-    }
+    const tableData = investedAssets.map(row => {
+        const product = investmentProducts.find(p => p.id === row.productId || p.id === row.selectedProduct);
+        const parent = investedAssets.find(p => p.id === row.groupedWith);
+        
+        return [
+            row.name || '-',
+            formatCurrency(row.amount || 0),
+            row.availabilityDate ? formatDate(row.availabilityDate) : row.startDate ? formatDate(row.startDate) : '-',
+            row.endDate ? formatDate(row.endDate) : '-',
+            product ? product.ticker : '-',
+            parent ? parent.name : (row.groupedWith === 'not grouped' || !row.groupedWith) ? (language === 'fr' ? 'Non groupé' : 'not grouped') : '-',
+            row.investGroupName !== undefined ? row.investGroupName : row.name
+        ];
+    });
 
     autoTable(pdf, {
         startY: yPos,
-        head: [statsHeaders],
-        body: statsData,
-        theme: 'striped',
-        headStyles: { fillColor: [142, 68, 173], textColor: 255, fontSize: 9 }, // Purple header
-        styles: { fontSize: 8 },
-        columnStyles: {
-            1: { halign: 'center' },
-            2: { halign: 'center' },
-            3: { halign: 'center', fontStyle: 'bold' },
-            4: { halign: 'center', fontStyle: 'bold' }
+        head: [tableHeaders],
+        body: tableData,
+        theme: 'plain',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, valign: 'middle' },
+        styles: { fontSize: 7, valign: 'middle' },
+        columnStyles: { 
+            0: { cellWidth: 35 },
+            1: { halign: 'right', cellWidth: 25 },
+            2: { cellWidth: 22 },
+            3: { cellWidth: 22 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 25 },
+            6: { cellWidth: 35 }
         },
-        margin: { left: 15, right: 15 }
+        margin: { left: 15, right: 15 },
+        didDrawCell: function(data) {
+            const pdf = data.doc;
+            pdf.saveGraphicsState();
+            pdf.setLineWidth(0.1);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            pdf.restoreGraphicsState();
+        }
     });
 
-    yPos = pdf.lastAutoTable.finalY + 15;
+    yPos = pdf.lastAutoTable.finalY + 12;
 
-    // 3. MONTE CARLO AUDIT (Specific Matrix)
+    // 2. APERÇU DU RENDEMENT COMBINÉ (Monte Carlo)
     yPos = checkPageBreak(pdf, yPos, 80);
-    pdf.setFontSize(12);
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(41, 128, 185);
-    pdf.text(language === 'fr' ? '3. Audit de la Simulation Monte-Carlo' : '3. Monte-Carlo Simulation Audit', 15, yPos);
-    yPos += 8;
+    pdf.text(language === 'fr' ? '2. Aperçu du rendement combiné' : '2. Combined Return Preview', 15, yPos);
+    yPos += 6;
 
-    // Explanation Text
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(50, 50, 50);
-    const explanation = language === 'fr'
-        ? "Cette simulation utilise un modèle de Mouvement Brownien Géométrique (GBM) calibré sur 25 ans de données historiques. La matrice de corrélation ci-dessous représente les interdépendances réelles utilisées pour vos produits sélectionnés."
-        : "This simulation uses a Geometric Brownian Motion (GBM) model calibrated on 25 years of historical data. The correlation matrix below represents the actual interdependencies used for your selected products.";
-
-    const splitText = pdf.splitTextToSize(explanation, pdf.internal.pageSize.getWidth() - 30);
-    pdf.text(splitText, 15, yPos);
-    yPos += splitText.length * 4 + 8;
-
-    // Correlation Matrix Display (Specific from Simulation)
-    if (simulationDetails && simulationDetails.correlationMatrix && assetsToDisplay.length > 0) {
-        yPos = checkPageBreak(pdf, yPos, 60);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Matrice de Corrélation (Produits Sélectionnés)' : 'Correlation Matrix (Selected Products)', 15, yPos);
-        yPos += 5;
-
-        // Use Product Names for headers (shortened if needed)
-        const productNames = assetsToDisplay.map(a => a.product.ticker || a.product.name.substring(0, 10));
-        const matrixHeaders = ['', ...productNames];
-
-        // Map the raw matrix (which is NxN matching portfolioAssets)
-        const matrixData = simulationDetails.correlationMatrix.map((row, i) => {
-            const rowName = productNames[i];
-            const rowData = [rowName];
-            row.forEach(val => rowData.push(val.toFixed(2)));
-            return rowData;
-        });
-
-        autoTable(pdf, {
-            startY: yPos,
-            head: [matrixHeaders],
-            body: matrixData,
-            theme: 'grid',
-            headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8, halign: 'center' },
-            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
-            styles: { fontSize: 7, halign: 'center' },
-            margin: { left: 15, right: 15 }
-        });
-
-        yPos = pdf.lastAutoTable.finalY + 10;
-    }
-
-    // Parameters Used
-    if (simulationDetails && simulationDetails.metadata) {
-        yPos = checkPageBreak(pdf, yPos, 40);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(language === 'fr' ? 'Paramètres de Simulation' : 'Simulation Parameters', 15, yPos);
-        yPos += 5;
-
-        const paramsData = [
-            [language === 'fr' ? 'Itérations' : 'Iterations', simulationDetails.metadata.iterations || '10,000'],
-            [language === 'fr' ? 'Distribution' : 'Distribution', 'Student-t (df=5) [Fat Tails]'],
-            [language === 'fr' ? 'Confiance' : 'Confidence Level', '95%'],
-            [language === 'fr' ? 'Méthode' : 'Method', 'Cholesky Decomposition (Multi-asset)']
-        ];
-
-        autoTable(pdf, {
-            startY: yPos,
-            body: paramsData,
-            theme: 'plain',
-            styles: { fontSize: 9 },
-            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
-            margin: { left: 15 }
-        });
-    }
-
-    // 4. VALUE ANALYSIS (NEW)
-    if (baselineProjection?.yearlyBreakdown && monteCarloData?.p5) {
-        yPos = checkPageBreak(pdf, yPos, 60);
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(41, 128, 185);
-        pdf.text(language === 'fr' ? '4. Analyse de la Valeur Créée' : '4. Value Creation Analysis', 15, yPos);
-        yPos += 8;
-
-        // Calculate Delta
-        const breakdown = baselineProjection.yearlyBreakdown;
-        const lastRow = breakdown[breakdown.length - 1];
-        const lastYear = lastRow.year;
-
-        // Find matching MC year (P5 = Pessimistic)
-        const mcRow = monteCarloData.p5.find(y => y.year === lastYear) || monteCarloData.p5[monteCarloData.p5.length - 1];
-
-        if (mcRow && lastRow) {
-            const baselineTotal = lastRow.total;
-            const baselineInvested = lastRow.invested || 0;
-            const investedTotal = (baselineTotal - baselineInvested) + mcRow.value;
-            const delta = investedTotal - baselineTotal;
-
-            const analysisHeaders = [
-                language === 'fr' ? 'Scénario' : 'Scenario',
-                language === 'fr' ? 'Résultat Final' : 'Final Result',
-                language === 'fr' ? 'Différence' : 'Difference'
+    // Capture and add MC Chart
+    if (mcChartElement) {
+        try {
+            const mcCanvas = await html2canvas(mcChartElement, { scale: 2, backgroundColor: '#ffffff' });
+            const mcImg = mcCanvas.toDataURL('image/png');
+            const metricsBoxWidth = 55;
+            const chartWidth = pageWidth - 30 - metricsBoxWidth - 5;
+            const chartHeight = 70;
+            pdf.addImage(mcImg, 'PNG', 15, yPos, chartWidth, chartHeight);
+            
+            // Metrics Box for MC (Side Table)
+            const mcResult = monteCarloData?.details?.percentiles || monteCarloData?.percentiles;
+            const mcMetrics = [
+                [{ content: language === 'fr' ? 'Simulation Monte Carlo' : 'Monte Carlo Simulation', colSpan: 2, styles: { fontStyle: 'bold', textColor: [100, 100, 100], fontSize: 6, halign: 'left' } }],
+                [language === 'fr' ? '1. Cap. départ' : '1. Start. cap.', { content: formatCurrency(startingAmount), styles: { fontStyle: 'bold' } }]
             ];
 
-            const analysisData = [
-                [
-                    language === 'fr' ? 'Sans Investissement (Cash)' : 'Baseline (Cash Only)',
-                    formatCurrency(baselineTotal),
-                    '-'
-                ],
-                [
-                    language === 'fr' ? 'Stratégie Investie (Pessimiste 5%)' : 'Invested Strategy (Pessimistic 5%)',
-                    formatCurrency(investedTotal),
-                    formatCurrency(delta)
-                ]
-            ];
+            // 2. Injections
+            if (injections && injections.length > 0) {
+                mcMetrics.push([{ content: language === 'fr' ? '2. Injections' : '2. Injections', colSpan: 2, styles: { fontSize: 6, fontStyle: 'bold', textColor: [100, 100, 100] } }]);
+                injections.forEach(inj => {
+                    mcMetrics.push([
+                        { content: `${inj.date} · ${inj.ticker || ''}`, styles: { fontSize: 6 } },
+                        { content: `+${formatCurrency(inj.amount)}`, styles: { fontSize: 7, textColor: [34, 197, 94], fontStyle: 'bold' } }
+                    ]);
+                });
+            }
 
+            // 3. Exits
+            if (exits && exits.length > 0) {
+                mcMetrics.push([{ content: language === 'fr' ? '3. Sorties' : '3. Exits', colSpan: 2, styles: { fontSize: 6, fontStyle: 'bold', textColor: [100, 100, 100] } }]);
+                exits.forEach(ex => {
+                    mcMetrics.push([
+                        { content: `${ex.date} · ${ex.ticker || ''}`, styles: { fontSize: 6 } },
+                        { content: `-${formatCurrency(ex.amount)}`, styles: { fontSize: 7, textColor: [220, 38, 38], fontStyle: 'bold' } }
+                    ]);
+                });
+            }
+
+            // Percentiles
+            mcMetrics.push([{ content: '', colSpan: 2, styles: { cellPadding: 0.5 } }]); // Spacer
+            const p5 = mcResult?.p5?.[mcResult.p5.length-1] || 0;
+            const p10 = mcResult?.p10?.[mcResult.p10.length-1] || 0;
+            const p25 = mcResult?.p25?.[mcResult.p25.length-1] || 0;
+            
+            mcMetrics.push([
+                { content: 'P5 final', styles: { textColor: [220, 38, 38] } },
+                { content: formatCurrency(p5), styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }
+            ]);
+            mcMetrics.push([
+                { content: 'P10 final', styles: { textColor: [249, 115, 22] } },
+                { content: formatCurrency(p10), styles: { textColor: [249, 115, 22], fontStyle: 'bold' } }
+            ]);
+            mcMetrics.push([
+                { content: 'P25 final', styles: { textColor: [37, 99, 235] } },
+                { content: formatCurrency(p25), styles: { textColor: [37, 99, 235], fontStyle: 'bold' } }
+            ]);
+
+            
             autoTable(pdf, {
                 startY: yPos,
-                head: [analysisHeaders],
-                body: analysisData,
-                theme: 'grid',
-                headStyles: { fillColor: [46, 204, 113], textColor: 255, fontSize: 9 }, // Green header
-                styles: { fontSize: 9, fontStyle: 'bold' },
-                columnStyles: { 2: { textColor: delta > 0 ? [22, 163, 74] : [220, 38, 38] } }, // Green/Red text
-                margin: { left: 15, right: 15 }
+                margin: { left: 15 + chartWidth + 5 },
+                tableWidth: metricsBoxWidth,
+                body: mcMetrics,
+                theme: 'plain',
+                styles: { fontSize: 7, cellPadding: 1, valign: 'middle' },
+                columnStyles: { 0: { cellWidth: 25 }, 1: { halign: 'right' } }
             });
 
-            yPos = pdf.lastAutoTable.finalY + 8;
+            // 2.5 Monte Carlo Legends (Below chart)
+            const legendY = yPos + chartHeight + 2;
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            
+            // P5 (Red dashed)
+            const p5X = 15;
+            pdf.setDrawColor(239, 68, 68); // #ef4444
+            pdf.setLineWidth(0.5);
+            pdf.setLineDash([1, 1], 0);
+            pdf.line(p5X, legendY + 1.5, p5X + 5, legendY + 1.5);
+            pdf.setLineDash([], 0);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(language === 'fr' ? 'P5 (Très pessimiste)' : 'P5 (Extreme)', p5X + 6, legendY + 2.5);
 
-            // Explanation
-            pdf.setFontSize(9);
-            pdf.setFont('helvetica', 'italic');
-            pdf.setTextColor(80, 80, 80);
+            // P10 (Orange dashed)
+            const p10X = p5X + 30;
+            pdf.setDrawColor(249, 115, 22); // #f97316
+            pdf.setLineDash([1, 1], 0);
+            pdf.line(p10X, legendY + 1.5, p10X + 5, legendY + 1.5);
+            pdf.setLineDash([], 0);
+            pdf.text(language === 'fr' ? 'P10 (Pessimiste)' : 'P10 (Conservative)', p10X + 6, legendY + 2.5);
 
-            const gapExpl = language === 'fr'
-                ? `La différence de ${formatCurrency(delta)} s'explique par l'effet des intérêts composés sur la durée de la simulation. Même dans un scénario de marché pessimiste (5ème percentile), le rendement généré par vos actifs diversifiés permet de compenser l'érosion du capital et de couvrir les déficits de trésorerie qui, sans investissement, conduiraient à un solde négatif.`
-                : `The difference of ${formatCurrency(delta)} is explained by the compound interest effect over the simulation duration. Even in a pessimistic market scenario (5th percentile), the returns generated by your diversified assets offset capital erosion and cover cash flow deficits that would otherwise lead to a negative balance in the cash-only scenario.`;
-
-            const splitExpl = pdf.splitTextToSize(gapExpl, pdf.internal.pageSize.getWidth() - 30);
-            pdf.text(splitExpl, 15, yPos);
-            yPos += splitExpl.length * 4 + 5;
+            // P25 (Blue solid)
+            const p25X = p10X + 40;
+            pdf.setDrawColor(59, 130, 246); // #3b82f6
+            pdf.setLineWidth(0.8);
+            pdf.line(p25X, legendY + 1.5, p25X + 5, legendY + 1.5);
+            pdf.text('P25 (Optimiste)', p25X + 6, legendY + 2.5);
+            
+            yPos += chartHeight + 12;
+        } catch (err) {
+            console.error('MC Chart capture failed:', err);
+            yPos += 10;
         }
     }
 
-    addPageNumber(pdf, pageNum, totalPages, language);
+    // 3. HISTORIQUE NORMALISÉ
+    yPos = checkPageBreak(pdf, yPos, 80);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text(language === 'fr' ? '3. Historique normalisé (base 100)' : '3. Normalized History (base 100)', 15, yPos);
+    yPos += 6;
+
+    if (histChartElement) {
+        try {
+            const histCanvas = await html2canvas(histChartElement, { scale: 2, backgroundColor: '#ffffff' });
+            const histImg = histCanvas.toDataURL('image/png');
+            const metricsBoxWidth = 55;
+            const chartWidth = pageWidth - 30 - metricsBoxWidth - 5;
+            const chartHeight = 70;
+            pdf.addImage(histImg, 'PNG', 15, yPos, chartWidth, chartHeight);
+            
+            // 3.5 Historical Overlay Legends (Below chart)
+            if (investmentProductsList && investmentProductsList.length > 0) {
+                const histLegendY = yPos + chartHeight + 2;
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'normal');
+                let currentLegendX = 15;
+
+                investmentProductsList.forEach((p, i) => {
+                    const color = colors[i % colors.length];
+                    const rgb = hexToRgb(color);
+                    pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+                    pdf.setLineWidth(0.8);
+                    pdf.line(currentLegendX, histLegendY + 1.5, currentLegendX + 5, histLegendY + 1.5);
+                    pdf.setTextColor(100, 100, 100);
+                    const name = p.name.length > 30 ? p.name.substring(0, 27) + '...' : p.name;
+                    pdf.text(name, currentLegendX + 6, histLegendY + 2.5);
+                    currentLegendX += 50; // Simple fixed spacing for now
+                });
+            }
+
+            // 3.6 Detailed Historical Metrics (Vertical Boxes)
+            if (metricsArr && metricsArr.length > 0) {
+                let boxY = yPos;
+                const boxWidth = metricsBoxWidth;
+                
+                metricsArr.forEach((m, mi) => {
+                    // Check for page break if we have multiple products
+                    if (boxY > 240) {
+                        pdf.addPage('a4', 'portrait');
+                        boxY = 20; // Start fresh on new page
+                    }
+
+                    const metricsRows = [
+                        [{ content: m.name, colSpan: 2, styles: { fontStyle: 'bold', textColor: [59, 130, 246], fontSize: 7, halign: 'left' } }],
+                        [language === 'fr' ? 'Rend. total' : 'Total Ret.', { content: `${(m.totalReturn * 100).toFixed(1)}%`, styles: { textColor: [22, 163, 74], fontStyle: 'bold' } }],
+                        [language === 'fr' ? 'Rend. ann.' : 'Ann. Ret.', { content: `+${(m.meanReturn * 100).toFixed(1)}%`, styles: { textColor: [22, 163, 74], fontStyle: 'bold' } }],
+                        [language === 'fr' ? 'Volatilité' : 'Volatility', { content: `+${(m.volatility * 100).toFixed(1)}%`, styles: { textColor: [37, 99, 235], fontStyle: 'bold' } }],
+                        [language === 'fr' ? 'Max DD' : 'Max DD', { content: `${(m.maxDrawdown * 100).toFixed(1)}%`, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }],
+                        [language === 'fr' ? 'Perte 3a' : '3y Loss', { content: `${(m.max3yLoss * 100).toFixed(1)}%`, styles: { textColor: [220, 38, 38], fontStyle: 'bold' } }],
+                        [language === 'fr' ? 'Gain 3a' : '3y Gain', { content: `+${(m.max3yGain * 100).toFixed(1)}%`, styles: { textColor: [22, 163, 74], fontStyle: 'bold' } }]
+                    ];
+
+                    autoTable(pdf, {
+                        startY: boxY,
+                        margin: { left: 15 + chartWidth + 5 },
+                        tableWidth: boxWidth,
+                        body: metricsRows,
+                        theme: 'plain',
+                        styles: { fontSize: 6.5, cellPadding: 0.8, valign: 'middle' },
+                        columnStyles: { 0: { cellWidth: 30 }, 1: { halign: 'right' } },
+                        didDrawPage: (data) => {
+                            // Draw a light border around each box
+                            const finalY = data.cursor.y;
+                            pdf.setDrawColor(226, 232, 240); // #e2e8f0
+                            pdf.setLineWidth(0.1);
+                            pdf.rect(15 + chartWidth + 5, boxY, boxWidth, finalY - boxY);
+                        }
+                    });
+
+                    boxY = pdf.lastAutoTable.finalY + 4;
+                });
+            }
+            
+            yPos += chartHeight + 20;
+        } catch (err) {
+            console.error('Hist Chart capture failed:', err);
+            yPos += 10;
+        }
+    }
+
+    addPageNumber(pdf, pageNum, totalPages);
 };
 
 export const generateLegalWarnings = (pdf, language, pageNum, totalPages) => {
-    pdf.addPage();
+    pdf.addPage('a4', 'portrait');
 
     let yPos = addPageHeader(
         pdf,
@@ -975,7 +1053,7 @@ export const generateLegalWarnings = (pdf, language, pageNum, totalPages) => {
  * Page 15 (Optional): Focus Years Details
  * Displays detailed cards for selected focus years (up to 4)
  */
-export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum, totalPages) => {
+export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum, totalPages, userData) => {
     // Filter active focus years
     const activeFocusYears = focusYears?.filter(f => f.active && f.year) || [];
 
@@ -1035,6 +1113,8 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
         pdf.text(focusTitle, cardX + 5, cardY + 8);
 
         // Annual/Cumulative Summary in Header
+        const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+        const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2'));
         const annualLabel = language === 'fr' ? 'Solde annuel:' : 'Annual balance:';
         const cumulLabel = language === 'fr' ? 'Solde cumulé:' : 'Cumulative balance:';
         const annualVal = yearData.annualBalance || 0;
@@ -1188,6 +1268,15 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
     });
 
     addPageNumber(pdf, pageNum, totalPages, language);
+};
+
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
 };
 
 export default {

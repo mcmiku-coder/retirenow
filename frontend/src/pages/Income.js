@@ -7,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { Trash2, Plus, HelpCircle, User } from 'lucide-react';
 import { getIncomeData, saveIncomeData, getUserData, getScenarioData } from '../utils/database';
 import PageHeader from '../components/PageHeader';

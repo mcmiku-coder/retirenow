@@ -29,7 +29,7 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
     pdf.addPage();
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Résultats Conservateurs (Stress)' : 'Conservative Portfolio Outcomes',
+        language === 'fr' ? 'RÃ©sultats conservateurs (stress)' : 'Conservative portfolio outcomes',
         null,
         20
     );
@@ -92,11 +92,11 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
         pdf.setTextColor(0, 0, 0);
         pdf.setFillColor(255, 165, 0);
         pdf.circle(chartX + 10, chartY + 10, 2, 'F');
-        pdf.text('P10 (Conservative Total)', chartX + 15, chartY + 11);
+        pdf.text('p10 (conservative total)', chartX + 15, chartY + 11);
 
         pdf.setFillColor(220, 20, 60);
         pdf.circle(chartX + 10, chartY + 20, 2, 'F');
-        pdf.text('P5 (Extreme Stress Total)', chartX + 15, chartY + 21);
+        pdf.text('p5 (extreme stress total)', chartX + 15, chartY + 21);
     }
     yPos += chartHeight + 15;
 
@@ -104,15 +104,15 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Détail Annuel (Stress)' : 'Annual Breakdown (Stress)', 20, yPos);
+    pdf.text(language === 'fr' ? 'D\u00e9tail annuel (stress)' : 'Annual breakdown (stress)', 20, yPos);
     yPos += 8;
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'italic');
     pdf.setTextColor(100, 100, 100);
     const methodNote = language === 'fr'
-        ? "Note: 'Libre' = Cash-Only Baseline B(t). 'Totaux' = B(t) + Evolution Boursière."
-        : "Note: 'Cash-Only' = Baseline B(t). 'Totals' = B(t) + Portfolio Performance.";
+        ? "Note: 'Libre' = Cash-only baseline B(t). 'Totaux' = B(t) + Ã©volution boursiÃ¨re."
+        : "Note: 'Cash-only' = Baseline B(t). 'Totals' = B(t) + portfolio performance.";
     pdf.text(methodNote, 20, yPos);
     yPos += 12;
     pdf.setTextColor(0, 0, 0);
@@ -146,7 +146,7 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
             const T10 = calculateRecomposedTotalAtIndex(simulationResult, detSeries, idx, 'p10');
 
             const label = language === 'fr'
-                ? `> Début (Après apport ${formatCurrency(firstFlow.amount)})`
+                ? `> D\u00e9but (Apr\u00e8s apport ${formatCurrency(firstFlow.amount)})`
                 : `> Start (After injection ${formatCurrency(firstFlow.amount)})`;
 
             tableRows.push([
@@ -190,12 +190,12 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
     autoTable(pdf, {
         startY: yPos,
         head: [[
-            language === 'fr' ? 'Année' : 'Year',
-            language === 'fr' ? 'Type / Situation Cash' : 'Event / Cash-Only Base',
-            'Invested (P10)',
-            'Invested (P5)',
-            'Total (P10)',
-            'Total (P5)'
+            language === 'fr' ? 'Ann\u00e9e' : 'Year',
+            language === 'fr' ? 'Type / situation cash' : 'Event / cash-only base',
+            'Invested (p10)',
+            'Invested (p5)',
+            'Total (p10)',
+            'Total (p5)'
         ]],
         body: tableRows,
         theme: 'grid',
@@ -210,7 +210,7 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
     // B3 - Metrics
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Métriques Finales de Stress' : 'Final Stress Metrics', 20, yPos);
+    pdf.text(language === 'fr' ? 'MÃ©triques finales de stress' : 'Final stress metrics', 20, yPos);
     yPos += 8;
 
     const finalIdx = horizonMonths;
@@ -231,10 +231,10 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
     };
 
     const metrics = [
-        [`Final Wealth (P10 Conservative)`, formatCurrency(T10_final)],
-        [`Final Wealth (P5 Extreme)`, formatCurrency(T5_final)],
-        [`Max Drawdown (P10 Portfolio)`, `-${(computeDD(simulationResult.percentiles?.p10 || []) * 100).toFixed(1)}%`],
-        [`Max Drawdown (P5 Portfolio)`, `-${(computeDD(simulationResult.percentiles?.p5 || []) * 100).toFixed(1)}%`]
+        [`Final wealth (p10 conservative)`, formatCurrency(T10_final)],
+        [`Final wealth (p5 extreme)`, formatCurrency(T5_final)],
+        [`Max drawdown (p10 portfolio)`, `-${(computeDD(simulationResult.percentiles?.p10 || []) * 100).toFixed(1)}%`],
+        [`Max drawdown (p5 portfolio)`, `-${(computeDD(simulationResult.percentiles?.p5 || []) * 100).toFixed(1)}%`]
     ];
 
     metrics.forEach(([label, val]) => {
@@ -247,3 +247,188 @@ export const generateConservativeOutcomes = (pdf, simulationResult, projection, 
 
     addPageNumber(pdf, pageNum, totalPages, language);
 };
+
+/**
+ * MC Details Page: Full Engine Transparency (Compact â€” 1-2 portrait pages)
+ * Mirrors the MonteCarloDetails.js page content.
+ * Data source: monteCarloProjections.details.stats
+ */
+export const generateMCDetailsPage = (pdf, monteCarloProjections, language, pageNum, totalPages) => {
+    const stats = monteCarloProjections?.details?.stats || monteCarloProjections?.stats;
+    if (!stats) return;
+
+    const { assetStats, historyInfo, settings, covMatrix, corrMatrix } = stats;
+
+    pdf.addPage('a4', 'portrait');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPos = addPageHeader(
+        pdf,
+        language === 'fr' ? 'D\u00e9tails du moteur Monte-Carlo' : 'Monte-Carlo engine details',
+        language === 'fr' ? 'Param\u00e8tres, statistiques et corr\u00e9lations' : 'Parameters, stats & correlations',
+        20
+    );
+    yPos += 5;
+
+    // ===== 1. SETTINGS (single compact row) =====
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text(language === 'fr' ? '1. Param\u00e8tres de simulation' : '1. Simulation parameters', 15, yPos);
+    yPos += 5;
+
+    autoTable(pdf, {
+        startY: yPos,
+        head: [[
+            language === 'fr' ? 'It\u00e9rations' : 'Iterations',
+            language === 'fr' ? 'Pas de temps' : 'Time step',
+            language === 'fr' ? 'Historique' : 'History',
+            language === 'fr' ? 'Horizon' : 'Horizon'
+        ]],
+        body: [[
+            String(settings?.iterations || 0).replace(/\B(?=(\d{3})+(?!\d))/g, "'"),
+            language === 'fr' ? 'Mensuel' : (settings?.step || 'Monthly'),
+            `${historyInfo?.sampleSize || 0} ${language === 'fr' ? 'mois' : 'mo.'}`,
+            `${Math.round((settings?.horizonMonths || 0) / 12)} ${language === 'fr' ? 'ans' : 'yrs'} (${settings?.horizonMonths || 0} ${language === 'fr' ? 'mois' : 'mo.'})`
+        ]],
+        theme: 'plain',
+        headStyles: { fillColor: [44, 62, 80], textColor: 255, fontSize: 6, fontStyle: 'bold', halign: 'center', cellPadding: 2 },
+        styles: { fontSize: 7, halign: 'center', valign: 'middle', fontStyle: 'bold', cellPadding: 2 },
+        margin: { left: 15, right: 15 }
+    });
+    yPos = pdf.lastAutoTable.finalY + 6;
+
+    // ===== 2. INSTRUMENT DETAILS (Merged History & Specs) =====
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(46, 204, 113);
+    pdf.text(language === 'fr' ? '2. Caract\u00e9ristiques et historique des instruments' : '2. Instrument characteristics & history', 15, yPos);
+    yPos += 5;
+
+    if (assetStats && assetStats.length > 0) {
+        autoTable(pdf, {
+            startY: yPos,
+            head: [[
+                language === 'fr' ? 'Instrument' : 'Instrument',
+                language === 'fr' ? 'D\u00e9but' : 'Start',
+                language === 'fr' ? 'Fin' : 'End',
+                'Rend. moy.',
+                'Volatilit\u00e9',
+                'Max DD'
+            ]],
+            body: assetStats.map(a => [
+                a.name || 'N/A',
+                a.startDate || 'N/A',
+                a.endDate || 'N/A',
+                `${(a.meanReturnAnnual || 0).toFixed(2)}%`,
+                `${(a.volatilityAnnual || 0).toFixed(2)}%`,
+                `${(a.maxDrawdown || 0).toFixed(2)}%`
+            ]),
+            theme: 'plain',
+            headStyles: { fillColor: [46, 204, 113], textColor: 255, fontSize: 6, fontStyle: 'bold', valign: 'middle', cellPadding: 2 },
+            styles: { fontSize: 6, valign: 'middle', cellPadding: 2 },
+            columnStyles: {
+                0: { cellWidth: 70 },
+                1: { cellWidth: 22 },
+                2: { cellWidth: 22 },
+                3: { cellWidth: 22, textColor: [34, 197, 94] },
+                4: { cellWidth: 22, textColor: [239, 68, 68] },
+                5: { cellWidth: 22, textColor: [245, 158, 11] }
+            },
+            didParseCell: function(data) {
+                if (data.column.index === 1 || data.column.index === 2) data.cell.styles.halign = 'center';
+                if (data.column.index >= 3) data.cell.styles.halign = 'right';
+            },
+            margin: { left: 15, right: 15 }
+        });
+        yPos = pdf.lastAutoTable.finalY + 6;
+    }
+
+
+    // Short labels for matrices
+    const shortLabels = assetStats?.map(a => a.name || a.portfolioName || a.id || '?') || [];
+
+    // ===== 4. CORRELATION MATRIX =====
+    if (corrMatrix && corrMatrix.length > 0) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(99, 102, 241);
+        pdf.text(language === 'fr' ? '4. Matrice de corr\u00e9lation' : '4. Correlation matrix', 15, yPos);
+        yPos += 5;
+
+        autoTable(pdf, {
+            startY: yPos,
+            head: [['', ...shortLabels]],
+            body: corrMatrix.map((row, i) => [shortLabels[i] || '', ...row.map(v => v.toFixed(3))]),
+            theme: 'grid',
+            headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 5, valign: 'middle', cellPadding: 1.5 },
+            styles: { fontSize: 5, valign: 'middle', cellPadding: 1.5 },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 70 } },
+            didParseCell: function(data) {
+                if (data.column.index === 0) data.cell.styles.halign = 'left';
+                else data.cell.styles.halign = 'center';
+            },
+            margin: { left: 15, right: 15 }
+        });
+        yPos = pdf.lastAutoTable.finalY + 6;
+    }
+
+    // ===== 5. COVARIANCE MATRIX =====
+    if (covMatrix && covMatrix.length > 0) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(99, 102, 241);
+        pdf.text(language === 'fr' ? '5. Matrice de covariance' : '5. Covariance matrix', 15, yPos);
+        yPos += 5;
+
+        autoTable(pdf, {
+            startY: yPos,
+            head: [['', ...shortLabels]],
+            body: covMatrix.map((row, i) => [shortLabels[i] || '', ...row.map(v => (v * 12 * 10000).toFixed(1))]),
+            theme: 'grid',
+            headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 5, valign: 'middle', cellPadding: 1.5 },
+            styles: { fontSize: 5, valign: 'middle', cellPadding: 1.5 },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240], cellWidth: 70 } },
+            didParseCell: function(data) {
+                if (data.column.index === 0) data.cell.styles.halign = 'left';
+                else data.cell.styles.halign = 'center';
+            },
+            margin: { left: 15, right: 15 }
+        });
+        yPos = pdf.lastAutoTable.finalY + 3;
+
+        pdf.setFontSize(5);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(130, 130, 130);
+        pdf.text(
+            language === 'fr'
+                ? '* Covariance annualis\u00e9e x10 000. Diagonale = volatilit\u00e9 au carr\u00e9 annuelle.'
+                : '* Annualized covariance x10,000. Diagonal = squared annual volatility.',
+            15, yPos
+        );
+        yPos += 6;
+    }
+
+    // ===== 6. INTERPRETATION NOTE (one-line compact) =====
+    const noteText = language === 'fr'
+        ? "Statistiques bas\u00e9es sur les Log Returns historiques. Mod\u00e8le GBM avec r\u00e9\u00e9quilibrage annuel. La matrice de corr\u00e9lation synchronise les mouvements d'actifs."
+        : "Stats based on historical Log Returns. GBM model with annual rebalancing. Correlation matrix ensures realistic asset co-movement.";
+    
+    const noteBoxHeight = 6; // Fixed single line height
+
+    pdf.setFillColor(239, 246, 255);
+    pdf.setDrawColor(191, 219, 254);
+    pdf.roundedRect(15, yPos, pageWidth - 30, noteBoxHeight, 1.5, 1.5, 'FD');
+
+    pdf.setFontSize(6);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 64, 175);
+    pdf.text(language === 'fr' ? 'Note' : 'Note', 19, yPos + 4.2);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(5.5);
+    pdf.setTextColor(50, 50, 50);
+    pdf.text(noteText, 30, yPos + 4.2);
+
+    addPageNumber(pdf, pageNum, totalPages, language);
+};
+

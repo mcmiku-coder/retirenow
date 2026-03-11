@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Download, Upload, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { exportBackup, importBackup } from '../utils/backup';
 import { clearUserData } from '../utils/database';
 import { Input } from '../components/ui/input';

@@ -18,7 +18,7 @@ import {
  */
 const getOwnerText = (item, userData, language) => {
     const ownerCode = item.owner || item.person;
-    if (!ownerCode) return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+    if (!ownerCode) return language === 'fr' ? 'Partagé' : 'Shared';
     
     // Normalize code for comparison
     const code = String(ownerCode).toLowerCase();
@@ -30,13 +30,13 @@ const getOwnerText = (item, userData, language) => {
         return userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
     }
     if (code === 'consolidated' || code === 'consolidé') {
-         return language === 'fr' ? 'CONSOLIDÉ' : 'CONSOLIDATED';
+         return language === 'fr' ? 'Consolidé' : 'Consolidated';
     }
     
-    return language === 'fr' ? 'PARTAGÉ' : 'SHARED';
+    return language === 'fr' ? 'Partagé' : 'Shared';
 };
 
-export const getOwnerBadgeHooks = (isCouple, userData) => {
+export const getOwnerBadgeHooks = (isCouple, userData, language) => {
     if (!isCouple) return {};
     return {
         didParseCell: function(data) {
@@ -50,16 +50,19 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
         didDrawCell: function(data) {
             if (data.section === 'body' && data.table.columns && data.column.index === data.table.columns.length - 1 && data.cell.raw) {
                 const pdf = data.doc;
-                const textStr = String(data.cell.raw).toUpperCase();
+                const textStr = String(data.cell.raw);
                 
                 let isP1 = false, isP2 = false, isShared = false, isConsolidated = false;
-                const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')).toUpperCase();
-                const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')).toUpperCase();
+                const p1Fallback = language === 'fr' ? 'Personne 1' : 'Person 1';
+                const p2Fallback = language === 'fr' ? 'Personne 2' : 'Person 2';
 
-                if (textStr === p1Name || textStr === 'PERSON 1' || textStr === 'PERSONNE 1') isP1 = true;
-                else if (textStr === p2Name || textStr === 'PERSON 2' || textStr === 'PERSONNE 2') isP2 = true;
-                else if (textStr === 'CONSOLIDATED' || textStr === 'CONSOLIDÉ') isConsolidated = true;
-                else if (textStr === 'SHARED' || textStr === 'PARTAGÉ') isShared = true;
+                const p1Name = userData.firstName || p1Fallback;
+                const p2Name = userData.firstName2 || p2Fallback;
+
+                if (textStr === p1Name || textStr === 'Person 1' || textStr === 'Personne 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'Person 2' || textStr === 'Personne 2') isP2 = true;
+                else if (textStr === 'Consolidated' || textStr === 'Consolidé') isConsolidated = true;
+                else if (textStr === 'Shared' || textStr === 'Partagé') isShared = true;
 
                 if (!isP1 && !isP2 && !isShared && !isConsolidated) return;
 
@@ -111,7 +114,19 @@ export const getOwnerBadgeHooks = (isCouple, userData) => {
                 // Center text vertically relative to baseline
                 const textY = yPos + rectHeight - badgePaddingY - (fontSize * 0.05);
                 pdf.text(textStr, textX, textY);
-            } else if (data.section === 'body' && data.table.columns && data.column.index === 0 && data.cell.raw) {
+            }
+            
+            // Draw fine horizontal separation line at the bottom of the cell
+            if (data.section === 'body' || data.section === 'head') {
+                const pdf = data.doc;
+                pdf.saveGraphicsState();
+                pdf.setLineWidth(0.1);
+                pdf.setDrawColor(180, 180, 180); // Darker gray for separation
+                pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                pdf.restoreGraphicsState();
+            }
+
+            if (data.section === 'body' && data.table.columns && data.column.index === 0 && data.cell.raw) {
                 // Handle [SPLIT] badge and [CHILD] indent in the first column (Name)
                 const textStr = String(data.cell.raw);
                 if (textStr.includes(' [SPLIT]') || textStr.startsWith('[CHILD] ')) {
@@ -224,7 +239,7 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Choix de Simulation' : 'Simulation Choice',
+        language === 'fr' ? 'Choix de simulation' : 'Simulation choice',
         null,
         20
     );
@@ -234,7 +249,7 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
     // Retirement option
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(language === 'fr' ? 'Option de Retraite Choisie' : 'Chosen Retirement Option', 15, yPos);
+    pdf.text(language === 'fr' ? 'Option de retraite choisie' : 'Chosen retirement option', 15, yPos);
     yPos += 8;
 
     const option = scenarioData?.retirementOption || 'option1';
@@ -256,13 +271,13 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
 
     let optionText = '';
     if (option === 'option0') {
-        optionText = language === 'fr' ? `Retraite à l'âge légal` : `Legal Retirement Age`;
+        optionText = language === 'fr' ? `Retraite à l'âge légal` : `Legal retirement age`;
     } else if (option === 'option1') {
-        optionText = language === 'fr' ? `Retraite anticipée avec pension LPP` : `Early Retirement with LPP Pension`;
+        optionText = language === 'fr' ? `Retraite anticipée avec pension LPP` : `Early retirement with LPP pension`;
     } else if (option === 'option2') {
-        optionText = language === 'fr' ? `Retraite anticipée avec capital LPP` : `Early Retirement with LPP Capital`;
+        optionText = language === 'fr' ? `Retraite anticipée avec capital LPP` : `Early retirement with LPP capital`;
     } else if (option === 'option3') {
-        optionText = language === 'fr' ? `Optimisation de la date de retraite` : `Retirement Date Optimization`;
+        optionText = language === 'fr' ? `Optimisation de la date de retraite` : `Retirement date optimization`;
     }
 
     pdf.text(optionText, 20, yPos);
@@ -270,16 +285,16 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
 
     // Retirement details
     const detailsHead = isCouple
-        ? [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
-        : [[language === 'fr' ? 'Champ' : 'Field', language === 'fr' ? 'Valeur' : 'Value']];
+        ? [['', language === 'fr' ? 'Personne 1' : 'Person 1', language === 'fr' ? 'Personne 2' : 'Person 2']]
+        : [['', language === 'fr' ? 'Valeur' : 'Value']];
 
     const detailsData = [
         [
-            language === 'fr' ? 'Âge de Retraite Souhaité' : 'Desired Retirement Age',
+            language === 'fr' ? 'Âge de retraite souhaité' : 'Desired retirement age',
             `${retireAge1} ${language === 'fr' ? 'ans' : 'years'}`
         ],
         [
-            language === 'fr' ? 'Date de Retraite Souhaitée' : 'Desired Retirement Date',
+            language === 'fr' ? 'Date de retraite souhaitée' : 'Desired retirement date',
             formatDate(scenarioData?.wishedRetirementDate)
         ]
     ];
@@ -290,13 +305,13 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
     }
 
     if (scenarioData?.pensionCapital) {
-        const row = [language === 'fr' ? 'Capital de Pension Actuel' : 'Current Pension Capital', formatCurrency(scenarioData.pensionCapital)];
+        const row = [language === 'fr' ? 'Capital de pension actuel' : 'Current pension capital', formatCurrency(scenarioData.pensionCapital)];
         if (isCouple) row.push(formatCurrency(scenarioData.pensionCapital2));
         detailsData.push(row);
     }
 
     if (scenarioData?.projectedLPPPension && option === 'option1') {
-        const row = [language === 'fr' ? 'Pension LPP Projetée (Annuelle)' : 'Projected LPP Pension (Annual)', formatCurrency(scenarioData.projectedLPPPension)];
+        const row = [language === 'fr' ? 'Pension LPP projetée (annuelle)' : 'Projected LPP pension (annual)', formatCurrency(scenarioData.projectedLPPPension)];
         if (isCouple) row.push(formatCurrency(scenarioData.projectedLPPPension2));
         detailsData.push(row);
     }
@@ -311,7 +326,16 @@ export const generateSimulationChoice = (pdf, scenarioData, userData, language, 
         columnStyles: {
             0: { fontStyle: 'bold', cellWidth: 80 }
         },
-        margin: { left: 20 }
+        margin: { left: 20 },
+        didDrawCell: function(data) {
+            // Draw bottom line even for plain theme
+            const pdf = data.doc;
+            pdf.saveGraphicsState();
+            pdf.setLineWidth(0.1);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+            pdf.restoreGraphicsState();
+        }
     });
 
     addPageNumber(pdf, pageNum, totalPages, language);
@@ -325,7 +349,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Prestations de Retraite' : 'Retirement Benefits',
+        language === 'fr' ? 'Prestations de retraite' : 'Retirement benefits',
         language === 'fr' ? 'Saisie détaillée des prestations et de l\'âge de simulation' : 'Detailed input of benefits and simulation age',
         20
     );
@@ -341,8 +365,8 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
     }
 
     const isCouple = userData.analysisType === 'couple';
-    const p1Name = (userData?.firstName || 'Person 1').toUpperCase();
-    const p2Name = (userData?.firstName2 || 'Person 2').toUpperCase();
+    const p1Name = (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
+    const p2Name = (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2'));
 
     const q1 = retirementData.p1?.questionnaire || {};
     const q2 = retirementData.p2?.questionnaire || {};
@@ -384,15 +408,15 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
     yPos = checkPageBreak(pdf, yPos, 40);
 
     const questions = [
-        { key: 'hasLPP', fr: 'Êtes-vous actuellement affilié à un plan de pension LPP ?', en: 'Are you currently affiliated to a LPP Pension Plan?' },
+        { key: 'hasLPP', fr: 'Êtes-vous actuellement affilié à un plan de pension LPP ?', en: 'Are you currently affiliated to a LPP pension plan?' },
         { key: 'simulationAge', fr: 'Âge de simulation de la retraite', en: 'Retirement simulation age' },
         { key: 'lppEarliestAge', fr: 'Âge de pré-retraite le plus précoce', en: 'Earliest pre-retirement age in pension plan' },
         { key: 'isWithinPreRetirement', fr: 'Dans la tranche de pré-retraite possible ?', en: 'Age within the pre-retirement bracket?' },
         { key: 'benefitType', fr: 'Type de prestation', en: 'Type of benefit' },
         { key: 'hasAVS', fr: 'Pension AVS', en: 'AVS pension' },
-        { key: 'librePassageCount', fr: 'Nombre de comptes de Libre Passage', en: 'Number of Libre passages' },
+        { key: 'librePassageCount', fr: 'Nombre de comptes de libre passage', en: 'Number of libre passages' },
         { key: 'threeACount', fr: 'Nombre de comptes 3a', en: 'Number of 3a capitals' },
-        { key: 'hasSupplementaryPension', fr: 'Capital de plan de retraite supplémentaire', en: 'Supplementary Pension Plan Capital' }
+        { key: 'hasSupplementaryPension', fr: 'Capital de plan de retraite supplémentaire', en: 'Supplementary pension plan capital' }
     ];
 
     const questHead = [[language === 'fr' ? 'Question' : 'Question', p1Name]];
@@ -417,11 +441,11 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
         didDrawCell: function(data) {
             if (data.section === 'head' && data.column.index > 0 && data.cell.raw) {
                 const pdf = data.doc;
-                const textStr = String(data.cell.raw).toUpperCase();
+                const textStr = String(data.cell.raw);
                 
                 let isP1 = false, isP2 = false;
-                if (textStr === p1Name) isP1 = true;
-                else if (textStr === p2Name) isP2 = true;
+                if (textStr === p1Name || textStr === 'Person 1' || textStr === 'Personne 1') isP1 = true;
+                else if (textStr === p2Name || textStr === 'Person 2' || textStr === 'Personne 2') isP2 = true;
 
                 if (!isP1 && !isP2) return;
 
@@ -455,6 +479,16 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
                 pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
                 pdf.text(textStr, badgeX + badgePaddingX, badgeY + badgePaddingY + fontSize * 0.35);
             }
+
+            // Draw fine horizontal separation line at the bottom of the cell
+            if (data.section === 'body' || data.section === 'head') {
+                const pdf = data.doc;
+                pdf.saveGraphicsState();
+                pdf.setLineWidth(0.1);
+                pdf.setDrawColor(180, 180, 180);
+                pdf.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                pdf.restoreGraphicsState();
+            }
         }
     };
 
@@ -462,7 +496,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
         startY: yPos,
         head: questHead,
         body: questBody,
-        theme: 'striped',
+        theme: 'plain',
         headStyles: { fillColor: [55, 65, 81], textColor: 255, fontSize: 10, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 3 },
         columnStyles: {
@@ -488,8 +522,8 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
         language === 'fr' ? 'Type' : 'Type',
         language === 'fr' ? 'Date dispo.' : 'Availability date',
         language === 'fr' ? 'Investi ?' : 'Invested?',
-        { content: language === 'fr' ? 'Valeur Actuelle' : 'Current Value', styles: { halign: 'right' } },
-        { content: language === 'fr' ? 'Valeur Projetée / Montant' : 'Projected Value / Amount', styles: { halign: 'right' } }
+        { content: language === 'fr' ? 'Valeur actuelle' : 'Current value', styles: { halign: 'right' } },
+        { content: language === 'fr' ? 'Valeur projetée / montant' : 'Projected value / amount', styles: { halign: 'right' } }
     ]];
     if (isCouple) amtHead[0].push(language === 'fr' ? 'Propriétaire' : 'Owner');
 
@@ -499,9 +533,12 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
         if (!quest || !bens || Object.keys(quest).length === 0) return;
 
         if (quest.hasAVS && bens.avs) {
+            // Fallback to legal retirement date if startDate is missing
+            const avsDate = bens.avs.startDate || (ownerName === p1Name ? scenarioData.legalRetirementDate : scenarioData.legalRetirementDate2);
+            
             const row = [
                 language === 'fr' ? 'Pension annuelle AVS' : 'AVS yearly pension',
-                formatDate(bens.avs.startDate) || '-',
+                formatDate(avsDate),
                 '-',
                 '-',
                 formatCurrency(bens.avs.amount)
@@ -563,7 +600,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
                     }
                     if (quest.benefitType === 'pension' || quest.benefitType === 'mix') {
                         const row = [
-                            language === 'fr' ? `Pension LPP (à ${simAgeStr} ans)` : `LPP Pension (at age ${simAgeStr})`,
+                            language === 'fr' ? `Pension LPP (à ${simAgeStr} ans)` : `LPP pension (at age ${simAgeStr})`,
                             '-', '-', '-', formatCurrency(lppEntry.pension)
                         ];
                         if (isCouple) row.push(ownerName);
@@ -575,7 +612,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
 
         if (quest.hasSupplementaryPension && bens.lppSup) {
             const row = [
-                language === 'fr' ? 'Plan de retraite supp.' : 'Supplementary Pension',
+                language === 'fr' ? 'Plan de retraite supp.' : 'Supplementary pension',
                 formatDate(bens.lppSup.startDate) || '-',
                 bens.lppSup.isInvested ? (language === 'fr' ? 'Oui' : 'Yes') : (language === 'fr' ? 'Non' : 'No'),
                 formatCurrency(bens.lppSup.amount),
@@ -594,7 +631,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
             startY: yPos,
             head: amtHead,
             body: amtBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, fontStyle: 'bold' },
             styles: { fontSize: 8, cellPadding: 3 },
             columnStyles: {
@@ -602,7 +639,7 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
                 4: { halign: 'right' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
     } else {
         pdf.setFontSize(9);
@@ -625,7 +662,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
 
     let yPos = addPageHeader(
         pdf,
-        language === 'fr' ? 'Révision des Données Avant Simulation' : 'Data Review Before Simulation',
+        language === 'fr' ? 'Révision des données avant simulation' : 'Data review before simulation',
         language === 'fr' ? 'Vue d\'ensemble complète de toutes les entrées' : 'Complete overview of all inputs',
         20
     );
@@ -638,7 +675,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Entrées Périodiques' : 'Periodic Inflows', 15, yPos);
+    pdf.text(language === 'fr' ? 'Entrées périodiques' : 'Periodic inflows', 15, yPos);
     yPos += 6;
 
     if (income && income.length > 0) {
@@ -651,7 +688,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 formatDate(item.startDate),
                 formatDate(item.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(item, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(item, userData, language));
             return row;
         });
 
@@ -669,7 +706,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             startY: yPos,
             head: incomeHead,
             body: incomeBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [46, 204, 113], textColor: 255, fontSize: 7, fontStyle: 'bold' },
             styles: { fontSize: 6 },
             columnStyles: {
@@ -679,7 +716,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
 
         yPos = pdf.lastAutoTable.finalY + 10;
@@ -697,7 +734,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Actifs Actuels ou Futurs' : 'Current or Future Assets', 15, yPos);
+    pdf.text(language === 'fr' ? 'Actifs actuels ou futurs' : 'Current or future assets', 15, yPos);
     yPos += 6;
 
     if (assets && assets.length > 0) {
@@ -754,7 +791,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 investText,
                 item.clusterTag || ''
             ];
-            if (isCouple) row.push(getOwnerText(item, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(item, userData, language));
             return row;
         });
 
@@ -774,7 +811,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             startY: yPos,
             head: assetHead,
             body: assetBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 7, fontStyle: 'bold' },
             styles: { fontSize: 5.5 }, // Reduced size for many columns
             columnStyles: {
@@ -788,7 +825,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 8: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
 
         yPos = pdf.lastAutoTable.finalY + 10;
@@ -806,7 +843,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Sorties Périodiques' : 'Periodic Outflows', 15, yPos);
+    pdf.text(language === 'fr' ? 'Sorties périodiques' : 'Periodic Outflows', 15, yPos);
     yPos += 6;
 
     if (costs && costs.length > 0) {
@@ -819,7 +856,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 formatDate(item.startDate),
                 formatDate(item.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(item, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(item, userData, language));
             return row;
         });
 
@@ -837,7 +874,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             startY: yPos,
             head: costHead,
             body: costBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [231, 76, 60], textColor: 255, fontSize: 7, fontStyle: 'bold' },
             styles: { fontSize: 6 },
             columnStyles: {
@@ -847,7 +884,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
 
         yPos = pdf.lastAutoTable.finalY + 10;
@@ -865,7 +902,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
-    pdf.text(language === 'fr' ? 'Dettes Actuelles ou Futures' : 'Current or Future Debts', 15, yPos);
+    pdf.text(language === 'fr' ? 'Dettes actuelles ou futures' : 'Current or Future Debts', 15, yPos);
     yPos += 6;
 
     if (debts && debts.length > 0) {
@@ -878,7 +915,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 formatDate(item.startDate),
                 formatDate(item.endDate)
             ];
-            if (isCouple) row.push(getOwnerText(item, userData, language).toUpperCase());
+            if (isCouple) row.push(getOwnerText(item, userData, language));
             return row;
         });
 
@@ -896,7 +933,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
             startY: yPos,
             head: debtHead,
             body: debtBody,
-            theme: 'striped',
+            theme: 'plain',
             headStyles: { fillColor: [192, 57, 43], textColor: 255, fontSize: 7, fontStyle: 'bold' },
             styles: { fontSize: 6 },
             columnStyles: {
@@ -906,7 +943,7 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
                 6: { halign: 'center' }
             },
             margin: { left: 15, right: 15 },
-            ...getOwnerBadgeHooks(isCouple, userData)
+            ...getOwnerBadgeHooks(isCouple, userData, language)
         });
     } else {
         pdf.setFontSize(8);

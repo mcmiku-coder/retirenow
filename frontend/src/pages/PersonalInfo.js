@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { saveUserData, getUserData, clearUserData } from '../utils/database';
 import { Trash2, Plus, HelpCircle, User, Calendar, Users, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/PageHeader';

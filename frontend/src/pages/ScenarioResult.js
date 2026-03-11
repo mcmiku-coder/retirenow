@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { getIncomeData, getCostData, getUserData, getScenarioData, getRetirementData, saveScenarioData, saveRetirementData, getRealEstateData } from '../utils/database';
 import { calculateYearlyAmount, calculateMonthlyAmount, parseToUtc, getLegalRetirementDate } from '../utils/calculations';
-import { toast } from 'sonner';
+import { toast } from '../utils/toast';
 import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calculateRecomposedBaselineAtIndex, calculateRecomposedTotalAtIndex, calculateInvestedProjection, calculateMonthlyDeterministicSeries } from '../utils/projectionCalculator';
 import { toUtcMonthStart, getSimulationStartDate, getYearEndMonthIndex, monthIndexToYearMonth, dateToMonthIndex } from '../utils/simulationDateUtils';
 
@@ -19,10 +19,12 @@ import { getProductById, getAssetClassStyle } from '../data/investmentProducts';
 import { Slider } from '../components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ComposedChart, Bar, ReferenceLine, ReferenceArea } from 'recharts';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { alignTimeSeries } from '../utils/monteCarloUtils';
+import { calculateMetrics } from '../shared/instruments/catalogHelpers';
 import { ChevronDown, ChevronUp, RefreshCw, SlidersHorizontal, LineChart as LineChartIcon, FileText, Lock, LockKeyhole, AlertTriangle, Activity, User } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DetailedChart from '../components/DetailedChart';
@@ -57,7 +59,8 @@ import {
 } from '../utils/pdfPageGenerators4';
 
 import {
-  generateConservativeOutcomes
+  generateConservativeOutcomes,
+  generateMCDetailsPage
 } from '../utils/pdfMonteCarloGenerators';
 
 
@@ -111,6 +114,8 @@ const ScenarioResult = () => {
   const [baselineProjection, setBaselineProjection] = useState(null);
   const [missingPages, setMissingPages] = useState([]);
   const [showTrendHighlight, setShowTrendHighlight] = useState(false);
+  const [histData, setHistData] = useState([]);
+  const [investmentProductsList, setInvestmentProductsList] = useState([]);
 
   // Result State
   const [projection, setProjection] = useState({
@@ -1961,29 +1966,159 @@ const ScenarioResult = () => {
       const pageNumbers = {};
       let currentPage = 1;
 
-      // ===== PAGE 1: COVER PAGE =====
-      await generateCoverPage(pdf, language);
       currentPage++;
+      
+      // ===== PREPARE INVESTMENT HISTORICAL DATA =====
+      let currentHistData = [];
+      let currentMetricsArr = [];
+      let currentInvestmentProductsList = [];
+      let currentInjections = [];
+      let currentExits = [];
+      let currentRowDetails = [];
+      
+      const investedAssets = getInvestedBookAssets(assets, scenarioData);
+      if (investedAssets && investedAssets.length > 0) {
+        try {
+          // Import investmentProducts data (already imported as getProductById at line 18)
+          // Actually, we need the raw catalog for catalog-wide operations if needed, 
+          // but here we just need products for the selected assets.
+          const uniqueProducts = [...new Map(investedAssets.map(a => {
+            const productId = scenarioData.investmentSelections[a.id];
+            const p = getProductById(productId);
+            return p ? [p.id, p] : null;
+          }).filter(Boolean)).values()];
 
-      // ===== PAGE 2: TABLE OF CONTENTS (blank for now, will populate at end) =====
-      pdf.addPage(); // Add blank page 2
-      currentPage++;
+          const rawSeries = uniqueProducts.map(p => p.performanceData);
+          const aligned = alignTimeSeries(rawSeries);
 
-      // ===== PAGE 3: SIMULATION SUMMARY =====
-      pageNumbers.summary = currentPage;
+          if (aligned && aligned.length > 0 && aligned[0]) {
+            currentHistData = aligned[0].map((pt, i) => {
+              const point = { date: pt.date };
+              uniqueProducts.forEach((p, pi) => {
+                const base = aligned[pi][0].value;
+                point[p.id] = base > 0 ? (aligned[pi][i].value / base) * 100 : 100;
+              });
+              return point;
+            });
+
+            currentMetricsArr = uniqueProducts.map((p, pi) => {
+              const m = calculateMetrics(p.performanceData);
+              const alignedSerie = aligned[pi];
+              const alignedFirst = alignedSerie && alignedSerie.length > 0 ? alignedSerie[0].value : 0;
+              const alignedLast = alignedSerie && alignedSerie.length > 0 ? alignedSerie[alignedSerie.length - 1].value : 0;
+              const alignedTotalReturn = alignedFirst > 0 ? (alignedLast - alignedFirst) / alignedFirst : 0;
+              
+              return {
+                name: p.name,
+                id: p.id,
+                ticker: p.ticker,
+                initial: investedAssets
+                  .filter(a => scenarioData.investmentSelections[a.id] === p.id)
+                  .reduce((s, a) => s + (parseFloat(a.amount) || 0), 0),
+                meanReturn: m ? m.meanReturn : 0,
+                volatility: m ? m.volatility : 0,
+                maxDrawdown: m ? m.maxDrawdown : 0,
+                max3yLoss: m ? m.maxDrawdown : 0,
+                max3yGain: m ? m.bestYear : 0,
+                totalReturn: alignedTotalReturn,
+              };
+            });
+            
+            currentInvestmentProductsList = uniqueProducts;
+
+            // Sync with state for hidden Chart Rendering
+            setHistData(currentHistData);
+            setInvestmentProductsList(currentInvestmentProductsList);
+
+            // Compute formatted Injections and Exits for PDF side-box
+            const now = new Date();
+            const fmtMonYr = (dateStr) => {
+              if (!dateStr) return '—';
+              const d = new Date(dateStr);
+              if (isNaN(d.getTime())) return dateStr;
+              return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`;
+            };
+
+            const horizonMonths = monteCarloProjections?.details?.horizonMonths || 0;
+
+            const pdfInjections = investedAssets
+              .filter(r => {
+                const sd = r.availabilityDate ? new Date(r.availabilityDate) : now;
+                const offset = Math.max(0, Math.round(
+                  (sd.getFullYear() - now.getFullYear()) * 12 +
+                  (sd.getMonth() - now.getMonth())
+                ));
+                return offset > 0 && offset <= horizonMonths;
+              })
+              .map(r => {
+                const product = getProductById(scenarioData.investmentSelections[r.id]);
+                return {
+                  ticker: product ? product.ticker : r.selectedProduct,
+                  amount: parseFloat(r.amount) || 0,
+                  date: fmtMonYr(r.availabilityDate),
+                };
+              });
+
+            const pdfExits = investedAssets
+              .filter(r => {
+                if (!r.endDate) return false;
+                const ed = new Date(r.endDate);
+                const offset = Math.round(
+                  (ed.getFullYear() - now.getFullYear()) * 12 +
+                  (ed.getMonth() - now.getMonth())
+                );
+                return offset > 0 && offset < horizonMonths;
+              })
+              .map(r => {
+                const product = getProductById(scenarioData.investmentSelections[r.id]);
+                return {
+                  ticker: product ? product.ticker : r.selectedProduct,
+                  amount: parseFloat(r.amount) || 0,
+                  date: fmtMonYr(r.endDate),
+                };
+              });
+
+            const pdfRowDetails = investedAssets.map(r => {
+                const product = getProductById(scenarioData.investmentSelections[r.id]);
+                return {
+                    ticker: product ? product.ticker : (product?.ticker || r.name),
+                    name: product ? product.name : r.name,
+                    amount: parseFloat(r.amount) || 0,
+                    startDate: fmtMonYr(r.availabilityDate || r.startDate || now.toISOString()),
+                    endDate: fmtMonYr(r.endDate),
+                };
+            });
+            
+            // Re-assign to variables used in the generateInvestmentInfo call
+            currentInjections = pdfInjections;
+            currentExits = pdfExits;
+            currentRowDetails = pdfRowDetails;
+            
+            // Allow render cycle
+            // Increase delay to ensure full render of hidden charts
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        } catch (err) {
+          console.error('Error computing PDF historical data:', err);
+        }
+      }
+
+      // ===== PREPARE SUMMARY DATA EARLY (for cover names) =====
       const yearlyData = projection?.yearlyBreakdown || [];
       const finalBalance = yearlyData.length > 0
         ? yearlyData[yearlyData.length - 1].cumulativeBalance
         : projection?.finalBalance || 0;
 
-      // [FIX] Define missing balances for PDF summary
-      const final5Balance = monteCarloProjections?.p5 && monteCarloProjections.p5.length > 0
-        ? monteCarloProjections.p5[monteCarloProjections.p5.length - 1].cumulativeBalance
+      // Use chartData's recomposed mc5 value (same as UI display) instead of legacy p5 array
+      const finalChartRowPdf = chartData && chartData.length > 0 ? chartData[chartData.length - 1] : null;
+      const final5Balance = (isInvested && finalChartRowPdf?.mc5 !== undefined)
+        ? finalChartRowPdf.mc5
+        : null;
+
+      const finalBaselineBalance = (isInvested && finalChartRowPdf)
+        ? finalChartRowPdf.cumulativeBalance
         : finalBalance;
 
-      const finalBaselineBalance = finalBalance;
-
-      // [FIX] Correctly calculate yearsInRetirement for Person 1 (bounded by death date)
       const deathYear1 = userData?.theoreticalDeathDate 
         ? (userData.theoreticalDeathDate.includes('.') ? parseInt(userData.theoreticalDeathDate.split('.')[2]) : new Date(userData.theoreticalDeathDate).getFullYear())
         : null;
@@ -2003,12 +2138,13 @@ const ScenarioResult = () => {
         finalBaselineBalance: finalBaselineBalance,
         isCouple: userData.analysisType === 'couple',
         firstName: userData.firstName,
-        firstName2: userData.firstName2
+        firstName2: userData.firstName2,
+        analysisType: userData.analysisType // [Phase 9c] also pass analysisType
       };
 
       if (userData.analysisType === 'couple') {
         const deathYear2 = userData?.theoreticalDeathDate2
-          ? (userData.theoreticalDeathDate2.includes('.') ? parseInt(userData.theoreticalDeathDate2.split('.')[2]) : new Date(userData.theoreticalDeathDate2).getFullYear())
+          ? (userData.theoreticalDeathDate2.includes('.') ? parseInt(userData.theoreticalDeathDate2.split('.') [2]) : new Date(userData.theoreticalDeathDate2).getFullYear())
           : null;
 
         summaryData.retirementAge2 = `${retirementInfo.ageYears2}y ${retirementInfo.ageMonths2}m`;
@@ -2019,6 +2155,16 @@ const ScenarioResult = () => {
         ).length;
       }
 
+      // ===== PAGE 1: COVER PAGE =====
+      await generateCoverPage(pdf, language, summaryData);
+      currentPage++;
+
+       // ===== PAGE 2: TABLE OF CONTENTS (blank for now, will populate at end) =====
+      pdf.addPage(); // Add blank page 2
+      currentPage++;
+
+      // ===== PAGE 3: SIMULATION SUMMARY =====
+      pageNumbers.summary = currentPage;
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
       currentPage++;
 
@@ -2138,13 +2284,13 @@ const ScenarioResult = () => {
       // ===== PAGE 10.5 (OPTIONAL): FOCUS YEARS DETAILS =====
       if (pdfFocusYears && pdfFocusYears.some(f => f.active && f.year)) {
         pageNumbers.focus = currentPage;
-        generateFocusPage(pdf, pdfFocusYears, yearlyData, language, currentPage, summaryData.totalPages);
+        generateFocusPage(pdf, pdfFocusYears, yearlyData, language, currentPage, summaryData.totalPages, userData);
         currentPage++;
       }
 
       // ===== PAGE 11: YEAR-BY-YEAR BREAKDOWN =====
       pageNumbers.breakdown = currentPage;
-      generateYearByYearBreakdown(pdf, yearlyData, language, currentPage, summaryData.totalPages);
+      generateYearByYearBreakdown(pdf, yearlyData, language, currentPage, summaryData.totalPages, isCouple, userData);
       currentPage++;
 
       // ===== PAGE 12: LODGING ANNEX =====
@@ -2159,10 +2305,31 @@ const ScenarioResult = () => {
 
       // ===== PAGE 13: INVESTMENT INFO (CONDITIONAL) =====
       // Get investment data from assets or a separate state if available
-      const investmentAssets = assets.filter(a => a.category === 'investment' || a.strategy);
-      if (investmentAssets && investmentAssets.length > 0) {
+      if (investedAssets && investedAssets.length > 0) {
         pageNumbers.investments = currentPage;
-        generateInvestmentInfo(pdf, investmentAssets, language, currentPage, summaryData.totalPages);
+        
+        // Capture hidden charts
+        const mcChartElement = document.querySelector('#pdf-mc-yield-chart .recharts-wrapper') || document.querySelector('#pdf-mc-yield-chart');
+        const histChartElement = document.querySelector('#pdf-hist-overlay-chart .recharts-wrapper') || document.querySelector('#pdf-hist-overlay-chart');
+        
+        await generateInvestmentInfo(pdf, investedAssets, language, currentPage, summaryData.totalPages, monteCarloProjections, projection, {
+          mcChartElement,
+          histChartElement,
+          histData: currentHistData,
+          metricsArr: currentMetricsArr,
+          investmentProductsList: currentInvestmentProductsList,
+          startingAmount: monteCarloProjections?.details?.startingAmount || 0,
+          injections: currentInjections,
+          exits: currentExits,
+          rowDetails: currentRowDetails
+        });
+        currentPage++;
+      }
+
+      // ===== MC DETAILS PAGE (mirrors MonteCarloDetails.js) =====
+      if (isInvested && monteCarloProjections?.details?.stats) {
+        pageNumbers.mcDetails = currentPage;
+        generateMCDetailsPage(pdf, monteCarloProjections, language, currentPage, summaryData.totalPages);
         currentPage++;
       }
 
@@ -2935,7 +3102,7 @@ const ScenarioResult = () => {
               {/* Box 3: Baseline */}
               <Card className={`${isInvested ? '' : 'col-span-2'} flex flex-col items-center justify-center p-4`}>
                 <h4 className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2 text-center">
-                  {language === 'fr' ? 'Simulation avec cash seulement (sans investissement)' : 'Simulation with only cash (no investment)'}
+                  {language === 'fr' ? 'Simulation sans investissements' : 'Simulation without investments'}
                 </h4>
                 <p className={`text-xl font-bold ${finalBaselineBalance >= 0 ? 'text-green-400' : 'text-primary'}`}>
                   CHF {Math.round(finalBaselineBalance).toLocaleString('de-CH')}
@@ -3232,11 +3399,6 @@ const ScenarioResult = () => {
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
-            <div className="px-6 pb-4 text-[10px] text-muted-foreground italic">
-              {language === 'fr'
-                ? "* Les valeurs P5/P10 investies sont des valeurs de fin d'année (après évolution du marché)."
-                : "* Invested P5/P10 shown as end-of-year values after market evolution."}
-            </div>
           </Card>
         </div>
 
@@ -3528,6 +3690,60 @@ const ScenarioResult = () => {
             deathDate2={userData?.theoreticalDeathDate2}
             isCouple={userData?.analysisType === 'couple'}
           />
+        )}
+      </div>
+
+      {/* Hidden Monte Carlo Yield Chart for PDF */}
+      <div id="pdf-mc-yield-chart" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1200px', height: '600px', visibility: 'visible', zIndex: -1 }}>
+        {isInvested && monteCarloProjections?.details && (() => {
+          const { percentiles, horizonMonths } = monteCarloProjections.details;
+          if (!percentiles) return null;
+          
+          const mcChartData = Array.from({ length: (horizonMonths || 0) + 1 }, (_, i) => ({
+            month: i,
+            p5: percentiles.p5 ? percentiles.p5[i] : 0,
+            p10: percentiles.p10 ? percentiles.p10[i] : 0,
+            p25: percentiles.p25 ? percentiles.p25[i] : 0,
+          }));
+          return (
+            <div style={{ background: '#ffffff', padding: '20px', borderRadius: '12px', width: '1200px', height: '600px', border: '1px solid #e2e8f0' }}>
+              <LineChart width={1150} height={550} data={mcChartData} margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => (new Date().getFullYear() + Math.floor(v / 12)).toString()} minTickGap={40} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => `${Math.round(v / 1000)}k`} width={50} />
+                <Line type="monotone" dataKey="p5" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="4 2" name="P5" isAnimationActive={false} />
+                <Line type="monotone" dataKey="p10" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="4 2" name="P10" isAnimationActive={false} />
+                <Line type="monotone" dataKey="p25" stroke="#3b82f6" strokeWidth={3} dot={false} name="P25" isAnimationActive={false} />
+              </LineChart>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Hidden Historical Overlay Chart for PDF */}
+      <div id="pdf-hist-overlay-chart" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1200px', height: '600px', visibility: 'visible', zIndex: -1 }}>
+        {isInvested && histData && histData.length > 0 && (
+          <div style={{ background: '#ffffff', padding: '20px', borderRadius: '12px', width: '1200px', height: '600px', border: '1px solid #e2e8f0' }}>
+            <LineChart width={1150} height={550} data={histData} margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => v.substring(0, 4)} minTickGap={50} />
+              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={v => v.toFixed(0)} width={45} />
+              {investmentProductsList.map((p, i) => {
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+                return (
+                  <Line
+                    key={p.id}
+                    type="monotone"
+                    dataKey={p.id}
+                    stroke={colors[i % colors.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                );
+              })}
+            </LineChart>
+          </div>
         )}
       </div>
     </div >
