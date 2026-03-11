@@ -1983,10 +1983,18 @@ const ScenarioResult = () => {
 
       const finalBaselineBalance = finalBalance;
 
+      // [FIX] Correctly calculate yearsInRetirement for Person 1 (bounded by death date)
+      const deathYear1 = userData?.theoreticalDeathDate 
+        ? (userData.theoreticalDeathDate.includes('.') ? parseInt(userData.theoreticalDeathDate.split('.')[2]) : new Date(userData.theoreticalDeathDate).getFullYear())
+        : null;
+
       const summaryData = {
         finalBalance,
         retirementAge: `${retirementInfo.ageYears}y ${retirementInfo.ageMonths}m`,
-        yearsInRetirement: yearlyData.filter(d => d.year >= retirementInfo.date.getFullYear()).length,
+        yearsInRetirement: yearlyData.filter(d => 
+          d.year >= retirementInfo.date.getFullYear() && 
+          (!deathYear1 || d.year <= deathYear1)
+        ).length,
         deathDate: userData?.theoreticalDeathDate,
         peakWealth: Math.max(...(yearlyData.map(p => p.cumulativeBalance) || [0])),
         totalPages: 14, // Will be updated
@@ -1999,9 +2007,16 @@ const ScenarioResult = () => {
       };
 
       if (userData.analysisType === 'couple') {
+        const deathYear2 = userData?.theoreticalDeathDate2
+          ? (userData.theoreticalDeathDate2.includes('.') ? parseInt(userData.theoreticalDeathDate2.split('.')[2]) : new Date(userData.theoreticalDeathDate2).getFullYear())
+          : null;
+
         summaryData.retirementAge2 = `${retirementInfo.ageYears2}y ${retirementInfo.ageMonths2}m`;
         summaryData.deathDate2 = userData?.theoreticalDeathDate2;
-        summaryData.yearsInRetirement2 = yearlyData.filter(d => d.year >= retirementInfo.date2.getFullYear()).length;
+        summaryData.yearsInRetirement2 = yearlyData.filter(d => 
+          d.year >= retirementInfo.date2.getFullYear() &&
+          (!deathYear2 || d.year <= deathYear2)
+        ).length;
       }
 
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
