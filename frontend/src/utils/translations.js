@@ -176,8 +176,9 @@ export const translations = {
       saveSuccess: "Income data saved",
       saveFailed: "Failed to save income data",
       resetSuccess: "Income reset to defaults",
-      incomeDeleted: "Income source deleted",
       consolidated: "Consolidated",
+      person1: "Person 1",
+      person2: "Person 2",
       // Default income names
       salary: "Net Salary",
       avs: "AVS",
@@ -695,8 +696,9 @@ export const translations = {
       saveSuccess: "Données de revenus enregistrées",
       saveFailed: "Échec de l'enregistrement des revenus",
       resetSuccess: "Revenus réinitialisés",
-      incomeDeleted: "Source de revenu supprimée",
       consolidated: "Consolidé",
+      person1: "Personne 1",
+      person2: "Personne 2",
       // Default income names
       salary: "Salaire Net",
       avs: "AVS",
