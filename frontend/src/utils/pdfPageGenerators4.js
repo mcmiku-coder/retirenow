@@ -1054,6 +1054,7 @@ export const generateLegalWarnings = (pdf, language, pageNum, totalPages) => {
  * Displays detailed cards for selected focus years (up to 4)
  */
 export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum, totalPages, userData) => {
+    const isCouple = userData?.analysisType === 'couple' || userData?.isCouple;
     // Filter active focus years
     const activeFocusYears = focusYears?.filter(f => f.active && f.year) || [];
 
