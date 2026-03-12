@@ -662,7 +662,7 @@ export const translations = {
     // Retirement Benefits Page
     retirementBenefits: {
       title: "Prestations de retraite et âge de simulation",
-      subtitle: "Sélectionnez les piliers de retraite dont vous bénéficierez et comment vous prévoyez de les utiliser",
+      subtitle: "Renseignez vos piliers de prévoyance et indiquez comment vous prévoyez de les utiliser",
       person1Tab: "Personne 1",
       person2Tab: "Personne 2",
       helpButton: "Aidez-moi à remplir cette page"
