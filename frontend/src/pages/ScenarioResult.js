@@ -2966,7 +2966,7 @@ const ScenarioResult = () => {
               className="flex items-center gap-2"
             >
               <LineChartIcon className="h-4 w-4" />
-              {language === 'fr' ? 'Graphique détaillé' : 'Detailed graph'}
+              Detailed graph
             </Button>
             {isInvested && (
               <Button
@@ -3010,7 +3010,7 @@ const ScenarioResult = () => {
                 className="flex items-center gap-2"
               >
                 <Activity className="h-4 w-4" />
-                {language === 'fr' ? 'Détails MC' : 'MC Details'}
+                MC Details
               </Button>
             )}
             <Button
@@ -3021,7 +3021,7 @@ const ScenarioResult = () => {
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              {language === 'fr' ? 'Données mensuelles' : 'Monthly Data'}
+              Monthly Data
             </Button>
           </div>
         }
