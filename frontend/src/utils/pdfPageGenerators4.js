@@ -1240,13 +1240,13 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
                 pdf.text(badgeText, badgeX + badgePaddingX, leftY - 3 + 2.8);
             }
 
-            pdf.setFont('helvetica', 'bold');
+            pdf.setFont('helvetica', 'normal'); // Changed from bold per user request
             pdf.setTextColor(0, 0, 0);
-            pdf.setFontSize(10); // Increased from 7.5 for better readability
+            pdf.setFontSize(9); // 10% smaller than previous 10
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 9 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
             leftY += 5;
@@ -1311,13 +1311,13 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
                     pdf.text(badgeText, badgeX + badgePaddingX, leftY - 3 + 2.8);
                 }
 
-                pdf.setFont('helvetica', 'bold');
+                pdf.setFont('helvetica', 'normal'); // Changed from bold per user request
                 pdf.setTextColor(0, 0, 0);
-                pdf.setFontSize(10); // Increased from 7.5 for better readability
+                pdf.setFontSize(9); // 10% smaller than previous 10
 
                 // Manual Right Align for Value
                 const valStr = formatNumber(val);
-                const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
+                const valWidth = pdf.getStringUnitWidth(valStr) * 9 / pdf.internal.scaleFactor;
                 pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
                 leftY += 5;
@@ -1392,13 +1392,13 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
                 pdf.text(badgeText, badgeX + badgePaddingX, rightY - 3 + 2.8);
             }
 
-            pdf.setFont('helvetica', 'bold');
+            pdf.setFont('helvetica', 'normal'); // Changed from bold per user request
             pdf.setTextColor(0, 0, 0);
-            pdf.setFontSize(10); // Increased from 7.5 for better readability
+            pdf.setFontSize(9); // 10% smaller than previous 10
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 9 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + cardWidth - 5 - valWidth, rightY);
 
             rightY += 5;
