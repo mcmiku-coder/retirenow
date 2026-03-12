@@ -7,6 +7,7 @@ import { Label } from "../components/ui/label";
 import { toast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 const ForgotPassword = () => {
     const { language } = useLanguage();
@@ -20,8 +21,7 @@ const ForgotPassword = () => {
         setLoading(true);
 
         try {
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiUrl}/api/auth/request-password-reset`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/request-password-reset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })

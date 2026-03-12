@@ -11,6 +11,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { toast } from 'sonner';
 import { translations } from '../../utils/translations';
+import { API_BASE_URL } from '../../utils/apiConfig';
 import PageHeader from '../../components/PageHeader';
 import { Save, Undo } from 'lucide-react';
 
@@ -44,8 +45,7 @@ const AdminConfigPage = () => {
                 return;
             }
 
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiUrl}/api/admin/config?admin_key=${adminKey}`, {
+            const response = await fetch(`${API_BASE_URL}/api/admin/config?admin_key=${adminKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)

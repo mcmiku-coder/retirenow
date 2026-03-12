@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { TEMPLATES, FONTS } from '../config/themeOptions';
 import { useLanguage } from './LanguageContext';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 const ThemeContext = createContext(null);
 
@@ -28,8 +29,7 @@ export const ThemeProvider = ({ children }) => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-                const response = await fetch(`${apiUrl}/api/config`);
+                const response = await fetch(`${API_BASE_URL}/api/config`);
                 if (response.ok) {
                     const data = await response.json();
                     // Merge with defaults to ensure all keys exist

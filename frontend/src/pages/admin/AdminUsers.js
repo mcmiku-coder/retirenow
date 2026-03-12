@@ -5,8 +5,9 @@ import PageHeader from '../../components/PageHeader';
 import { toast } from 'sonner';
 import { Users, Shield, Trash2, Check, X, MapPin } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../utils/apiConfig';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
+const BACKEND_URL = API_BASE_URL;
 
 // Helper function to format date/time
 const formatDateTime = (isoString) => {

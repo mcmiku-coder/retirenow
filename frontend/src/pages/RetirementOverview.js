@@ -8,8 +8,9 @@ import { getUserData, saveUserData } from '../utils/database';
 import { calculateLifeExpectancy } from '../utils/lifeExpectancy';
 import { Calendar, Heart, TrendingUp } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import { API_BASE_URL } from '../utils/apiConfig';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
+const BACKEND_URL = API_BASE_URL;
 
 const RetirementOverview = () => {
   const navigate = useNavigate();

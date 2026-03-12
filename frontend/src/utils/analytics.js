@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from './apiConfig';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL;
+const BACKEND_URL = API_BASE_URL;
 
 // Generate or retrieve session ID
 const getSessionId = () => {
