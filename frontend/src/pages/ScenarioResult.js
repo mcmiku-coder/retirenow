@@ -2925,7 +2925,7 @@ const ScenarioResult = () => {
 
       <PageHeader
         containerClassName="max-w-[80%]"
-        title={language === 'fr' ? 'Résultats de la simulation' : 'Simulation results'}
+        title={language === 'fr' ? 'Résultats de simulation' : 'Simulation results'}
         rightContent={
           <div className="flex gap-2">
             <Button
@@ -2976,7 +2976,7 @@ const ScenarioResult = () => {
                 className="flex items-center gap-2"
               >
                 <Activity className="h-4 w-4" />
-                {language === 'fr' ? 'Flux invest' : 'Invest Flow'}
+                Invest Flow
               </Button>
             )}
             <Button
@@ -2987,7 +2987,7 @@ const ScenarioResult = () => {
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              {language === 'fr' ? 'Rapport Pdf' : 'Pdf report'}
+              Pdf report
             </Button>
             {isInvested && (
               <Button
