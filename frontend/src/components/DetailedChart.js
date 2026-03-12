@@ -173,6 +173,48 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
     };
 
     const baselineOffset = getBaselineOffset();
+    
+    // Custom Legend Renderer to ensure exact visual style requested by user
+    const renderLegend = ({ payload }) => {
+        return (
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-6">
+                {payload.map((entry, index) => {
+                    const { value, color, type, payload: seriesProps } = entry;
+                    const isLine = type === 'line' || seriesProps?.strokeDasharray !== undefined;
+                    const isDashed = seriesProps?.strokeDasharray === "5 5";
+                    
+                    // Handle gradient color for legend icon (default to green for MC lines)
+                    const iconColor = (color && typeof color === 'string' && color.startsWith('url')) ? "#22c55e" : color;
+                    
+                    return (
+                        <div key={`legend-item-${index}`} className="flex items-center gap-3">
+                            {isLine ? (
+                                <div 
+                                    style={{ 
+                                        width: 48, 
+                                        height: 0, 
+                                        borderBottom: isDashed ? `4px dashed ${iconColor}` : `5px solid ${iconColor}`,
+                                        opacity: 1,
+                                        marginTop: '4px'
+                                    }} 
+                                />
+                            ) : (
+                                <div style={{ width: 18, height: 18, backgroundColor: iconColor }} />
+                            )}
+                            <span style={{ 
+                                color: colors.text, 
+                                fontSize: isPdf ? '14px' : '21px',
+                                fontWeight: '500',
+                                display: 'inline-block'
+                            }}>
+                                {value}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
 
     return (
         <div className="flex-1 rounded-lg p-4 border" style={{
@@ -218,10 +260,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     {!isPdf && <Tooltip content={<CustomTooltip />} />}
                     <Legend
                         verticalAlign="top"
-                        height={48}
-                        iconWidth={48}
-                        iconHeight={8}
-                        wrapperStyle={{ fontSize: isPdf ? '14px' : '21px', color: colors.text, paddingTop: '10px' }}
+                        content={renderLegend}
                     />
 
                     {/* Zero reference line */}
