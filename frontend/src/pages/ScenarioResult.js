@@ -3140,17 +3140,17 @@ const ScenarioResult = () => {
                   const p2Avatar = getAvatarUrl(userData?.birthDate2, userData?.gender2, true);
 
                   return (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
                       {/* P1 Selector */}
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
                         <div className="flex items-center gap-3">
                           {p1Avatar ? (
-                            <div className="h-11 w-11 rounded-md overflow-hidden border-2 border-blue-500/50">
+                            <div className="h-12 w-12 rounded-md overflow-hidden border-2 border-blue-500/50">
                               <img src={p1Avatar} alt="P1" className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover" />
                             </div>
                           ) : (
                             <div className="p-2 rounded-md border-2 border-blue-500/50 bg-blue-500/10 text-blue-600">
-                              <User className="h-6 w-6" />
+                              <User className="h-7 w-7" />
                             </div>
                           )}
                           <div className="flex flex-col">
@@ -3175,15 +3175,15 @@ const ScenarioResult = () => {
 
                       {/* P2 Selector (Only if couple) */}
                       {(userData?.analysisType === 'couple' || userData?.analysisType === 'couple_standard') && (
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
                           <div className="flex items-center gap-3">
                             {p2Avatar ? (
-                              <div className="h-11 w-11 rounded-md overflow-hidden border-2 border-purple-500/50">
+                              <div className="h-12 w-12 rounded-md overflow-hidden border-2 border-purple-500/50">
                                 <img src={p2Avatar} alt="P2" className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover" />
                               </div>
                             ) : (
                               <div className="p-2 rounded-md border-2 border-purple-500/50 bg-purple-500/10 text-purple-600">
-                                <User className="h-6 w-6" />
+                                <User className="h-7 w-7" />
                               </div>
                             )}
                             <div className="flex flex-col">
