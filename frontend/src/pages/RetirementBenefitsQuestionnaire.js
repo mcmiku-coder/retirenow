@@ -119,8 +119,9 @@ const RetirementBenefitsQuestionnaire = () => {
                 setP1CurrentAge(calculateAge(userDataResult.birthDate));
 
                 // Calculate Person 2 basics
+                let p2Legal = null; // Declare here so it's accessible below
                 if (userDataResult.analysisType === 'couple' && userDataResult.birthDate2) {
-                    const p2Legal = getLegalRetirementDate(userDataResult.birthDate2, userDataResult.gender2);
+                    p2Legal = getLegalRetirementDate(userDataResult.birthDate2, userDataResult.gender2);
                     setP2LegalRetirementDate(p2Legal.toISOString().split('T')[0]);
                     setP2CurrentAge(calculateAge(userDataResult.birthDate2));
                 }
@@ -184,7 +185,7 @@ const RetirementBenefitsQuestionnaire = () => {
                 }
 
                 // Ensure AVS start dates are populated from legal dates if missing
-                if (initialB1 && initialB1.avs && !initialB1.avs.startDate) {
+                if (initialB1 && initialB1.avs && !initialB1.avs.startDate && p1Legal) {
                     initialB1.avs.startDate = p1Legal.toISOString().split('T')[0];
                 }
                 if (initialB2 && initialB2.avs && !initialB2.avs.startDate && p2Legal) {
