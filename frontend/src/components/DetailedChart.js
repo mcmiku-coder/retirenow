@@ -505,18 +505,17 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     <Line
                         type="monotone"
                         dataKey="displayCumulativeBalance"
-                        stroke={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "url(#splitColorBaseline)"}
-                        strokeDasharray={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "5 5" : "0"}
-                        strokeWidth={4}
-                        name={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? (language === 'fr' ? "Ligne de base" : "Base Line") : "Cumulative Balance"}
+                        stroke={isPdf ? "#374151" : "#ffffff"}
+                        strokeDasharray="5 5"
+                        strokeWidth={2}
+                        name="Base line (no investments)"
                         dot={false}
                         isAnimationActive={false}
                         label={(props) => {
                             const { x, y, value, index } = props;
                             if (value === undefined || value === null || isNaN(value)) return null;
                             if (renderData && index === renderData.length - 1) {
-                                const showGreyMC = isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined;
-                                const fillColor = showGreyMC ? "#374151" : (value >= 0 ? "#10b981" : "#ef4444");
+                                const fillColor = isPdf ? "#374151" : "#ffffff";
                                 return (
                                     <text
                                         x={x}
@@ -537,18 +536,6 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         }}
                     />
 
-                    {/* Area fill - dynamic green/red gradient */}
-                    <Area
-                        type="monotone"
-                        dataKey="displayCumulativeBalance"
-                        fill={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? "#374151" : "url(#splitColorArea)"}
-                        fillOpacity={(isPdf && (showMC50 || showMC25 || showMC10 || showMC5) && renderData?.[0]?.mc5 !== undefined) ? 0.05 : 1}
-                        stroke="none"
-                        name=""
-                        legendType="none"
-                        tooltipType="none"
-                        isAnimationActive={false}
-                    />
                 </ComposedChart>
             </ResponsiveContainer>
         </div>

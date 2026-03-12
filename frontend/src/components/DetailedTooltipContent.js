@@ -73,7 +73,7 @@ const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name,
 
                 <div className="flex gap-8">
                     <div className="flex items-center gap-2 font-bold text-gray-100">
-                        <span className={labelClass}>{language === 'fr' ? 'Base line' : 'Base line'}</span>
+                        <span className={labelClass}>{language === 'fr' ? 'Base line (no investments)' : 'Base line (no investments)'}</span>
                         <span className="text-yellow-500">
                             {Math.round(showActivatedOwnings ? data.cumulativeBalance : data.cumulativeBalance - (data.activatedOwnings || 0)).toLocaleString()} CHF
                         </span>
