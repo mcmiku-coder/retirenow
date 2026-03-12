@@ -219,7 +219,8 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     <Legend
                         verticalAlign="top"
                         height={48}
-                        iconSize={32}
+                        iconWidth={48}
+                        iconHeight={4}
                         wrapperStyle={{ fontSize: isPdf ? '14px' : '21px', color: colors.text, paddingTop: '10px' }}
                     />
 
@@ -474,7 +475,7 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             stroke={isPdf ? "#3b82f6" : "url(#splitColor)"} // Blue for PDF
                             strokeWidth={5}
                             name="MC 5% (Very Pessimistic)"
-                            legendType="line"
+                            legendType="plainline"
                             dot={false}
                             isAnimationActive={false}
                             label={(props) => {
