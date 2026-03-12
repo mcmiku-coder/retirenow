@@ -3124,61 +3124,91 @@ const ScenarioResult = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
-                <div className="flex flex-col gap-4">
-                  {/* P1 Selector */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full border-2 border-blue-500/50 bg-blue-500/10 text-blue-600">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</span>
-                      </div>
-                    </div>
-                    <Select
-                      value={String(Math.floor(retirementAge || 65))}
-                      onValueChange={(val) => synchronizeSimulationState('p1', Number(val))}
-                      disabled={isRecalculating}
-                    >
-                      <SelectTrigger className="w-24 h-9 font-bold bg-background border-blue-500/20 focus:ring-blue-500">
-                        <SelectValue placeholder="Age" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
-                          <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {(() => {
+                  const getAvatarUrl = (birthDate, gender, isP2 = false) => {
+                    if (!gender || !birthDate) return null;
+                    const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
+                    const bracket = age < 50 ? '40' : age <= 60 ? '50' : '60';
+                    const gCode = gender === 'female' ? 'F' : 'M';
+                    const isCouple = userData?.analysisType === 'couple' || userData?.analysisType === 'couple_standard';
+                    const gCode1 = userData?.gender === 'female' ? 'F' : 'M';
+                    const color = (isP2 && isCouple && gCode === gCode1) ? 'Red' : 'Blue';
+                    return `/avatar_${gCode}_${bracket}_${color}.png`;
+                  };
 
-                  {/* P2 Selector (Only if couple) */}
-                  {(userData?.analysisType === 'couple' || userData?.analysisType === 'couple_standard') && (
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full border-2 border-purple-500/50 bg-purple-500/10 text-purple-600">
-                          <User className="h-4 w-4" />
+                  const p1Avatar = getAvatarUrl(userData?.birthDate, userData?.gender);
+                  const p2Avatar = getAvatarUrl(userData?.birthDate2, userData?.gender2, true);
+
+                  return (
+                    <div className="flex flex-col gap-4">
+                      {/* P1 Selector */}
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          {p1Avatar ? (
+                            <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-blue-500/50">
+                              <img src={p1Avatar} alt="P1" className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover" />
+                            </div>
+                          ) : (
+                            <div className="p-2 rounded-full border-2 border-blue-500/50 bg-blue-500/10 text-blue-600">
+                              <User className="h-4 w-4" />
+                            </div>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold">{userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1')}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</span>
-                        </div>
+                        <Select
+                          value={String(Math.floor(retirementAge || 65))}
+                          onValueChange={(val) => synchronizeSimulationState('p1', Number(val))}
+                          disabled={isRecalculating}
+                        >
+                          <SelectTrigger className="w-24 h-9 font-bold bg-background border-blue-500/20 focus:ring-blue-500">
+                            <SelectValue placeholder="Age" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
+                              <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Select
-                        value={String(Math.floor(retirementAge2 || 65))}
-                        onValueChange={(val) => synchronizeSimulationState('p2', Number(val))}
-                        disabled={isRecalculating}
-                      >
-                        <SelectTrigger className="w-24 h-9 font-bold bg-background border-purple-500/20 focus:ring-purple-500">
-                          <SelectValue placeholder="Age" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
-                            <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+
+                      {/* P2 Selector (Only if couple) */}
+                      {(userData?.analysisType === 'couple' || userData?.analysisType === 'couple_standard') && (
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-muted transition-all hover:bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            {p2Avatar ? (
+                              <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-purple-500/50">
+                                <img src={p2Avatar} alt="P2" className="w-[120%] h-[120%] -ml-[10%] -mt-[10%] object-cover" />
+                              </div>
+                            ) : (
+                              <div className="p-2 rounded-full border-2 border-purple-500/50 bg-purple-500/10 text-purple-600">
+                                <User className="h-4 w-4" />
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold">{userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')}</span>
+                            </div>
+                          </div>
+                          <Select
+                            value={String(Math.floor(retirementAge2 || 65))}
+                            onValueChange={(val) => synchronizeSimulationState('p2', Number(val))}
+                            disabled={isRecalculating}
+                          >
+                            <SelectTrigger className="w-24 h-9 font-bold bg-background border-purple-500/20 focus:ring-purple-500">
+                              <SelectValue placeholder="Age" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 13 }, (_, i) => 58 + i).map(age => (
+                                <SelectItem key={age} value={String(age)}>{age} {language === 'fr' ? 'ans' : 'y'}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
