@@ -66,10 +66,10 @@ const DateInputWithShortcuts = ({
                     <button
                         onClick={() => setDate(deathDate)}
                         className="flex items-center justify-center w-6 h-6 text-[10px] bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/30 rounded font-bold transition-colors"
-                        title={`Estimated Death Date: ${deathDate}`}
+                        title={`Estimated end of life: ${deathDate}`}
                         type="button"
                     >
-                        D
+                        EoL
                     </button>
                 )}
             </div>

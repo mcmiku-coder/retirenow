@@ -132,7 +132,7 @@ export const translations = {
       legalRetirementDesc: "Birth date + 65 years + 1 month",
       lifeExpectancy: "Life Expectancy",
       lifeExpectancyDesc: "Statistical data for your gender",
-      theoreticalDeath: "Theoretical Death Date",
+      theoreticalDeath: "Theoretical end of life",
       theoreticalDeathDesc: "Used for financial projections",
       years: "years",
       continue: "Continue to Income"
@@ -270,10 +270,10 @@ export const translations = {
     financialBalance: {
       title: "Current financial balance",
       subtitle: "Your projected financial situation over time",
-      balanceAtDeath: "Balance at Death",
+      balanceAtDeath: "Balance at end of life",
       positive: "POSITIVE",
       negative: "NEGATIVE",
-      balanceValue: "Balance Value at Death",
+      balanceValue: "Balance Value at end of life",
       projectionGraph: "Financial Projection Over Time",
       yearlyBreakdown: "Year-by-Year Financial Breakdown",
       incomeByCategory: "Income by Category",
@@ -654,7 +654,7 @@ export const translations = {
       legalRetirementDesc: "Date de naissance + 65 ans + 1 mois",
       lifeExpectancy: "Espérance de vie",
       lifeExpectancyDesc: "Données statistiques pour votre genre",
-      theoreticalDeath: "Date de décès théorique",
+      theoreticalDeath: "Date de fin de vie théorique",
       theoreticalDeathDesc: "Utilisée pour les projections financières",
       years: "ans",
       continue: "Continuer vers les revenus"
@@ -790,10 +790,10 @@ export const translations = {
     financialBalance: {
       title: "Bilan financier actuel",
       subtitle: "Votre situation financière projetée dans le temps",
-      balanceAtDeath: "Solde au décès",
+      balanceAtDeath: "Solde en fin de vie",
       positive: "POSITIF",
       negative: "NÉGATIF",
-      balanceValue: "Valeur du solde au décès",
+      balanceValue: "Valeur du solde en fin de vie",
       projectionGraph: "Projection financière dans le temps",
       yearlyBreakdown: "Détail financier année par année",
       incomeByCategory: "Revenus par catégorie",

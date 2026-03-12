@@ -180,7 +180,7 @@ const AssetsOverview = () => {
         return [
             {
                 id: 1,
-                name: language === 'fr' ? 'Donations avant décès' : 'Donations before death',
+                name: language === 'fr' ? 'Donations avant fin de vie' : 'Donations before end of life',
                 amount: '',
                 category: 'none',
                 madeAvailableDate: '',
@@ -190,7 +190,7 @@ const AssetsOverview = () => {
             },
             {
                 id: 2,
-                name: language === 'fr' ? 'Transmission au décès' : 'Transmission at death',
+                name: language === 'fr' ? 'Transmission en fin de vie' : 'Transmission at end of life',
                 amount: '',
                 category: 'Illiquid',
                 madeAvailableDate: sharedDeathDate,

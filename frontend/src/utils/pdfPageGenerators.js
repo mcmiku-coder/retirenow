@@ -238,7 +238,7 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
     if (data.isInvested && data.final5Balance !== null) {
         financialData.push([
             { 
-                content: language === 'fr' ? 'Solde projeté au décès (Monte Carlo 5%)' : 'Projected balance at death (Monte Carlo 5%)',
+                content: language === 'fr' ? 'Solde projeté en fin de vie (Monte Carlo 5%)' : 'Projected balance at end of life (Monte Carlo 5%)',
                 styles: { fontStyle: 'bold' } 
             },
             { 
@@ -250,7 +250,7 @@ export const generateSimulationSummary = async (pdf, data, language, pageNum) =>
 
     financialData.push([
         { 
-            content: language === 'fr' ? 'Solde projeté au décès (baseline)' : 'Projected balance at death (baseline)',
+            content: language === 'fr' ? 'Solde projeté en fin de vie (baseline)' : 'Projected balance at end of life (baseline)',
             styles: { fontStyle: 'normal' } 
         },
         { 

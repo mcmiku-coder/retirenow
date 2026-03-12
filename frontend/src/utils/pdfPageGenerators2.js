@@ -149,7 +149,7 @@ export const generatePersonalInfo = (pdf, userData, scenarioData, language, page
         [language === 'fr' ? 'Âge légal de retraite' : 'Legal retirement age', scenarioData.legalRetirementAge || '65'],
         [language === 'fr' ? 'Date légale de retraite' : 'Legal retirement date', formatDate(scenarioData.legalRetirementDate)],
         [language === 'fr' ? 'Espérance de vie' : 'Life expectancy', `${scenarioData.lifeExpectancy || 'N/A'} ${language === 'fr' ? 'ans' : 'years'}`],
-        [language === 'fr' ? 'Date de décès théorique' : 'Theoretical death date', formatDate(userData.theoreticalDeathDate)]
+        [language === 'fr' ? 'Date de fin de vie théorique' : 'Theoretical end of life', formatDate(userData.theoreticalDeathDate)]
     ];
 
     if (isCouple) {
