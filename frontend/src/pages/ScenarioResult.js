@@ -3366,7 +3366,7 @@ const ScenarioResult = () => {
                       stroke={isInvested ? "#9ca3af" : "url(#splitColorBaseline)"}
                       strokeDasharray={isInvested ? "5 5" : "0"}
                       fill={isInvested ? "none" : "url(#splitColorArea)"}
-                      name={isInvested ? (language === 'fr' ? 'Référence (Cash)' : 'Baseline (Cash)') : (language === 'fr' ? 'Solde cumulé' : 'Cumulative Balance')}
+                      name={isInvested ? 'Base line (no investments)' : (language === 'fr' ? 'Base line (no investments)' : 'Base line (no investments)')}
                       strokeWidth={2}
                       dot={false}
                       label={(props) => {
