@@ -1242,10 +1242,11 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(10); // Increased from 7.5 for better readability
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
             leftY += 5;
@@ -1312,10 +1313,11 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
                 pdf.setFont('helvetica', 'bold');
                 pdf.setTextColor(0, 0, 0);
+                pdf.setFontSize(10); // Increased from 7.5 for better readability
 
                 // Manual Right Align for Value
                 const valStr = formatNumber(val);
-                const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
+                const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
                 pdf.text(valStr, cardX + 5 + colWidth - valWidth, leftY);
 
                 leftY += 5;
@@ -1392,10 +1394,11 @@ export const generateFocusPage = (pdf, focusYears, chartData, language, pageNum,
 
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(10); // Increased from 7.5 for better readability
 
             // Manual Right Align for Value
             const valStr = formatNumber(val);
-            const valWidth = pdf.getStringUnitWidth(valStr) * 7.5 / pdf.internal.scaleFactor;
+            const valWidth = pdf.getStringUnitWidth(valStr) * 10 / pdf.internal.scaleFactor;
             pdf.text(valStr, cardX + cardWidth - 5 - valWidth, rightY);
 
             rightY += 5;
