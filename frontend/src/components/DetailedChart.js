@@ -218,8 +218,9 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                     {!isPdf && <Tooltip content={<CustomTooltip />} />}
                     <Legend
                         verticalAlign="top"
-                        height={36}
-                        wrapperStyle={{ fontSize: isPdf ? '14px' : '21px', color: colors.text }}
+                        height={48}
+                        iconSize={32}
+                        wrapperStyle={{ fontSize: isPdf ? '14px' : '21px', color: colors.text, paddingTop: '10px' }}
                     />
 
                     {/* Zero reference line */}
@@ -471,8 +472,9 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                             type="monotone"
                             dataKey="mc5"
                             stroke={isPdf ? "#3b82f6" : "url(#splitColor)"} // Blue for PDF
-                            strokeWidth={3}
+                            strokeWidth={5}
                             name="MC 5% (Very Pessimistic)"
+                            legendType="line"
                             dot={false}
                             isAnimationActive={false}
                             label={(props) => {
@@ -507,8 +509,9 @@ const DetailedChart = ({ chartData, retirementDate, language, isPdf = false, foc
                         dataKey="displayCumulativeBalance"
                         stroke={isPdf ? "#374151" : "#ffffff"}
                         strokeDasharray="5 5"
-                        strokeWidth={2}
+                        strokeWidth={4}
                         name="Base line (no investments)"
+                        legendType="plainline"
                         dot={false}
                         isAnimationActive={false}
                         label={(props) => {
