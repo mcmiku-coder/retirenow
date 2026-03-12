@@ -16,6 +16,7 @@ import { hasInvestedBook, getInvestedBookAssets, runInvestedBookSimulation, calc
 import { toUtcMonthStart, getSimulationStartDate, getYearEndMonthIndex, monthIndexToYearMonth, dateToMonthIndex } from '../utils/simulationDateUtils';
 
 import { getProductById, getAssetClassStyle } from '../data/investmentProducts';
+import { Progress } from '../components/ui/progress';
 import { Slider } from '../components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
@@ -80,6 +81,8 @@ const ScenarioResult = () => {
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
+  const [pdfProgressText, setPdfProgressText] = useState('');
 
   // Data State
   const [userData, setUserData] = useState(null);
@@ -1960,6 +1963,8 @@ const ScenarioResult = () => {
   const generatePDF = async () => {
     try {
       setGeneratingPdf(true);
+      setPdfProgress(5);
+      setPdfProgressText(language === 'fr' ? 'Préparation du document...' : 'Preparing document...');
       const pdf = new jsPDF('p', 'mm', 'a4');
 
       // Page tracking object
@@ -1978,6 +1983,8 @@ const ScenarioResult = () => {
       
       const investedAssets = getInvestedBookAssets(assets, scenarioData);
       if (investedAssets && investedAssets.length > 0) {
+        setPdfProgress(10);
+        setPdfProgressText(language === 'fr' ? 'Analyse des investissements...' : 'Analyzing investments...');
         try {
           // Import investmentProducts data (already imported as getProductById at line 18)
           // Actually, we need the raw catalog for catalog-wide operations if needed, 
@@ -2156,6 +2163,8 @@ const ScenarioResult = () => {
       }
 
       // ===== PAGE 1: COVER PAGE =====
+      setPdfProgress(15);
+      setPdfProgressText(language === 'fr' ? 'Génération de la couverture...' : 'Generating cover page...');
       await generateCoverPage(pdf, language, summaryData);
       currentPage++;
 
@@ -2165,6 +2174,8 @@ const ScenarioResult = () => {
 
       // ===== PAGE 3: SIMULATION SUMMARY =====
       pageNumbers.summary = currentPage;
+      setPdfProgress(30);
+      setPdfProgressText(language === 'fr' ? 'Résumé financier...' : 'Financial summary...');
       await generateSimulationSummary(pdf, summaryData, language, currentPage);
       currentPage++;
 
@@ -2237,16 +2248,22 @@ const ScenarioResult = () => {
         })
       };
 
+      setPdfProgress(40);
+      setPdfProgressText(language === 'fr' ? 'Données personnelles...' : 'Personal data...');
       generatePersonalInfo(pdf, enrichedUserData, enrichedScenarioData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
       // ===== PAGE 5: INCOME & ASSETS =====
       pageNumbers.incomeAssets = currentPage;
+      setPdfProgress(50);
+      setPdfProgressText(language === 'fr' ? 'Revenus et actifs...' : 'Income and assets...');
       generateIncomeAssets(pdf, incomes, assets, language, currentPage, summaryData.totalPages, isCouple, enrichedUserData);
       currentPage++;
 
       // ===== PAGE 6: COSTS & DEBTS =====
       pageNumbers.costDebts = currentPage;
+      setPdfProgress(60);
+      setPdfProgressText(language === 'fr' ? 'Dépenses et dettes...' : 'Costs and debts...');
       generateCostDebts(pdf, costs, debts, language, currentPage, summaryData.totalPages, isCouple, enrichedUserData);
       currentPage++;
 
@@ -2278,6 +2295,8 @@ const ScenarioResult = () => {
       // Fallback to minimal wait to ensure render
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      setPdfProgress(80);
+      setPdfProgressText(language === 'fr' ? 'Capture du graphique détaillé...' : 'Capturing detailed graph...');
       await generateLandscapeGraph(pdf, graphElement, summaryData, language, currentPage, summaryData.totalPages);
       currentPage++;
 
@@ -2290,6 +2309,8 @@ const ScenarioResult = () => {
 
       // ===== PAGE 11: YEAR-BY-YEAR BREAKDOWN =====
       pageNumbers.breakdown = currentPage;
+      setPdfProgress(90);
+      setPdfProgressText(language === 'fr' ? 'Tableau détaillé par année...' : 'Year-by-year table...');
       generateYearByYearBreakdown(pdf, yearlyData, language, currentPage, summaryData.totalPages, isCouple, userData);
       currentPage++;
 
@@ -2311,6 +2332,9 @@ const ScenarioResult = () => {
         // Capture hidden charts
         const mcChartElement = document.querySelector('#pdf-mc-yield-chart .recharts-wrapper') || document.querySelector('#pdf-mc-yield-chart');
         const histChartElement = document.querySelector('#pdf-hist-overlay-chart .recharts-wrapper') || document.querySelector('#pdf-hist-overlay-chart');
+        
+        setPdfProgress(95);
+        setPdfProgressText(language === 'fr' ? 'Détails des investissements...' : 'Investment details...');
         
         await generateInvestmentInfo(pdf, investedAssets, language, currentPage, summaryData.totalPages, monteCarloProjections, projection, {
           mcChartElement,
@@ -2335,6 +2359,8 @@ const ScenarioResult = () => {
 
       // ===== PAGE 14: LEGAL WARNINGS =====
       pageNumbers.warnings = currentPage;
+      setPdfProgress(99);
+      setPdfProgressText(language === 'fr' ? 'Clauses légales...' : 'Legal warnings...');
       generateLegalWarnings(pdf, language, currentPage, summaryData.totalPages);
       currentPage++;
 
@@ -2368,6 +2394,8 @@ const ScenarioResult = () => {
       }
 
       // Save PDF
+      setPdfProgress(100);
+      setPdfProgressText(language === 'fr' ? 'Finalisation...' : 'Finalizing...');
       pdf.save(`retirement-simulation-${new Date().toISOString().split('T')[0]}.pdf`);
       toast.success(language === 'fr' ? 'Rapport PDF généré avec succès' : 'PDF report generated successfully');
 
@@ -3656,6 +3684,36 @@ const ScenarioResult = () => {
           )}
         </div>
       </div>
+      <Dialog open={generatingPdf} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-500 animate-pulse" />
+              {language === 'fr' ? 'Génération du rapport PDF' : 'Generating PDF Report'}
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {language === 'fr' 
+                ? 'Cette opération peut prendre environ une minute. Veuillez patienter.' 
+                : 'This operation can take about a minute. Please wait.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6 space-y-4">
+            <div className="flex justify-between text-sm font-medium">
+              <span className="text-zinc-300">{pdfProgressText}</span>
+              <span className="text-blue-400 font-mono">{pdfProgress}%</span>
+            </div>
+            <Progress value={pdfProgress} className="h-3 bg-zinc-800" />
+            <div className="text-[10px] text-zinc-500 text-center italic">
+              {language === 'fr'
+                ? "Le report inclut des graphiques haute résolution et des simulations complexes."
+                : "The report includes high-resolution graphs and complex simulations."
+              }
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={missingDataDialog.isOpen} onOpenChange={(open) => !open && setMissingDataDialog(prev => ({ ...prev, isOpen: false }))}>
         <DialogContent>
           <DialogHeader>
