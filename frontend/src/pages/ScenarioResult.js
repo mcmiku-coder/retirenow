@@ -2976,7 +2976,7 @@ const ScenarioResult = () => {
                 className="flex items-center gap-2"
               >
                 <Activity className="h-4 w-4" />
-                {language === 'fr' ? 'Graph Flux invest' : 'Invest Flow graph'}
+                {language === 'fr' ? 'Flux invest' : 'Invest Flow'}
               </Button>
             )}
             <Button
@@ -2987,7 +2987,7 @@ const ScenarioResult = () => {
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              {language === 'fr' ? 'Générer rapport' : 'Generate report'}
+              {language === 'fr' ? 'Rapport Pdf' : 'Pdf report'}
             </Button>
             {isInvested && (
               <Button
