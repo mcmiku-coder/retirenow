@@ -295,6 +295,69 @@ export function validateV2Schema(data) {
         errors.push('Invalid 3a data structure');
     }
 
+    // --- STRICT VALIDATION RULES ---
+
+    // 1. AVS Amount
+    if (questionnaire.hasAVS) {
+        if (!benefitsData.avs?.amount || benefitsData.avs.amount === '') {
+            errors.push('AVS amount is required');
+        }
+    }
+
+    // 2. LPP Amounts
+    if (questionnaire.hasLPP) {
+        if (questionnaire.isWithinPreRetirement === 'yes') {
+            const age = questionnaire.simulationAge;
+            const ageData = benefitsData.lppByAge?.[age];
+            
+            if (!ageData) {
+                errors.push(`Missing LPP data for age ${age}`);
+            } else {
+                const bType = questionnaire.benefitType;
+                if (bType === 'pension' || bType === 'mix' || bType === 'unknown') {
+                    if (!ageData.pension || ageData.pension === '') {
+                        errors.push(`LPP pension for age ${age} is required`);
+                    }
+                }
+                if (bType === 'capital' || bType === 'mix' || bType === 'unknown') {
+                    if (!ageData.capital || ageData.capital === '') {
+                        errors.push(`LPP capital for age ${age} is required`);
+                    }
+                }
+            }
+        } else {
+            // "Current capital" path
+            if (!benefitsData.lppCurrentInitialAmount || benefitsData.lppCurrentInitialAmount === '') {
+                errors.push('LPP current capital is required');
+            }
+        }
+    }
+
+    // 3. 3a Accounts
+    if (benefitsData.threeA && benefitsData.threeA.length > 0) {
+        benefitsData.threeA.forEach((acc, i) => {
+            if (!acc.currentAmount || acc.currentAmount === '') {
+                errors.push(`Amount for 3a account #${i + 1} is required`);
+            }
+        });
+    }
+
+    // 4. Libre-Passage
+    if (benefitsData.librePassages && benefitsData.librePassages.length > 0) {
+        benefitsData.librePassages.forEach((lp, i) => {
+            if (!lp.currentAmount || lp.currentAmount === '') {
+                errors.push(`Amount for Libre-Passage #${i + 1} is required`);
+            }
+        });
+    }
+
+    // 5. Supplementary Pension
+    if (questionnaire.hasSupplementaryPension) {
+        if (!benefitsData.lppSup?.amount || benefitsData.lppSup.amount === '') {
+            errors.push('Supplementary pension amount is required');
+        }
+    }
+
     return {
         valid: errors.length === 0,
         errors
