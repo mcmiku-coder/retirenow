@@ -698,10 +698,10 @@ const RetirementBenefitsQuestionnaire = () => {
                 {/* Question 1: Simulation Age */}
                 <form onSubmit={handleSave} className="space-y-6">
                     <Card>
-                        <CardContent className="space-y-8 pt-8">
+                        <CardContent className="space-y-4 pt-6">
                             <div className="flex flex-col md:flex-row gap-0">
                                 {/* Left Column */}
-                                <div className="flex-1 space-y-6 md:pr-12 md:border-r md:border-slate-700/50">
+                                <div className="flex-1 space-y-3 md:pr-12 md:border-r md:border-slate-700/50">
                                     {/* Q1: LPP Affiliation */}
                                     <div className="flex items-center justify-between h-10">
                                         <Label className="text-base font-semibold">
@@ -781,7 +781,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                 </div>
 
                                 {/* Right Column */}
-                                <div className="flex-1 space-y-6 md:pl-12 mt-6 md:mt-0">
+                                <div className="flex-1 space-y-3 md:pl-12 mt-4 md:mt-0">
                                     {/* 3a capital */}
                                     <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="threeACount" className="text-base font-semibold">
@@ -867,12 +867,12 @@ const RetirementBenefitsQuestionnaire = () => {
                                 </div>
                             </div>
 
-                            <hr className="border-slate-700/50 my-2" />
+                            <hr className="border-slate-700/50 my-1" />
 
                             {/* Simulation Age and Earliest Age Row - Precise Alignment */}
-                            <div className="flex flex-col md:flex-row gap-0 pt-2">
+                            <div className="flex flex-col md:flex-row gap-0 pt-0">
                                 {/* Left Column Row */}
-                                <div className="flex-1 space-y-6 md:pr-12">
+                                <div className="flex-1 space-y-3 md:pr-12">
                                     <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="simulationAgeMain" className="text-base font-semibold">
                                             {language === 'fr'
@@ -895,7 +895,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 space-y-6 md:pl-12 mt-6 md:mt-0">
+                                <div className="flex-1 space-y-3 md:pl-12 mt-4 md:mt-0">
                                     <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
                                             {language === 'fr'
@@ -922,8 +922,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                 </div>
                             </div>
 
-                            <div className="flex justify-center pt-4">
-                                <div className="flex items-center gap-2 px-6 py-2 bg-slate-900/50 rounded-full border border-slate-700/50 shadow-sm">
+                            <div className="flex justify-center pt-3">
+                                <div className="flex items-center gap-2 px-6 py-1.5 bg-slate-900/50 rounded-full border border-slate-700/50 shadow-sm">
                                     <span className="text-base font-semibold text-slate-200">
                                         {language === 'fr'
                                             ? 'Âge dans la tranche de pré-retraite possible dans votre plan de pension LPP'
