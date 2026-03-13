@@ -4,14 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Save, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { toast } from '../utils/toast';
 
 const PensionFundAnalysis = () => {
     const navigate = useNavigate();
     const { user, masterKey } = useAuth();
-    const { language } = useLanguage();
+    const { t, language } = useLanguage();
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -59,22 +58,21 @@ const PensionFundAnalysis = () => {
                 </Card>
 
                 {/* Bottom Action Buttons */}
-                <div className="flex justify-end gap-4 pt-4">
+                <div className="flex justify-end gap-4 py-8">
                     <Button
                         variant="outline"
+                        size="lg"
                         onClick={() => navigate('/retirement-inputs')}
-                        className="bg-slate-800/50 border-slate-700 hover:bg-slate-800"
                     >
-                        <X className="w-4 h-4 mr-2" />
-                        {language === 'fr' ? 'Annuler' : 'Cancel'}
+                        {t('realEstate.cancel')}
                     </Button>
                     <Button
+                        size="lg"
                         onClick={handleApply}
                         disabled={loading}
-                        className="bg-pink-600 hover:bg-pink-700 text-white font-bold px-8 shadow-[0_0_15px_rgba(219,39,119,0.3)]"
+                        className="px-8"
                     >
-                        <Save className="w-4 h-4 mr-2" />
-                        {language === 'fr' ? 'Appliquer & Sauvegarder' : 'Apply & Save'}
+                        {loading ? t('realEstate.saving') : t('realEstate.applySave')}
                     </Button>
                 </div>
             </div>
