@@ -699,12 +699,11 @@ const RetirementBenefitsQuestionnaire = () => {
                 <form onSubmit={handleSave} className="space-y-6">
                     <Card>
                         <CardContent className="space-y-8 pt-8">
-                            {/* Two-Column Grid for Primary Questions */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                            <div className="flex flex-col md:flex-row gap-0">
                                 {/* Left Column */}
-                                <div className="space-y-6">
+                                <div className="flex-1 space-y-6 md:pr-12 md:border-r md:border-slate-700/50">
                                     {/* Q1: LPP Affiliation */}
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label className="text-base font-semibold">
                                             {language === 'fr'
                                                 ? 'Êtes-vous actuellement affilié à un plan de pension LPP ?'
@@ -713,7 +712,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                         <RadioGroup
                                             value={questionnaire.hasLPP === true ? 'yes' : (questionnaire.hasLPP === false ? 'no' : '')}
                                             onValueChange={(value) => updateQuestionnaire('hasLPP', value === 'yes')}
-                                            className="flex gap-4 justify-start min-w-[120px]"
+                                            className="flex gap-6 min-w-[140px]"
                                         >
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="yes" id="lpp-yes" className="border-red-500 text-red-500" />
@@ -731,14 +730,14 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
 
                                     {/* AVS Pension */}
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label className="text-base font-semibold">
                                             {language === 'fr' ? 'Pension AVS' : 'AVS pension'}
                                         </Label>
                                         <RadioGroup
                                             value={questionnaire.hasAVS ? 'yes' : 'no'}
                                             onValueChange={(value) => updateQuestionnaire('hasAVS', value === 'yes')}
-                                            className="flex gap-4 justify-start min-w-[120px]"
+                                            className="flex gap-6 min-w-[140px]"
                                         >
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="yes" id="avs-yes" className="border-red-500 text-red-500" />
@@ -756,14 +755,14 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
 
                                     {/* Supplementary Pension Plan Capital */}
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label className="text-base font-semibold">
                                             {language === 'fr' ? 'Capital de plan de pension supplémentaire' : 'Supplementary Pension Plan Capital'}
                                         </Label>
                                         <RadioGroup
                                             value={questionnaire.hasSupplementaryPension ? 'yes' : 'no'}
                                             onValueChange={(value) => updateQuestionnaire('hasSupplementaryPension', value === 'yes')}
-                                            className="flex gap-4 justify-start min-w-[120px]"
+                                            className="flex gap-6 min-w-[140px]"
                                         >
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="yes" id="supp-yes" className="border-red-500 text-red-500" />
@@ -781,13 +780,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
                                 </div>
 
-                                {/* Divider or spacing for visual separation on larger screens */}
-                                <div className="hidden md:block w-px bg-slate-700/50 self-stretch mx-auto my-2" />
-
                                 {/* Right Column */}
-                                <div className="space-y-6">
+                                <div className="flex-1 space-y-6 md:pl-12 mt-6 md:mt-0">
                                     {/* 3a capital */}
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="threeACount" className="text-base font-semibold">
                                             {language === 'fr' ? 'Capital 3a' : '3a capital'}
                                         </Label>
@@ -795,8 +791,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                             value={String(questionnaire.threeACount)}
                                             onValueChange={(value) => updateQuestionnaire('threeACount', parseInt(value))}
                                         >
-                                            <SelectTrigger id="threeACount" className="w-[180px] justify-end gap-2">
-                                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
+                                            <SelectTrigger id="threeACount" className="w-[180px] justify-end gap-2 bg-slate-900/50">
+                                                <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {[0, 1, 2, 3, 4, 5].map(count => (
@@ -807,7 +803,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
 
                                     {/* Pre-existing Libre passages */}
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="librePassageCount" className="text-base font-semibold">
                                             {language === 'fr' ? 'Libre-passages pré-existants' : 'Pre-existing Libre passages'}
                                         </Label>
@@ -815,7 +811,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             value={String(questionnaire.librePassageCount)}
                                             onValueChange={(value) => updateQuestionnaire('librePassageCount', parseInt(value))}
                                         >
-                                            <SelectTrigger id="librePassageCount" className="w-[180px] justify-end gap-2">
+                                            <SelectTrigger id="librePassageCount" className="w-[180px] justify-end gap-2 bg-slate-900/50">
                                                 <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -827,19 +823,19 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
 
                                     {/* Q4: Benefit type */}
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center justify-between h-10">
                                         <Label htmlFor="benefitType" className="text-base font-semibold whitespace-nowrap">
                                             {language === 'fr'
                                                 ? 'Type de prestation à choisir'
                                                 : 'Type of benefit to choose'}
                                         </Label>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors shadow-sm cursor-help"
+                                                className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 h-8 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors shadow-sm cursor-help"
                                             >
                                                 <HelpCircle className="h-3.5 w-3.5" />
                                                 {language === 'fr' ? 'Aidez-moi' : 'Help me'}
@@ -848,7 +844,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 value={questionnaire.benefitType}
                                                 onValueChange={(value) => updateQuestionnaire('benefitType', value)}
                                             >
-                                                <SelectTrigger id="benefitType" className="w-[180px] justify-end gap-2">
+                                                <SelectTrigger id="benefitType" className="w-[180px] justify-end gap-2 bg-slate-900/50">
                                                     <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -873,77 +869,79 @@ const RetirementBenefitsQuestionnaire = () => {
 
                             <hr className="border-slate-700/50 my-2" />
 
-                            {/* Simulation Age and Earliest Age Row */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 pt-2">
-                                {/* Q2b: Simulation Age */}
-                                <div className="flex items-center justify-between gap-4">
-                                    <Label htmlFor="simulationAgeMain" className="text-base font-semibold">
-                                        {language === 'fr'
-                                            ? 'À quel âge souhaitez-vous simuler votre retraite ?'
-                                            : 'At what age would you like to simulate your retirement?'}
-                                    </Label>
-                                    <Select
-                                        value={questionnaire.simulationAge ? String(questionnaire.simulationAge) : ''}
-                                        onValueChange={(value) => updateQuestionnaire('simulationAge', parseInt(value))}
-                                    >
-                                        <SelectTrigger id="simulationAgeMain" className={`w-[130px] justify-end gap-2 ${questionnaire.simulationAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.2)]' : ''}`}>
-                                            <SelectValue placeholder={language === 'fr' ? '58' : '58'} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {ageOptions.map(age => (
-                                                <SelectItem key={age} value={String(age)}>{age}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            {/* Simulation Age and Earliest Age Row - Precise Alignment */}
+                            <div className="flex flex-col md:flex-row gap-0 pt-2">
+                                {/* Left Column Row */}
+                                <div className="flex-1 space-y-6 md:pr-12">
+                                    <div className="flex items-center justify-between h-10">
+                                        <Label htmlFor="simulationAgeMain" className="text-base font-semibold">
+                                            {language === 'fr'
+                                                ? 'À quel âge souhaitez-vous simuler votre retraite ?'
+                                                : 'At what age would you like to simulate your retirement?'}
+                                        </Label>
+                                        <Select
+                                            value={questionnaire.simulationAge ? String(questionnaire.simulationAge) : ''}
+                                            onValueChange={(value) => updateQuestionnaire('simulationAge', parseInt(value))}
+                                        >
+                                            <SelectTrigger id="simulationAgeMain" className={`w-[130px] justify-end gap-2 bg-slate-900/50 ${questionnaire.simulationAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.1)]' : ''}`}>
+                                                <SelectValue placeholder="58" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ageOptions.map(age => (
+                                                    <SelectItem key={age} value={String(age)}>{age}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
-                                {/* Q2a: Earliest pre-retirement age */}
-                                <div className="flex items-center justify-between gap-4">
-                                    <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
-                                        {language === 'fr'
-                                            ? 'Âge de pré-retraite le plus précoce possible dans votre plan de pension'
-                                            : 'Earliest pre-retirement age possible in your pension plan'}
-                                    </Label>
-                                    <Select
-                                        value={questionnaire.lppEarliestAge || ''}
-                                        onValueChange={(value) => updateQuestionnaire('lppEarliestAge', value)}
-                                    >
-                                        <SelectTrigger id="lppEarliestAge" className={`w-[130px] justify-end gap-2 ${questionnaire.lppEarliestAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.2)]' : ''}`}>
-                                            <SelectValue placeholder={language === 'fr' ? '58' : '58'} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {earliestAgeOptions.map(age => (
-                                                <SelectItem key={age} value={String(age)}>{age}</SelectItem>
-                                            ))}
-                                            <SelectItem value="unknown">
-                                                {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                <div className="flex-1 space-y-6 md:pl-12 mt-6 md:mt-0">
+                                    <div className="flex items-center justify-between h-10">
+                                        <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
+                                            {language === 'fr'
+                                                ? 'Âge de pré-retraite le plus précoce possible dans votre plan de pension'
+                                                : 'Earliest pre-retirement age possible in your pension plan'}
+                                        </Label>
+                                        <Select
+                                            value={questionnaire.lppEarliestAge || ''}
+                                            onValueChange={(value) => updateQuestionnaire('lppEarliestAge', value)}
+                                        >
+                                            <SelectTrigger id="lppEarliestAge" className={`w-[130px] justify-end gap-2 bg-slate-900/50 ${questionnaire.lppEarliestAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.1)]' : ''}`}>
+                                                <SelectValue placeholder="58" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {earliestAgeOptions.map(age => (
+                                                    <SelectItem key={age} value={String(age)}>{age}</SelectItem>
+                                                ))}
+                                                <SelectItem value="unknown">
+                                                    {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Eligibility Status centered */}
-                            <div className="flex flex-col items-center justify-center pt-2 space-y-1">
-                                <div className="flex items-center gap-3">
-                                    <Label className="text-base font-semibold">
+                            <div className="flex justify-center pt-4">
+                                <div className="flex items-center gap-2 px-6 py-2 bg-slate-900/50 rounded-full border border-slate-700/50 shadow-sm">
+                                    <span className="text-base font-semibold text-slate-200">
                                         {language === 'fr'
                                             ? 'Âge dans la tranche de pré-retraite possible dans votre plan de pension LPP'
                                             : 'Age within the pre-retirement bracket possible within your LPP pension plan'}
-                                    </Label>
-                                    <div className="text-base font-bold">
+                                    </span>
+                                    <div className="ml-2">
                                         {questionnaire.isWithinPreRetirement === 'yes' && (
-                                            <span className="text-green-500 px-3 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                                            <span className="bg-green-600 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
                                                 {language === 'fr' ? 'Oui' : 'Yes'}
                                             </span>
                                         )}
                                         {questionnaire.isWithinPreRetirement === 'no' && (
-                                            <span className="text-red-500 px-3 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
+                                            <span className="bg-red-600 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
                                                 {language === 'fr' ? 'Non' : 'No'}
                                             </span>
                                         )}
                                         {questionnaire.isWithinPreRetirement === 'unknown' && (
-                                            <span className="text-amber-500 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                                            <span className="bg-amber-500 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
                                                 {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
                                             </span>
                                         )}
