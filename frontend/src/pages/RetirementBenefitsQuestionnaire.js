@@ -857,9 +857,6 @@ const RetirementBenefitsQuestionnaire = () => {
                                                     <SelectItem value="mix">
                                                         {language === 'fr' ? 'Mixte (Pension et Capital)' : 'Mix of Pension and Capital'}
                                                     </SelectItem>
-                                                    <SelectItem value="unknown">
-                                                        {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
-                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
