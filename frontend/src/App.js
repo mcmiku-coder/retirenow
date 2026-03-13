@@ -23,6 +23,7 @@ import VerifyEmail from './pages/VerifyEmail';
 
 import RetirementBenefitsQuestionnaire from './pages/RetirementBenefitsQuestionnaire';
 import RetirementBenefitsHelp from './pages/RetirementBenefitsHelp';
+import PensionFundAnalysis from './pages/PensionFundAnalysis';
 import AssetsAndSavings from './pages/AssetsAndSavings';
 
 import DataReview from './pages/DataReview';
@@ -153,6 +154,11 @@ function AppRoutes() {
         <Route path="/retirement-benefits-help" element={
           <ProtectedRoute>
             <RetirementBenefitsHelp />
+          </ProtectedRoute>
+        } />
+        <Route path="/pension-fund-analysis" element={
+          <ProtectedRoute>
+            <PensionFundAnalysis />
           </ProtectedRoute>
         } />
 

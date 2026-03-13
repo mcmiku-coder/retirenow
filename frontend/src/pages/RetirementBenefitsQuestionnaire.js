@@ -831,11 +831,11 @@ const RetirementBenefitsQuestionnaire = () => {
                                         </Label>
                                         <div className="flex items-center gap-3">
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 h-8 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors shadow-sm cursor-help"
+                                                onClick={() => navigate('/pension-fund-analysis')}
+                                                className="bg-green-600 hover:bg-green-700 text-white border-green-500 h-10 px-4 shadow-[0_0_10px_rgba(22,163,74,0.2)] flex items-center justify-center gap-2 cursor-pointer"
                                             >
                                                 <HelpCircle className="h-3.5 w-3.5" />
                                                 {language === 'fr' ? 'Aidez-moi' : 'Help me'}
