@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { RetirementDataProvider } from './context/RetirementDataContext';
 import { Toaster } from './components/ui/sonner';
 import PageHeader from './components/PageHeader';
 import AppHeader from './components/AppHeader';
@@ -238,13 +239,15 @@ function App() {
     <LanguageProvider>
       <AuthProvider>
         <ThemeProvider>
-          <BrowserRouter>
-            <ThemeScope>
-              <AppRoutes />
-              <Toaster position="top-center" />
-              <GlobalErrorModal />
-            </ThemeScope>
-          </BrowserRouter>
+          <RetirementDataProvider>
+            <BrowserRouter>
+              <ThemeScope>
+                <AppRoutes />
+                <Toaster position="top-center" />
+                <GlobalErrorModal />
+              </ThemeScope>
+            </BrowserRouter>
+          </RetirementDataProvider>
         </ThemeProvider>
       </AuthProvider>
     </LanguageProvider>

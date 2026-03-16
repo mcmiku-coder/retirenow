@@ -22,12 +22,14 @@ import {
     validateV2Schema
 } from '../utils/retirementDataMigration';
 import { Info, Plus, Trash2, HelpCircle } from 'lucide-react';
+import { useRetirementData } from '../context/RetirementDataContext';
 
 const RetirementBenefitsQuestionnaire = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, masterKey } = useAuth();
     const { t, language } = useLanguage();
+    const { updateLppStatus } = useRetirementData();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [userData, setUserData] = useState(null);
@@ -83,6 +85,7 @@ const RetirementBenefitsQuestionnaire = () => {
     const calculateAge = (birthDate) => {
         if (!birthDate) return 30;
         const birth = new Date(birthDate);
+        if (isNaN(birth.getTime())) return 30;
         const today = new Date();
         let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
@@ -93,7 +96,18 @@ const RetirementBenefitsQuestionnaire = () => {
     };
 
     const updateQuestionnaire = (field, value) => {
-        setQuestionnaire(prev => ({ ...prev, [field]: value }));
+        setQuestionnaire(prev => {
+            const newState = { ...prev, [field]: value };
+            
+            // Sync with global context for navigation if LPP status changed
+            if (field === 'hasLPP') {
+                // Determine global hasLPP status (true if either person has LPP)
+                const otherPersonLpp = activeTab === 'p1' ? (q2?.hasLPP || false) : (q1?.hasLPP || false);
+                updateLppStatus(value || otherPersonLpp);
+            }
+            
+            return newState;
+        });
     };
 
     // Initialize data on mount
@@ -196,6 +210,9 @@ const RetirementBenefitsQuestionnaire = () => {
                 setB1(initialB1);
                 setQ2(initialQ2);
                 setB2(initialB2);
+
+                // Sync global LPP status for navigation
+                updateLppStatus((initialQ1?.hasLPP) || (initialQ2?.hasLPP));
 
             } catch (error) {
                 console.error('Error initializing data:', error);
@@ -456,12 +473,15 @@ const RetirementBenefitsQuestionnaire = () => {
         }));
     };
 
-    const handleSave = async (e) => {
-        if (e) e.preventDefault();
+    const handleSave = async (e, customRedirect = null) => {
+        if (e && e.preventDefault) e.preventDefault();
         if (!user || !masterKey) return;
 
         setSaving(true);
         try {
+            // Fetch existing data to preserve nested information (like pensionAnalysis)
+            const existingData = await getRetirementData(user.email, masterKey) || {};
+
             // Build v2 data for P1
             const cleanBenefitsData1 = { ...b1 };
             
@@ -493,7 +513,7 @@ const RetirementBenefitsQuestionnaire = () => {
                 benefitsData: cleanBenefitsData1
             };
             const validationP1 = validateV2Schema(v2DataP1);
-            if (!validationP1.valid) {
+            if (!validationP1.valid && !customRedirect) {
                 const p1Name = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
                 const errMsg = language === 'fr' 
                     ? `Informations manquantes pour ${p1Name}. Veuillez svp compléter les chmaps obligatoires pour ${p1Name} avant de passer à la prochaine étape.`
@@ -507,7 +527,6 @@ const RetirementBenefitsQuestionnaire = () => {
             }
 
             // Build v2 data for P2 if couple
-            let v2DataP2 = null;
             let cleanBenefitsData2 = null;
             if (userData?.analysisType === 'couple') {
                 cleanBenefitsData2 = { ...b2 };
@@ -534,13 +553,13 @@ const RetirementBenefitsQuestionnaire = () => {
                     cleanBenefitsData2.lppByAge = {};
                 }
 
-                v2DataP2 = {
+                const v2DataP2 = {
                     version: 2,
                     questionnaire: q2,
                     benefitsData: cleanBenefitsData2
                 };
                 const validationP2 = validateV2Schema(v2DataP2);
-                if (!validationP2.valid) {
+                if (!validationP2.valid && !customRedirect) {
                     const p2Name = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
                     const errMsg = language === 'fr' 
                         ? `Informations manquantes pour ${p2Name}. Veuillez svp compléter les chmaps obligatoires pour ${p2Name} avant de passer à la prochaine étape.`
@@ -562,10 +581,20 @@ const RetirementBenefitsQuestionnaire = () => {
                 cleanBenefitsData2.avs.startDate = p2LegalRetirementDate;
             }
 
+            // MERGE LOGIC: Preserve pensionAnalysis if it exists in the database
             const dataToSave = {
+                ...existingData, // Spread existing data first
                 version: 2,
-                p1: { questionnaire: q1, benefitsData: cleanBenefitsData1 },
-                p2: userData?.analysisType === 'couple' ? { questionnaire: q2, benefitsData: cleanBenefitsData2 } : undefined,
+                p1: { 
+                    ...(existingData.p1 || {}), // Preserve p1 contents (like pensionAnalysis)
+                    questionnaire: q1, 
+                    benefitsData: cleanBenefitsData1 
+                },
+                p2: userData?.analysisType === 'couple' ? { 
+                    ...(existingData.p2 || {}), // Preserve p2 contents
+                    questionnaire: q2, 
+                    benefitsData: cleanBenefitsData2 
+                } : (existingData.p2 || undefined), // Keep p2 if it exists even if current mode is single? Actually better to stick to analysisType
                 isCouple: userData?.analysisType === 'couple'
             };
 
@@ -585,7 +614,7 @@ const RetirementBenefitsQuestionnaire = () => {
             await saveScenarioData(user.email, masterKey, updatedScenario);
 
             toast.success(t('personalInfo.saveSuccess'));
-            navigate('/data-review', { state: location.state });
+            navigate(customRedirect || '/data-review', { state: location.state });
         } catch (error) {
             console.error('Save failed:', error);
             toast.error(t('personalInfo.saveFailed'));
@@ -614,7 +643,9 @@ const RetirementBenefitsQuestionnaire = () => {
 
     // Generate age options for dropdowns
     const ageOptions = [];
-    for (let age = currentAge; age <= 65; age++) {
+    const minAge = Math.min(currentAge, 55);
+    const maxAge = Math.max(currentAge + 10, 70);
+    for (let age = minAge; age <= maxAge; age++) {
         ageOptions.push(age);
     }
 
@@ -812,7 +843,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             onValueChange={(value) => updateQuestionnaire('librePassageCount', parseInt(value))}
                                         >
                                             <SelectTrigger id="librePassageCount" className="w-[180px] justify-end gap-2 bg-slate-900/50">
-                                                <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
+                                                <SelectValue placeholder={t('common.select')} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {[0, 1, 2, 3, 4, 5].map(count => (
@@ -823,44 +854,45 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
 
                                     {/* Q4: Benefit type */}
-                                    <div className="flex items-center justify-between h-10">
-                                        <Label htmlFor="benefitType" className="text-base font-semibold whitespace-nowrap">
-                                            {language === 'fr'
-                                                ? 'Type de prestation à choisir'
-                                                : 'Type of benefit to choose'}
-                                        </Label>
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => navigate('/pension-fund-analysis')}
-                                                className="bg-green-600 hover:bg-green-700 text-white border-green-500 h-10 px-4 shadow-[0_0_10px_rgba(22,163,74,0.2)] flex items-center justify-center gap-2 cursor-pointer"
-                                            >
-                                                <HelpCircle className="h-3.5 w-3.5" />
-                                                {language === 'fr' ? 'Aidez-moi' : 'Help me'}
-                                            </Button>
-                                            <Select
-                                                value={questionnaire.benefitType}
-                                                onValueChange={(value) => updateQuestionnaire('benefitType', value)}
-                                            >
-                                                <SelectTrigger id="benefitType" className="w-[180px] justify-end gap-2 bg-slate-900/50">
-                                                    <SelectValue placeholder={language === 'fr' ? 'Sélectionner...' : 'Select...'} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="pension">
-                                                        {language === 'fr' ? 'Pension uniquement' : 'Pension only'}
-                                                    </SelectItem>
-                                                    <SelectItem value="capital">
-                                                        {language === 'fr' ? 'Capital uniquement' : 'Capital only'}
-                                                    </SelectItem>
-                                                    <SelectItem value="mix">
-                                                        {language === 'fr' ? 'Mixte (Pension et Capital)' : 'Mix of Pension and Capital'}
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                    {questionnaire.hasLPP && (
+                                        <div className="flex items-center justify-between h-10">
+                                            <Label htmlFor="benefitType" className="text-base font-semibold whitespace-nowrap">
+                                                {language === 'fr'
+                                                    ? 'Type de prestation à choisir'
+                                                    : 'Type of benefit to choose'}
+                                            </Label>
+                                            <div className="flex items-center gap-3">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => handleSave(null, '/pension-fund-analysis')}
+                                                    className="bg-green-600 hover:bg-green-700 text-white border-green-500 px-4 shadow-[0_0_10px_rgba(22,163,74,0.2)] flex items-center justify-center gap-2 cursor-pointer"
+                                                >
+                                                    <HelpCircle className="h-3.5 w-3.5" />
+                                                    {language === 'fr' ? 'Aidez-moi' : 'Help me'}
+                                                </Button>
+                                                <Select
+                                                    value={questionnaire.benefitType}
+                                                    onValueChange={(value) => updateQuestionnaire('benefitType', value)}
+                                                >
+                                                    <SelectTrigger id="benefitType" className="w-[180px] justify-end gap-2 bg-slate-900/50">
+                                                        <SelectValue placeholder={t('common.select')} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="pension">
+                                                            {language === 'fr' ? 'Pension uniquement' : 'Pension only'}
+                                                        </SelectItem>
+                                                        <SelectItem value="capital">
+                                                            {language === 'fr' ? 'Capital uniquement' : 'Capital only'}
+                                                        </SelectItem>
+                                                        <SelectItem value="mix">
+                                                            {language === 'fr' ? 'Mixte (Pension et Capital)' : 'Mix of Pension and Capital'}
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -881,7 +913,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             onValueChange={(value) => updateQuestionnaire('simulationAge', parseInt(value))}
                                         >
                                             <SelectTrigger id="simulationAgeMain" className={`w-[130px] justify-end gap-2 bg-slate-900/50 ${questionnaire.simulationAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.1)]' : ''}`}>
-                                                <SelectValue placeholder="58" />
+                                                <SelectValue placeholder={t('common.select')} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {ageOptions.map(age => (
@@ -892,59 +924,60 @@ const RetirementBenefitsQuestionnaire = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 space-y-3 md:pl-12 mt-4 md:mt-0">
-                                    <div className="flex items-center justify-between h-10">
-                                        <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
-                                            {language === 'fr'
-                                                ? 'Âge de pré-retraite le plus précoce possible dans votre plan de pension'
-                                                : 'Earliest pre-retirement age possible in your pension plan'}
-                                        </Label>
-                                        <Select
-                                            value={questionnaire.lppEarliestAge || ''}
-                                            onValueChange={(value) => updateQuestionnaire('lppEarliestAge', value)}
-                                        >
-                                            <SelectTrigger id="lppEarliestAge" className={`w-[130px] justify-end gap-2 bg-slate-900/50 ${questionnaire.lppEarliestAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.1)]' : ''}`}>
-                                                <SelectValue placeholder="58" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {earliestAgeOptions.map(age => (
-                                                    <SelectItem key={age} value={String(age)}>{age}</SelectItem>
-                                                ))}
-                                                <SelectItem value="unknown">
-                                                    {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                {questionnaire.hasLPP && (
+                                    <div className="flex-1 space-y-3 md:pl-12 mt-4 md:mt-0">
+                                        <div className="flex items-center justify-between h-10">
+                                            <Label htmlFor="lppEarliestAge" className="text-base font-semibold">
+                                                {language === 'fr'
+                                                    ? 'Âge de pré-retraite le plus précoce possible dans votre plan de pension'
+                                                    : 'Earliest pre-retirement age possible in your pension plan'}
+                                            </Label>
+                                            <Select
+                                                value={questionnaire.lppEarliestAge || ''}
+                                                onValueChange={(value) => updateQuestionnaire('lppEarliestAge', value)}
+                                            >
+                                                <SelectTrigger id="lppEarliestAge" className={`w-[130px] justify-end gap-2 bg-slate-900/50 ${questionnaire.lppEarliestAge ? 'border-green-500 border-2 shadow-[0_0_8px_rgba(34,197,94,0.1)]' : ''}`}>
+                                                    <SelectValue placeholder={t('common.select')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {earliestAgeOptions.map(age => (
+                                                        <SelectItem key={age} value={String(age)}>{age}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
-                            <div className="flex justify-center pt-3">
-                                <div className="flex items-center gap-2 px-6 py-1.5 bg-slate-900/50 rounded-full border border-slate-700/50 shadow-sm">
-                                    <span className="text-base font-semibold text-slate-200">
-                                        {language === 'fr'
-                                            ? 'Âge dans la tranche de pré-retraite possible dans votre plan de pension LPP'
-                                            : 'Age within the pre-retirement bracket possible within your LPP pension plan'}
-                                    </span>
-                                    <div className="ml-2">
-                                        {questionnaire.isWithinPreRetirement === 'yes' && (
-                                            <span className="bg-green-600 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
-                                                {language === 'fr' ? 'Oui' : 'Yes'}
-                                            </span>
-                                        )}
-                                        {questionnaire.isWithinPreRetirement === 'no' && (
-                                            <span className="bg-red-600 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
-                                                {language === 'fr' ? 'Non' : 'No'}
-                                            </span>
-                                        )}
-                                        {questionnaire.isWithinPreRetirement === 'unknown' && (
-                                            <span className="bg-amber-500 text-white px-4 py-1 rounded-md text-sm font-bold shadow-sm">
-                                                {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
-                                            </span>
-                                        )}
+                            {questionnaire.hasLPP && (
+                                <div className="flex justify-center pt-3">
+                                    <div className="flex items-center gap-2 px-6 py-1.5 rounded-full">
+                                        <span className="text-base font-semibold text-foreground">
+                                            {language === 'fr'
+                                                ? 'Âge dans la tranche de pré-retraite possible dans votre plan de pension LPP'
+                                                : 'Age within the pre-retirement bracket possible within your LPP pension plan'}
+                                        </span>
+                                        <div className="ml-2">
+                                            {questionnaire.isWithinPreRetirement === 'yes' && (
+                                                <span className="text-green-500 font-bold uppercase tracking-wide">
+                                                    {language === 'fr' ? 'Oui' : 'Yes'}
+                                                </span>
+                                            )}
+                                            {questionnaire.isWithinPreRetirement === 'no' && (
+                                                <span className="text-red-500 font-bold uppercase tracking-wide">
+                                                    {language === 'fr' ? 'Non' : 'No'}
+                                                </span>
+                                            )}
+                                            {questionnaire.isWithinPreRetirement === 'unknown' && (
+                                                <span className="text-amber-500 font-bold uppercase tracking-wide">
+                                                    {language === 'fr' ? 'Je ne sais pas' : "I don't know"}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </CardContent>
                     </Card>
 

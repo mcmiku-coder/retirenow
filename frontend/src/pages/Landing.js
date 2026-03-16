@@ -147,9 +147,9 @@ const Landing = () => {
         <div className="text-center mb-6">
           <div className="flex justify-center mb-6" data-testid="app-title">
             <img
-              src="https://customer-assets.emergentagent.com/job_retire-compass/artifacts/ltntsblz_quit.png"
+              src="/landing_quit.jpg"
               alt="Can I quit?"
-              className="max-w-md w-full h-auto rounded-lg shadow-lg"
+              className="max-w-lg w-full h-auto"
             />
           </div>
         </div>

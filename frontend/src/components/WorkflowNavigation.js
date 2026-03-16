@@ -1,11 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, CalendarClock, Wallet, CreditCard, PiggyBank, Landmark, Sliders, LineChart, Scale, Home } from 'lucide-react';
+import { User, CalendarClock, Wallet, CreditCard, PiggyBank, Landmark, Sliders, LineChart, Scale, Home, Microscope } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useRetirementData } from '../context/RetirementDataContext';
 
 const WorkflowNavigation = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useLanguage();
+    const { hasLPP } = useRetirementData();
 
     const steps = [
         { path: '/personal-info', icon: User, id: 1, labelKey: 'personalInfo.title' },
@@ -19,7 +21,13 @@ const WorkflowNavigation = () => {
             branch: { path: '/real-estate', icon: Home, labelKey: 'Real Estate' }
         },
         { path: '/assets-savings', icon: PiggyBank, id: 5, labelKey: 'assetsAndSavings.title' },
-        { path: '/retirement-inputs', icon: Landmark, id: 6, labelKey: 'retirementInputs.title' },
+        { 
+            path: '/retirement-inputs', 
+            icon: Landmark, 
+            id: 6, 
+            labelKey: 'retirementInputs.title',
+            branch: hasLPP ? { path: '/pension-fund-analysis', icon: Microscope, labelKey: 'Pension Analysis' } : null
+        },
         {
             path: '/data-review',
             icon: Sliders,

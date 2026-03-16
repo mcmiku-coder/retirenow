@@ -412,7 +412,8 @@ export const translations = {
       close: "Close",
       delete: "Delete",
       edit: "Edit",
-      chf: "CHF"
+      chf: "CHF",
+      select: "Select"
     },
 
     // Language selector
@@ -519,6 +520,37 @@ export const translations = {
       resetDefaults: "Reset to defaults",
       resetDefaultsSuccess: "Defaults restored. Please click 'Apply & Save' to persist changes.",
       property: "Property"
+    },
+
+    // Pension Fund Analysis Page
+    pensionFund: {
+      title: "Pension Fund Analysis",
+      subtitle: "Calculate and simulate your pension fund benefits",
+      zone1Placeholder: "Explanation text that will be provided later... text, text,...",
+      savingsAccount: "Savings account statement",
+      monthlyContributions: "Monthly contributions (excluding risk and fees)",
+      value: "Value (in CHF)",
+      date: "Date",
+      desiredRetirementDate: "Desired retirement age",
+      lifeExpectancy: "Life expectancy",
+      saving: "Saving...",
+      age: "Age",
+      capital: "Capital",
+      convRate: "Conv. Rate",
+      annualPension: "Annual Pension",
+      yearsRetirement: "Retirement (yrs)",
+      requiredYield: "Required yield for {amount} with {capital}",
+      officialDataHeader: "Données officielles (relevés depuis documents LPP)",
+      renteOrCapital: "Rente or capital?",
+      rente: "Rente",
+      currentAge: "Current age",
+      currentYear: "Current year",
+      cancel: "Cancel",
+      applySave: "Apply & Save",
+      resetDefaults: "Reset to defaults",
+      resetSuccess: "Defaults restored successfuly.",
+      errorEmptyMC: "Please enter monthly contributions to interpolate.",
+      errorNoBaseValue: "Please enter at least one value in the column to use as a base."
     }
   },
 
@@ -932,7 +964,8 @@ export const translations = {
       close: "Fermer",
       delete: "Supprimer",
       edit: "Modifier",
-      chf: "CHF"
+      chf: "CHF",
+      select: "Sélectionner"
     },
 
     // Language selector
@@ -1037,6 +1070,36 @@ export const translations = {
       resetDefaults: "Réinitialiser aux valeurs par défaut",
       resetDefaultsSuccess: "Valeurs par défaut restaurées. Veuillez cliquer sur 'Appliquer & Sauvegarder'.",
       property: "Propriété"
+    },
+
+    // Pension Fund Analysis Page
+    pensionFund: {
+      title: "Analyse de votre caisse de pension",
+      subtitle: "Calculez et simulez les prestations de votre caisse de pension",
+      zone1Placeholder: "Texte d'explication qui sera fourni plus tard... texte, texte,...",
+      savingsAccount: "Relevé du compte d'épargne",
+      monthlyContributions: "Cotisations mensuelles (hors risque et frais)",
+      value: "Valeur (en CHF)",
+      date: "Date",
+      desiredRetirementDate: "Âge de retraite souhaité",
+      lifeExpectancy: "Espérance de vie",
+      saving: "Enregistrement...",
+      age: "Âge",
+      capital: "Capital",
+      convRate: "Tx. Conv.",
+      annualPension: "Rente annuelle",
+      yearsRetirement: "Retraite (ans)",
+      requiredYield: "Rdt nécessaire pour verser {amount} avec {capital}",
+      renteOrCapital: "Rente ou capital ?",
+      rente: "Rente",
+      currentAge: "Âge actuel",
+      currentYear: "Année en cours",
+      cancel: "Annuler",
+      applySave: "Appliquer & Sauvegarder",
+      resetDefaults: "Réinitialiser par défaut",
+      resetSuccess: "Valeurs par défaut restaurées avec succès.",
+      errorEmptyMC: "Veuillez saisir les cotisations mensuelles pour interpoler.",
+      errorNoBaseValue: "Veuillez saisir au moins une valeur dans la colonne pour servir de base."
     }
   }
 };
