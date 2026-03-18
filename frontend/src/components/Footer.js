@@ -20,9 +20,10 @@ export default function Footer() {
     };
 
     const isLanding = location.pathname === '/';
+    const isDashboard = location.pathname === '/simulation-data';
 
     return (
-        <footer className={`w-full py-6 border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${isLanding ? 'mt-auto' : 'mt-8'}`}>
+        <footer className={`w-full py-6 border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shrink-0 ${isDashboard ? 'mt-0' : (isLanding ? 'mt-auto' : 'mt-8')}`}>
             <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row mx-auto px-4">
                 <p className="text-sm text-muted-foreground">
                     &copy; {currentYear} CanIQuit. {t.rights}

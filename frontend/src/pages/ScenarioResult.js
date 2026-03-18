@@ -625,15 +625,15 @@ const ScenarioResult = () => {
       const targetAge1 = Math.floor(ageAtRetirement);
       const v2Lpp1 = effectiveRetirementData?.p1?.benefitsData?.lppByAge?.[targetAge1] || effectiveRetirementData?.p1?.benefitsData?.lppByAge?.[targetAge1.toString()];
 
-      simLppPension = parseFloat(effectiveScenarioData?.projectedLPPPension || effectiveScenarioData?.projectedLegalLPPPension || v2Lpp1?.pension || 0);
-      simLppCapital = parseFloat(effectiveScenarioData?.projectedLPPCapital || effectiveScenarioData?.projectedLegalLPPCapital || v2Lpp1?.capital || 0);
+      simLppPension = parseFloat(effectiveScenarioData?.projectedLPPPension || effectiveScenarioData?.projectedLegalLPPPension || v2Lpp1?.netPension || v2Lpp1?.pension || 0);
+      simLppCapital = parseFloat(effectiveScenarioData?.projectedLPPCapital || effectiveScenarioData?.projectedLegalLPPCapital || v2Lpp1?.netCapital || v2Lpp1?.capital || 0);
 
       // Fallback for P2 if couple
       const targetAge2 = ageAtRetirement2 ? Math.floor(ageAtRetirement2) : 65;
       const v2Lpp2 = effectiveRetirementData?.p2?.benefitsData?.lppByAge?.[targetAge2] || effectiveRetirementData?.p2?.benefitsData?.lppByAge?.[targetAge2.toString()];
 
-      simLppPension2 = parseFloat(effectiveScenarioData?.projectedLPPPension2 || effectiveScenarioData?.projectedLegalLPPPension2 || v2Lpp2?.pension || 0);
-      simLppCapital2 = parseFloat(effectiveScenarioData?.projectedLPPCapital2 || effectiveScenarioData?.projectedLegalLPPCapital2 || v2Lpp2?.capital || 0);
+      simLppPension2 = parseFloat(effectiveScenarioData?.projectedLPPPension2 || effectiveScenarioData?.projectedLegalLPPPension2 || v2Lpp2?.netPension || v2Lpp2?.pension || 0);
+      simLppCapital2 = parseFloat(effectiveScenarioData?.projectedLPPCapital2 || effectiveScenarioData?.projectedLegalLPPCapital2 || v2Lpp2?.netCapital || v2Lpp2?.capital || 0);
     }
 
 
@@ -784,9 +784,9 @@ const ScenarioResult = () => {
           const pLabel = isP2 ? (userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2')) : (userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1'));
           const overrideKey = `${row.name}_${pLabel}`;
 
-          // If it's a dynamic row from simLppPension (Option 3), we use simLppPension. 
-          // Otherwise use row amount.
-          const amount = (row.isRetirement) ? (isP2 ? simLppPension2 : simLppPension) : (parseFloat(row.adjustedAmount || row.amount) || 0);
+          // DataReview is the master: use its adjustedAmount directly.
+          // Only fall back to simLppPension for Option 3 pre-retirement rows.
+          const amount = (row.isRetirement && isOption3) ? (isP2 ? simLppPension2 : simLppPension) : (parseFloat(row.adjustedAmount || row.amount) || 0);
           if (amount <= 0) return;
 
           const start = incomeDateOverrides[overrideKey]?.startDate || row.startDate || (isP2 ? simRetirementDate2 : simRetirementDate);
@@ -844,11 +844,15 @@ const ScenarioResult = () => {
       // Injection Logic (lines 604+) handles this correctly.
 
       // Handle LPP Capital Payouts (Dynamic)
-      if (simLppCapital > 0 && year === lppStartDate.getUTCFullYear()) {
+      // GUARD: Skip if DataReview already provides the capital as an asset (lpp_capital_p1/p2).
+      // DataReview is the master source of truth — its assets are processed in the ASSETS loop below.
+      const hasLppCapitalAssetP1 = effectiveAssets.some(a => a.id === 'lpp_capital_p1');
+      const hasLppCapitalAssetP2 = effectiveAssets.some(a => a.id === 'lpp_capital_p2');
+      if (simLppCapital > 0 && year === lppStartDate.getUTCFullYear() && !hasLppCapitalAssetP1) {
         yearIncome += simLppCapital;
         incomeBreakdown['LPP Capital@@p1'] = (incomeBreakdown['LPP Capital@@p1'] || 0) + simLppCapital;
       }
-      if (simLppCapital2 > 0 && year === lppStartDate2.getUTCFullYear()) {
+      if (simLppCapital2 > 0 && year === lppStartDate2.getUTCFullYear() && !hasLppCapitalAssetP2) {
         yearIncome += simLppCapital2;
         incomeBreakdown['LPP Capital@@p2'] = (incomeBreakdown['LPP Capital@@p2'] || 0) + simLppCapital2;
       }
@@ -873,9 +877,8 @@ const ScenarioResult = () => {
         if (asset.category === 'Preserve') {
           // Preserve assets normally don't generate cash flow. 
           // However, if the user explicitly activates "all ownings", we process them!
-          const noAvailDate = !asset.availabilityDate || String(asset.availabilityDate).trim() === '' || String(asset.availabilityDate).trim() === '-';
-          const noAvailTimeframe = !asset.availabilityTimeframe || String(asset.availabilityTimeframe).trim() === '' || String(asset.availabilityTimeframe).trim() === '-';
-          const isActivatedOwning = (noAvailDate && noAvailTimeframe && simActivateOwnings);
+          // For Preserve assets, activation only requires the checkbox — regardless of date/timeframe.
+          const isActivatedOwning = simActivateOwnings;
           
           if (asset.name?.includes('Valeur')) {
              console.log('[DEBUG PRESERVE] evaluating Preserve asset:', { name: asset.name, availDate: asset.availabilityDate, availTF: asset.availabilityTimeframe, simActivateOwnings, isActivatedOwning, year });
@@ -886,8 +889,9 @@ const ScenarioResult = () => {
           }
         }
 
-        // Period Type
-        if (asset.availabilityType === 'Period' || (!asset.availabilityDate && asset.availabilityTimeframe)) {
+        // Period Type — but NOT for activated Preserve assets (those use the activation date instead)
+        const isPreserveActivated = (asset.category === 'Preserve' && simActivateOwnings);
+        if (!isPreserveActivated && (asset.availabilityType === 'Period' || (!asset.availabilityDate && asset.availabilityTimeframe))) {
           // ... helper logic for periods needed here or copy-paste ...
           // Re-implementing helper here for closure access
           let startOffset = 0, endOffset = 0;
@@ -925,7 +929,7 @@ const ScenarioResult = () => {
           const noAvailDateLocal = !effectiveDateStr;
           const noAvailTimeframeLocal = !asset.availabilityTimeframe || String(asset.availabilityTimeframe).trim() === '' || String(asset.availabilityTimeframe).trim() === '-';
 
-          if (noAvailDateLocal && noAvailTimeframeLocal && simActivateOwnings) {
+          if ((noAvailDateLocal && noAvailTimeframeLocal && simActivateOwnings) || isPreserveActivated) {
             effectiveDateStr = simOwningsDate;
             isActivatedOwning = true;
           }
@@ -1279,101 +1283,9 @@ const ScenarioResult = () => {
     setIsRecalculating(true);
 
     try {
-      // 5. Update Scenario Data (Sync Salary End Dates + LPP Values)
-
-      // Update Work Incomes End Date
-      const updatedIncomes = incomes.map(item => {
-        const nameLower = (item.name || '').toLowerCase();
-        const isSalary = nameLower.includes('salary') || nameLower.includes('salaire') || nameLower.includes('lohn') || nameLower.includes('revenu') || nameLower.includes('income');
-        const itemIsP2 = item.person === 'Person 2' || item.owner === 'p2';
-
-        // Only update end date if the person matches
-        if (isSalary && !item.isRetirement && (isP2 === itemIsP2)) {
-          return {
-            ...item,
-            endDate: newRetirementDateStr,
-            adjustedAmount: item.adjustedAmount
-          };
-        }
-
-        // CRITICAL FIX: Update "Projected LPP Pension" Row
-        const isLppPension = (item.id && String(item.id).toLowerCase().includes('lpp') && String(item.id).toLowerCase().includes('pension')) ||
-          (item.name && String(item.name).toLowerCase().includes('lpp') && String(item.name).toLowerCase().includes('pension'));
-
-        if (isLppPension && (isP2 === itemIsP2)) {
-          let dynamicPension = 0;
-          let dynamicAge = Math.floor(numericAge);
-          const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
-
-          if (numericAge >= (earliestPreRetirementAge)) {
-            const ageKey = dynamicAge.toString();
-            const entry = bData?.lppByAge?.[ageKey];
-            dynamicPension = entry?.pension || 0;
-          }
-
-          if (dynamicPension > 0) {
-            return {
-              ...item,
-              name: language === 'fr' ? `Rente LPP projetée à ${dynamicAge} ans` : `Projected LPP Pension at ${dynamicAge}y`,
-              amount: dynamicPension,
-              adjustedAmount: dynamicPension,
-              startDate: newRetirementDateStr,
-              isRetirement: true
-            };
-          }
-        }
-
-        return item;
-      });
-
-      // Determine correct projected LPP values based on path
-      let newPension = '';
-      let newCapital = '';
-      const bData = isP2 ? effectiveScenarioData.benefitsData2 : effectiveScenarioData.benefitsData;
-
-      if (isPreRetirement) {
-        const ageKey = Math.floor(numericAge).toString();
-        const entry = bData?.lppByAge?.[ageKey];
-        newPension = entry?.pension || '';
-        newCapital = entry?.capital || '';
-      } else {
-        newCapital = bData?.lppCurrentCapital || '';
-      }
-
-      // Determine Retirement Option & Legal Age
-      const gender = isP2 ? (userData.gender2 || 'male') : (userData.gender || 'male');
-      const legalAge = gender === 'female' ? 64 : 65;
-      let newOption = effectiveScenarioData.retirementOption || 'option1';
-
-      if (numericAge < legalAge) {
-        newOption = 'option2';
-      } else if (numericAge === legalAge) {
-        if (newOption !== 'option1') newOption = 'option0';
-      }
-
-      console.log('DEBUG: Sync Logic', { numericAge, legalAge, newOption });
-
-      const updatedScenarioData = {
-        ...effectiveScenarioData,
-        [isP2 ? 'questionnaire2' : 'questionnaire']: updatedQuestionnaire,
-        [isP2 ? 'projectedLPPPension2' : 'projectedLPPPension']: newPension,
-        [isP2 ? 'projectedLPPCapital2' : 'projectedLPPCapital']: newCapital,
-        [isP2 ? 'wishedRetirementDate2' : 'wishedRetirementDate']: newRetirementDateStr,
-        retirementOption: newOption, // Option reflects the overall scenario strategy
-        [isP2 ? 'earlyRetirementAge2' : 'earlyRetirementAge']: newOption === 'option2' ? numericAge.toString() : (effectiveScenarioData[isP2 ? 'earlyRetirementAge2' : 'earlyRetirementAge'] || ''),
-        adjustedIncomes: updatedIncomes
-      };
-
-      // 6. Save & Set Scenario Data (Intermediate Step)
-      await saveScenarioData(user.email, masterKey, updatedScenarioData);
-
-      // 7. CRITICAL: GLOBAL SYNC & REDIRECT (User Request)
-      // We must update the core 'retirementData' so that the "Retirement Inputs" page reflects this change.
-      // Then we redirect to DataReview to ensure a clean slate simulation (Option 0/Standard).
-
+      // 5. Save the new age to retirementData so the questionnaire page picks it up
       const rData = (await getRetirementData(user.email, masterKey)) || {};
 
-      // Ensure V2 structure exists
       if (!isP2) {
         if (!rData.p1) rData.p1 = {};
         rData.p1.questionnaire = {
@@ -1390,37 +1302,31 @@ const ScenarioResult = () => {
         };
       }
 
-      // Also ensure Benefits Data (LPP) is synced if provided via ScenarioData (e.g. from handleMissingDataSubmit)
-      // Note: handleMissingDataSubmit updates effectiveScenarioData.benefitsData first.
-      if (effectiveScenarioData.benefitsData) {
-        rData.benefitsData = {
-          ...(rData.benefitsData || {}),
-          ...effectiveScenarioData.benefitsData
-        };
-      }
-
       await saveRetirementData(user.email, masterKey, rData);
 
+      // 6. Also update scenarioData with the new retirement date and age
+      const updatedScenarioData = {
+        ...effectiveScenarioData,
+        [isP2 ? 'questionnaire2' : 'questionnaire']: updatedQuestionnaire,
+        [isP2 ? 'wishedRetirementDate2' : 'wishedRetirementDate']: newRetirementDateStr,
+      };
 
+      await saveScenarioData(user.email, masterKey, updatedScenarioData);
 
-      console.log('DEBUG: Dynamic Update - In-place refresh', { newAge });
+      // 7. REDIRECT to RetirementBenefitsQuestionnaire
+      // The user will see the pre-filled age, click Continue, go through DataReview
+      // (which properly rebuilds all age-dependent LPP data), then return to simulation.
+      toast.success(language === 'fr' ? 'Redirection vers les prestations de retraite...' : 'Redirecting to retirement benefits...');
 
-      // Dynamic Update: Update local state to trigger re-render
-      setIncomes(updatedIncomes);
-      setScenarioData(updatedScenarioData);
-      if (isP2) setRetirementAge2(newAge);
-      else setRetirementAge(newAge);
-
-      // Update other states if needed for consistency (though chart mainly depends on incomes/assets/costs)
-      // setCosts(finalCosts??) - costs usually don't change endDate dynamically in this logic yet, but safe to keep existing.
-
-      // Trigger a force refresh of the simulation calculation if needed
-      // (The useEffect dependencies should handle this if 'incomes' or 'scenarioData' changes)
-
-      // Visual feedback
-      toast.success(language === 'fr' ? 'Simulation mise à jour' : 'Simulation updated');
-
-      // NO REDIRECT - Keep user on page for dynamic experience
+      setTimeout(() => {
+        navigate('/retirement-inputs', {
+          state: {
+            fromAgeChange: true,
+            personId: personId,
+            newAge: numericAge
+          }
+        });
+      }, 300);
 
     } catch (error) {
       console.error('Error synchronizing simulation:', error);

@@ -246,9 +246,9 @@ const SimulationDataTable = () => {
     };
 
     return (
-        <div className="container mx-auto p-6 max-w-full min-h-screen bg-gray-950">
-            <Card className="bg-gray-900 border-gray-800 shadow-2xl">
-                <CardHeader className="border-b border-gray-800 pb-4">
+        <div className="flex-grow flex flex-col px-6 pb-6 max-w-full bg-gray-950 overflow-hidden">
+            <Card className="flex-grow flex flex-col bg-gray-900 border-gray-800 shadow-2xl overflow-hidden mb-0">
+                <CardHeader className="border-b border-gray-800 pb-4 shrink-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Button variant="ghost" className="text-gray-400 hover:text-white" onClick={() => navigate('/result')}>
@@ -288,9 +288,9 @@ const SimulationDataTable = () => {
                     </div>
                 </CardHeader>
 
-                <CardContent className="pt-6">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <div className="flex items-center justify-between mb-6">
+                <CardContent className="pt-6 flex-grow flex flex-col overflow-hidden">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between mb-6 shrink-0">
                             <TabsList className="bg-gray-800 border border-gray-700 rounded-lg p-1">
                                 <TabsTrigger value="essential" className="rounded-md px-6 py-2 transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                                     {language === 'fr' ? 'Essentielle' : 'Essential'}
@@ -322,8 +322,8 @@ const SimulationDataTable = () => {
                             )}
                         </div>
 
-                        <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900 shadow-inner">
-                            <div className="overflow-auto h-[60vh] scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-gray-700">
+                        <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-900 shadow-inner flex-grow flex flex-col">
+                            <div className="flex-grow overflow-auto scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-gray-700">
                                 <table className="w-full text-left border-collapse table-fixed min-w-max">
                                     <thead>
                                         <tr className="bg-gray-800/80 sticky top-0 z-20">

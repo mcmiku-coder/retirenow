@@ -224,9 +224,10 @@ function AppRoutes() {
 const ThemeScope = ({ children }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isDashboard = location.pathname === '/simulation-data';
 
   return (
-    <div className={`App dark min-h-screen flex flex-col bg-background text-foreground ${!isAdmin ? 'public-theme' : ''}`}>
+    <div className={`App dark ${isDashboard ? 'h-screen overflow-hidden' : 'min-h-screen'} flex flex-col bg-background text-foreground ${!isAdmin ? 'public-theme' : ''}`}>
       {children}
     </div>
   );

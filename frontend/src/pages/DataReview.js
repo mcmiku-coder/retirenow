@@ -325,8 +325,8 @@ const DataReview = () => {
           const lppData = benefitsData.lppByAge?.[targetAge] || benefitsData.lppByAge?.[targetAge.toString()];
           console.log(`DEBUG [${personId}]: lppData for targetAge ${targetAge}:`, lppData);
           if (lppData) {
-            lppPensionAmount = lppData.pension;
-            lppCapitalAmount = lppData.capital;
+            lppPensionAmount = lppData.netPension || lppData.pension;
+            lppCapitalAmount = lppData.netCapital || lppData.capital;
           }
 
 
@@ -348,14 +348,16 @@ const DataReview = () => {
             if (existingIdx >= 0) {
               const existing = finalAssets[existingIdx];
               // PRESERVE user metadata: strategy, category, availability bits
+              // But if the source amount changed (e.g. different retirement age), reset adjustedAmount
+              const amountChanged = existing.amount !== asset.amount;
               finalAssets[existingIdx] = {
                 ...asset,
                 strategy: existing.strategy || asset.strategy,
                 category: existing.category || asset.category,
-                availabilityDate: existing.availabilityDate || asset.availabilityDate,
+                availabilityDate: asset.availabilityDate || existing.availabilityDate,
                 availabilityType: existing.availabilityType || asset.availabilityType,
                 availabilityTimeframe: existing.availabilityTimeframe || asset.availabilityTimeframe,
-                adjustedAmount: existing.adjustedAmount || asset.amount
+                adjustedAmount: amountChanged ? asset.amount : (existing.adjustedAmount || asset.amount)
               };
             } else {
               finalAssets.unshift(asset);
@@ -784,7 +786,7 @@ const DataReview = () => {
         let lppPensionAmount = null;
 
         const lppData = benefitsData.lppByAge?.[targetAge] || benefitsData.lppByAge?.[targetAge.toString()];
-        if (lppData) lppPensionAmount = lppData.pension;
+        if (lppData) lppPensionAmount = lppData.netPension || lppData.pension;
 
 
         if (lppPensionAmount && lppPensionAmount !== '0' && questionnaire.benefitType !== 'capital') {
@@ -903,10 +905,11 @@ const DataReview = () => {
             else loadedCurrentAssets.unshift(asset);
           };
 
-          if (lppData && lppData.capital && lppData.capital !== '0' && questionnaire.benefitType !== 'pension') {
+          if (lppData && (lppData.netCapital || lppData.capital) && (lppData.netCapital || lppData.capital) !== '0' && questionnaire.benefitType !== 'pension') {
+            const effectiveCapital = lppData.netCapital || lppData.capital;
             upsertResetAsset({
               id: `lpp_capital_${personId}`, name: `Projected LPP Capital`, person: personId === 'p2' ? 'Person 2' : 'Person 1',
-              amount: lppData.capital, adjustedAmount: lppData.capital,
+              amount: effectiveCapital, adjustedAmount: effectiveCapital,
               category: 'Liquid', availabilityType: 'Date',
               availabilityDate: calculateWishedDate(pBirthDate, targetAge),
               strategy: 'Cash', isRetirement: true

@@ -65,7 +65,9 @@ const RetirementBenefitsQuestionnaire = () => {
         lppSup: null,
         lppByAge: {},
         lppCurrentCapital: '',
-        lppCurrentCapitalDate: ''
+        lppCurrentCapitalDate: '',
+        pensionTaxRate: '',
+        capitalTaxRate: ''
     });
 
     const [q1, setQ1] = useState(getInitialQuestionnaire());
@@ -487,12 +489,19 @@ const RetirementBenefitsQuestionnaire = () => {
             
             // LPP Purge Logic for P1
             if (q1.hasLPP && q1.isWithinPreRetirement === 'yes') {
+                const pensionRate1 = parseFloat(cleanBenefitsData1.pensionTaxRate || '0') / 100;
+                const capitalRate1 = parseFloat(cleanBenefitsData1.capitalTaxRate || '0') / 100;
                 const newLppByAge = {};
                 Object.keys(cleanBenefitsData1.lppByAge || {}).forEach(age => {
                     const data = cleanBenefitsData1.lppByAge[age];
                     newLppByAge[age] = { ...data };
                     if (q1.benefitType === 'pension') newLppByAge[age].capital = '';
                     if (q1.benefitType === 'capital') newLppByAge[age].pension = '';
+                    // Compute after-tax values
+                    const rawPension = parseFloat((data.pension || '0').toString().replace(/'/g, '')) || 0;
+                    const rawCapital = parseFloat((data.capital || '0').toString().replace(/'/g, '')) || 0;
+                    newLppByAge[age].netPension = rawPension > 0 ? Math.round(rawPension * (1 - pensionRate1)).toString() : '';
+                    newLppByAge[age].netCapital = rawCapital > 0 ? Math.round(rawCapital * (1 - capitalRate1)).toString() : '';
                 });
                 cleanBenefitsData1.lppByAge = newLppByAge;
             }
@@ -533,12 +542,19 @@ const RetirementBenefitsQuestionnaire = () => {
 
                 // LPP Purge Logic for P2
                 if (q2.hasLPP && q2.isWithinPreRetirement === 'yes') {
+                    const pensionRate2 = parseFloat(cleanBenefitsData2.pensionTaxRate || '0') / 100;
+                    const capitalRate2 = parseFloat(cleanBenefitsData2.capitalTaxRate || '0') / 100;
                     const newLppByAge = {};
                     Object.keys(cleanBenefitsData2.lppByAge || {}).forEach(age => {
                         const data = cleanBenefitsData2.lppByAge[age];
                         newLppByAge[age] = { ...data };
                         if (q2.benefitType === 'pension') newLppByAge[age].capital = '';
                         if (q2.benefitType === 'capital') newLppByAge[age].pension = '';
+                        // Compute after-tax values
+                        const rawPension = parseFloat((data.pension || '0').toString().replace(/'/g, '')) || 0;
+                        const rawCapital = parseFloat((data.capital || '0').toString().replace(/'/g, '')) || 0;
+                        newLppByAge[age].netPension = rawPension > 0 ? Math.round(rawPension * (1 - pensionRate2)).toString() : '';
+                        newLppByAge[age].netCapital = rawCapital > 0 ? Math.round(rawCapital * (1 - capitalRate2)).toString() : '';
                     });
                     cleanBenefitsData2.lppByAge = newLppByAge;
                 }
@@ -687,7 +703,9 @@ const RetirementBenefitsQuestionnaire = () => {
             lppSup: null,
             lppByAge: {},
             lppCurrentCapital: '',
-            lppCurrentCapitalDate: ''
+            lppCurrentCapitalDate: '',
+            pensionTaxRate: '',
+            capitalTaxRate: ''
         });
 
         toast.success(language === 'fr' ? 'Réinitialisé aux valeurs par défaut' : 'Reset to defaults');
@@ -1421,33 +1439,123 @@ const RetirementBenefitsQuestionnaire = () => {
                                         </Label>
                                     </div>
 
+                                    {/* Tax Rate Inputs (E and F) */}
                                     <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse table-fixed">
+                                        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+                                            <colgroup>
+                                                <col style={{ width: '60px' }} />
+                                                <col style={{ width: '120px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                            </colgroup>
+                                            <tbody>
+                                                <tr>
+                                                    <td colSpan="2"></td>
+                                                    <td colSpan="2"></td>
+                                                    <td className="p-2 text-center">
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                            {language === 'fr'
+                                                                ? 'Taux prélèvements obligatoires sur pension'
+                                                                : 'Mandatory deductions rate on pension'}
+                                                        </div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Input
+                                                                type="text"
+                                                                placeholder="0.00"
+                                                                value={benefitsData.pensionTaxRate || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                                                                    setBenefitsData(prev => ({ ...prev, pensionTaxRate: val }));
+                                                                }}
+                                                                className="w-[80px] text-right border-blue-500/50 border"
+                                                            />
+                                                            <span className="text-sm font-medium">%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-2 text-center">
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                            {language === 'fr'
+                                                                ? "Taux d'impôt sur le versement en capital"
+                                                                : 'Tax rate on capital withdrawal'}
+                                                        </div>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Input
+                                                                type="text"
+                                                                placeholder="0.00"
+                                                                value={benefitsData.capitalTaxRate || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                                                                    setBenefitsData(prev => ({ ...prev, capitalTaxRate: val }));
+                                                                }}
+                                                                className="w-[80px] text-right border-blue-500/50 border"
+                                                            />
+                                                            <span className="text-sm font-medium">%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+                                            <colgroup>
+                                                <col style={{ width: '60px' }} />
+                                                <col style={{ width: '120px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '150px' }} />
+                                            </colgroup>
                                             <thead>
                                                 <tr className="border-b">
-                                                    <th className="text-left p-2 text-sm font-medium w-[180px]">
+                                                    <th className="text-left p-2 text-sm font-medium">
                                                         {language === 'fr' ? 'Âge' : 'Age'}
                                                     </th>
-                                                    <th className="text-left p-2 text-sm font-medium w-[240px]">
+                                                    <th className="text-left p-2 text-sm font-medium">
                                                         {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                     </th>
-                                                    <th className="text-left p-2 text-sm font-medium w-[100px]"></th>
-                                                    <th className="text-left p-2 text-sm font-medium w-[100px]"></th>
-                                                    <th className="text-left p-2 text-sm font-medium w-[150px]">
-                                                        {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (language === 'fr' ? 'Pension annuelle LPP' : 'LPP yearly pension') : ''}
-                                                    </th>
-                                                    <th className="text-left p-2 text-sm font-medium w-[150px]">
-                                                        {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (language === 'fr' ? 'Capital LPP projeté' : 'LPP projected capital') : ''}
-                                                    </th>
+                                                    {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
+                                                        <th className="text-left p-2 text-sm font-medium">
+                                                            <div>{language === 'fr' ? 'Pension annuelle LPP' : 'LPP yearly pension'}</div>
+                                                            <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'avant impôts' : 'before tax'}</div>
+                                                        </th>
+                                                    ) : <th></th>}
+                                                    {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
+                                                        <th className="text-left p-2 text-sm font-medium">
+                                                            <div>{language === 'fr' ? 'Capital LPP projeté' : 'LPP projected capital'}</div>
+                                                            <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'avant impôts' : 'before tax'}</div>
+                                                        </th>
+                                                    ) : <th></th>}
+                                                    {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
+                                                        <th className="text-left p-2 text-sm font-medium">
+                                                            <div>{language === 'fr' ? 'Pension annuelle LPP' : 'LPP yearly pension'}</div>
+                                                            <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'après impôts' : 'after tax'}</div>
+                                                        </th>
+                                                    ) : <th></th>}
+                                                    {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
+                                                        <th className="text-left p-2 text-sm font-medium">
+                                                            <div>{language === 'fr' ? 'Capital LPP projeté' : 'LPP projected capital'}</div>
+                                                            <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'après impôts' : 'after tax'}</div>
+                                                        </th>
+                                                    ) : <th></th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {getLppAges().map(age => {
                                                     const isTargetAge = age === questionnaire.simulationAge;
+                                                    const rawPension = parseFloat((benefitsData.lppByAge[age]?.pension || '0').toString().replace(/'/g, '')) || 0;
+                                                    const rawCapital = parseFloat((benefitsData.lppByAge[age]?.capital || '0').toString().replace(/'/g, '')) || 0;
+                                                    const pensionRate = parseFloat(benefitsData.pensionTaxRate || '0') / 100;
+                                                    const capitalRate = parseFloat(benefitsData.capitalTaxRate || '0') / 100;
+                                                    const netPension = rawPension > 0 ? Math.round(rawPension * (1 - pensionRate)) : 0;
+                                                    const netCapital = rawCapital > 0 ? Math.round(rawCapital * (1 - capitalRate)) : 0;
                                                     return (
                                                         <tr key={age} className={`border-b last:border-0 ${isTargetAge ? 'bg-muted/50' : ''}`}>
-                                                            <td className="p-2 font-medium w-[180px]">{age}</td>
-                                                            <td className="p-2 w-[240px]">
+                                                            <td className="p-2 font-medium">{age}</td>
+                                                            <td className="p-2">
                                                                 <Input
                                                                     type="text"
                                                                     value={getDateAtAge(age) ? getDateAtAge(age).split('-').reverse().join('.') : ''}
@@ -1455,9 +1563,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                     className="w-full bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default"
                                                                 />
                                                             </td>
-                                                            <td className="p-2 w-[100px]"></td>
-                                                            <td className="p-2 w-[100px]"></td>
-                                                            <td className="p-2 w-[150px]">
+                                                            <td className="p-2">
                                                                 {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
                                                                     <Input
                                                                         type="text"
@@ -1475,7 +1581,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                     />
                                                                 )}
                                                             </td>
-                                                            <td className="p-2 w-[150px]">
+                                                            <td className="p-2">
                                                                 {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && (
                                                                     <Input
                                                                         type="text"
@@ -1490,6 +1596,26 @@ const RetirementBenefitsQuestionnaire = () => {
                                                                         className={`w-full text-right ${isTargetAge
                                                                             ? (benefitsData.lppByAge[age]?.capital !== '' ? 'border-green-500 border-2' : 'border-red-500 border-2')
                                                                             : ''}`}
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2">
+                                                                {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && rawPension > 0 && (
+                                                                    <Input
+                                                                        type="text"
+                                                                        value={netPension.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                        readOnly
+                                                                        className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default text-muted-foreground"
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2">
+                                                                {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') && rawCapital > 0 && (
+                                                                    <Input
+                                                                        type="text"
+                                                                        value={netCapital.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")}
+                                                                        readOnly
+                                                                        className="w-full text-right bg-transparent border-none shadow-none focus-visible:ring-0 cursor-default text-muted-foreground"
                                                                     />
                                                                 )}
                                                             </td>

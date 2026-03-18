@@ -13,7 +13,7 @@ const AppHeader = () => {
     const location = useLocation();
 
     return (
-        <header className="w-full h-40 flex justify-between items-start pt-6 px-6 bg-background sticky top-0 z-50">
+        <header className="w-full h-40 flex justify-between items-start pt-6 px-6 bg-background sticky top-0 z-50 shrink-0">
             <div
                 className="flex items-center gap-2 font-bold text-[2.8rem] cursor-pointer hover:opacity-80 transition-opacity w-[250px]"
                 onClick={() => navigate('/')}

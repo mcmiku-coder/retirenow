@@ -21,35 +21,39 @@ const DetailedTooltipContent = ({ data, language, isPdf = false, p1Name, p2Name,
     const renderItemWithBadge = (rawKey, val) => {
         const [displayName, personType] = rawKey.split('@@');
 
+        // Rule: badges are only shown for couple analysis (when p2Name exists).
+        // For single person, never show any badge.
         let badge = null;
-        if (personType === 'p1') {
-            badge = (
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    }`}>
-                    {p1Name || (language === 'fr' ? 'Personne 1' : 'Person 1')}
-                </span>
-            );
-        } else if (personType === 'p2') {
-            badge = (
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                    }`}>
-                    {p2Name || (language === 'fr' ? 'Personne 2' : 'Person 2')}
-                </span>
-            );
-        } else if (personType === 'shared') {
-            badge = (
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                    }`}>
-                    {language === 'fr' ? 'Commun' : 'Shared'}
-                </span>
-            );
-        } else if (personType === 'consolidated') {
-            badge = (
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    }`}>
-                    {language === 'fr' ? 'Consolidé' : 'Consolidated'}
-                </span>
-            );
+        if (p2Name) {
+            if (personType === 'p1') {
+                badge = (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                        }`}>
+                        {p1Name || (language === 'fr' ? 'Personne 1' : 'Person 1')}
+                    </span>
+                );
+            } else if (personType === 'p2') {
+                badge = (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        }`}>
+                        {p2Name || (language === 'fr' ? 'Personne 2' : 'Person 2')}
+                    </span>
+                );
+            } else if (personType === 'shared') {
+                badge = (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                        }`}>
+                        {language === 'fr' ? 'Commun' : 'Shared'}
+                    </span>
+                );
+            } else if (personType === 'consolidated') {
+                badge = (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ml-2 ${isPdf ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}>
+                        {language === 'fr' ? 'Consolidé' : 'Consolidated'}
+                    </span>
+                );
+            }
         }
 
         return (
