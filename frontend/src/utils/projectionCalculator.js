@@ -31,12 +31,25 @@ export function hasInvestedBook(scenarioData, assets) {
 export function getInvestedBookAssets(assets, scenarioData) {
     // 1. Prioritize explicitly saved Invested Book (contains splits/divisions/custom rows)
     if (scenarioData?.investedBook && Array.isArray(scenarioData.investedBook) && scenarioData.investedBook.length > 0) {
-        return scenarioData.investedBook.filter(asset => {
+        const filtered = scenarioData.investedBook.filter(asset => {
             // Ensure it has a product linked (either via property or map)
             // and usually strategy is 'Invested' (though book implies it)
             const hasProduct = asset.productId || asset.selectedProduct || (scenarioData.investmentSelections && scenarioData.investmentSelections[asset.id]);
             return hasProduct;
         });
+
+        // SYNC availabilityDate: The passed `assets` array may have been enriched with
+        // fresher availabilityDates (from currentAssets via ScenarioResult loadAllData).
+        // Prefer those over the potentially stale investedBook date.
+        if (assets && assets.length > 0) {
+            return filtered.map(bookAsset => {
+                const freshAsset = assets.find(a => a.id === bookAsset.id);
+                return freshAsset?.availabilityDate
+                    ? { ...bookAsset, availabilityDate: freshAsset.availabilityDate }
+                    : bookAsset;
+            });
+        }
+        return filtered;
     }
 
     // 2. Fallback: Filter regular assets map (Legacy behavior)

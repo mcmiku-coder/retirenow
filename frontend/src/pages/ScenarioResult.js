@@ -288,12 +288,20 @@ const ScenarioResult = () => {
             // 1. Remove original items that would be replaced (Liquid + Invested)
             finalAssets = finalAssets.filter(a => !(a.category === 'Liquid' && a.strategy === 'Invested'));
 
-            // 2. Add the customized rows
-            const bookAssets = sData.investedBook.map(row => ({
-              ...row,
-              category: 'Liquid',
-              adjustedAmount: row.amount
-            }));
+            // 2. Add the customized rows, but sync availabilityDate from currentAssets
+            //    (DataReview keeps currentAssets up to date when retirement age changes;
+            //     investedBook may have a stale date if the user skipped CapitalManagementSetup)
+            const freshCurrentAssets = sData?.currentAssets || [];
+            const bookAssets = sData.investedBook.map(row => {
+              const freshEntry = freshCurrentAssets.find(a => a.id === row.id);
+              return {
+                ...row,
+                category: 'Liquid',
+                adjustedAmount: row.amount,
+                // Prefer the fresh availabilityDate from currentAssets over the stale investedBook date
+                availabilityDate: freshEntry?.availabilityDate || row.availabilityDate
+              };
+            });
             finalAssets = [...finalAssets, ...bookAssets];
           } else if (sData.investedBook.length > 0) {
             console.log('[Simulation] Ignoring stale investedBook because no assets are marked for investment.');

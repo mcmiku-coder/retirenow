@@ -321,7 +321,12 @@ const CapitalManagementSetup = () => {
                         return assetRows.map(savedItem => {
                             const id = savedItem.id;
                             const amount = parseFloat(savedItem.amount);
-                            const startDate = savedItem.availabilityDate;
+                            // For retirement assets (lpp_capital_, threeA_, libre_), prefer the
+                            // availabilityDate stored in currentAssets (kept fresh by DataReview
+                            // each time the simulation age changes) over the potentially stale
+                            // date in the investedBook.
+                            const currentAssetEntry = (scenarioData.currentAssets || []).find(a => a.id === id);
+                            const startDate = (currentAssetEntry?.availabilityDate || savedItem.availabilityDate);
                             const endDate = savedItem.endDate;
 
                             const divideGroupId = savedItem.divideGroupId;
