@@ -186,7 +186,8 @@ def get_page_depth(page_path: str) -> int:
 
 # Auth helpers
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    # rounds=10 is still very secure and ~4x faster than default 12 on low-CPU hosts
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=10)).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
@@ -750,9 +751,7 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     # Create user
     hashed_pw = hash_password(user.password)
     current_time = datetime.now(timezone.utc).isoformat()
-    
-    # Resolve Location
-    user_location = get_location_from_ip(request.client.host)
+    user_ip = request.client.host
 
     user_doc = {
         "user_id": str(uuid.uuid4()),
@@ -762,8 +761,8 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
         "created_at": current_time,
         "last_login": current_time,
         "login_count": 0,
-        "last_ip": request.client.host,
-        "last_location": user_location,
+        "last_ip": user_ip,
+        "last_location": "Resolving...",  # Updated asynchronously below
         "last_device_type": "Mobile" if "Mobile" in request.headers.get("User-Agent", "") else "Desktop",
         "total_pages_viewed": 0,
         "is_verified": False,  # New users unverified
@@ -791,10 +790,17 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     # Generate verification token
     verify_token_str = create_verification_token(user.email)
     
+    # Resolve geolocation in background (avoids a blocking HTTP call on the critical path)
+    async def resolve_location_and_update(user_id: str, ip: str):
+        location = get_location_from_ip(ip)
+        await db.access.update_one({"user_id": user_id}, {"$set": {"last_location": location}})
+
+    background_tasks.add_task(resolve_location_and_update, user_doc["user_id"], user_ip)
+
     # Send Email in Background
     # This prevents the UI from hitting a timeout while waiting for SMTP
     background_tasks.add_task(send_verification_email, user.email, verify_token_str)
-    
+
     # Notify Admin
     admin_content = f"""
         <h1>New User Registration</h1>
