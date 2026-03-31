@@ -12,7 +12,7 @@ import { Lock, Mail, Eye, EyeOff, Play, X, Server } from 'lucide-react';
 
 // ─── Cold-Start Overlay ─────────────────────────────────────────────────────
 // Shown only if the server takes more than 2s to respond (Render free plan).
-const COLD_START_SHOW_DELAY = 2000; // ms before overlay appears
+const COLD_START_SHOW_DELAY = 3000; // ms before overlay appears
 const COLD_START_FILL_DURATION = 45; // seconds to fill bar to 95%
 
 const ColdStartOverlay = ({ language }) => {
