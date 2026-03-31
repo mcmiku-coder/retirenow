@@ -1011,11 +1011,6 @@ const RetirementBenefitsQuestionnaire = () => {
                                         ? "Les champs à bordure rouge indiquent les valeurs nécessaires pour effectuer la simulation choisie"
                                         : "Red border fields indicate necessary values to perform the chosen simulation"}
                                 </span>
-                                <span className="text-green-500">
-                                    {language === 'fr'
-                                        ? "Les champs à bordure verte indiquent des valeurs optionnelles permettant d'effectuer des changements de simulation"
-                                        : "Green border fields indicate optional values that will allow performing simulation changes"}
-                                </span>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-6">
