@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -8,7 +8,99 @@ import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from '../utils/toast';
 import { validatePassword } from '../utils/encryption';
-import { Lock, Mail, Globe, Eye, EyeOff, Play, X } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Play, X, Server } from 'lucide-react';
+
+// ─── Cold-Start Overlay ─────────────────────────────────────────────────────
+// Shown only if the server takes more than 2s to respond (Render free plan).
+const COLD_START_SHOW_DELAY = 2000; // ms before overlay appears
+const COLD_START_FILL_DURATION = 45; // seconds to fill bar to 95%
+
+const ColdStartOverlay = ({ language }) => {
+  const [progress, setProgress] = useState(0);
+  const rafRef = useRef(null);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    const tick = () => {
+      const elapsed = (Date.now() - startRef.current) / 1000;
+      // Asymptotic fill: reaches 95% around COLD_START_FILL_DURATION seconds
+      const p = Math.min(95, (elapsed / COLD_START_FILL_DURATION) * 100);
+      setProgress(p);
+      if (p < 95) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const msg = language === 'fr'
+    ? ['Réveil du serveur en cours…', 'Cela peut prendre jusqu\'à 30 secondes.', 'Merci de patienter, tout se passe bien !']
+    : ['Waking up the server…', 'This can take up to 30 seconds.', 'Please wait — everything is fine!'];
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+      animation: 'coldStartFadeIn 0.4s ease'
+    }}>
+      <style>{`
+        @keyframes coldStartFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes serverPulse {
+          0%,100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.15); opacity: 1; }
+        }
+        @keyframes barShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+      `}</style>
+      <div style={{
+        background: 'linear-gradient(145deg, #0f172a, #1e293b)',
+        border: '1px solid rgba(99,102,241,0.3)',
+        borderRadius: 20, padding: '40px 48px',
+        maxWidth: 420, width: '90%', textAlign: 'center',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.1)'
+      }}>
+        {/* Pulsing server icon */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: 72, height: 72, borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))',
+          border: '1px solid rgba(99,102,241,0.4)',
+          marginBottom: 24,
+          animation: 'serverPulse 1.8s ease-in-out infinite'
+        }}>
+          <Server size={32} color="#818cf8" />
+        </div>
+
+        {/* Messages */}
+        <h3 style={{ color: '#f1f5f9', fontSize: 18, fontWeight: 700, marginBottom: 8, margin: '0 0 8px' }}>
+          {msg[0]}
+        </h3>
+        <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 6, margin: '0 0 6px' }}>{msg[1]}</p>
+        <p style={{ color: '#4ade80', fontSize: 13, fontWeight: 600, marginBottom: 28, margin: '0 0 28px' }}>{msg[2]}</p>
+
+        {/* Progress bar */}
+        <div style={{
+          background: 'rgba(255,255,255,0.08)', borderRadius: 99,
+          height: 10, overflow: 'hidden', position: 'relative'
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 99,
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4, #6366f1)',
+            backgroundSize: '200% 100%',
+            transition: 'width 0.3s ease',
+            animation: 'barShimmer 2s linear infinite'
+          }} />
+        </div>
+        <p style={{ color: '#475569', fontSize: 12, marginTop: 10 }}>
+          {Math.round(progress)}%
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
@@ -24,10 +116,19 @@ const Landing = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showColdStart, setShowColdStart] = useState(false);
+  const coldStartTimerRef = useRef(null);
 
   const [registerSuccess, setRegisterSuccess] = useState(false);
 
-  // ... (handlers remain the same) ...
+  // Start / clear the cold-start timer around any auth call
+  const startColdStartTimer = () => {
+    coldStartTimerRef.current = setTimeout(() => setShowColdStart(true), COLD_START_SHOW_DELAY);
+  };
+  const clearColdStartTimer = () => {
+    clearTimeout(coldStartTimerRef.current);
+    setShowColdStart(false);
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -40,6 +141,7 @@ const Landing = () => {
     }
 
     setLoading(true);
+    startColdStartTimer();
     try {
       // 1. Register with backend
       await axios.post(`${API}/auth/register`, { email, password });
@@ -54,34 +156,38 @@ const Landing = () => {
       setRegisterSuccess(false);
     } finally {
       setLoading(false);
+      clearColdStartTimer();
     }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    startColdStartTimer();
     try {
       const response = await axios.post(`${API}/auth/login`, { email, password });
-      // Use local email variable as fallback in case response.data.email is undefined
       const userEmail = response.data.email || email;
-      const masterKey = response.data.master_key; // Get master key from server
+      const masterKey = response.data.master_key;
 
       if (!masterKey) {
         toast.error('Failed to retrieve encryption key. Please try again.');
         return;
       }
 
-      login(userEmail, response.data.token, masterKey); // Pass master key instead of password
+      login(userEmail, response.data.token, masterKey);
       navigate('/personal-info');
     } catch (error) {
       toast.error(error.response?.data?.detail || t('auth.loginFailed'));
     } finally {
       setLoading(false);
+      clearColdStartTimer();
     }
   };
 
   return (
     <div className="flex-grow flex flex-col items-center justify-center px-4" data-testid="landing-page">
+      {/* Cold-start overlay — visible only after 2s of waiting */}
+      {showColdStart && <ColdStartOverlay language={language} />}
       {/* VIDEO MODAL OVERLAY */}
       {showVideo && (
         <div
