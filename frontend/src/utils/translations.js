@@ -141,10 +141,9 @@ export const translations = {
     // Retirement Benefits Page
     retirementBenefits: {
       title: "Retirement benefits and simulation age input",
-      subtitle: "Select the retirement pillars that you will benefit from and how you plan to use them",
+      subtitle: "Enter the information related to your pension pillars",
       person1Tab: "Person 1",
-      person2Tab: "Person 2",
-      helpButton: "Help me fill this page"
+      person2Tab: "Person 2"
     },
 
 
@@ -694,10 +693,9 @@ export const translations = {
     // Retirement Benefits Page
     retirementBenefits: {
       title: "Prestations de retraite et âge de simulation",
-      subtitle: "Renseignez vos piliers de prévoyance et indiquez comment vous prévoyez de les utiliser",
+      subtitle: "Renseignez les informations relatifs à vos piliers de prévoyance",
       person1Tab: "Personne 1",
-      person2Tab: "Personne 2",
-      helpButton: "Aidez-moi à remplir cette page"
+      person2Tab: "Personne 2"
     },
 
     // Retirement Benefits Help Page

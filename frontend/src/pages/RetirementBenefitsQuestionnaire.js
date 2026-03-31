@@ -716,16 +716,6 @@ const RetirementBenefitsQuestionnaire = () => {
             <PageHeader
                 title={t('retirementBenefits.title')}
                 subtitle={t('retirementBenefits.subtitle')}
-                rightContent={
-                    <Button
-                        variant="outline"
-                        onClick={() => navigate('/retirement-benefits-help')}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
-                    >
-                        <HelpCircle className="h-4 w-4" />
-                        {t('retirementBenefits.helpButton')}
-                    </Button>
-                }
             />
 
             <div className="max-w-[1400px] w-full md:w-[70%] mx-auto px-4 space-y-8 pb-12">
