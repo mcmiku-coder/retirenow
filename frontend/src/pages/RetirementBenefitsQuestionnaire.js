@@ -718,7 +718,7 @@ const RetirementBenefitsQuestionnaire = () => {
                 subtitle={t('retirementBenefits.subtitle')}
             />
 
-            <div className="max-w-[1400px] w-full md:w-[70%] mx-auto px-4 space-y-8 pb-12">
+            <div className="max-w-[1400px] w-full md:w-[90%] mx-auto px-4 space-y-8 pb-12">
                 {userData?.analysisType === 'couple' && (
                     <div className="flex justify-center mb-6">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1432,8 +1432,8 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <col style={{ width: '120px' }} />
                                                 <col style={{ width: '150px' }} />
                                                 <col style={{ width: '150px' }} />
-                                                <col style={{ width: '150px' }} />
-                                                <col style={{ width: '150px' }} />
+                                                <col style={{ width: '200px' }} />
+                                                <col style={{ width: '200px' }} />
                                             </colgroup>
                                             <tbody>
                                                 <tr>
