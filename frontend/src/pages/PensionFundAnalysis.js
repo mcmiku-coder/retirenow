@@ -556,7 +556,7 @@ const PensionFundAnalysis = () => {
                                         <Label className="text-xs text-muted-foreground flex justify-center">{t('pensionFund.value')}</Label>
                                         <Input
                                             type="text"
-                                            className="text-right bg-slate-800/50 opacity-80 border-slate-700/50"
+                                            className="text-right border-slate-700/50"
                                             value={formatNumberHelper(activeData.savingsAccountValue)}
                                             onChange={(e) => handleInputChange('savingsAccountValue', parseFormattedNumber(e.target.value))}
                                             placeholder="0"
@@ -566,7 +566,7 @@ const PensionFundAnalysis = () => {
                                         <Label className="text-xs text-muted-foreground flex justify-center">{t('pensionFund.date')}</Label>
                                         <Input
                                             type="date"
-                                            className="bg-slate-800/50 h-10 px-3 opacity-80 border-slate-700/50"
+                                            className="h-10 px-3 border-slate-700/50"
                                             value={activeData.savingsAccountDate}
                                             onChange={(e) => handleInputChange('savingsAccountDate', e.target.value)}
                                         />
@@ -579,7 +579,7 @@ const PensionFundAnalysis = () => {
                                         <div className="h-4"></div> {/* Alignment spacer */}
                                         <Input
                                             type="text"
-                                            className="text-right bg-slate-800/50 opacity-80 border-slate-700/50"
+                                            className="text-right border-slate-700/50"
                                             value={formatNumberHelper(activeData.monthlyContributions)}
                                             onChange={(e) => handleInputChange('monthlyContributions', parseFormattedNumber(e.target.value))}
                                             placeholder="0"
@@ -600,7 +600,7 @@ const PensionFundAnalysis = () => {
                                         <div className="h-4"></div> {/* Alignment spacer */}
                                         <Input
                                             readOnly
-                                            className="bg-slate-800/50 text-right opacity-80 cursor-not-allowed"
+                                            className="text-right cursor-not-allowed"
                                             value={currentAge || ''}
                                         />
                                     </div>
@@ -611,7 +611,7 @@ const PensionFundAnalysis = () => {
                                         <div className="h-4"></div> {/* Alignment spacer */}
                                         <Input
                                             readOnly
-                                            className="bg-slate-800/50 text-right opacity-80 cursor-not-allowed"
+                                            className="text-right cursor-not-allowed"
                                             value={new Date().getFullYear()}
                                         />
                                     </div>
@@ -626,7 +626,7 @@ const PensionFundAnalysis = () => {
                                         <div className="h-4"></div> {/* Alignment spacer */}
                                         <Input
                                             readOnly
-                                            className="bg-slate-800/50 text-right opacity-80 cursor-not-allowed"
+                                            className="text-right cursor-not-allowed"
                                             value={wishedRetirementAge || ''}
                                         />
                                     </div>
@@ -637,7 +637,7 @@ const PensionFundAnalysis = () => {
                                         <div className="h-4"></div> {/* Alignment spacer */}
                                         <Input
                                             readOnly
-                                            className="bg-slate-800/50 text-right opacity-80 cursor-not-allowed"
+                                            className="text-right cursor-not-allowed"
                                             value={ageOfDeath || ''}
                                         />
                                     </div>
@@ -675,14 +675,14 @@ const PensionFundAnalysis = () => {
                                                 <div className="text-sm font-bold text-foreground flex items-center h-10 w-20">{age} ans</div>
                                                 <Input
                                                     type="text"
-                                                    className={`text-right bg-slate-800/50 opacity-80 text-slate-100 border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_a`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_a`] ? 'border-green-500' : 'border-slate-700/50')}`}
+                                                    className={`text-right border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_a`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_a`] ? 'border-green-500' : 'border-slate-700/50')}`}
                                                     value={formatNumberHelper(activeData.gridData[age]?.a)}
                                                     onChange={(e) => handleGridInputChange(age, 'a', parseFormattedNumber(e.target.value))}
                                                     placeholder="0"
                                                 />
                                                 <Input
                                                     type="text"
-                                                    className={`text-right bg-slate-800/50 opacity-80 text-slate-100 border w-full h-10 text-sm ${touchedFields[`${activeTab}_${age}_b`] ? 'border-green-500' : 'border-slate-700/50'}`}
+                                                    className={`text-right border w-full h-10 text-sm ${touchedFields[`${activeTab}_${age}_b`] ? 'border-green-500' : 'border-slate-700/50'}`}
                                                     value={activeData.gridData[age]?.b}
                                                     onChange={(e) => handleGridInputChange(age, 'b', e.target.value)}
                                                     onBlur={(e) => handleGridInputBlur(age, 'b', e.target.value)}
@@ -690,7 +690,7 @@ const PensionFundAnalysis = () => {
                                                 />
                                                 <Input
                                                     type="text"
-                                                    className={`text-right bg-slate-800/50 opacity-80 text-slate-100 border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_c`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_c`] ? 'border-green-500' : 'border-slate-700/50')}`}
+                                                    className={`text-right border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_c`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_c`] ? 'border-green-500' : 'border-slate-700/50')}`}
                                                     value={formatNumberHelper(activeData.gridData[age]?.c)}
                                                     onChange={(e) => handleGridInputChange(age, 'c', parseFormattedNumber(e.target.value))}
                                                     placeholder="0"
@@ -705,7 +705,7 @@ const PensionFundAnalysis = () => {
                                             className="h-9 text-[15px] w-full bg-blue-600 hover:bg-blue-700 text-white border-none font-bold shadow-sm transition-colors cursor-pointer"
                                             onClick={() => handleInterpolate('a')}
                                         >
-                                            1) interpoler
+                                            1-interpoler
                                         </Button>
                                         <div /> {/* Spacer for Column B */}
                                         <Button 
@@ -713,7 +713,7 @@ const PensionFundAnalysis = () => {
                                             className="h-9 text-[15px] w-full bg-blue-600 hover:bg-blue-700 text-white border-none font-bold shadow-sm transition-colors cursor-pointer"
                                             onClick={() => handleConvert('c')}
                                         >
-                                            2) convertir
+                                            2-convertir
                                         </Button>
                                     </div>
                                 </div>
@@ -724,7 +724,7 @@ const PensionFundAnalysis = () => {
                                         <span className="text-sm font-bold text-foreground whitespace-nowrap">simulé au taux de</span>
                                         <div className="relative">
                                             <Input 
-                                                className={`h-10 w-24 text-right bg-slate-800/50 opacity-80 text-slate-100 font-bold border rounded-md pr-6 text-sm ${touchedFields[`${activeTab}_simulationYield`] ? 'border-green-500' : 'border-slate-700/50'}`} 
+                                                className={`h-10 w-24 text-right font-bold border rounded-md pr-6 text-sm ${touchedFields[`${activeTab}_simulationYield`] ? 'border-green-500' : 'border-slate-700/50'}`} 
                                                 value={activeData.simulationYield}
                                                 onChange={(e) => handleInputChange('simulationYield', e.target.value)}
                                             />
@@ -739,14 +739,14 @@ const PensionFundAnalysis = () => {
                                             <React.Fragment key={`b2_${age}`}>
                                                 <Input
                                                     type="text"
-                                                    className={`text-right bg-slate-800/50 opacity-80 text-slate-100 border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_d`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_d`] ? 'border-green-500' : 'border-slate-700/50')}`}
+                                                    className={`text-right border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_d`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_d`] ? 'border-green-500' : 'border-slate-700/50')}`}
                                                     value={formatNumberHelper(activeData.gridData[age]?.d)}
                                                     onChange={(e) => handleGridInputChange(age, 'd', parseFormattedNumber(e.target.value))}
                                                     placeholder="0"
                                                 />
                                                 <Input
                                                     type="text"
-                                                    className={`text-right bg-slate-800/50 opacity-80 text-slate-100 border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_e`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_e`] ? 'border-green-500' : 'border-slate-700/50')}`}
+                                                    className={`text-right border w-full h-10 text-sm ${interpolatedFields[`${activeTab}_${age}_e`] ? 'border-orange-500' : (touchedFields[`${activeTab}_${age}_e`] ? 'border-green-500' : 'border-slate-700/50')}`}
                                                     value={formatNumberHelper(activeData.gridData[age]?.e)}
                                                     onChange={(e) => handleGridInputChange(age, 'e', parseFormattedNumber(e.target.value))}
                                                     placeholder="0"
@@ -760,14 +760,14 @@ const PensionFundAnalysis = () => {
                                             className="h-9 text-[15px] w-full bg-blue-600 hover:bg-blue-700 text-white border-none font-bold shadow-sm transition-colors cursor-pointer"
                                             onClick={() => handleInterpolate('d')}
                                         >
-                                            1) interpoler
+                                            1-interpoler
                                         </Button>
                                         <Button 
                                             size="sm" 
                                             className="h-9 text-[15px] w-full bg-blue-600 hover:bg-blue-700 text-white border-none font-bold shadow-sm transition-colors cursor-pointer"
                                             onClick={() => handleConvert('e')}
                                         >
-                                            2) convertir
+                                            2-convertir
                                         </Button>
                                     </div>
                                 </div>
@@ -792,8 +792,8 @@ const PensionFundAnalysis = () => {
                                         const yield1 = findYieldRate(valA, valC, yearsRemaining);
                                         const yield2 = findYieldRate(valA, valE, yearsRemaining);
 
-                                        const readOnlyCellStyle = "text-right bg-slate-800/50 opacity-80 text-slate-100 px-3 h-10 rounded-md border border-slate-700/50 flex items-center justify-end font-normal text-sm w-full";
-                                        const centeredCellStyle = "text-center bg-slate-800/50 opacity-80 text-slate-100 px-3 h-10 rounded-md border border-slate-700/50 flex items-center justify-center font-normal text-sm w-full";
+                                        const readOnlyCellStyle = "text-right px-3 h-10 rounded-md border border-slate-700/50 flex items-center justify-end font-normal text-sm w-full";
+                                        const centeredCellStyle = "text-center px-3 h-10 rounded-md border border-slate-700/50 flex items-center justify-center font-normal text-sm w-full";
 
                                         return (
                                             <React.Fragment key={`b3_${age}`}>
@@ -867,7 +867,7 @@ const PensionFundAnalysis = () => {
                                             return 'border-slate-700/50';
                                         };
                                         
-                                        const cellStyle = "text-right bg-slate-800/50 opacity-80 text-slate-100 px-3 h-10 rounded-md border flex items-center justify-end font-normal text-sm w-full";
+                                        const cellStyle = "text-right px-3 h-10 rounded-md border flex items-center justify-end font-normal text-sm w-full";
 
                                         return (
                                             <React.Fragment key={`z4_l_${age}`}>
@@ -906,7 +906,7 @@ const PensionFundAnalysis = () => {
                                             return 'border-slate-700/50';
                                         };
 
-                                        const cellStyle = "text-right bg-slate-800/50 opacity-80 text-slate-100 px-3 h-10 rounded-md border flex items-center justify-end font-normal text-sm w-full";
+                                        const cellStyle = "text-right px-3 h-10 rounded-md border flex items-center justify-end font-normal text-sm w-full";
 
                                         return (
                                             <React.Fragment key={`z4_r_${age}`}>
@@ -978,3 +978,7 @@ const PensionFundAnalysis = () => {
 };
 
 export default PensionFundAnalysis;
+
+
+
+

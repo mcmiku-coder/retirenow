@@ -718,7 +718,7 @@ const RetirementBenefitsQuestionnaire = () => {
                 subtitle={t('retirementBenefits.subtitle')}
             />
 
-            <div className="max-w-[1400px] w-full md:w-[90%] mx-auto px-4 space-y-8 pb-12">
+            <div className="w-[70%] mx-auto px-4 space-y-8 pb-12">
                 {userData?.analysisType === 'couple' && (
                     <div className="flex justify-center mb-6">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -830,7 +830,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             value={String(questionnaire.threeACount)}
                                             onValueChange={(value) => updateQuestionnaire('threeACount', parseInt(value))}
                                         >
-                                            <SelectTrigger id="threeACount" className="w-[180px] justify-end gap-2 bg-slate-900/50">
+                                            <SelectTrigger id="threeACount" className="w-[240px] justify-end gap-2 bg-slate-900/50">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -850,7 +850,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                             value={String(questionnaire.librePassageCount)}
                                             onValueChange={(value) => updateQuestionnaire('librePassageCount', parseInt(value))}
                                         >
-                                            <SelectTrigger id="librePassageCount" className="w-[180px] justify-end gap-2 bg-slate-900/50">
+                                            <SelectTrigger id="librePassageCount" className="w-[240px] justify-end gap-2 bg-slate-900/50">
                                                 <SelectValue placeholder={t('common.select')} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -864,41 +864,41 @@ const RetirementBenefitsQuestionnaire = () => {
                                     {/* Q4: Benefit type */}
                                     {questionnaire.hasLPP && (
                                         <div className="flex items-center justify-between h-10">
-                                            <Label htmlFor="benefitType" className="text-base font-semibold whitespace-nowrap">
-                                                {language === 'fr'
-                                                    ? 'Type de prestation à choisir'
-                                                    : 'Type of benefit to choose'}
-                                            </Label>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor="benefitType" className="text-base font-semibold whitespace-nowrap">
+                                                    {language === 'fr'
+                                                        ? 'Type de prestation à choisir'
+                                                        : 'Type of benefit to choose'}
+                                                </Label>
                                                 <Button
                                                     type="button"
                                                     variant="outline"
                                                     onClick={() => handleSave(null, '/pension-fund-analysis')}
-                                                    className="bg-green-600 hover:bg-green-700 text-white border-green-500 px-4 shadow-[0_0_10px_rgba(22,163,74,0.2)] flex items-center justify-center gap-2 cursor-pointer"
+                                                    className="bg-green-600 hover:bg-green-700 text-white border-green-500 px-2 shadow-[0_0_10px_rgba(22,163,74,0.2)] flex items-center justify-center gap-1 cursor-pointer"
                                                 >
                                                     <HelpCircle className="h-3.5 w-3.5" />
                                                     {language === 'fr' ? 'Aidez-moi' : 'Help me'}
                                                 </Button>
-                                                <Select
-                                                    value={questionnaire.benefitType}
-                                                    onValueChange={(value) => updateQuestionnaire('benefitType', value)}
-                                                >
-                                                    <SelectTrigger id="benefitType" className="w-[180px] justify-end gap-2 bg-slate-900/50">
-                                                        <SelectValue placeholder={t('common.select')} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="pension">
-                                                            {language === 'fr' ? 'Pension uniquement' : 'Pension only'}
-                                                        </SelectItem>
-                                                        <SelectItem value="capital">
-                                                            {language === 'fr' ? 'Capital uniquement' : 'Capital only'}
-                                                        </SelectItem>
-                                                        <SelectItem value="mix">
-                                                            {language === 'fr' ? 'Mixte (Pension et Capital)' : 'Mix of Pension and Capital'}
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
                                             </div>
+                                            <Select
+                                                value={questionnaire.benefitType}
+                                                onValueChange={(value) => updateQuestionnaire('benefitType', value)}
+                                            >
+                                                <SelectTrigger id="benefitType" className="w-[240px] justify-end gap-2 bg-slate-900/50">
+                                                    <SelectValue placeholder={t('common.select')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pension">
+                                                        {language === 'fr' ? 'Pension uniquement' : 'Pension only'}
+                                                    </SelectItem>
+                                                    <SelectItem value="capital">
+                                                        {language === 'fr' ? 'Capital uniquement' : 'Capital only'}
+                                                    </SelectItem>
+                                                    <SelectItem value="mix">
+                                                        {language === 'fr' ? 'Mixte (Pension et Capital)' : 'Mix of Pension and Capital'}
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     )}
                                 </div>
@@ -1007,7 +1007,7 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* AVS Yearly Pension */}
                             {questionnaire.hasAVS && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse table-fixed">
+                                    <table className="w-full min-w-[780px] border-collapse table-fixed">
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="text-left p-2 text-sm font-medium w-[180px]"></th>
@@ -1016,10 +1016,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 </th>
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]"></th>
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]"></th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Montant' : 'Amount'}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]"></th>
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1061,7 +1061,7 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* Libre-Passage Capitals */}
                             {questionnaire.librePassageCount > 0 && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse table-fixed">
+                                    <table className="w-full min-w-[780px] border-collapse table-fixed">
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="text-left p-2 text-sm font-medium w-[180px]"></th>
@@ -1074,10 +1074,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]">
                                                     {benefitsData.librePassages.some(lp => lp.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur projetée' : 'Projected Value'}
                                                 </th>
                                             </tr>
@@ -1167,7 +1167,7 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* 3a Capitals */}
                             {questionnaire.threeACount > 0 && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse table-fixed">
+                                    <table className="w-full min-w-[780px] border-collapse table-fixed">
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="text-left p-2 text-sm font-medium w-[180px]"></th>
@@ -1180,10 +1180,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]">
                                                     {benefitsData.threeA.some(acc => acc.isInvested) ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur projetée' : 'Projected Value'}
                                                 </th>
                                             </tr>
@@ -1273,7 +1273,7 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* Supplementary Pension Plan Capital */}
                             {questionnaire.hasSupplementaryPension && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse table-fixed">
+                                    <table className="w-full min-w-[780px] border-collapse table-fixed">
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="text-left p-2 text-sm font-medium w-[180px]"></th>
@@ -1286,10 +1286,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]">
                                                     {benefitsData.lppSup?.isInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur projetée' : 'Projected Value'}
                                                 </th>
                                             </tr>
@@ -1426,7 +1426,7 @@ const RetirementBenefitsQuestionnaire = () => {
 
                                     {/* Tax Rate Inputs (E and F) */}
                                     <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+                                        <table className="w-full min-w-[880px] border-collapse" style={{ tableLayout: 'fixed' }}>
                                             <colgroup>
                                                 <col style={{ width: '60px' }} />
                                                 <col style={{ width: '120px' }} />
@@ -1503,25 +1503,25 @@ const RetirementBenefitsQuestionnaire = () => {
                                                         {language === 'fr' ? 'Date de disponibilité' : 'Availability date'}
                                                     </th>
                                                     {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-right p-2 text-sm font-medium">
                                                             <div>{language === 'fr' ? 'Pension annuelle LPP' : 'LPP yearly pension'}</div>
                                                             <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'avant impôts' : 'before tax'}</div>
                                                         </th>
                                                     ) : <th></th>}
                                                     {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-right p-2 text-sm font-medium">
                                                             <div>{language === 'fr' ? 'Capital LPP projeté' : 'LPP projected capital'}</div>
                                                             <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'avant impôts' : 'before tax'}</div>
                                                         </th>
                                                     ) : <th></th>}
                                                     {(questionnaire.benefitType === 'pension' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-right p-2 text-sm font-medium">
                                                             <div>{language === 'fr' ? 'Pension annuelle LPP' : 'LPP yearly pension'}</div>
                                                             <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'après impôts' : 'after tax'}</div>
                                                         </th>
                                                     ) : <th></th>}
                                                     {(questionnaire.benefitType === 'capital' || questionnaire.benefitType === 'mix' || questionnaire.benefitType === 'unknown') ? (
-                                                        <th className="text-left p-2 text-sm font-medium">
+                                                        <th className="text-right p-2 text-sm font-medium">
                                                             <div>{language === 'fr' ? 'Capital LPP projeté' : 'LPP projected capital'}</div>
                                                             <div className="text-xs font-normal text-muted-foreground">{language === 'fr' ? 'après impôts' : 'after tax'}</div>
                                                         </th>
@@ -1539,7 +1539,7 @@ const RetirementBenefitsQuestionnaire = () => {
                                                     const netCapital = rawCapital > 0 ? Math.round(rawCapital * (1 - capitalRate)) : 0;
                                                     return (
                                                         <tr key={age} className={`border-b last:border-0 ${isTargetAge ? 'bg-muted/50' : ''}`}>
-                                                            <td className="p-2 font-medium">{age}</td>
+                                                            <td className="p-2 font-medium">{age} ans</td>
                                                             <td className="p-2">
                                                                 <Input
                                                                     type="text"
@@ -1616,7 +1616,7 @@ const RetirementBenefitsQuestionnaire = () => {
                             {/* LPP Current Capital - Sub-situation II (Q3 = No or Unknown) */}
                             {questionnaire.hasLPP && (questionnaire.isWithinPreRetirement === 'no' || questionnaire.isWithinPreRetirement === 'unknown') && (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse table-fixed">
+                                    <table className="w-full min-w-[780px] border-collapse table-fixed">
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="text-left p-2 text-sm font-medium w-[180px]"></th>
@@ -1629,10 +1629,10 @@ const RetirementBenefitsQuestionnaire = () => {
                                                 <th className="text-left p-2 text-sm font-medium w-[100px]">
                                                     {benefitsData.lppCurrentInvested ? (language === 'fr' ? 'Rendement' : 'Return') : ''}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur actuelle' : 'Current Value'}
                                                 </th>
-                                                <th className="text-left p-2 text-sm font-medium w-[150px]">
+                                                <th className="text-right p-2 text-sm font-medium w-[150px]">
                                                     {language === 'fr' ? 'Valeur projetée' : 'Projected Value'}
                                                 </th>
                                             </tr>
