@@ -47,7 +47,8 @@ import {
 import {
   generateSimulationChoice,
   generateRetirementBenefits,
-  generateDataReview
+  generateDataReview,
+  generatePensionFundAnalysis
 } from '../utils/pdfPageGenerators3';
 
 import {
@@ -2188,6 +2189,9 @@ const ScenarioResult = () => {
       pageNumbers.benefits = currentPage;
       generateRetirementBenefits(pdf, scenarioData, enrichedUserData, retirementData, language, currentPage, summaryData.totalPages);
       currentPage++;
+
+      // ===== PAGE 8B: PENSION FUND ANALYSIS =====
+      currentPage = generatePensionFundAnalysis(pdf, retirementData, enrichedUserData, language, currentPage, summaryData.totalPages);
 
       // ===== PAGE 9: DATA REVIEW =====
       pageNumbers.dataReview = currentPage;

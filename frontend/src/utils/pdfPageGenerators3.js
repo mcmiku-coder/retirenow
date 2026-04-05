@@ -591,20 +591,38 @@ export const generateRetirementBenefits = (pdf, scenarioData, userData, retireme
                 const lppEntry = bens.lppByAge[simAgeStr];
                 if (lppEntry) {
                     if (quest.benefitType === 'capital' || quest.benefitType === 'mix') {
-                        const row = [
-                            language === 'fr' ? `Capital LPP (à ${simAgeStr} ans)` : `LPP Capital (at age ${simAgeStr})`,
+                        const rowBrut = [
+                            language === 'fr' ? `Capital LPP Brut (à ${simAgeStr} ans) avant impôt` : `Gross LPP Capital (at age ${simAgeStr}) before tax`,
                             '-', '-', '-', formatCurrency(lppEntry.capital)
                         ];
-                        if (isCouple) row.push(ownerName);
-                        amtBody.push(row);
+                        if (isCouple) rowBrut.push(ownerName);
+                        amtBody.push(rowBrut);
+
+                        if (lppEntry.netCapital) {
+                            const rowNet = [
+                                language === 'fr' ? `Capital LPP Net (à ${simAgeStr} ans) après impôt` : `Net LPP Capital (at age ${simAgeStr}) after tax`,
+                                '-', '-', '-', formatCurrency(lppEntry.netCapital)
+                            ];
+                            if (isCouple) rowNet.push(ownerName);
+                            amtBody.push(rowNet);
+                        }
                     }
                     if (quest.benefitType === 'pension' || quest.benefitType === 'mix') {
-                        const row = [
-                            language === 'fr' ? `Pension LPP (à ${simAgeStr} ans)` : `LPP pension (at age ${simAgeStr})`,
+                        const rowBrut = [
+                            language === 'fr' ? `Pension LPP Brut (à ${simAgeStr} ans) avant impôt` : `Gross LPP pension (at age ${simAgeStr}) before tax`,
                             '-', '-', '-', formatCurrency(lppEntry.pension)
                         ];
-                        if (isCouple) row.push(ownerName);
-                        amtBody.push(row);
+                        if (isCouple) rowBrut.push(ownerName);
+                        amtBody.push(rowBrut);
+
+                        if (lppEntry.netPension) {
+                            const rowNet = [
+                                language === 'fr' ? `Pension LPP Net (à ${simAgeStr} ans) après impôt` : `Net LPP pension (at age ${simAgeStr}) after tax`,
+                                '-', '-', '-', formatCurrency(lppEntry.netPension)
+                            ];
+                            if (isCouple) rowNet.push(ownerName);
+                            amtBody.push(rowNet);
+                        }
                     }
                 }
             }
@@ -955,8 +973,416 @@ export const generateDataReview = (pdf, allData, userData, language, pageNum, to
     addPageNumber(pdf, pageNum, totalPages, language);
 };
 
+/**
+ * Page X: Pension Fund Analysis
+ */
+const findYieldRate = (capital, pension, years) => {
+    if (!capital || !pension || !years || capital <= 0 || pension <= 0 || years <= 0) return 0;
+    if (pension * years <= capital) return 0;
+    let low = 0;
+    let high = 1.0;
+    let mid = 0;
+    for (let i = 0; i < 40; i++) {
+        mid = (low + high) / 2;
+        if (mid === 0) { low = 0.00001; continue; }
+        const pv = pension * (1 - Math.pow(1 + mid, -years)) / mid;
+        if (pv > capital) { low = mid; } else { high = mid; }
+    }
+    return mid * 100;
+};
+
+export const generatePensionFundAnalysis = (pdf, retirementData, userData, language, pageNum, totalPages) => {
+    let currentPageNum = pageNum;
+    
+    // Determine if there is data to display
+    const hasP1 = retirementData?.p1?.pensionAnalysis;
+    const hasP2 = userData.analysisType === 'couple' && retirementData?.p2?.pensionAnalysis;
+    
+    if (!hasP1 && !hasP2) return currentPageNum;
+
+    const renderPersonAnalysis = (pDataObj, personName, ageOffsetContext) => {
+        pdf.addPage();
+        
+        const parseToNumber = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            const clean = val.toString().replace(/'/g, '').replace(/%/g, '');
+            const parsed = parseFloat(clean);
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const { pData, touchedFields, interpolatedFields } = pDataObj;
+        const pKey = Object.keys(touchedFields || {})[0]?.split('_')[0] || 'p1';
+
+        // Calculate ages & years
+        const isOpt1 = pData.selectedOption === 'option1';
+        
+        // Age actuel
+        const birthDate = ageOffsetContext === 2 ? new Date(userData.birthDate2) : new Date(userData.birthDate);
+        const currentYear = new Date().getFullYear();
+        const currentAge = currentYear - birthDate.getFullYear();
+        
+        // Espérance de vie
+        const deathDate = ageOffsetContext === 2 ? new Date(userData.theoreticalDeathDate2) : new Date(userData.theoreticalDeathDate);
+        const ageOfDeath = deathDate.getFullYear() - birthDate.getFullYear();
+
+        // Âge de retraite souhaité
+        let plannedRetirementAge = 65; // Default fallback
+        if (ageOffsetContext === 2 && userData.analysisType === 'couple') {
+            const rDate = new Date(retirementData?.p2?.questionnaire?.wishedRetirementDate || userData.theoreticalDeathDate2);
+            plannedRetirementAge = rDate.getFullYear() - birthDate.getFullYear();
+        } else {
+            const rDate = new Date(retirementData?.p1?.questionnaire?.wishedRetirementDate || userData.theoreticalDeathDate);
+            plannedRetirementAge = rDate.getFullYear() - birthDate.getFullYear();
+        }
+
+        let yPos = addPageHeader(
+            pdf,
+            language === 'fr' ? `Analyse de la caisse de pension - ${personName}` : `Pension Fund Analysis - ${personName}`,
+            null,
+            20
+        );
+
+        // Legend
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        
+        // Green legend
+        pdf.setDrawColor(34, 197, 94);
+        pdf.setFillColor(34, 197, 94);
+        pdf.rect(15, yPos - 3, 3, 3, 'F'); // Draw solid square
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(language === 'fr' ? 'Valeurs certaines issues des documents LPP saisies par l\'utilisateur' : 'Confirmed values from LPP documents entered by user', 20, yPos);
+        
+        // Orange legend
+        pdf.setDrawColor(249, 115, 22);
+        pdf.setFillColor(249, 115, 22);
+        pdf.rect(15, yPos + 2, 3, 3, 'F');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(language === 'fr' ? 'Valeurs interpolées calculées par l\'outil pour permettre plus d\'options de simulation' : 'Interpolated values calculated by the tool for more simulation options', 20, yPos + 5);
+
+        yPos += 15;
+
+        // ==========================================
+        // BLOC A : Paramètres Généraux
+        // ==========================================
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(language === 'fr' ? 'Informations générales' : 'General Information', 15, yPos);
+        yPos += 5;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(language === 'fr' ? `Relevé d'épargne: ${formatCurrency(parseToNumber(pData.savingsAccountValue))}` : `Savings account: ${formatCurrency(parseToNumber(pData.savingsAccountValue))}`, 15, yPos);
+        pdf.text(language === 'fr' ? `Cotisations mens.: ${formatCurrency(parseToNumber(pData.monthlyContributions))}` : `Monthly cont.: ${formatCurrency(parseToNumber(pData.monthlyContributions))}`, 80, yPos);
+        pdf.text(language === 'fr' ? `Age actuel: ${currentAge} ans` : `Current age: ${currentAge} yrs`, 145, yPos);
+        yPos += 5;
+        pdf.text(language === 'fr' ? `Date relevé: ${formatDate(pData.savingsAccountDate) || 'N/A'}` : `Account date: ${formatDate(pData.savingsAccountDate) || 'N/A'}`, 15, yPos);
+        pdf.text(language === 'fr' ? `Âge souhaité (retraite): ${plannedRetirementAge} ans` : `Desired retirement: ${plannedRetirementAge} yrs`, 80, yPos);
+        pdf.text(language === 'fr' ? `Espérance de vie: ${ageOfDeath} ans` : `Life expectancy: ${ageOfDeath} yrs`, 145, yPos);
+
+        yPos += 8;
+
+        // ==========================================
+        // BLOC A (Suite) : Options et allocations
+        // ==========================================
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'Options et allocations' : 'Options and allocations', 15, yPos);
+        yPos += 5;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(language === 'fr' ? `Option choisie: ${pData.selectedOption}` : `Chosen option: ${pData.selectedOption}`, 15, yPos);
+        pdf.text(language === 'fr' ? `Rente: ${100 - pData.capitalSplit}%` : `Pension: ${100 - pData.capitalSplit}%`, 70, yPos);
+        pdf.text(language === 'fr' ? `Capital: ${pData.capitalSplit}%` : `Capital: ${pData.capitalSplit}%`, 110, yPos);
+        
+        if (!isOpt1) {
+            pdf.text(language === 'fr' ? `Taux de simulation: ${pData.simulationYield}%` : `Simulation Yield: ${pData.simulationYield}%`, 150, yPos);
+        }
+        yPos += 10;
+
+        // ==========================================
+        // TABLE : DONNÉES OFFICIELLES ET INTERPOLÉES
+        // ==========================================
+        yPos = checkPageBreak(pdf, yPos, 40);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'Données officielles et interpolées' : 'Official and interpolated data', 15, yPos);
+        yPos += 5;
+
+        let officialHead = [];
+        let officialBody = [];
+        let dataColKeys = [];
+
+        if (isOpt1) {
+            // OPTION 1: A, B, C, F, G, I
+            officialHead = [[
+                'Age',
+                { content: language === 'fr' ? 'Capital (0%)' : 'Capital (0%)', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Tx Conv.' : 'Conv. Rate', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Rente (0%)' : 'Pension (0%)', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Retraite (ans)' : 'Retir. (yrs)', styles: { halign: 'center' } },
+                { content: language === 'fr' ? 'C x F (Total)' : 'C x F (Total)', styles: { halign: 'center' } },
+                { content: language === 'fr' ? 'Rendement Néc.' : 'Yield Required', styles: { halign: 'center' } }
+            ]];
+            dataColKeys = ['a', 'b', 'c']; // Only the explicit grid columns matter for drawing borders
+
+            [65, 64, 63, 62, 61, 60, 59, 58].forEach(age => {
+                const rowData = pData.gridData[age] || {};
+                const yearsRemaining = ageOfDeath ? Math.max(0, Math.round(ageOfDeath) - age) : 0;
+                const valC = parseToNumber(rowData.c);
+                const valA = parseToNumber(rowData.a);
+                const yieldReq = findYieldRate(valA, valC, yearsRemaining);
+
+                officialBody.push([
+                    `${age} ${language === 'fr' ? 'ans' : 'years'}`,
+                    formatNumber(parseToNumber(rowData.a)),
+                    rowData.b || '0.00%',
+                    formatNumber(valC),
+                    yearsRemaining,
+                    formatNumber(Math.round(valC * yearsRemaining)),
+                    `${yieldReq.toFixed(2)}%`
+                ]);
+            });
+        } else {
+            // OPTION 2: D, E, B, F, H, J
+            officialHead = [[
+                'Age',
+                { content: language === 'fr' ? `Capital (${pData.simulationYield}%)` : `Capital (${pData.simulationYield}%)`, styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Tx Conv.' : 'Conv. Rate', styles: { halign: 'right' } },
+                { content: language === 'fr' ? `Rente (${pData.simulationYield}%)` : `Pension (${pData.simulationYield}%)`, styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Retraite (ans)' : 'Retir. (yrs)', styles: { halign: 'center' } },
+                { content: language === 'fr' ? 'E x F (Total)' : 'E x F (Total)', styles: { halign: 'center' } },
+                { content: language === 'fr' ? 'Rendement Néc.' : 'Yield Required', styles: { halign: 'center' } }
+            ]];
+            dataColKeys = ['d', 'b', 'e']; 
+
+            [65, 64, 63, 62, 61, 60, 59, 58].forEach(age => {
+                const rowData = pData.gridData[age] || {};
+                const yearsRemaining = ageOfDeath ? Math.max(0, Math.round(ageOfDeath) - age) : 0;
+                const valE = parseToNumber(rowData.e);
+                const valA = parseToNumber(rowData.a);
+
+                const yieldReq = findYieldRate(valA, valE, yearsRemaining);
+
+                officialBody.push([
+                    `${age} ${language === 'fr' ? 'ans' : 'years'}`,
+                    formatNumber(parseToNumber(rowData.d)),
+                    rowData.b || '0.00%',
+                    formatNumber(valE),
+                    yearsRemaining,
+                    formatNumber(Math.round(valE * yearsRemaining)),
+                    `${yieldReq.toFixed(2)}%`
+                ]);
+            });
+        }
+
+        autoTable(pdf, {
+            startY: yPos,
+            head: officialHead,
+            body: officialBody,
+            theme: 'plain',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, fontStyle: 'bold', halign: 'center' },
+            styles: { fontSize: 8, cellPadding: 1.5, halign: 'right' },
+            columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
+            margin: { left: 15, right: 15 },
+            didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index > 0 && data.column.index <= dataColKeys.length) {
+                    const rowAge = 65 - data.row.index; 
+                    const colKey = dataColKeys[data.column.index - 1]; 
+                    
+                    const k = `${pKey}_${rowAge}_${colKey}`;
+                    const isInterpolated = interpolatedFields && interpolatedFields[k];
+                    const isTouched = touchedFields && touchedFields[k];
+
+                    if (isInterpolated || isTouched) {
+                        const pdfDoc = data.doc;
+                        pdfDoc.saveGraphicsState();
+                        pdfDoc.setLineWidth(0.5);
+                        
+                        // Green: 34, 197, 94 | Orange: 249, 115, 22
+                        if (isInterpolated) {
+                            pdfDoc.setDrawColor(249, 115, 22);
+                        } else {
+                            pdfDoc.setDrawColor(34, 197, 94);
+                        }
+                        
+                        pdfDoc.rect(data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1, 'S');
+                        pdfDoc.restoreGraphicsState();
+                    } else {
+                        // Draw light gray border for empty read-only cells
+                        const pdfDoc = data.doc;
+                        pdfDoc.saveGraphicsState();
+                        pdfDoc.setLineWidth(0.2);
+                        pdfDoc.setDrawColor(200, 200, 200);
+                        pdfDoc.rect(data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1, 'S');
+                        pdfDoc.restoreGraphicsState();
+                    }
+                }
+            }
+        });
+
+        // ==========================================
+        // BLOC B : IMPÔTS (TAXES)
+        // ==========================================
+        yPos = pdf.lastAutoTable.finalY + 10;
+        
+        const bData = retirementData?.[pKey]?.benefitsData || {};
+        const pensionTaxRate = parseFloat(bData.pensionTaxRate || '4.5');
+        const capitalTaxRate = parseFloat(bData.capitalTaxRate || '10');
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? `Taux prélèvement sur pension: ${pensionTaxRate}%` : `Pension tax rate: ${pensionTaxRate}%`, 15, yPos);
+        pdf.text(language === 'fr' ? `Taux impôt capital: ${capitalTaxRate}%` : `Capital tax rate: ${capitalTaxRate}%`, 120, yPos);
+        
+        yPos += 8;
+
+        // ==========================================
+        // TABLE : SIMULATION (RENTE OU CAPITAL)
+        // ==========================================
+        yPos = checkPageBreak(pdf, yPos, 60);
+
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(language === 'fr' ? 'Simulation (Rente ou Capital) - net' : 'Simulation (Pension or Capital) - net', 15, yPos);
+        yPos += 5;
+
+        let simHead = [];
+        let simBody = [];
+        let simColKeys = [];
+
+        if (isOpt1) {
+            simHead = [[
+                'Age',
+                { content: language === 'fr' ? 'Rente projetée\navant impôts (0%)' : 'Projected Pension\nbefore tax (0%)', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Capital projeté\navant impôts (0%)' : 'Projected Capital\nbefore tax (0%)', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Rente projetée\naprès impôts' : 'Projected Pension\nafter tax', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Capital projeté\naprès impôts' : 'Projected Capital\nafter tax', styles: { halign: 'right' } }
+            ]];
+            simColKeys = ['c', 'a', '', '']; // Only draw colored borders on raw data usually, but let's keep array length 4
+            
+            [65, 64, 63, 62, 61, 60, 59, 58].forEach(age => {
+                const gr = pData.gridData[age] || {};
+                const sourceA = parseToNumber(gr.a);
+                const sourceC = parseToNumber(gr.c);
+                const split = pData.capitalSplit || 0;
+                
+                const rente = sourceC * ((100 - split) / 100);
+                const cap = sourceA * (split / 100);
+                
+                const renteNet = rente * (1 - (pensionTaxRate / 100));
+                const capNet = cap * (1 - (capitalTaxRate / 100));
+
+                simBody.push([
+                    `${age} ${language === 'fr' ? 'ans' : 'years'}`,
+                    formatNumber(Math.round(rente)),
+                    formatNumber(Math.round(cap)),
+                    formatNumber(Math.round(renteNet)),
+                    formatNumber(Math.round(capNet))
+                ]);
+            });
+        } else {
+            simHead = [[
+                'Age',
+                { content: language === 'fr' ? `Rente projetée\navant impôts (${pData.simulationYield}%)` : `Projected Pension\nbefore tax (${pData.simulationYield}%)`, styles: { halign: 'right' } },
+                { content: language === 'fr' ? `Capital projeté\navant impôts (${pData.simulationYield}%)` : `Projected Capital\nbefore tax (${pData.simulationYield}%)`, styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Rente projetée\naprès impôts' : 'Projected Pension\nafter tax', styles: { halign: 'right' } },
+                { content: language === 'fr' ? 'Capital projeté\naprès impôts' : 'Projected Capital\nafter tax', styles: { halign: 'right' } }
+            ]];
+            simColKeys = ['e', 'd', '', ''];
+
+            [65, 64, 63, 62, 61, 60, 59, 58].forEach(age => {
+                const gr = pData.gridData[age] || {};
+                const sourceD = parseToNumber(gr.d);
+                const sourceE = parseToNumber(gr.e);
+                const split = pData.capitalSplit || 0;
+                
+                const rente = sourceE * ((100 - split) / 100);
+                const cap = sourceD * (split / 100);
+
+                const renteNet = rente * (1 - (pensionTaxRate / 100));
+                const capNet = cap * (1 - (capitalTaxRate / 100));
+
+                simBody.push([
+                    `${age} ${language === 'fr' ? 'ans' : 'years'}`,
+                    formatNumber(Math.round(rente)),
+                    formatNumber(Math.round(cap)),
+                    formatNumber(Math.round(renteNet)),
+                    formatNumber(Math.round(capNet))
+                ]);
+            });
+        }
+
+        autoTable(pdf, {
+            startY: yPos,
+            head: simHead,
+            body: simBody,
+            theme: 'plain',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 8, fontStyle: 'bold', halign: 'center' },
+            styles: { fontSize: 8, cellPadding: 1.5, halign: 'right' },
+            columnStyles: { 0: { halign: 'center', fontStyle: 'bold' } },
+            margin: { left: 15, right: 15 },
+            didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index > 0 && data.column.index <= 2) {
+                    // Only draw colored borders on the raw columns (index 1 & 2), not the net columns (index 3 & 4)
+                    const rowAge = 65 - data.row.index; 
+                    const targetColKey = simColKeys[data.column.index - 1];
+
+                    const k = `${pKey}_${rowAge}_${targetColKey}`;
+                    const isInterpolated = interpolatedFields && interpolatedFields[k];
+                    const isTouched = touchedFields && touchedFields[k];
+
+                    const pdfDoc = data.doc;
+                    pdfDoc.saveGraphicsState();
+                    pdfDoc.setLineWidth(0.5);
+
+                    if (isInterpolated || isTouched) {
+                        if (isInterpolated) {
+                            pdfDoc.setDrawColor(249, 115, 22);
+                        } else {
+                            pdfDoc.setDrawColor(34, 197, 94);
+                        }
+                    } else {
+                        pdfDoc.setLineWidth(0.2);
+                        pdfDoc.setDrawColor(200, 200, 200);
+                    }
+                    
+                    pdfDoc.rect(data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1, 'S');
+                    pdfDoc.restoreGraphicsState();
+                } else if (data.section === 'body' && data.column.index > 2) {
+                    // Draw gray borders for net columns
+                    const pdfDoc = data.doc;
+                    pdfDoc.saveGraphicsState();
+                    pdfDoc.setLineWidth(0.2);
+                    pdfDoc.setDrawColor(200, 200, 200);
+                    pdfDoc.rect(data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1, 'S');
+                    pdfDoc.restoreGraphicsState();
+                }
+            }
+        });
+
+        addPageNumber(pdf, currentPageNum, totalPages, language);
+        currentPageNum++;
+    };
+
+    if (hasP1) {
+        const p1Name = userData?.firstName || (language === 'fr' ? 'Personne 1' : 'Person 1');
+        renderPersonAnalysis(retirementData.p1.pensionAnalysis, p1Name, 1);
+    }
+
+    if (hasP2) {
+        const p2Name = userData?.firstName2 || (language === 'fr' ? 'Personne 2' : 'Person 2');
+        renderPersonAnalysis(retirementData.p2.pensionAnalysis, p2Name, 2);
+    }
+
+    return currentPageNum;
+};
+
 export default {
     generateSimulationChoice,
     generateRetirementBenefits,
-    generateDataReview
+    generateDataReview,
+    generatePensionFundAnalysis
 };
