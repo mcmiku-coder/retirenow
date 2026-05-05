@@ -134,6 +134,12 @@ const Landing = () => {
     e.preventDefault();
     console.log('Register clicked', { email, password });
 
+    try {
+      await axios.post(`${API}/track-event`, { event_type: "create_account_action" });
+    } catch (e) {
+      console.error("Failed to track event", e);
+    }
+
     const passwordError = validatePassword(password);
     if (passwordError) {
       toast.error(passwordError);

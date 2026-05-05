@@ -809,7 +809,7 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
             <p><strong>IP Address:</strong> {ip}</p>
             <p><strong>Location:</strong> {location}</p>
         """
-        send_admin_notification(f"Create account action used by {ip}", admin_content)
+        send_admin_notification(f"New user signed up {email}", admin_content)
 
     background_tasks.add_task(resolve_location_and_update, user_doc["user_id"], user_ip, user.email, current_time)
 
@@ -1015,6 +1015,9 @@ async def track_event(request_data: TrackEventRequest, request: Request, backgro
         if event == "create_account_link":
             subject = f"Create account link used by {ip}"
             title = "Create Account Link Clicked"
+        elif event == "create_account_action":
+            subject = f"Create account action used by {ip}"
+            title = "Create Account Action Triggered"
         else:
             subject = f"Event {event} by {ip}"
             title = f"Event: {event}"
