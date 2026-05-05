@@ -310,7 +310,14 @@ const Landing = () => {
               </Button>
 
               <Button
-                onClick={() => setShowVideo(true)}
+                onClick={async () => {
+                  setShowVideo(true);
+                  try {
+                    await axios.post(`${API}/track-demo`, { language });
+                  } catch (e) {
+                    console.error("Failed to track demo view", e);
+                  }
+                }}
                 variant="ghost"
                 size="lg"
                 className="min-w-[200px] border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"

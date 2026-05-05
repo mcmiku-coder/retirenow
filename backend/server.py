@@ -162,6 +162,9 @@ class PageVisitRequest(BaseModel):
     page_path: str
     session_id: Optional[str] = None
 
+class DemoTrackRequest(BaseModel):
+    language: str
+
 # Page navigation order (for determining "deepest" page)
 PAGE_DEPTH_ORDER = [
     '/',
@@ -975,6 +978,26 @@ async def reset_password(request: PasswordResetConfirm):
         raise HTTPException(status_code=400, detail="Reset link expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=400, detail="Invalid reset link")
+
+@api_router.post("/track-demo")
+async def track_demo(request_data: DemoTrackRequest, request: Request, background_tasks: BackgroundTasks):
+    """Track when a user views the demo video"""
+    current_time = datetime.now(timezone.utc).isoformat()
+    ip_address = request.client.host
+    
+    def notify_demo_view(ip: str, lang: str, time: str):
+        location = get_location_from_ip(ip)
+        admin_content = f"""
+            <h1>Demo View</h1>
+            <p><strong>Language:</strong> {lang.upper()}</p>
+            <p><strong>Time:</strong> {time}</p>
+            <p><strong>IP Address:</strong> {ip}</p>
+            <p><strong>Location:</strong> {location}</p>
+        """
+        send_admin_notification("Demo Viewed", admin_content)
+
+    background_tasks.add_task(notify_demo_view, ip_address, request_data.language, current_time)
+    return {"success": True}
 
 @api_router.post("/track-page")
 
