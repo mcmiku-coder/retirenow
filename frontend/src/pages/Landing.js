@@ -283,11 +283,16 @@ const Landing = () => {
             <>
               <Button
                 data-testid="create-account-btn"
-                onClick={() => {
+                onClick={async () => {
                   setShowRegister(true);
                   setShowLogin(false);
                   setEmail('');
                   setPassword('');
+                  try {
+                    await axios.post(`${API}/track-event`, { event_type: "create_account_link" });
+                  } catch (e) {
+                    console.error("Failed to track event", e);
+                  }
                 }}
                 size="lg"
                 className="min-w-[200px]"

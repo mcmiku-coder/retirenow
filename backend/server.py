@@ -165,6 +165,9 @@ class PageVisitRequest(BaseModel):
 class DemoTrackRequest(BaseModel):
     language: str
 
+class TrackEventRequest(BaseModel):
+    event_type: str
+
 # Page navigation order (for determining "deepest" page)
 PAGE_DEPTH_ORDER = [
     '/',
@@ -794,24 +797,25 @@ async def register(user: UserRegister, request: Request, background_tasks: Backg
     verify_token_str = create_verification_token(user.email)
     
     # Resolve geolocation in background (avoids a blocking HTTP call on the critical path)
-    async def resolve_location_and_update(user_id: str, ip: str):
+    async def resolve_location_and_update(user_id: str, ip: str, email: str, time: str):
         location = get_location_from_ip(ip)
         await db.access.update_one({"user_id": user_id}, {"$set": {"last_location": location}})
+        
+        # Notify Admin
+        admin_content = f"""
+            <h1>New User Registration</h1>
+            <p><strong>Email:</strong> {email}</p>
+            <p><strong>Time:</strong> {time}</p>
+            <p><strong>IP Address:</strong> {ip}</p>
+            <p><strong>Location:</strong> {location}</p>
+        """
+        send_admin_notification(f"Create account action used by {ip}", admin_content)
 
-    background_tasks.add_task(resolve_location_and_update, user_doc["user_id"], user_ip)
+    background_tasks.add_task(resolve_location_and_update, user_doc["user_id"], user_ip, user.email, current_time)
 
     # Send Email in Background
     # This prevents the UI from hitting a timeout while waiting for SMTP
     background_tasks.add_task(send_verification_email, user.email, verify_token_str)
-
-    # Notify Admin
-    admin_content = f"""
-        <h1>New User Registration</h1>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Time:</strong> {current_time}</p>
-        <p><strong>Location:</strong> {user_location}</p>
-    """
-    background_tasks.add_task(send_admin_notification, f"New user signed up {user.email}", admin_content)
 
     return TokenResponse(
         email=user.email, 
@@ -994,9 +998,36 @@ async def track_demo(request_data: DemoTrackRequest, request: Request, backgroun
             <p><strong>IP Address:</strong> {ip}</p>
             <p><strong>Location:</strong> {location}</p>
         """
-        send_admin_notification("Demo Viewed", admin_content)
+        send_admin_notification(f"Demo view by {ip}", admin_content)
 
     background_tasks.add_task(notify_demo_view, ip_address, request_data.language, current_time)
+    return {"success": True}
+
+@api_router.post("/track-event")
+async def track_event(request_data: TrackEventRequest, request: Request, background_tasks: BackgroundTasks):
+    """Track generic events from the frontend"""
+    current_time = datetime.now(timezone.utc).isoformat()
+    ip_address = request.client.host
+    
+    def notify_event(ip: str, event: str, time: str):
+        location = get_location_from_ip(ip)
+        
+        if event == "create_account_link":
+            subject = f"Create account link used by {ip}"
+            title = "Create Account Link Clicked"
+        else:
+            subject = f"Event {event} by {ip}"
+            title = f"Event: {event}"
+            
+        admin_content = f"""
+            <h1>{title}</h1>
+            <p><strong>Time:</strong> {time}</p>
+            <p><strong>IP Address:</strong> {ip}</p>
+            <p><strong>Location:</strong> {location}</p>
+        """
+        send_admin_notification(subject, admin_content)
+
+    background_tasks.add_task(notify_event, ip_address, request_data.event_type, current_time)
     return {"success": True}
 
 @api_router.post("/track-page")
